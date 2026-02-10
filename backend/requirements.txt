@@ -1,0 +1,12 @@
+Django
+djangorestframework
+djangorestframework-simplejwt
+psycopg2-binary
+pytest-django
+pytest
+factory-boy
+django-environ
+gunicorn
+requests
+black
+flake8
