@@ -5,6 +5,7 @@ psycopg2-binary
 pytest-django
 pytest
 factory-boy
+pytest-factoryboy
 django-environ
 gunicorn
 requests
