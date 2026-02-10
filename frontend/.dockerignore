@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+yarn-error.log
+.git
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+dist
+build
+coverage
+.vscode
+.idea
+.DS_Store
