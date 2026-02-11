@@ -23,7 +23,7 @@ export default function LoginPage() {
         }
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrorMsg('');
         mutation.mutate();
@@ -99,9 +99,9 @@ export default function LoginPage() {
                         </div>
 
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                            <button type="button" className="font-medium text-blue-600 hover:text-blue-500">
                                 Zabudli ste heslo?
-                            </a>
+                            </button>
                         </div>
                     </div>
 

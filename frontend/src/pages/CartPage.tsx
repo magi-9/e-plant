@@ -2,6 +2,12 @@ import { useCartStore } from '../store/cartStore';
 import { Link } from 'react-router-dom';
 import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 
+const getItemsLabel = (count: number): string => {
+    if (count === 1) return 'položka';
+    if (count < 5) return 'položky';
+    return 'položiek';
+};
+
 export default function CartPage() {
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
 
@@ -46,7 +52,7 @@ export default function CartPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">Nákupný košík</h1>
                     <p className="mt-2 text-sm text-gray-600">
-                        {items.length} {items.length === 1 ? 'položka' : items.length < 5 ? 'položky' : 'položiek'} v košíku
+                        {items.length} {getItemsLabel(items.length)} v košíku
                     </p>
                 </div>
 
@@ -112,7 +118,7 @@ export default function CartPage() {
                                                         </button>
                                                     </div>
                                                     <span className="ml-4 text-sm text-gray-600">
-                                                        Spolu: {(parseFloat(item.price) * item.quantity).toFixed(2)} €
+                                                        Spolu: {(Number.parseFloat(item.price) * item.quantity).toFixed(2)} €
                                                     </span>
                                                 </div>
                                             </div>

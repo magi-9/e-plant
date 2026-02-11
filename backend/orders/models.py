@@ -23,7 +23,18 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=255)
     email = models.EmailField()
     phone = models.CharField(max_length=50)
-    shipping_address = models.TextField()
+    
+    # Address fields
+    street = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    shipping_address = models.TextField(blank=True)  # Legacy field, kept for backward compatibility
+    
+    # Company info (optional)
+    is_company = models.BooleanField(default=False)
+    company_name = models.CharField(max_length=255, blank=True)
+    ico = models.CharField(max_length=50, blank=True, verbose_name="IČO")
+    dic = models.CharField(max_length=50, blank=True, verbose_name="DIČ")
 
     # Order info
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../api/products';
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
 
 export default function AdminProducts() {
-    const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 

@@ -17,7 +17,10 @@ def test_stock_decreases_after_order(api_client, user_factory, product_factory):
         "customer_name": "John Doe",
         "email": "john@example.com",
         "phone": "+421900123456",
-        "shipping_address": "Test Street 123, Bratislava",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 3},
@@ -46,7 +49,10 @@ def test_cannot_order_more_than_stock(api_client, user_factory, product_factory)
         "customer_name": "John Doe",
         "email": "john@example.com",
         "phone": "+421900123456",
-        "shipping_address": "Test Street 123, Bratislava",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 10},  # More than available
@@ -75,7 +81,10 @@ def test_stock_never_goes_below_zero(api_client, user_factory, product_factory):
         "customer_name": "John Doe",
         "email": "john@example.com",
         "phone": "+421900123456",
-        "shipping_address": "Test Street 123, Bratislava",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 5},
@@ -105,7 +114,10 @@ def test_multiple_products_stock_deduction(api_client, user_factory, product_fac
         "customer_name": "John Doe",
         "email": "john@example.com",
         "phone": "+421900123456",
-        "shipping_address": "Test Street 123, Bratislava",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product1.id, "quantity": 2},
@@ -139,7 +151,10 @@ def test_stock_deduction_is_atomic(api_client, user_factory, product_factory):
         "customer_name": "John Doe",
         "email": "john@example.com",
         "phone": "+421900123456",
-        "shipping_address": "Test Street 123, Bratislava",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product1.id, "quantity": 3},  # Should be OK
