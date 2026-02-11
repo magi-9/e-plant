@@ -4,6 +4,8 @@ from products.models import Product
 from decimal import Decimal
 import uuid
 from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -122,7 +124,124 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     **item_data
                 )
             
+            # Send confirmation emails
+            self._send_order_emails(order)
+            
             return order
+    
+    def _send_order_emails(self, order):
+        """Send confirmation emails to customer and warehouse"""
+        # Customer email
+        customer_subject = f'Potvrdenie objednávky #{order.order_number}'
+        customer_message = self._build_customer_email(order)
+        send_mail(
+            customer_subject,
+            customer_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [order.email],
+            fail_silently=True,
+        )
+        
+        # Warehouse email
+        warehouse_subject = f'Nová objednávka #{order.order_number}'
+        warehouse_message = self._build_warehouse_email(order)
+        send_mail(
+            warehouse_subject,
+            warehouse_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.WAREHOUSE_EMAIL],
+            fail_silently=True,
+        )
+    
+    def _build_customer_email(self, order):
+        """Build customer confirmation email body"""
+        items_text = "\n".join([
+            f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
+            for item in order.items.all()
+        ])
+        
+        payment_info = ""
+        if order.payment_method == "bank_transfer":
+            payment_info = f"""
+PLATOBNÉ ÚDAJE:
+Variabilný symbol: {order.order_number}
+IBAN: SK00 0000 0000 0000 0000 0000
+Suma: {order.total_price}€
+
+Po prijatí platby vám zašleme potvrdenie a objednávku expedujeme.
+"""
+        
+        company_info = ""
+        if order.is_company:
+            company_info = f"""
+Fakturačné údaje:
+{order.company_name}
+IČO: {order.ico}
+DIČ: {order.dic}
+"""
+        
+        return f"""Dobrý deň {order.customer_name},
+
+Ďakujeme za Vašu objednávku v DentalShop!
+
+ČÍSLO OBJEDNÁVKY: {order.order_number}
+Stav: {order.get_status_display()}
+
+OBJEDNANÉ PRODUKTY:
+{items_text}
+
+CELKOVÁ SUMA: {order.total_price}€
+
+DODACIA ADRESA:
+{order.street}
+{order.city}, {order.postal_code}
+{company_info}
+Telefón: {order.phone}
+Email: {order.email}
+{payment_info}
+Poznámka: {order.notes or "Žiadna"}
+
+V prípade otázok nás neváhajte kontaktovať.
+
+S pozdravom,
+Tím DentalShop
+"""
+    
+    def _build_warehouse_email(self, order):
+        """Build warehouse notification email body"""
+        items_text = "\n".join([
+            f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
+            for item in order.items.all()
+        ])
+        
+        company_info = ""
+        if order.is_company:
+            company_info = f"""
+FIREMNÁ OBJEDNÁVKA:
+{order.company_name}
+IČO: {order.ico}
+DIČ: {order.dic}
+"""
+        
+        return f"""NOVÁ OBJEDNÁVKA #{order.order_number}
+
+Zákazník: {order.customer_name}
+Email: {order.email}
+Telefón: {order.phone}
+{company_info}
+Dodacia adresa:
+{order.street}
+{order.city}, {order.postal_code}
+
+PRODUKTY NA VYSKLADNENIE:
+{items_text}
+
+Celková suma: {order.total_price}€
+Platba: {order.get_payment_method_display()}
+Stav: {order.get_status_display()}
+
+Poznámka zákazníka: {order.notes or "Žiadna"}
+"""
 
 
 class OrderSerializer(serializers.ModelSerializer):

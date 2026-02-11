@@ -18,3 +18,8 @@ DATABASES = {
         "PORT": os.environ.get("DB_PORT", "5432"),
     }
 }
+
+# Email configuration for development
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@dentalshop.sk'
+WAREHOUSE_EMAIL = 'warehouse@dentalshop.sk'
