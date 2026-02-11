@@ -92,10 +92,18 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             user = request.user if request and request.user.is_authenticated else None
             
+            # Set status based on payment method
+            payment_method = validated_data.get('payment_method', 'bank_transfer')
+            if payment_method == 'bank_transfer':
+                status = 'awaiting_payment'
+            else:
+                status = 'new'
+            
             # Create order
             order = Order.objects.create(
                 user=user,
                 order_number=order_number,
+                status=status,
                 total_price=total_price,
                 **validated_data
             )
