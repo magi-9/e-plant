@@ -1,7 +1,8 @@
 import { Disclosure } from '@headlessui/react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import { isAdmin } from '../api/auth';
+import { useCartStore } from '../store/cartStore';
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ');
@@ -11,6 +12,7 @@ export default function Navbar() {
     const location = useLocation();
     const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isLoggedIn && isAdmin();
+    const totalItems = useCartStore((state) => state.getTotalItems());
 
     const navigation = [
         { name: 'Produkty', href: '/products', current: location.pathname === '/products' },
@@ -66,6 +68,19 @@ export default function Navbar() {
                                 </div>
                             </div>
                             <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+                                {/* Cart Icon */}
+                                <Link
+                                    to="/cart"
+                                    className="relative text-blue-100 hover:text-white p-2 rounded-md transition-colors"
+                                >
+                                    <ShoppingCartIcon className="h-6 w-6" />
+                                    {totalItems > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                            {totalItems}
+                                        </span>
+                                    )}
+                                </Link>
+
                                 {isLoggedIn ? (
                                     <>
                                         {userIsAdmin && (
