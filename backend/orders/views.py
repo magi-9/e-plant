@@ -1,5 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderSerializer
 
@@ -34,3 +36,18 @@ class MyOrdersView(generics.ListAPIView):
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
+
+
+class AdminOrdersListView(generics.ListAPIView):
+    """Admin endpoint to list all orders"""
+    serializer_class = OrderSerializer
+    permission_classes = (IsAdminUser,)
+    queryset = Order.objects.all()
+
+
+class AdminOrderUpdateView(generics.UpdateAPIView):
+    """Admin endpoint to update order status"""
+    serializer_class = OrderSerializer
+    permission_classes = (IsAdminUser,)
+    queryset = Order.objects.all()
+    partial = True  # Allow PATCH requests

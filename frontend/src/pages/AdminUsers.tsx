@@ -1,33 +1,37 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PencilIcon, TrashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
-
-interface User {
-    id: number;
-    username: string;
-    email: string;
-    is_staff: boolean;
-    is_active: boolean;
-    date_joined: string;
-}
+import { getAdminUsers, toggleUserStaff, type User } from '../api/users';
 
 export default function AdminUsers() {
-    // Mock data - will be replaced with real API call
-    const [users] = useState<User[]>([
-        { id: 1, username: 'admin', email: 'admin@dentalshop.sk', is_staff: true, is_active: true, date_joined: '2024-01-01' },
-        { id: 2, username: 'client', email: 'client@example.com', is_staff: false, is_active: true, date_joined: '2024-01-15' },
-    ]);
+    const queryClient = useQueryClient();
+    
+    const { data: users, isLoading } = useQuery({
+        queryKey: ['admin-users'],
+        queryFn: getAdminUsers,
+    });
+
+    const toggleStaffMutation = useMutation({
+        mutationFn: toggleUserStaff,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        },
+    });
 
     const handleEdit = (user: User) => {
         alert(`Úprava používateľa: ${user.username}`);
-        // TODO: Implement edit functionality
+        // TODO: Implement edit modal
     };
 
-    const handleDelete = (userId: number) => {
-        if (confirm('Naozaj chcete odstrániť tohto používateľa?')) {
-            alert('Funkcia odstránenia bude implementovaná');
-            // TODO: Implement delete functionality
+    const handleToggleAdmin = (userId: number) => {
+        if (confirm('Naozaj chcete zmeniť admin status tohto používateľa?')) {
+            toggleStaffMutation.mutate(userId);
         }
     };
+
+    if (isLoading) {
+        return <div className="p-8 text-center">Načítavam používateľov...</div>;
+    }
 
     const handleToggleAdmin = (userId: number) => {
         alert('Funkcia zmeny admin práv bude implementovaná');

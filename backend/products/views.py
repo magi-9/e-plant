@@ -16,3 +16,17 @@ class ProductDetail(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = (permissions.AllowAny,)
+
+
+class AdminProductUpdate(generics.UpdateAPIView):
+    """Admin endpoint to update product"""
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = (permissions.IsAdminUser,)
+
+
+class AdminProductDelete(generics.DestroyAPIView):
+    """Admin endpoint to delete product"""
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    permission_classes = (permissions.IsAdminUser,)
