@@ -7,6 +7,7 @@ from products.factories import ProductFactory
 register(UserFactory)
 register(ProductFactory)
 
+
 @pytest.fixture
 def api_client():
     return APIClient()

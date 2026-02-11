@@ -10,7 +10,13 @@ export const login = async (username: string, password: string): Promise<LoginRe
     return response.data;
 };
 
-export const register = async (userData: any) => {
+export interface RegisterData {
+    username: string;
+    email?: string;
+    password: string;
+}
+
+export const register = async (userData: RegisterData) => {
     const response = await client.post('/auth/register/', userData);
     return response.data;
 };
@@ -18,4 +24,17 @@ export const register = async (userData: any) => {
 export const getMe = async () => {
     const response = await client.get('/auth/me/');
     return response.data;
+}
+
+export const isAdmin = (): boolean => {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return false;
+        
+        // Decode JWT token to check if user is staff
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.is_staff === true;
+    } catch {
+        return false;
+    }
 }
