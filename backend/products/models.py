@@ -11,5 +11,10 @@ class Product(models.Model):
     low_stock_alert_sent = models.BooleanField(default=False)
     image = models.ImageField(upload_to="products/", blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        if self.stock_quantity > self.low_stock_threshold and self.low_stock_alert_sent:
+            self.low_stock_alert_sent = False
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name

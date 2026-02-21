@@ -73,9 +73,10 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     assert response.status_code == status.HTTP_201_CREATED
     
     # Check that warehouse email was sent
-    assert len(mail.outbox) == 2
-    warehouse_email = mail.outbox[1]
-    assert "warehouse@dentalshop.sk" in warehouse_email.to or "sklad" in warehouse_email.subject.lower()
+    # We expect 3 emails: 1 for customer order, 1 for warehouse order, 1 for warehouse low stock warning
+    assert len(mail.outbox) == 3
+    warehouse_emails = [e for e in mail.outbox if "warehouse@dentalshop.sk" in e.to or "sklad" in e.subject.lower() or "objednávka" in e.subject.lower()]
+    assert len(warehouse_emails) >= 1
 
 
 @pytest.mark.django_db

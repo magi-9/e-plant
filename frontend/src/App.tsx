@@ -9,6 +9,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
+import AdminOrders from './pages/AdminOrders';
 
 const queryClient = new QueryClient();
 
@@ -16,7 +17,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50 flex flex-col pt-16">
           <Navbar />
           <main className="flex-grow">
             <Routes>
@@ -29,7 +30,7 @@ function App() {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/orders" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Objednávky - Bude implementované</h1></div>} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/settings" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Nastavenia - Bude implementované</h1></div>} />
             </Routes>
           </main>

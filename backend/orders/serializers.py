@@ -93,9 +93,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     'price_snapshot': price_snapshot
                 })
             
-            # Update all product stocks
+            # Update all product stocks and check for low stock levels
+            low_stock_products = []
             for product in products_to_update:
+                if product.stock_quantity < product.low_stock_threshold and not product.low_stock_alert_sent:
+                    product.low_stock_alert_sent = True
+                    low_stock_products.append(product)
                 product.save()
+            
+            # Send low stock emails
+            if low_stock_products:
+                self._send_low_stock_emails(low_stock_products)
             
             # Get user if authenticated
             request = self.context.get('request')
@@ -243,6 +251,31 @@ Stav: {order.get_status_display()}
 Poznámka zákazníka: {order.notes or "Žiadna"}
 """
 
+    def _send_low_stock_emails(self, products):
+        """Send notifications about low stock items to warehouse"""
+        for product in products:
+            subject = f'Upozornenie: Nízky stav zásob pre "{product.name}"'
+            message = f"""Dobrý deň,
+            
+Týmto Vás automatický systém upozorňuje na nízky stav zásob produktu:
+
+Produkt: {product.name} (ID: {product.id})
+Aktuálny stav: {product.stock_quantity} ks
+Nastavený limit: {product.low_stock_threshold} ks
+
+Prosím, zvážte včasné doobjednanie tovaru.
+Tento email nebol odoslaný opakovane, kým nedoplníte zásoby nad limit.
+
+S pozdravom,
+Automatický systém DentalShop
+"""
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.WAREHOUSE_EMAIL],
+                fail_silently=True,
+            )
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)

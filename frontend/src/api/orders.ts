@@ -28,7 +28,14 @@ export interface Order {
     customer_name: string;
     email: string;
     phone: string;
+    street: string;
+    city: string;
+    postal_code: string;
     shipping_address: string;
+    is_company: boolean;
+    company_name: string;
+    ico: string;
+    dic: string;
     payment_method: string;
     status: string;
     total_price: string;
@@ -55,7 +62,17 @@ export const getMyOrders = async (): Promise<Order[]> => {
     return response.data;
 };
 
-export const getOrderDetail = async (id: number): Promise<Order> => {
+export const getOrderDetail = async (id: string): Promise<Order> => {
     const response = await client.get<Order>(`/orders/${id}/`);
+    return response.data;
+};
+
+export const getAdminOrders = async (): Promise<Order[]> => {
+    const response = await client.get<Order[]>('/orders/admin/orders/');
+    return response.data;
+};
+
+export const updateAdminOrderStatus = async (id: number, status: string): Promise<Order> => {
+    const response = await client.patch<Order>(`/orders/admin/orders/${id}/`, { status });
     return response.data;
 };

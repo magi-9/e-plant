@@ -28,6 +28,7 @@ class OrderDetailView(generics.RetrieveAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = (permissions.AllowAny,)
+    lookup_field = 'order_number'
 
 
 class MyOrdersView(generics.ListAPIView):

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PencilIcon, TrashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { getAdminUsers, toggleUserStaff, type User } from '../api/users';
 
 export default function AdminUsers() {
     const queryClient = useQueryClient();
-    
+
     const { data: users, isLoading } = useQuery({
         queryKey: ['admin-users'],
         queryFn: getAdminUsers,
@@ -33,9 +33,11 @@ export default function AdminUsers() {
         return <div className="p-8 text-center">Načítavam používateľov...</div>;
     }
 
-    const handleToggleAdmin = (userId: number) => {
-        alert('Funkcia zmeny admin práv bude implementovaná');
-        // TODO: Implement admin toggle
+    const handleDelete = (userId: number) => {
+        if (confirm('Naozaj chcete odstrániť tohto používateľa?')) {
+            alert('Funkcia odstránenia používateľa bude implementovaná');
+            // TODO: Implement delete mutation
+        }
     };
 
     return (
@@ -77,7 +79,7 @@ export default function AdminUsers() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {users.map((user) => (
+                            {users?.map((user) => (
                                 <tr key={user.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
