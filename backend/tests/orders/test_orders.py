@@ -26,7 +26,7 @@ def test_create_order_success(api_client, user_factory, product_factory):
         "items": [
             {"product_id": product1.id, "quantity": 2},
             {"product_id": product2.id, "quantity": 1},
-        ]
+        ],
     }
 
     url = reverse("order_create")
@@ -58,7 +58,7 @@ def test_order_total_calculated_correctly(api_client, user_factory, product_fact
         "items": [
             {"product_id": product1.id, "quantity": 2},  # 200
             {"product_id": product2.id, "quantity": 1},  # 50
-        ]
+        ],
     }
 
     url = reverse("order_create")
@@ -88,21 +88,21 @@ def test_order_price_snapshot_stored(api_client, user_factory, product_factory):
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 2},
-        ]
+        ],
     }
 
     url = reverse("order_create")
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    
+
     order_item = OrderItem.objects.first()
     assert order_item.price_snapshot == Decimal("100.00")
-    
+
     # Change product price
     product.price = Decimal("150.00")
     product.save()
-    
+
     # Order item should still have old price
     order_item.refresh_from_db()
     assert order_item.price_snapshot == Decimal("100.00")
@@ -129,21 +129,21 @@ def test_order_creates_order_items(api_client, user_factory, product_factory):
         "items": [
             {"product_id": product1.id, "quantity": 2},
             {"product_id": product2.id, "quantity": 3},
-        ]
+        ],
     }
 
     url = reverse("order_create")
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    
+
     order = Order.objects.first()
     assert order.items.count() == 2
-    
+
     item1 = order.items.get(product=product1)
     assert item1.quantity == 2
     assert item1.price_snapshot == product1.price
-    
+
     item2 = order.items.get(product=product2)
     assert item2.quantity == 3
     assert item2.price_snapshot == product2.price
@@ -168,7 +168,7 @@ def test_order_generates_order_number(api_client, user_factory, product_factory)
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 1},
-        ]
+        ],
     }
 
     url = reverse("order_create")
