@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     RegisterView, 
+    VerifyEmailView,
     MeView,
     AdminUsersListView,
     AdminUserCreateView,
@@ -13,6 +14,7 @@ from .views import (
 urlpatterns = [
     path("settings/", GlobalSettingsView.as_view(), name="global_settings"),
     path("register/", RegisterView.as_view(), name="register"),
+    path("verify-email/", VerifyEmailView.as_view(), name="verify_email"),
     path("me/", MeView.as_view(), name="me"),
     path("admin/users/", AdminUsersListView.as_view(), name="admin_users_list"),
     path("admin/users/create/", AdminUserCreateView.as_view(), name="admin_user_create"),

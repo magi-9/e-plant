@@ -21,6 +21,11 @@ export const register = async (userData: RegisterData) => {
     return response.data;
 };
 
+export const verifyEmail = async (uid: string, token: string) => {
+    const response = await client.post('/auth/verify-email/', { uid, token });
+    return response.data;
+};
+
 export const getMe = async () => {
     const response = await client.get('/auth/me/');
     return response.data;
