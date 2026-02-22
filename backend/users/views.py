@@ -16,7 +16,7 @@ class RegisterView(generics.CreateAPIView):
 from .serializers import UserRegistrationSerializer, UserSerializer, UserUpdateSerializer, GlobalSettingsSerializer
 from .models import GlobalSettings
 
-class MeView(generics.RetrieveUpdateAPIView):
+class MeView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_serializer_class(self):

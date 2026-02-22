@@ -25,12 +25,16 @@ export const getMe = async () => {
     const response = await client.get('/auth/me/');
     return response.data;
 }
+export const deleteMe = async () => {
+    const response = await client.delete('/auth/me/');
+    return response.data;
+}
 
 export const isAdmin = (): boolean => {
     try {
         const token = localStorage.getItem('access_token');
         if (!token) return false;
-        
+
         // Decode JWT token to check if user is staff
         const payload = JSON.parse(atob(token.split('.')[1]));
         return payload.is_staff === true;

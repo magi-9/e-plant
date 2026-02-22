@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMe } from '../api/auth';
+import { getMe, deleteMe } from '../api/auth';
+import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const { data: userProfile, isLoading } = useQuery({
         queryKey: ['me'],
@@ -60,6 +63,23 @@ export default function ProfilePage() {
         },
         onError: () => {
             toast.error('Chyba pri ukladaní profilu.');
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteMe,
+        onSuccess: () => {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            queryClient.clear();
+            toast.success('Váš účet bol úspešne a natrvalo vymazaný.');
+            navigate('/');
+            // Reload to clear states securely
+            window.location.reload();
+        },
+        onError: () => {
+            toast.error('Chyba pri vymazávaní účtu.');
+            setIsDeleteModalOpen(false);
         }
     });
 
@@ -136,12 +156,66 @@ export default function ProfilePage() {
                         </div>
                     )}
 
-                    <div className="flex justify-end pt-4 border-t">
+                    <div className="flex justify-between items-center pt-6 mt-6 border-t">
+                        <button
+                            type="button"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                            className="px-4 py-2 text-red-600 font-medium hover:bg-red-50 rounded-md transition-colors"
+                        >
+                            Zabudnúť ma (zmazať účet)
+                        </button>
                         <button type="submit" disabled={mutation.isPending} className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition">
                             {mutation.isPending ? 'Ukladám...' : 'Uložiť profil'}
                         </button>
                     </div>
                 </form>
+
+                {/* Zmazanie modal */}
+                {isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-50 overflow-y-auto">
+                        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsDeleteModalOpen(false)}></div>
+                            <div className="relative bg-white rounded-lg shadow-xl text-left overflow-hidden transform transition-all sm:my-8 sm:w-full sm:max-w-md">
+                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                    <div className="sm:flex sm:items-start">
+                                        <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                            <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                            <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                                Naozaj vymazať účet?
+                                            </h3>
+                                            <div className="mt-2">
+                                                <p className="text-sm text-gray-500">
+                                                    Naozaj chcete natrvalo vymazať váš účet, všetky osobné údaje a históriu objednávok z nášho systému? Táto akcia je <strong>nevratná</strong> v zmysle podmienok ochrany osobných údajov ("Právo na zabudnutie").
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50 px-4 py-3 sm:px-6 flex flex-row-reverse gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => deleteMutation.mutate()}
+                                        disabled={deleteMutation.isPending}
+                                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:w-auto sm:text-sm disabled:opacity-50"
+                                    >
+                                        {deleteMutation.isPending ? 'Mažem...' : 'Áno, natrvalo vymazať'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsDeleteModalOpen(false)}
+                                        className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm"
+                                    >
+                                        Zrušiť
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
