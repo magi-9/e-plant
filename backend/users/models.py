@@ -4,6 +4,7 @@ from django.core.cache import cache
 
 GLOBAL_SETTINGS_CACHE_KEY = "global_settings"
 
+
 class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     street = models.CharField(max_length=255, blank=True)
@@ -14,10 +15,11 @@ class CustomUser(AbstractUser):
     ico = models.CharField(max_length=20, blank=True)
     dic = models.CharField(max_length=20, blank=True)
 
+
 class GlobalSettings(models.Model):
-    warehouse_email = models.EmailField(default='warehouse@dentalshop.sk')
+    warehouse_email = models.EmailField(default="warehouse@dentalshop.sk")
     low_stock_threshold = models.IntegerField(default=5)
-    currency = models.CharField(max_length=10, default='EUR (€)')
+    currency = models.CharField(max_length=10, default="EUR (€)")
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=5.00)
 
     class Meta:
