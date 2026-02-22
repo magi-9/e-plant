@@ -4,7 +4,10 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.conf import settings
+from rest_framework import serializers
 import os
+
+from .models import GlobalSettings
 
 User = get_user_model()
 
@@ -29,18 +32,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         # Send Verification Email
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        
-        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5001')
+
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5001")
         verify_url = f"{frontend_url}/verify-email/{uid}/{token}/"
-        
+
         subject = "Overenie e-mailovej adresy - DentalShop"
-        message = f"Dobrý deň,\n\nĎakujeme za vašu registráciu na DentalShop.\nPre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n{verify_url}\n\nAk ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\nS pozdravom,\nDentalShop Tím"
-        
+        message = (
+            "Dobrý deň,\n\n"
+            "Ďakujeme za vašu registráciu na DentalShop.\n"
+            "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
+            f"{verify_url}\n\n"
+            "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
+            "S pozdravom,\nDentalShop Tím"
+        )
+
         try:
             send_mail(
                 subject,
                 message,
-                getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@dentalshop.sk'),
+                getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
                 [user.email],
                 fail_silently=True,
             )
@@ -53,19 +63,66 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic", "is_staff", "is_active", "date_joined")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "street",
+            "city",
+            "postal_code",
+            "is_company",
+            "company_name",
+            "ico",
+            "dic",
+            "is_staff",
+            "is_active",
+            "date_joined",
+        )
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic")
+        fields = (
+            "first_name",
+            "last_name",
+            "phone",
+            "street",
+            "city",
+            "postal_code",
+            "is_company",
+            "company_name",
+            "ico",
+            "dic",
+        )
+
 
 class AdminUserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "email", "first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic", "is_staff", "is_active")
+        fields = (
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "street",
+            "city",
+            "postal_code",
+            "is_company",
+            "company_name",
+            "ico",
+            "dic",
+            "is_staff",
+            "is_active",
+        )
 
-from .models import GlobalSettings
+
+
+
 class GlobalSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlobalSettings

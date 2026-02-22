@@ -6,12 +6,13 @@ import random
 
 User = get_user_model()
 
+
 class Command(BaseCommand):
     help = "Seeds the database with initial users and dental implant products in Slovak"
 
     def handle(self, *args, **options):
         self.stdout.write("Seeding users...")
-        
+
         # Create Admin
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser("admin", "admin@example.com", "admin")
@@ -32,22 +33,31 @@ class Command(BaseCommand):
         Product.objects.all().delete()
 
         categories = [
-            "Implantáty", 
-            "Abutmenty", 
-            "Vhojovacie valčeky", 
-            "Odtlačkové komponenty", 
+            "Implantáty",
+            "Abutmenty",
+            "Vhojovacie valčeky",
+            "Odtlačkové komponenty",
             "Laboratórne analógy",
-            "Chirurgické nástroje"
+            "Chirurgické nástroje",
         ]
-        
-        adjectives = ["Titánový", "Zirkónový", "Keramický", "Dočasný", "Trvalý", "Estetický", "Zahnutý", "Rovný"]
+
+        adjectives = [
+            "Titánový",
+            "Zirkónový",
+            "Keramický",
+            "Dočasný",
+            "Trvalý",
+            "Estetický",
+            "Zahnutý",
+            "Rovný",
+        ]
         types = ["Implantát", "Abutment", "Skrutka", "Vrták", "Analóg", "Transfer"]
         sizes = ["Ø3.5mm", "Ø4.0mm", "Ø4.5mm", "Ø5.0mm", "L10mm", "L12mm", "L14mm"]
 
         for i in range(30):
             category = random.choice(categories)
             name = f"{random.choice(adjectives)} {random.choice(types)} {random.choice(sizes)}"
-            
+
             ProductFactory(
                 name=name,
                 category=category,
@@ -57,4 +67,6 @@ class Command(BaseCommand):
                 low_stock_threshold=5,
             )
 
-        self.stdout.write(self.style.SUCCESS("Successfully seeded 30 dental products in Slovak"))
+        self.stdout.write(
+            self.style.SUCCESS("Successfully seeded 30 dental products in Slovak")
+        )

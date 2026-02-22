@@ -14,7 +14,7 @@ class OrderCreateView(generics.CreateAPIView):
         order = serializer.save()
         # Return full order data in response
         return order
-    
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -28,7 +28,7 @@ class OrderDetailView(generics.RetrieveAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = (permissions.AllowAny,)
-    lookup_field = 'order_number'
+    lookup_field = "order_number"
 
 
 class MyOrdersView(generics.ListAPIView):
@@ -41,6 +41,7 @@ class MyOrdersView(generics.ListAPIView):
 
 class AdminOrdersListView(generics.ListAPIView):
     """Admin endpoint to list all orders"""
+
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.all()
@@ -48,6 +49,7 @@ class AdminOrdersListView(generics.ListAPIView):
 
 class AdminOrderUpdateView(generics.UpdateAPIView):
     """Admin endpoint to update order status"""
+
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.all()
