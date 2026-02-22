@@ -3,8 +3,6 @@ from django.urls import reverse
 from rest_framework import status
 from django.core import mail
 from decimal import Decimal
-from orders.models import Order
-from products.models import Product
 
 
 @pytest.mark.django_db

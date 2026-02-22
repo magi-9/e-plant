@@ -1,4 +1,9 @@
-from rest_framework import generics, permissions, filters
+import csv
+from io import StringIO
+from rest_framework import generics, permissions, filters, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Product
 from .serializers import ProductSerializer
 
@@ -40,14 +45,6 @@ class AdminProductDelete(generics.DestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = (permissions.IsAdminUser,)
-
-
-import csv
-from io import StringIO
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
 
 
 class AdminProductImport(APIView):

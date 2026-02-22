@@ -2,8 +2,6 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from decimal import Decimal
-from orders.models import Order
-from orders.serializers import OrderCreateSerializer
 
 
 @pytest.mark.django_db

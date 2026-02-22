@@ -1,4 +1,7 @@
 #!/bin/bash
+# Note: This script is intended to be executed directly.
+# Ensure it has execute permissions, e.g.:
+#   chmod +x backend/run_backend_checks.sh
 set -e
 
 echo "Running Backend Checks inside Docker..."

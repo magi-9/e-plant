@@ -61,7 +61,10 @@ class Command(BaseCommand):
             ProductFactory(
                 name=name,
                 category=category,
-                description=f"Vysokokvalitný {category.lower()} pre dentálnu implantológiu. {name} je vyrobený z prvotriednych materiálov pre dlhodobú stabilitu a estetiku.",
+                description=(
+                    f"Vysokokvalitný {category.lower()} pre dentálnu implantológiu. "
+                    f"{name} je vyrobený z prvotriednych materiálov pre dlhodobú stabilitu a estetiku."
+                ),
                 price=round(random.uniform(50.0, 500.0), 2),
                 stock_quantity=random.randint(0, 100),
                 low_stock_threshold=5,

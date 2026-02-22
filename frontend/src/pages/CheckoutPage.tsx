@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
+import type { CreateOrderData } from '../api/orders';
 import { getMe } from '../api/auth';
+import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export default function CheckoutPage() {
@@ -22,6 +24,7 @@ export default function CheckoutPage() {
     });
 
     const [step, setStep] = useState<1 | 2>(1);
+    const formInitialized = useRef(false);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -39,7 +42,8 @@ export default function CheckoutPage() {
     });
 
     useEffect(() => {
-        if (userProfile && !formData.email) {
+        if (userProfile && !formInitialized.current) {
+            formInitialized.current = true;
             setFormData(prev => ({
                 ...prev,
                 first_name: userProfile.first_name || '',
@@ -55,7 +59,6 @@ export default function CheckoutPage() {
                 dic: userProfile.dic || ''
             }));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userProfile]);
 
     // Redirect if cart is empty
@@ -84,14 +87,19 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const orderPayload: any = { ...formData };
-            orderPayload.customer_name = `${formData.first_name} ${formData.last_name}`.trim();
-            delete orderPayload.first_name;
-            delete orderPayload.last_name;
-
-            const orderData = {
-                ...orderPayload,
+            const orderData: CreateOrderData = {
+                customer_name: `${formData.first_name} ${formData.last_name}`.trim(),
+                email: formData.email,
+                phone: formData.phone,
+                street: formData.street,
+                city: formData.city,
+                postal_code: formData.postal_code,
+                is_company: formData.is_company,
+                company_name: formData.company_name,
+                ico: formData.ico,
+                dic: formData.dic,
+                payment_method: formData.payment_method,
+                notes: formData.notes,
                 items: items.map(item => ({
                     product_id: item.productId,
                     quantity: item.quantity
@@ -103,11 +111,9 @@ export default function CheckoutPage() {
             setOrderSuccess(true);
             clearCart();
         } catch (error: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const err = error as any;
-            console.error('Order creation error:', err);
-            if (err.response?.data) {
-                const errorData = err.response.data;
+            console.error('Order creation error:', error);
+            if (isAxiosError(error) && error.response?.data) {
+                const errorData = error.response.data;
                 if (typeof errorData === 'object') {
                     const errorMessages = Object.entries(errorData)
                         .map(([key, value]) => `${key}: ${value}`)

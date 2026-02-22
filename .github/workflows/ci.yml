@@ -44,18 +44,16 @@ jobs:
       - name: Run Flake8 (Linting)
         working-directory: ./backend
         run: flake8 . --max-line-length=120
-        continue-on-error: true # Optionally remove when you make linting code-styling stricter
         
       - name: Run Black (Formatting Check)
         working-directory: ./backend
         run: black . --check
-        continue-on-error: true # Optionally remove when you make linting code-styling stricter
         
       - name: Run Pytest
         working-directory: ./backend
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
-          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'ci-cd-testing-secret-key-123' }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY != '' && secrets.TEST_SECRET_KEY || 'ci-cd-testing-secret-key-123' }}
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USER: postgres
@@ -95,8 +93,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Copy fake ENVs for Docker Composition
-        run: cp .env.ci .env
+      - name: Copy ENVs for Docker Composition
+        run: cp .env.example .env
 
       - name: Test Docker Compose Dev Build
         run: docker compose -f docker-compose.yml build

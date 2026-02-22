@@ -2,7 +2,6 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from decimal import Decimal
-from products.models import Product
 
 
 @pytest.mark.django_db
