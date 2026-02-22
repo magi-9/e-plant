@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { verifyEmail } from '../api/auth';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 export default function VerifyEmailPage() {
     const { uid, token } = useParams();
-    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-    const [message, setMessage] = useState('');
+    const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+        () => (!uid || !token ? 'error' : 'loading')
+    );
+    const [message, setMessage] = useState(
+        () => (!uid || !token ? 'Neplatný odkaz. Chýbajú parametre.' : '')
+    );
 
     useEffect(() => {
         if (!uid || !token) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setStatus('error');
-            setMessage('Neplatný odkaz. Chýbajú parametre.');
             return;
         }
 
@@ -22,10 +24,12 @@ export default function VerifyEmailPage() {
                 setStatus('success');
                 setMessage(data.success || 'E-mail bol úspešne overený.');
             } catch (error: unknown) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const err = error as any;
                 setStatus('error');
-                setMessage(err.response?.data?.error || 'Nepodarilo sa overiť e-mail.');
+                if (isAxiosError(error)) {
+                    setMessage(error.response?.data?.error || 'Nepodarilo sa overiť e-mail.');
+                } else {
+                    setMessage('Nepodarilo sa overiť e-mail.');
+                }
             }
         };
 

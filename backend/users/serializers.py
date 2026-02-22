@@ -121,8 +121,6 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
         )
 
 
-
-
 class GlobalSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlobalSettings

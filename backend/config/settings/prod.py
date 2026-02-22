@@ -1,6 +1,6 @@
 import os
-from .base import *  # noqa: F403, F401
-from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
+from .base import *  # noqa: F401, F403, F405
+from .base import BASE_DIR, REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
 DEBUG = False
 

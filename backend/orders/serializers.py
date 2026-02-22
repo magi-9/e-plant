@@ -88,7 +88,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 # Validate stock
                 if product.stock_quantity < quantity:
                     raise serializers.ValidationError(
-                        f"Not enough stock for product '{product.name}'. Available: {product.stock_quantity}, Requested: {quantity}"
+                        f"Not enough stock for product '{product.name}'. "
+                        f"Available: {product.stock_quantity}, Requested: {quantity}"
                     )
 
                 # Use product's current price as snapshot
@@ -275,7 +276,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
         for product in products:
             subject = f'Upozornenie: Nízky stav zásob pre "{product.name}"'
             message = f"""Dobrý deň,
-            
+
 Týmto Vás automatický systém upozorňuje na nízky stav zásob produktu:
 
 Produkt: {product.name} (ID: {product.id})
