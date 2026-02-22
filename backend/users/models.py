@@ -1,5 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.cache import cache
+
+GLOBAL_SETTINGS_CACHE_KEY = "global_settings"
 
 class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
@@ -24,8 +27,11 @@ class GlobalSettings(models.Model):
     def save(self, *args, **kwargs):
         self.pk = 1
         super(GlobalSettings, self).save(*args, **kwargs)
+        cache.delete(GLOBAL_SETTINGS_CACHE_KEY)
 
     @classmethod
     def load(cls):
-        obj, created = cls.objects.get_or_create(pk=1)
-        return obj
+        return cache.get_or_set(
+            GLOBAL_SETTINGS_CACHE_KEY,
+            lambda: cls.objects.get_or_create(pk=1)[0]
+        )
