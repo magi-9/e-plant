@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
+import { getMe } from '../api/auth';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export default function CheckoutPage() {
@@ -11,6 +13,13 @@ export default function CheckoutPage() {
     const [error, setError] = useState<string | null>(null);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderNumber, setOrderNumber] = useState<string>('');
+    const isLoggedIn = !!localStorage.getItem('access_token');
+
+    const { data: userProfile } = useQuery({
+        queryKey: ['me'],
+        queryFn: getMe,
+        enabled: isLoggedIn
+    });
 
     const [formData, setFormData] = useState({
         customer_name: '',
@@ -27,6 +36,24 @@ export default function CheckoutPage() {
         notes: ''
     });
 
+    useEffect(() => {
+        if (userProfile && !formData.email) {
+            setFormData(prev => ({
+                ...prev,
+                customer_name: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || userProfile.username,
+                email: userProfile.email || '',
+                phone: userProfile.phone || '',
+                street: userProfile.street || '',
+                city: userProfile.city || '',
+                postal_code: userProfile.postal_code || '',
+                is_company: userProfile.is_company || false,
+                company_name: userProfile.company_name || '',
+                ico: userProfile.ico || '',
+                dic: userProfile.dic || ''
+            }));
+        }
+    }, [userProfile]);
+
     // Redirect if cart is empty
     if (items.length === 0 && !orderSuccess) {
         navigate('/cart');
@@ -36,7 +63,7 @@ export default function CheckoutPage() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const checked = (e.target as HTMLInputElement).checked;
-        
+
         setFormData({
             ...formData,
             [name]: type === 'checkbox' ? checked : value

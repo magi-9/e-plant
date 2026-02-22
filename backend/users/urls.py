@@ -6,10 +6,12 @@ from .views import (
     AdminUserCreateView,
     AdminUserUpdateView,
     AdminUserDeleteView,
+    GlobalSettingsView,
     admin_toggle_staff
 )
 
 urlpatterns = [
+    path("settings/", GlobalSettingsView.as_view(), name="global_settings"),
     path("register/", RegisterView.as_view(), name="register"),
     path("me/", MeView.as_view(), name="me"),
     path("admin/users/", AdminUsersListView.as_view(), name="admin_users_list"),

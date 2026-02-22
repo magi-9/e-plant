@@ -15,8 +15,10 @@ export const getProducts = async (): Promise<Product[]> => {
     return response.data;
 };
 
-export const updateProduct = async (id: number, data: Partial<Product>): Promise<Product> => {
-    const response = await client.patch<Product>(`/products/admin/${id}/`, data);
+export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
+    const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
 };
 
@@ -29,8 +31,10 @@ export const getProduct = async (id: number): Promise<Product> => {
     return response.data;
 };
 
-export const createProduct = async (data: Partial<Product>): Promise<Product> => {
-    const response = await client.post<Product>('/products/admin/create/', data);
+export const createProduct = async (data: FormData): Promise<Product> => {
+    const response = await client.post<Product>('/products/admin/create/', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
 };
 

@@ -23,9 +23,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "first_name", "last_name", "is_staff", "is_active", "date_joined")
+        fields = ("id", "username", "email", "first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic", "is_staff", "is_active", "date_joined")
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic")
 
 class AdminUserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "email", "first_name", "last_name", "is_staff", "is_active")
+        fields = ("username", "email", "first_name", "last_name", "phone", "street", "city", "postal_code", "is_company", "company_name", "ico", "dic", "is_staff", "is_active")
+
+from .models import GlobalSettings
+class GlobalSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalSettings
+        fields = "__all__"

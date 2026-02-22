@@ -19,6 +19,7 @@ export default function Navbar() {
     ];
 
     const handleLogout = () => {
+        useCartStore.getState().clearCart();
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         globalThis.location.href = '/login';
@@ -91,6 +92,12 @@ export default function Navbar() {
                                                 Admin
                                             </Link>
                                         )}
+                                        <Link
+                                            to="/profile"
+                                            className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                        >
+                                            Profil
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
@@ -133,6 +140,15 @@ export default function Navbar() {
                                     className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
                                 >
                                     Admin
+                                </Disclosure.Button>
+                            )}
+                            {isLoggedIn && (
+                                <Disclosure.Button
+                                    as={Link}
+                                    to="/profile"
+                                    className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
+                                >
+                                    Profil
                                 </Disclosure.Button>
                             )}
                         </div>

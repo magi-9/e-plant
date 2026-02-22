@@ -13,12 +13,31 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
 
 
-class MeView(generics.RetrieveAPIView):
-    serializer_class = UserSerializer
+from .serializers import UserRegistrationSerializer, UserSerializer, UserUpdateSerializer, GlobalSettingsSerializer
+from .models import GlobalSettings
+
+class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return UserUpdateSerializer
+        return UserSerializer
 
     def get_object(self):
         return self.request.user
+
+
+class GlobalSettingsView(generics.RetrieveUpdateAPIView):
+    serializer_class = GlobalSettingsSerializer
+    
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+        
+    def get_object(self):
+        return GlobalSettings.load()
 
 
 class AdminUsersListView(generics.ListAPIView):
