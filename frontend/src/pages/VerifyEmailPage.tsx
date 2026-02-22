@@ -10,6 +10,7 @@ export default function VerifyEmailPage() {
 
     useEffect(() => {
         if (!uid || !token) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStatus('error');
             setMessage('Neplatný odkaz. Chýbajú parametre.');
             return;
@@ -20,7 +21,9 @@ export default function VerifyEmailPage() {
                 const data = await verifyEmail(uid, token);
                 setStatus('success');
                 setMessage(data.success || 'E-mail bol úspešne overený.');
-            } catch (err: any) {
+            } catch (error: unknown) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const err = error as any;
                 setStatus('error');
                 setMessage(err.response?.data?.error || 'Nepodarilo sa overiť e-mail.');
             }
