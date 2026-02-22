@@ -6,6 +6,7 @@ import uuid
 from django.db import transaction
 from django.core.mail import send_mail
 from django.conf import settings
+from django.template.loader import render_to_string
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -179,116 +180,23 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     def _build_customer_email(self, order):
         """Build customer confirmation email body"""
-        items_text = "\n".join(
-            [
-                f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
-                for item in order.items.all()
-            ]
+        return render_to_string(
+            "orders/email/customer_confirmation.txt", {"order": order}
         )
-
-        payment_info = ""
-        if order.payment_method == "bank_transfer":
-            payment_info = f"""
-PLATOBNÉ ÚDAJE:
-Variabilný symbol: {order.order_number}
-IBAN: SK00 0000 0000 0000 0000 0000
-Suma: {order.total_price}€
-
-Po prijatí platby vám zašleme potvrdenie a objednávku expedujeme.
-"""
-
-        company_info = ""
-        if order.is_company:
-            company_info = f"""
-Fakturačné údaje:
-{order.company_name}
-IČO: {order.ico}
-DIČ: {order.dic}
-"""
-
-        return f"""Dobrý deň {order.customer_name},
-
-Ďakujeme za Vašu objednávku v DentalShop!
-
-ČÍSLO OBJEDNÁVKY: {order.order_number}
-Stav: {order.get_status_display()}
-
-OBJEDNANÉ PRODUKTY:
-{items_text}
-
-CELKOVÁ SUMA: {order.total_price}€
-
-DODACIA ADRESA:
-{order.street}
-{order.city}, {order.postal_code}
-{company_info}
-Telefón: {order.phone}
-Email: {order.email}
-{payment_info}
-Poznámka: {order.notes or "Žiadna"}
-
-V prípade otázok nás neváhajte kontaktovať.
-
-S pozdravom,
-Tím DentalShop
-"""
 
     def _build_warehouse_email(self, order):
         """Build warehouse notification email body"""
-        items_text = "\n".join(
-            [
-                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
-                for item in order.items.all()
-            ]
+        return render_to_string(
+            "orders/email/warehouse_notification.txt", {"order": order}
         )
-
-        company_info = ""
-        if order.is_company:
-            company_info = f"""
-FIREMNÁ OBJEDNÁVKA:
-{order.company_name}
-IČO: {order.ico}
-DIČ: {order.dic}
-"""
-
-        return f"""NOVÁ OBJEDNÁVKA #{order.order_number}
-
-Zákazník: {order.customer_name}
-Email: {order.email}
-Telefón: {order.phone}
-{company_info}
-Dodacia adresa:
-{order.street}
-{order.city}, {order.postal_code}
-
-PRODUKTY NA VYSKLADNENIE:
-{items_text}
-
-Celková suma: {order.total_price}€
-Platba: {order.get_payment_method_display()}
-Stav: {order.get_status_display()}
-
-Poznámka zákazníka: {order.notes or "Žiadna"}
-"""
 
     def _send_low_stock_emails(self, products):
         """Send notifications about low stock items to warehouse"""
         for product in products:
             subject = f'Upozornenie: Nízky stav zásob pre "{product.name}"'
-            message = f"""Dobrý deň,
-
-Týmto Vás automatický systém upozorňuje na nízky stav zásob produktu:
-
-Produkt: {product.name} (ID: {product.id})
-Aktuálny stav: {product.stock_quantity} ks
-Nastavený limit: {product.low_stock_threshold} ks
-
-Prosím, zvážte včasné doobjednanie tovaru.
-Tento email nebol odoslaný opakovane, kým nedoplníte zásoby nad limit.
-
-S pozdravom,
-Automatický systém DentalShop
-"""
+            message = render_to_string(
+                "orders/email/low_stock_notification.txt", {"product": product}
+            )
             send_mail(
                 subject,
                 message,

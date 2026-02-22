@@ -149,3 +149,7 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+# Email
+DEFAULT_FROM_EMAIL = "noreply@dentalshop.sk"
+WAREHOUSE_EMAIL = "warehouse@dentalshop.sk"
