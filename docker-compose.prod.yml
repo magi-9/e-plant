@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    env_file: .env
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: /app/entrypoint.prod.sh
+    env_file: .env
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    expose:
+      - "8000"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend-build:
+    build:
+      context: ./frontend
+    command: sh -c "npm install && npm run build && rm -rf /output/* && cp -r dist/* /output/"
+    env_file: .env
+    volumes:
+      - ./frontend:/app
+      - build_volume:/output
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+      #- "443:443" # Uncomment when applying SSL certs in future
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/usr/src/app/static:ro
+      - media_volume:/usr/src/app/media:ro
+      - build_volume:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - frontend-build
+    restart: unless-stopped
+
+volumes:
+  postgres_data_prod:
+  static_volume:
+  media_volume:
+  build_volume:
