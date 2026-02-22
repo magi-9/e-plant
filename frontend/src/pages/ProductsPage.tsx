@@ -20,9 +20,8 @@ export default function ProductsPage() {
     const [addingId, setAddingId] = useState<number | null>(null);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
-    const [minPrice, setMinPrice] = useState<number | ''>('');
-    const [maxPrice, setMaxPrice] = useState<number | ''>('');
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
 
     const handleProductClick = (product: Product) => {
         setSelectedProduct(product);
@@ -67,18 +66,20 @@ export default function ProductsPage() {
             if (!nameMatch && !descMatch) return false;
         }
 
-        if (selectedCategory && product.category !== selectedCategory) {
+        if (selectedCategories.length > 0 && !selectedCategories.includes(product.category)) {
             return false;
-        }
-
-        if (product.price) {
-            const price = parseFloat(product.price);
-            if (minPrice !== '' && price < minPrice) return false;
-            if (maxPrice !== '' && price > maxPrice) return false;
         }
 
         return true;
     });
+
+    if (priceSortOrder !== 'none') {
+        filteredProducts.sort((a: Product, b: Product) => {
+            const priceA = parseFloat(a.price || '0');
+            const priceB = parseFloat(b.price || '0');
+            return priceSortOrder === 'asc' ? priceA - priceB : priceB - priceA;
+        });
+    }
 
     return (
         <div className="bg-gray-50 flex flex-col min-h-screen">
@@ -109,7 +110,7 @@ export default function ProductsPage() {
             <div className="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
 
                 {/* Search and Filters */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Hľadať produkt</label>
                         <input
@@ -120,42 +121,43 @@ export default function ProductsPage() {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                         />
                     </div>
-                    <div className="w-full md:w-48">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Kategória</label>
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white"
+                    <div className="flex gap-4 items-center">
+                        <button
+                            onClick={() => {
+                                setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none');
+                            }}
+                            className="whitespace-nowrap inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors h-[42px]"
                         >
-                            <option value="">Všetky</option>
-                            {categories.map((cat: string) => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="w-full md:w-64 flex gap-2">
-                        <div className="w-1/2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Cena od (€)</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={minPrice}
-                                onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : '')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                            />
-                        </div>
-                        <div className="w-1/2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Cena do (€)</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={maxPrice}
-                                onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                            />
-                        </div>
+                            Zoradiť podľa ceny: {priceSortOrder === 'none' ? 'Štandardne' : priceSortOrder === 'asc' ? 'Najlacnejšie' : 'Najdrahšie'}
+                            {priceSortOrder === 'asc' && <span className="ml-2">↑</span>}
+                            {priceSortOrder === 'desc' && <span className="ml-2">↓</span>}
+                        </button>
                     </div>
                 </div>
+
+                {/* Category Badges */}
+                {categories.length > 0 && (
+                    <div className="mb-8 flex flex-wrap gap-2">
+                        {categories.map((cat: string) => (
+                            <button
+                                key={cat}
+                                onClick={() => {
+                                    setSelectedCategories(prev =>
+                                        prev.includes(cat)
+                                            ? prev.filter(c => c !== cat)
+                                            : [...prev, cat]
+                                    );
+                                }}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border shadow-sm ${selectedCategories.includes(cat)
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold tracking-tight text-gray-900">Naše Produkty</h2>
@@ -168,9 +170,8 @@ export default function ProductsPage() {
                         <button
                             onClick={() => {
                                 setSearchQuery('');
-                                setSelectedCategory('');
-                                setMinPrice('');
-                                setMaxPrice('');
+                                setSelectedCategories([]);
+                                setPriceSortOrder('none');
                             }}
                             className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
                         >
