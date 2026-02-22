@@ -8,15 +8,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5003:5432"
 
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:5002
     volumes:
       - ./backend:/app
     ports:
-      - "8000:8000"
+      - "5002:5002"
     depends_on:
       - db
     environment:
@@ -34,11 +34,11 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "5001:5001"
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:8000/api
+      - VITE_API_URL=http://localhost:5002/api
 
 volumes:
   postgres_data:
