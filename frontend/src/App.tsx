@@ -10,6 +10,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
+import AdminSettings from './pages/AdminSettings';
 
 const queryClient = new QueryClient();
 
@@ -31,7 +32,7 @@ function App() {
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
-              <Route path="/admin/settings" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Nastavenia - Bude implementované</h1></div>} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Routes>
           </main>
           <footer className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 border-t border-blue-700 mt-auto">

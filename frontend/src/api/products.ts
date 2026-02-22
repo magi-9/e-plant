@@ -28,3 +28,19 @@ export const getProduct = async (id: number): Promise<Product> => {
     const response = await client.get<Product>(`/products/${id}/`);
     return response.data;
 };
+
+export const createProduct = async (data: Partial<Product>): Promise<Product> => {
+    const response = await client.post<Product>('/products/admin/create/', data);
+    return response.data;
+};
+
+export const importProductsCsv = async (file: File): Promise<{ message: string, error?: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await client.post('/products/admin/import/', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+};

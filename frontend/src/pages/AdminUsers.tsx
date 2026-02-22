@@ -1,151 +1,119 @@
-
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PencilIcon, TrashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
-import { getAdminUsers, toggleUserStaff, type User } from '../api/users';
+import { PencilIcon, TrashIcon, ShieldCheckIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { getAdminUsers, toggleUserStaff, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
 
 export default function AdminUsers() {
     const queryClient = useQueryClient();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [formData, setFormData] = useState({ username: '', email: '', password: '', is_staff: false, is_active: true });
 
-    const { data: users, isLoading } = useQuery({
-        queryKey: ['admin-users'],
-        queryFn: getAdminUsers,
-    });
+    const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
 
-    const toggleStaffMutation = useMutation({
-        mutationFn: toggleUserStaff,
+    const mutationOptions = {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-        },
+            setIsModalOpen(false);
+        }
+    };
+
+    const toggleStaffMutation = useMutation({ mutationFn: toggleUserStaff, onSuccess: mutationOptions.onSuccess });
+    const createMutation = useMutation({ mutationFn: createAdminUser, ...mutationOptions });
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: number, data: Partial<User> }) => updateAdminUser(id, data),
+        ...mutationOptions
     });
+    const deleteMutation = useMutation({ mutationFn: deleteAdminUser, onSuccess: mutationOptions.onSuccess });
+
+    const handleAdd = () => {
+        setEditingUser(null);
+        setFormData({ username: '', email: '', password: '', is_staff: false, is_active: true });
+        setIsModalOpen(true);
+    };
 
     const handleEdit = (user: User) => {
-        alert(`Úprava používateľa: ${user.username}`);
-        // TODO: Implement edit modal
+        setEditingUser(user);
+        setFormData({ username: user.username, email: user.email, password: '', is_staff: user.is_staff, is_active: user.is_active });
+        setIsModalOpen(true);
     };
 
-    const handleToggleAdmin = (userId: number) => {
-        if (confirm('Naozaj chcete zmeniť admin status tohto používateľa?')) {
-            toggleStaffMutation.mutate(userId);
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingUser) {
+            updateMutation.mutate({ id: editingUser.id, data: { ...formData, id: editingUser.id } as Partial<User> });
+        } else {
+            createMutation.mutate(formData as any);
         }
     };
-
-    if (isLoading) {
-        return <div className="p-8 text-center">Načítavam používateľov...</div>;
-    }
 
     const handleDelete = (userId: number) => {
-        if (confirm('Naozaj chcete odstrániť tohto používateľa?')) {
-            alert('Funkcia odstránenia používateľa bude implementovaná');
-            // TODO: Implement delete mutation
+        if (confirm('Naozaj chcete odstrániť tohto používateľa? Akcia je nevratná!')) {
+            deleteMutation.mutate(userId);
         }
     };
+
+    if (isLoading) return <div className="p-8 text-center text-gray-500">Načítavam používateľov...</div>;
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Header */}
                 <div className="sm:flex sm:items-center sm:justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Správa používateľov</h1>
-                        <p className="mt-2 text-sm text-gray-700">
-                            Zoznam všetkých používateľov systému
-                        </p>
+                        <p className="mt-2 text-sm text-gray-700">Zoznam všetkých používateľov systému</p>
                     </div>
+                    <button onClick={handleAdd} className="mt-4 sm:mt-0 flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium shadow transition">
+                        <PlusIcon className="w-5 h-5 mr-2" />
+                        Pridať
+                    </button>
                 </div>
 
-                {/* Users Table */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="bg-white shadow overflow-auto sm:rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Používateľ
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Email
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Rola
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Dátum reg.
-                                </th>
-                                <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">Akcie</span>
-                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Používateľ</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rola</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dátum reg.</th>
+                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Akcie</span></th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {users?.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50">
+                                <tr key={user.id} className="hover:bg-gray-50 transition">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10">
-                                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                    <span className="text-blue-600 font-medium text-sm">
-                                                        {user.username.charAt(0).toUpperCase()}
-                                                    </span>
-                                                </div>
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <span className="text-blue-600 font-bold text-lg">{user.username.charAt(0).toUpperCase()}</span>
                                             </div>
-                                            <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {user.username}
-                                                </div>
-                                            </div>
+                                            <div className="ml-4 font-medium text-gray-900">{user.username}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {user.email}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_staff ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                                            {user.is_staff ? <><ShieldCheckIcon className="h-4 w-4 mr-1" /> Admin</> : "Používateľ"}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        {user.is_staff ? (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                                                <ShieldCheckIcon className="h-4 w-4 mr-1" />
-                                                Admin
-                                            </span>
-                                        ) : (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                Používateľ
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {user.is_active ? (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Aktívny
-                                            </span>
-                                        ) : (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                Neaktívny
-                                            </span>
-                                        )}
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {user.is_active ? 'Aktívny' : 'Neaktívny'}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {new Date(user.date_joined).toLocaleDateString('sk-SK')}
+                                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString('sk-SK') : '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleToggleAdmin(user.id)}
-                                            className="text-purple-600 hover:text-purple-900 mr-4"
-                                            title="Zmeniť admin práva"
-                                        >
+                                        <button onClick={() => toggleStaffMutation.mutate(user.id)} className="text-purple-600 hover:text-purple-900 mr-4" title="Prepínač role">
                                             <ShieldCheckIcon className="h-5 w-5" />
                                         </button>
-                                        <button
-                                            onClick={() => handleEdit(user)}
-                                            className="text-blue-600 hover:text-blue-900 mr-4"
-                                            title="Upraviť"
-                                        >
+                                        <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-4" title="Upraviť">
                                             <PencilIcon className="h-5 w-5" />
                                         </button>
-                                        <button
-                                            onClick={() => handleDelete(user.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                            title="Odstrániť"
-                                        >
+                                        <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-900" title="Odstrániť">
                                             <TrashIcon className="h-5 w-5" />
                                         </button>
                                     </td>
@@ -155,21 +123,54 @@ export default function AdminUsers() {
                     </table>
                 </div>
 
-                {/* Info Box */}
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <p className="text-sm text-blue-700">
-                                Plná funkcionalita správy používateľov (pridanie, úprava, odstránenie) bude implementovaná v ďalšej fáze vývoja.
-                            </p>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-10 overflow-y-auto">
+                        <div className="flex items-center justify-center min-h-screen px-4">
+                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setIsModalOpen(false)}></div>
+                            <div className="bg-white rounded-lg shadow-xl w-full max-w-md z-20 overflow-hidden transform transition-all">
+                                <form onSubmit={handleSave} className="flex flex-col">
+                                    <div className="px-6 py-5 bg-white">
+                                        <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">
+                                            {editingUser ? 'Upraviť používateľa' : 'Pridať používateľa'}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Prihlasovacie meno</label>
+                                                <input type="text" required value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" disabled={!!editingUser} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                                <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
+                                            </div>
+                                            {!editingUser && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Heslo</label>
+                                                    <input type="password" required value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
+                                                </div>
+                                            )}
+                                            <div className="flex items-center space-x-4 pt-2 border-t">
+                                                <label className="flex items-center gap-2">
+                                                    <input type="checkbox" checked={formData.is_staff} onChange={e => setFormData({ ...formData, is_staff: e.target.checked })} className="text-blue-600 rounded" />
+                                                    <span className="text-sm text-gray-700">Je Administrátor</span>
+                                                </label>
+                                                <label className="flex items-center gap-2">
+                                                    <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="text-blue-600 rounded" />
+                                                    <span className="text-sm text-gray-700">Aktívny účet</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition">Zrušiť</button>
+                                        <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition">
+                                            {editingUser ? 'Uložiť zmeny' : 'Vytvoriť'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
