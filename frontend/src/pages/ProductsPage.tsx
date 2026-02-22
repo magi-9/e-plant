@@ -14,7 +14,7 @@ export default function ProductsPage() {
         queryFn: getProducts,
     });
 
-    const addItem = useCartStore((state) => state.addItem);
+    const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [openModal, setOpenModal] = useState(false);
     const [addingId, setAddingId] = useState<number | null>(null);
@@ -126,33 +126,69 @@ export default function ProductsPage() {
                                 </div>
 
                                 <div className="mt-4">
-                                    {product.price ? (
-                                        <button
-                                            onClick={(e) => handleAddToCart(e, product)}
-                                            className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 transform ${addingId === product.id
+                                    {product.price ? (() => {
+                                        const cartItem = items.find(item => item.productId === product.id);
+
+                                        if (cartItem) {
+                                            return (
+                                                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-10 w-full shadow-sm">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (cartItem.quantity > 1) {
+                                                                updateQuantity(product.id, cartItem.quantity - 1);
+                                                            } else {
+                                                                removeItem(product.id);
+                                                            }
+                                                        }}
+                                                        className="w-10 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="font-bold text-blue-900 border-x border-blue-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                        {cartItem.quantity} <span className="text-xs font-normal text-blue-500 ml-1">v košíku</span>
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            updateQuantity(product.id, cartItem.quantity + 1);
+                                                        }}
+                                                        className="w-10 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <button
+                                                onClick={(e) => handleAddToCart(e, product)}
+                                                className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
                                                     ? 'bg-green-500 scale-105'
                                                     : 'bg-blue-600 hover:bg-blue-700'
-                                                }`}
-                                        >
-                                            {addingId === product.id ? (
-                                                <>
-                                                    <svg className="h-5 w-5 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Pridané!
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                    Pridať do košíka
-                                                </>
-                                            )}
-                                        </button>
-                                    ) : (
+                                                    }`}
+                                            >
+                                                {addingId === product.id ? (
+                                                    <>
+                                                        <svg className="h-5 w-5 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        Pridané!
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ShoppingCartIcon className="h-4 w-4 mr-2" />
+                                                        Pridať do košíka
+                                                    </>
+                                                )}
+                                            </button>
+                                        );
+                                    })() : (
                                         <Link
                                             to="/login"
                                             onClick={(e) => e.stopPropagation()}
-                                            className="w-full flex justify-center items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                            className="w-full flex justify-center items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none transition-colors h-10"
                                         >
                                             Prihláste sa
                                         </Link>

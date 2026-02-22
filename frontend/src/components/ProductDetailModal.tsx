@@ -12,7 +12,7 @@ interface ProductDetailModalProps {
 }
 
 export default function ProductDetailModal({ open, setOpen, product }: ProductDetailModalProps) {
-    const addItem = useCartStore((state) => state.addItem);
+    const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
 
     if (!product) return null;
@@ -123,32 +123,68 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            {product.price && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleAddToCart}
-                                                                    disabled={isAdding}
-                                                                    className={`inline-flex w-full justify-center rounded-md px-6 py-3 text-sm font-semibold text-white shadow-sm sm:w-auto transition-all duration-300 ${isAdding
+                                                            {product.price && (() => {
+                                                                const cartItem = items.find(item => item.productId === product.id);
+
+                                                                if (cartItem) {
+                                                                    return (
+                                                                        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-12 w-48 shadow-sm">
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (cartItem.quantity > 1) {
+                                                                                        updateQuantity(product.id, cartItem.quantity - 1);
+                                                                                    } else {
+                                                                                        removeItem(product.id);
+                                                                                    }
+                                                                                }}
+                                                                                className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                            <span className="font-bold text-blue-900 border-x border-blue-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                                {cartItem.quantity} <span className="text-xs font-normal text-blue-500 ml-1">v košíku</span>
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    updateQuantity(product.id, cartItem.quantity + 1);
+                                                                                }}
+                                                                                className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAddToCart}
+                                                                        disabled={isAdding}
+                                                                        className={`inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto transition-all duration-300 ${isAdding
                                                                             ? 'bg-green-500 scale-105'
                                                                             : 'bg-blue-600 hover:bg-blue-500'
-                                                                        }`}
-                                                                >
-                                                                    {isAdding ? (
-                                                                        <>
-                                                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                            </svg>
-                                                                            Pridávam...
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                                                                            Pridať do košíka
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            )}
+                                                                            }`}
+                                                                    >
+                                                                        {isAdding ? (
+                                                                            <>
+                                                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                </svg>
+                                                                                Pridávam...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                                                                                Pridať do košíka
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -173,8 +209,8 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                 onClick={handleAddToCart}
                                                 disabled={isAdding}
                                                 className={`flex-1 inline-flex justify-center items-center rounded-md px-3 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-300 ${isAdding
-                                                        ? 'bg-green-500 scale-95'
-                                                        : 'bg-blue-600 hover:bg-blue-500'
+                                                    ? 'bg-green-500 scale-95'
+                                                    : 'bg-blue-600 hover:bg-blue-500'
                                                     }`}
                                             >
                                                 {isAdding ? 'Pridané!' : 'Do košíka'}
