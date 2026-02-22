@@ -34,6 +34,5 @@ class GlobalSettings(models.Model):
     @classmethod
     def load(cls):
         return cache.get_or_set(
-            GLOBAL_SETTINGS_CACHE_KEY,
-            lambda: cls.objects.get_or_create(pk=1)[0]
+            GLOBAL_SETTINGS_CACHE_KEY, lambda: cls.objects.get_or_create(pk=1)[0]
         )

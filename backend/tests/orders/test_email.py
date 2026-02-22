@@ -9,9 +9,7 @@ from decimal import Decimal
 def test_customer_email_sent_after_order(api_client, user_factory, product_factory):
     """Test that customer receives email after order creation"""
     user = user_factory()
-    product = product_factory(
-        name="Test Product", price=Decimal("100.00"), stock_quantity=10
-    )
+    product = product_factory(name="Test Product", price=Decimal("100.00"), stock_quantity=10)
 
     api_client.force_authenticate(user=user)
 
@@ -26,7 +24,7 @@ def test_customer_email_sent_after_order(api_client, user_factory, product_facto
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 2},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -40,20 +38,15 @@ def test_customer_email_sent_after_order(api_client, user_factory, product_facto
     # Check customer email
     customer_email = mail.outbox[0]
     assert customer_email.to == ["customer@example.com"]
-    assert (
-        "potvrdenie" in customer_email.subject.lower()
-        or "objedn" in customer_email.subject.lower()
-    )
-    assert response.data["order_number"] in customer_email.body
+    assert "potvrdenie" in customer_email.subject.lower() or "objedn" in customer_email.subject.lower()
+    assert response.data['order_number'] in customer_email.body
 
 
 @pytest.mark.django_db
 def test_warehouse_email_sent_after_order(api_client, user_factory, product_factory):
     """Test that warehouse receives email after order creation"""
     user = user_factory()
-    product = product_factory(
-        name="Dental Implant", price=Decimal("200.00"), stock_quantity=5
-    )
+    product = product_factory(name="Dental Implant", price=Decimal("200.00"), stock_quantity=5)
 
     api_client.force_authenticate(user=user)
 
@@ -71,7 +64,7 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
         "payment_method": "card",
         "items": [
             {"product_id": product.id, "quantity": 1},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -82,20 +75,12 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     # Check that warehouse email was sent
     # We expect 3 emails: 1 for customer order, 1 for warehouse order, 1 for warehouse low stock warning
     assert len(mail.outbox) == 3
-    warehouse_emails = [
-        e
-        for e in mail.outbox
-        if "warehouse@dentalshop.sk" in e.to
-        or "sklad" in e.subject.lower()
-        or "objednávka" in e.subject.lower()
-    ]
+    warehouse_emails = [e for e in mail.outbox if "warehouse@dentalshop.sk" in e.to or "sklad" in e.subject.lower() or "objednávka" in e.subject.lower()]
     assert len(warehouse_emails) >= 1
 
 
 @pytest.mark.django_db
-def test_email_sent_regardless_of_payment_status(
-    api_client, user_factory, product_factory
-):
+def test_email_sent_regardless_of_payment_status(api_client, user_factory, product_factory):
     """Test that emails are sent even for awaiting_payment status"""
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
@@ -113,14 +98,14 @@ def test_email_sent_regardless_of_payment_status(
         "payment_method": "bank_transfer",  # Will create awaiting_payment status
         "items": [
             {"product_id": product.id, "quantity": 1},
-        ],
+        ]
     }
 
     url = reverse("order_create")
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.data["status"] == "awaiting_payment"
+    assert response.data['status'] == 'awaiting_payment'
 
     # Emails should be sent even for awaiting_payment
     assert len(mail.outbox) == 2

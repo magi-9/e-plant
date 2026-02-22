@@ -6,15 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
-
-from .serializers import (
-    UserRegistrationSerializer,
-    UserSerializer,
-    UserUpdateSerializer,
-    GlobalSettingsSerializer,
-    AdminUserUpdateSerializer,
-)
-from .models import GlobalSettings
+from .serializers import UserRegistrationSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -55,6 +47,15 @@ class VerifyEmailView(views.APIView):
                 {"error": "Overovací odkaz je neplatný alebo už expiroval."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+from .serializers import (
+    UserRegistrationSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+    GlobalSettingsSerializer,
+)
+from .models import GlobalSettings
 
 
 class MeView(generics.RetrieveUpdateDestroyAPIView):
@@ -101,6 +102,7 @@ class AdminUserUpdateView(generics.UpdateAPIView):
     """Admin endpoint to update user"""
 
     queryset = User.objects.all()
+    from .serializers import AdminUserUpdateSerializer
 
     serializer_class = AdminUserUpdateSerializer
     permission_classes = (IsAdminUser,)

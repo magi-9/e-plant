@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from decimal import Decimal
+from products.models import Product
 
 
 @pytest.mark.django_db
@@ -23,7 +24,7 @@ def test_stock_decreases_after_order(api_client, user_factory, product_factory):
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 3},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -55,7 +56,7 @@ def test_cannot_order_more_than_stock(api_client, user_factory, product_factory)
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 10},  # More than available
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -87,7 +88,7 @@ def test_stock_never_goes_below_zero(api_client, user_factory, product_factory):
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 5},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -121,7 +122,7 @@ def test_multiple_products_stock_deduction(api_client, user_factory, product_fac
         "items": [
             {"product_id": product1.id, "quantity": 2},
             {"product_id": product2.id, "quantity": 3},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -158,7 +159,7 @@ def test_stock_deduction_is_atomic(api_client, user_factory, product_factory):
         "items": [
             {"product_id": product1.id, "quantity": 3},  # Should be OK
             {"product_id": product2.id, "quantity": 5},  # Not enough stock
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -171,4 +172,4 @@ def test_stock_deduction_is_atomic(api_client, user_factory, product_factory):
     product2.refresh_from_db()
 
     assert product1.stock_quantity == 10  # Unchanged
-    assert product2.stock_quantity == 2  # Unchanged
+    assert product2.stock_quantity == 2   # Unchanged

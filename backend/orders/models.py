@@ -28,9 +28,7 @@ class Order(models.Model):
     street = models.CharField(max_length=255, blank=True)
     city = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=20, blank=True)
-    shipping_address = models.TextField(
-        blank=True
-    )  # Legacy field, kept for backward compatibility
+    shipping_address = models.TextField(blank=True)  # Legacy field, kept for backward compatibility
 
     # Company info (optional)
     is_company = models.BooleanField(default=False)
@@ -39,9 +37,7 @@ class Order(models.Model):
     dic = models.CharField(max_length=50, blank=True, verbose_name="DIČ")
 
     # Order info
-    user = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders"
-    )
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)

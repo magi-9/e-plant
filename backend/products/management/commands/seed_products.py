@@ -6,7 +6,6 @@ import random
 
 User = get_user_model()
 
-
 class Command(BaseCommand):
     help = "Seeds the database with initial users and dental implant products in Slovak"
 
@@ -38,19 +37,10 @@ class Command(BaseCommand):
             "Vhojovacie valčeky",
             "Odtlačkové komponenty",
             "Laboratórne analógy",
-            "Chirurgické nástroje",
+            "Chirurgické nástroje"
         ]
 
-        adjectives = [
-            "Titánový",
-            "Zirkónový",
-            "Keramický",
-            "Dočasný",
-            "Trvalý",
-            "Estetický",
-            "Zahnutý",
-            "Rovný",
-        ]
+        adjectives = ["Titánový", "Zirkónový", "Keramický", "Dočasný", "Trvalý", "Estetický", "Zahnutý", "Rovný"]
         types = ["Implantát", "Abutment", "Skrutka", "Vrták", "Analóg", "Transfer"]
         sizes = ["Ø3.5mm", "Ø4.0mm", "Ø4.5mm", "Ø5.0mm", "L10mm", "L12mm", "L14mm"]
 
@@ -61,15 +51,10 @@ class Command(BaseCommand):
             ProductFactory(
                 name=name,
                 category=category,
-                description=(
-                    f"Vysokokvalitný {category.lower()} pre dentálnu implantológiu. "
-                    f"{name} je vyrobený z prvotriednych materiálov pre dlhodobú stabilitu a estetiku."
-                ),
+                description=f"Vysokokvalitný {category.lower()} pre dentálnu implantológiu. {name} je vyrobený z prvotriednych materiálov pre dlhodobú stabilitu a estetiku.",
                 price=round(random.uniform(50.0, 500.0), 2),
                 stock_quantity=random.randint(0, 100),
                 low_stock_threshold=5,
             )
 
-        self.stdout.write(
-            self.style.SUCCESS("Successfully seeded 30 dental products in Slovak")
-        )
+        self.stdout.write(self.style.SUCCESS("Successfully seeded 30 dental products in Slovak"))

@@ -26,7 +26,7 @@ def test_create_order_success(api_client, user_factory, product_factory):
         "items": [
             {"product_id": product1.id, "quantity": 2},
             {"product_id": product2.id, "quantity": 1},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -58,7 +58,7 @@ def test_order_total_calculated_correctly(api_client, user_factory, product_fact
         "items": [
             {"product_id": product1.id, "quantity": 2},  # 200
             {"product_id": product2.id, "quantity": 1},  # 50
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -88,7 +88,7 @@ def test_order_price_snapshot_stored(api_client, user_factory, product_factory):
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 2},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -129,7 +129,7 @@ def test_order_creates_order_items(api_client, user_factory, product_factory):
         "items": [
             {"product_id": product1.id, "quantity": 2},
             {"product_id": product2.id, "quantity": 3},
-        ],
+        ]
     }
 
     url = reverse("order_create")
@@ -168,7 +168,7 @@ def test_order_generates_order_number(api_client, user_factory, product_factory)
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 1},
-        ],
+        ]
     }
 
     url = reverse("order_create")

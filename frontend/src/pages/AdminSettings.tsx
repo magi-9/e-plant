@@ -17,7 +17,6 @@ export default function AdminSettings() {
 
     useEffect(() => {
         if (currentSettings) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData(currentSettings);
         }
     }, [currentSettings]);

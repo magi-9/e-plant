@@ -94,10 +94,8 @@ export default function AdminProducts() {
             const res = await importProductsCsv(file);
             toast.success(res.message || 'Import úspešný', { id: 'csv-upload' });
             queryClient.invalidateQueries({ queryKey: ['products'] });
-        } catch (error: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const err = error as any;
-            toast.error(err.response?.data?.error || 'Chyba importu CSV', { id: 'csv-upload' });
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || 'Chyba importu CSV', { id: 'csv-upload' });
         } finally {
             setIsUploadingCSV(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

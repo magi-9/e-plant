@@ -43,7 +43,6 @@ export default function AdminUsers() {
         if (editingUser) {
             updateMutation.mutate({ id: editingUser.id, data: { ...formData, id: editingUser.id } as Partial<User> });
         } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             createMutation.mutate(formData as any);
         }
     };

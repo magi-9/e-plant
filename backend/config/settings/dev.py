@@ -20,6 +20,6 @@ DATABASES = {
 }
 
 # Email configuration for development
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "noreply@dentalshop.sk"
-WAREHOUSE_EMAIL = "warehouse@dentalshop.sk"
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@dentalshop.sk'
+WAREHOUSE_EMAIL = 'warehouse@dentalshop.sk'

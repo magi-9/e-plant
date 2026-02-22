@@ -2,7 +2,8 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from decimal import Decimal
-
+from orders.models import Order
+from orders.serializers import OrderCreateSerializer
 
 @pytest.mark.django_db
 def test_order_detail_idor_fix(api_client, user_factory, product_factory):
@@ -23,27 +24,26 @@ def test_order_detail_idor_fix(api_client, user_factory, product_factory):
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 2},
-        ],
+        ]
     }
 
     create_url = reverse("order_create")
     response = api_client.post(create_url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    order_number = response.data["order_number"]
+    order_number = response.data['order_number']
 
     # Should be accessible via order_number
     detail_url = reverse("order_detail", kwargs={"order_number": order_number})
     detail_response = api_client.get(detail_url)
     assert detail_response.status_code == status.HTTP_200_OK
-    assert detail_response.data["order_number"] == order_number
+    assert detail_response.data['order_number'] == order_number
 
     # Try accessing with ID (should fail)
-    order_id = response.data["id"]
+    order_id = response.data['id']
     id_detail_url = detail_url.replace(order_number, str(order_id))
     id_response = api_client.get(id_detail_url)
     assert id_response.status_code == status.HTTP_404_NOT_FOUND
-
 
 @pytest.mark.django_db
 def test_admin_orders_list(api_client, user_factory, product_factory):
