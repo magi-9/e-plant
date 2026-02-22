@@ -57,8 +57,6 @@ class VerifyEmailView(views.APIView):
             )
 
 
-
-
 class MeView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
