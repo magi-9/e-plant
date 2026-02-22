@@ -55,7 +55,7 @@ jobs:
         working-directory: ./backend
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
-          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY || 'ci-cd-testing-secret-key-123' }}
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USER: postgres
