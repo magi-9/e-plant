@@ -29,7 +29,7 @@ def test_authenticated_user_price_visible(api_client, user_factory, product_fact
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.data[0]["price"] == Decimal("50.00")
+    assert Decimal(response.data[0]["price"]) == Decimal("50.00")
 
 
 @pytest.mark.django_db
@@ -47,4 +47,4 @@ def test_product_detail_visibility(api_client, user_factory, product_factory):
     api_client.force_authenticate(user=user)
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
-    assert response.data["price"] == Decimal("99.99")
+    assert Decimal(response.data["price"]) == Decimal("99.99")
