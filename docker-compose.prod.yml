@@ -34,7 +34,7 @@ services:
   nginx:
     image: nginx:1.25-alpine
     ports:
-      - "80:80"
+      - "2050:80"
       #- "443:443" # Uncomment when applying SSL certs in future
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
