@@ -140,7 +140,9 @@ class AdminProductImport(APIView):
                     try:
                         product.low_stock_threshold = int(row["low_stock_threshold"])
                     except (ValueError, TypeError):
-                        raise ValueError(f"Invalid low_stock_threshold for product {name}: {row['low_stock_threshold']}")
+                        raise ValueError(
+                            f"Invalid low_stock_threshold for product {name}: {row['low_stock_threshold']}"
+                        )
 
                 # Custom logic for alert reset
                 if (
