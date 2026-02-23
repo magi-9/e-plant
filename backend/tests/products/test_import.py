@@ -134,7 +134,7 @@ def test_import_products_invalid_data_handling(api_client, user_factory):
     response = api_client.post(url, {"file": uploaded_file}, format="multipart")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "Invalid price" in response.data["error"]
+    assert "Invalid price" in str(response.data)
 
     # Verify values remained unchanged
     p1 = Product.objects.get(name="Existing Product")

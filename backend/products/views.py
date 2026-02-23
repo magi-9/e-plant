@@ -5,6 +5,7 @@ from rest_framework import generics, permissions, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import ValidationError
 from .models import Product
 from .serializers import ProductSerializer
 
@@ -128,19 +129,23 @@ class AdminProductImport(APIView):
                     try:
                         product.price = Decimal(row["price"])
                     except (ValueError, InvalidOperation):
-                        raise ValueError(f"Invalid price for product {name}: {row['price']}")
+                        raise ValidationError(
+                            f"Invalid price for product {name}: {row['price']}"
+                        )
 
                 if "stock_quantity" in row:
                     try:
                         product.stock_quantity = int(row["stock_quantity"])
                     except (ValueError, TypeError):
-                        raise ValueError(f"Invalid stock_quantity for product {name}: {row['stock_quantity']}")
+                        raise ValidationError(
+                            f"Invalid stock_quantity for product {name}: {row['stock_quantity']}"
+                        )
 
                 if "low_stock_threshold" in row:
                     try:
                         product.low_stock_threshold = int(row["low_stock_threshold"])
                     except (ValueError, TypeError):
-                        raise ValueError(
+                        raise ValidationError(
                             f"Invalid low_stock_threshold for product {name}: {row['low_stock_threshold']}"
                         )
 
@@ -169,7 +174,9 @@ class AdminProductImport(APIView):
                     "low_stock_threshold",
                     "low_stock_alert_sent",
                 ]
-                Product.objects.bulk_update(products_to_update.values(), fields_to_update)
+                Product.objects.bulk_update(
+                    products_to_update.values(), fields_to_update
+                )
 
             return Response(
                 {"message": f"Successfully processed {processed_count} products."},
