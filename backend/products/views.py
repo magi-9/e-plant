@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 from decimal import Decimal, InvalidOperation
+from django.db import transaction
 from rest_framework import generics, permissions, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -73,6 +74,11 @@ class AdminProductImport(APIView):
 
             # Read all rows first
             rows = list(reader)
+            if len(rows) > 10000:
+                return Response(
+                    {"error": "File too large. Maximum 10,000 rows allowed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if not rows:
                 return Response(
                     {"message": "Successfully processed 0 products."},
@@ -81,10 +87,41 @@ class AdminProductImport(APIView):
 
             product_names = set(row.get("name") for row in rows if row.get("name"))
 
+            # Detect duplicate names in the CSV
+            csv_names_seen = set()
+            csv_duplicate_names = set()
+            for row in rows:
+                n = row.get("name")
+                if n:
+                    if n in csv_names_seen:
+                        csv_duplicate_names.add(n)
+                    csv_names_seen.add(n)
+            if csv_duplicate_names:
+                return Response(
+                    {
+                        "error": "Duplicate product names found in CSV.",
+                        "duplicate_names": sorted(csv_duplicate_names),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Fetch existing products
             # Using filter instead of in_bulk(field_name='name') to handle potential non-unique names safely
             existing_products_qs = Product.objects.filter(name__in=product_names)
-            existing_products_map = {p.name: p for p in existing_products_qs}
+            existing_products_map = {}
+            duplicate_names = set()
+            for p in existing_products_qs:
+                if p.name in existing_products_map:
+                    duplicate_names.add(p.name)
+                existing_products_map[p.name] = p
+            if duplicate_names:
+                return Response(
+                    {
+                        "error": "Multiple products with the same name found in the database.",
+                        "duplicate_names": sorted(duplicate_names),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             products_to_create = {}  # name -> Product instance
             products_to_update = {}  # pk -> Product instance
@@ -96,6 +133,10 @@ class AdminProductImport(APIView):
                 if not name:
                     continue
 
+                if len(name) > 255:
+                    raise ValidationError(
+                        f"Product name too long (max 255 characters): {name[:50]}..."
+                    )
                 product = None
                 is_new = False
 
@@ -123,15 +164,29 @@ class AdminProductImport(APIView):
                     product.description = row["description"]
 
                 if "category" in row:
-                    product.category = row["category"]
+                    category = row["category"]
+                    if len(category) > 100:
+                        raise ValidationError(
+                            f"Category too long for product {name} (max 100 characters)"
+                        )
+                    product.category = category
 
                 if "price" in row:
                     try:
-                        product.price = Decimal(row["price"])
+                        price = Decimal(row["price"])
                     except (ValueError, InvalidOperation):
                         raise ValidationError(
                             f"Invalid price for product {name}: {row['price']}"
                         )
+                    price_tuple = price.as_tuple()
+                    total_digits = len(price_tuple.digits)
+                    decimal_places = max(0, -price_tuple.exponent)
+                    if total_digits > 10 or decimal_places > 2:
+                        raise ValidationError(
+                            f"Invalid price for product {name}: {row['price']} "
+                            "(must have at most 10 total digits and 2 decimal places)"
+                        )
+                    product.price = price
 
                 if "stock_quantity" in row:
                     try:
@@ -161,22 +216,23 @@ class AdminProductImport(APIView):
 
                 processed_count += 1
 
-            # Perform bulk operations
-            if products_to_create:
-                Product.objects.bulk_create(products_to_create.values())
+            # Perform bulk operations atomically
+            with transaction.atomic():
+                if products_to_create:
+                    Product.objects.bulk_create(products_to_create.values())
 
-            if products_to_update:
-                fields_to_update = [
-                    "description",
-                    "category",
-                    "price",
-                    "stock_quantity",
-                    "low_stock_threshold",
-                    "low_stock_alert_sent",
-                ]
-                Product.objects.bulk_update(
-                    products_to_update.values(), fields_to_update
-                )
+                if products_to_update:
+                    fields_to_update = [
+                        "description",
+                        "category",
+                        "price",
+                        "stock_quantity",
+                        "low_stock_threshold",
+                        "low_stock_alert_sent",
+                    ]
+                    Product.objects.bulk_update(
+                        products_to_update.values(), fields_to_update
+                    )
 
             return Response(
                 {"message": f"Successfully processed {processed_count} products."},

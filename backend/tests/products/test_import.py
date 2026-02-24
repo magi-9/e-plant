@@ -110,7 +110,7 @@ def test_import_products_logic_reset_alert(api_client, user_factory):
 
 @pytest.mark.django_db
 def test_import_products_invalid_data_handling(api_client, user_factory):
-    """Test that invalid numeric values are ignored or handled gracefully."""
+    """Test that invalid numeric values raise appropriate validation errors."""
     user = user_factory(is_staff=True, is_superuser=True)
     api_client.force_authenticate(user=user)
 
@@ -140,3 +140,113 @@ def test_import_products_invalid_data_handling(api_client, user_factory):
     p1 = Product.objects.get(name="Existing Product")
     assert p1.price == Decimal("10.00")
     assert p1.stock_quantity == 5
+
+
+@pytest.mark.django_db
+def test_import_products_duplicate_names_in_csv(api_client, user_factory):
+    """Test that duplicate product names in the CSV are rejected to prevent data loss."""
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
+
+    Product.objects.create(name="Duplicate Product", price=20.00, stock_quantity=10)
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "price", "stock_quantity"])
+    writer.writerow(["Duplicate Product", "25.00", "5"])
+    writer.writerow(["Duplicate Product", "30.00", "15"])
+
+    csv_content = output.getvalue().encode("utf-8-sig")
+    uploaded_file = SimpleUploadedFile(
+        "products.csv", csv_content, content_type="text/csv"
+    )
+
+    url = "/api/products/admin/import/"
+    response = api_client.post(url, {"file": uploaded_file}, format="multipart")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Duplicate" in str(response.data)
+
+    # Verify original values remained unchanged
+    p = Product.objects.get(name="Duplicate Product")
+    assert p.price == Decimal("20.00")
+    assert p.stock_quantity == 10
+
+
+@pytest.mark.django_db
+def test_import_products_empty_numeric_fields(api_client, user_factory):
+    """Test that empty strings for numeric CSV fields raise appropriate validation errors."""
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
+
+    Product.objects.create(name="Existing Product", price=10.00, stock_quantity=5)
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "price", "stock_quantity"])
+    writer.writerow(["Existing Product", "", ""])
+
+    csv_content = output.getvalue().encode("utf-8-sig")
+    uploaded_file = SimpleUploadedFile(
+        "products.csv", csv_content, content_type="text/csv"
+    )
+
+    url = "/api/products/admin/import/"
+    response = api_client.post(url, {"file": uploaded_file}, format="multipart")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # Verify values remained unchanged
+    p1 = Product.objects.get(name="Existing Product")
+    assert p1.price == Decimal("10.00")
+    assert p1.stock_quantity == 5
+
+
+@pytest.mark.django_db
+def test_import_products_empty_csv(api_client, user_factory):
+    """Test import behavior when CSV has headers but no data rows."""
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "price", "stock_quantity"])
+
+    csv_content = output.getvalue().encode("utf-8-sig")
+    uploaded_file = SimpleUploadedFile(
+        "products.csv", csv_content, content_type="text/csv"
+    )
+
+    url = "/api/products/admin/import/"
+    response = api_client.post(url, {"file": uploaded_file}, format="multipart")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert "0 products" in str(response.data)
+    assert Product.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_import_products_skips_rows_with_missing_name(api_client, user_factory):
+    """Test that CSV rows with missing or empty product names are skipped."""
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "price", "stock_quantity"])
+    writer.writerow(["", "10.00", "5"])
+    writer.writerow([None, "20.00", "10"])
+    writer.writerow(["Valid Product", "30.00", "15"])
+
+    csv_content = output.getvalue().encode("utf-8-sig")
+    uploaded_file = SimpleUploadedFile(
+        "products.csv", csv_content, content_type="text/csv"
+    )
+
+    url = "/api/products/admin/import/"
+    response = api_client.post(url, {"file": uploaded_file}, format="multipart")
+
+    assert response.status_code == status.HTTP_200_OK
+    # Only the valid row should be processed
+    assert Product.objects.count() == 1
+    assert Product.objects.filter(name="Valid Product").exists()
