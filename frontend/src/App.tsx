@@ -17,6 +17,8 @@ import PrivacyPage from './pages/PrivacyPage';
 import ComplaintsPage from './pages/ComplaintsPage';
 import WithdrawalPage from './pages/WithdrawalPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 import { Toaster } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -43,6 +45,8 @@ function App() {
               <Route path="/admin/products" element={<AdminProducts />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password/:uid/:token" element={<ResetPasswordPage />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/terms" element={<TermsPage />} />

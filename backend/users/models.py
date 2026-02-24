@@ -1,5 +1,22 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
+
+
+class EmailRateLimit(models.Model):
+    """Tracks per-email rate limits for verification and password-reset sends."""
+
+    key = models.CharField(max_length=320, unique=True)  # e.g. "reset:user@example.com"
+    count = models.PositiveIntegerField(default=0)
+    last_sent = models.DateTimeField(null=True, blank=True)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Email Rate Limit"
+        verbose_name_plural = "Email Rate Limits"
+
+    def __str__(self):
+        return self.key
 
 
 class CustomUser(AbstractUser):

@@ -26,6 +26,21 @@ export const verifyEmail = async (uid: string, token: string) => {
     return response.data;
 };
 
+export const resendVerification = async (email: string) => {
+    const response = await client.post('/auth/resend-verification/', { email });
+    return response.data;
+};
+
+export const requestPasswordReset = async (email: string) => {
+    const response = await client.post('/auth/password-reset/request/', { email });
+    return response.data;
+};
+
+export const confirmPasswordReset = async (uid: string, token: string, new_password: string) => {
+    const response = await client.post('/auth/password-reset/confirm/', { uid, token, new_password });
+    return response.data;
+};
+
 export const getMe = async () => {
     const response = await client.get('/auth/me/');
     return response.data;

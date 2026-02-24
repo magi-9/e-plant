@@ -15,6 +15,7 @@ from .serializers import (
     AdminUserUpdateSerializer,
 )
 from .models import GlobalSettings
+from .utils import check_and_record_rate_limit, send_verification_email, send_password_reset_email
 
 User = get_user_model()
 
@@ -53,6 +54,99 @@ class VerifyEmailView(views.APIView):
         else:
             return Response(
                 {"error": "Overovací odkaz je neplatný alebo už expiroval."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ResendVerificationView(views.APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        if not email:
+            return Response(
+                {"error": "Zadajte e-mailovú adresu."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rate_error = check_and_record_rate_limit(f"verify:{email}")
+        if rate_error:
+            return Response({"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Don't leak whether the email exists
+            return Response({"detail": "Ak účet existuje a nebol overený, odoslali sme nový odkaz."})
+
+        if user.is_active:
+            return Response(
+                {"error": "Tento účet je už overený. Môžete sa prihlásiť."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        send_verification_email(user)
+        return Response({"detail": "Ak účet existuje a nebol overený, odoslali sme nový odkaz."})
+
+
+class PasswordResetRequestView(views.APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        if not email:
+            return Response(
+                {"error": "Zadajte e-mailovú adresu."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rate_error = check_and_record_rate_limit(f"reset:{email}")
+        if rate_error:
+            return Response({"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+            if user.is_active:
+                send_password_reset_email(user)
+        except User.DoesNotExist:
+            pass  # Don't leak whether the email exists
+
+        return Response({"detail": "Ak účet s touto adresou existuje, odoslali sme odkaz na obnovenie hesla."})
+
+
+class PasswordResetConfirmView(views.APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        uidb64 = request.data.get("uid")
+        token = request.data.get("token")
+        new_password = request.data.get("new_password", "")
+
+        if not uidb64 or not token or not new_password:
+            return Response(
+                {"error": "Chýbajúce údaje."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {"error": "Heslo musí mať aspoň 8 znakov."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            user.set_password(new_password)
+            user.save()
+            return Response({"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."})
+        else:
+            return Response(
+                {"error": "Odkaz na obnovenie hesla je neplatný alebo expiroval."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
