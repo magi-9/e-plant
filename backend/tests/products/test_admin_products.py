@@ -1,14 +1,12 @@
 import pytest
-from rest_framework.test import APIClient
+from django.urls import reverse
 from products.models import Product
-from users.models import CustomUser
 
 
 @pytest.mark.django_db
-def test_admin_create_product_price_issue():
-    client = APIClient()
-    user = CustomUser.objects.create_superuser("admin", "admin@example.com", "password")
-    client.force_authenticate(user=user)
+def test_admin_create_product_price_issue(api_client, user_factory):
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
 
     data = {
         "name": "Test Product",
@@ -18,24 +16,20 @@ def test_admin_create_product_price_issue():
         "stock_quantity": 10,
     }
 
-    response = client.post("/api/products/admin/create/", data, format="json")
-
-    print(f"Status Code: {response.status_code}")
-    # print(f"Response Data: {response.data}")
+    url = reverse("admin_product_create")
+    response = api_client.post(url, data, format="json")
 
     assert response.status_code == 201
     product = Product.objects.get(name="Test Product")
-    print(f"Created Product Price: {product.price}")
     assert product.price == 100.00
 
 
 @pytest.mark.django_db
-def test_admin_update_product():
-    client = APIClient()
-    user = CustomUser.objects.create_superuser("admin", "admin@example.com", "password")
-    client.force_authenticate(user=user)
+def test_admin_update_product(api_client, user_factory, product_factory):
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
 
-    product = Product.objects.create(
+    product = product_factory(
         name="Update Test",
         description="Original Description",
         category="Original Category",
@@ -45,7 +39,8 @@ def test_admin_update_product():
 
     data = {"name": "Updated Name", "price": "75.00"}
 
-    response = client.patch(f"/api/products/admin/{product.id}/", data, format="json")
+    url = reverse("admin_product_update", args=[product.id])
+    response = api_client.patch(url, data, format="json")
 
     assert response.status_code == 200
     product.refresh_from_db()
@@ -54,12 +49,11 @@ def test_admin_update_product():
 
 
 @pytest.mark.django_db
-def test_admin_delete_product():
-    client = APIClient()
-    user = CustomUser.objects.create_superuser("admin", "admin@example.com", "password")
-    client.force_authenticate(user=user)
+def test_admin_delete_product(api_client, user_factory, product_factory):
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
 
-    product = Product.objects.create(
+    product = product_factory(
         name="Delete Test",
         description="Desc",
         category="Cat",
@@ -67,32 +61,33 @@ def test_admin_delete_product():
         stock_quantity=1,
     )
 
-    response = client.delete(f"/api/products/admin/{product.id}/delete/")
+    url = reverse("admin_product_delete", args=[product.id])
+    response = api_client.delete(url)
 
     assert response.status_code == 204
     assert not Product.objects.filter(id=product.id).exists()
 
 
 @pytest.mark.django_db
-def test_anonymous_cannot_create():
-    client = APIClient()
+def test_anonymous_cannot_create(api_client):
     data = {"name": "Anon Product", "price": "10.00"}
-    response = client.post("/api/products/admin/create/", data, format="json")
-    assert response.status_code == 401  # Or 403 depending on auth config
-
-
-@pytest.mark.django_db
-def test_anonymous_cannot_update():
-    client = APIClient()
-    product = Product.objects.create(name="Anon", price=10)
-    data = {"name": "Hacked"}
-    response = client.put(f"/api/products/admin/{product.id}/", data, format="json")
+    url = reverse("admin_product_create")
+    response = api_client.post(url, data, format="json")
     assert response.status_code == 401
 
 
 @pytest.mark.django_db
-def test_anonymous_cannot_delete():
-    client = APIClient()
-    product = Product.objects.create(name="Anon", price=10)
-    response = client.delete(f"/api/products/admin/{product.id}/delete/")
+def test_anonymous_cannot_update(api_client, product_factory):
+    product = product_factory(name="Anon", price=10.00)
+    data = {"name": "Hacked"}
+    url = reverse("admin_product_update", args=[product.id])
+    response = api_client.put(url, data, format="json")
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_anonymous_cannot_delete(api_client, product_factory):
+    product = product_factory(name="Anon", price=10.00)
+    url = reverse("admin_product_delete", args=[product.id])
+    response = api_client.delete(url)
     assert response.status_code == 401
