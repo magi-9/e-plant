@@ -178,3 +178,33 @@ def test_order_generates_order_number(api_client, user_factory, product_factory)
     order = Order.objects.first()
     assert order.order_number is not None
     assert len(order.order_number) > 0
+
+
+@pytest.mark.django_db
+def test_create_order_invalid_product(api_client, user_factory):
+    """Test that creating an order with a non-existent product returns 400"""
+    user = user_factory()
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+421900123456",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "items": [
+            {"product_id": 999999, "quantity": 1},
+        ],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert isinstance(response.data, list)
+    assert response.data[0] == "Product with id 999999 does not exist."
+    assert Order.objects.count() == 0
+    assert OrderItem.objects.count() == 0
