@@ -18,9 +18,21 @@ urlpatterns = [
     path("settings/", GlobalSettingsView.as_view(), name="global_settings"),
     path("register/", RegisterView.as_view(), name="register"),
     path("verify-email/", VerifyEmailView.as_view(), name="verify_email"),
-    path("resend-verification/", ResendVerificationView.as_view(), name="resend_verification"),
-    path("password-reset/request/", PasswordResetRequestView.as_view(), name="password_reset_request"),
-    path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    path(
+        "resend-verification/",
+        ResendVerificationView.as_view(),
+        name="resend_verification",
+    ),
+    path(
+        "password-reset/request/",
+        PasswordResetRequestView.as_view(),
+        name="password_reset_request",
+    ),
+    path(
+        "password-reset/confirm/",
+        PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
     path("me/", MeView.as_view(), name="me"),
     path("admin/users/", AdminUsersListView.as_view(), name="admin_users_list"),
     path(

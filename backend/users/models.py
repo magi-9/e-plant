@@ -3,7 +3,10 @@ from django.db import models
 
 
 class EmailRateLimit(models.Model):
-    """Tracks per-email rate limits for verification and password-reset sends."""
+    """
+    Tracks rate limits for email-related actions (e.g. verification, password reset)
+    using an email-derived key (e.g. "reset:user@example.com" or "verify:user@example.com").
+    """
 
     key = models.CharField(max_length=320, unique=True)  # e.g. "reset:user@example.com"
     count = models.PositiveIntegerField(default=0)
