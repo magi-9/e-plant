@@ -22,4 +22,4 @@ class EmailRateLimitAdmin(admin.ModelAdmin):
 
     @admin.action(description="Clear block / reset counter")
     def clear_block(self, request, queryset):
-        queryset.update(count=0, blocked_until=None, last_sent=None)
+        queryset.update(count=0, blocked_until=None)
