@@ -21,8 +21,7 @@ while True:
 "
 echo "PostgreSQL started properly."
 
-# generate migrations and migrate
-python manage.py makemigrations
+# apply database migrations
 python manage.py migrate
 
 # collect static files
