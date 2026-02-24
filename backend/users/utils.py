@@ -1,23 +1,27 @@
 """
 Email rate-limiting helpers and shared email-sending functions.
 
-Rate limit rules (per unique key, e.g. "reset:user@example.com"):
+Rate limit rules (per unique key, e.g. "reset:<user.pk>"):
   - Must wait 60 seconds between sends (cooldown).
   - After 5 sends since the last reset, the key is blocked for 2 hours.
   - Once a block expires the counter resets automatically.
 """
 
+import logging
+import os
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-import os
 
 from .models import EmailRateLimit
+
+logger = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -38,40 +42,46 @@ def check_and_record_rate_limit(key: str) -> str | None:
 
     Returns an error message string if blocked/too-soon, otherwise ``None``
     and records the current send attempt.
+
+    The entire read-modify-write is wrapped in a transaction with
+    select_for_update() to prevent race conditions under concurrent requests.
     """
-    now = timezone.now()
-    record, _ = EmailRateLimit.objects.get_or_create(key=key)
+    with transaction.atomic():
+        # Ensure the row exists, then lock it for this transaction
+        EmailRateLimit.objects.get_or_create(key=key)
+        record = EmailRateLimit.objects.select_for_update().get(key=key)
+        now = timezone.now()
 
-    # Active block?
-    if record.blocked_until and record.blocked_until > now:
-        minutes_left = int((record.blocked_until - now).total_seconds() / 60) + 1
-        return (
-            f"Príliš veľa pokusov. Skúste to znova o {minutes_left} "
-            f"{'minútu' if minutes_left == 1 else 'minút'}."
-        )
+        # Active block?
+        if record.blocked_until and record.blocked_until > now:
+            minutes_left = int((record.blocked_until - now).total_seconds() / 60) + 1
+            return (
+                f"Príliš veľa pokusov. Skúste to znova o {minutes_left} "
+                f"{'minútu' if minutes_left == 1 else 'minút'}."
+            )
 
-    # Expired block → reset counter so the user can start fresh
-    if record.blocked_until and record.blocked_until <= now:
-        record.count = 0
-        record.blocked_until = None
+        # Expired block → reset counter so the user can start fresh
+        if record.blocked_until and record.blocked_until <= now:
+            record.count = 0
+            record.blocked_until = None
 
-    # Cooldown between individual sends
-    if record.last_sent:
-        elapsed = (now - record.last_sent).total_seconds()
-        if elapsed < COOLDOWN_SECONDS:
-            wait = int(COOLDOWN_SECONDS - elapsed) + 1
-            return f"Prosím počkajte {wait} sekúnd pred ďalším odoslaním."
+        # Cooldown between individual sends
+        if record.last_sent:
+            elapsed = (now - record.last_sent).total_seconds()
+            if elapsed < COOLDOWN_SECONDS:
+                wait = int(COOLDOWN_SECONDS - elapsed) + 1
+                return f"Prosím počkajte {wait} sekúnd pred ďalším odoslaním."
 
-    # Record the send
-    record.count += 1
-    record.last_sent = now
+        # Record the send
+        record.count += 1
+        record.last_sent = now
 
-    if record.count >= MAX_ATTEMPTS:
-        record.blocked_until = now + timedelta(hours=BLOCK_HOURS)
-        record.count = 0  # reset for the next window after the block lifts
+        if record.count >= MAX_ATTEMPTS:
+            record.blocked_until = now + timedelta(hours=BLOCK_HOURS)
+            record.count = 0  # reset for the next window after the block lifts
 
-    record.save()
-    return None
+        record.save()
+        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -104,10 +114,10 @@ def send_verification_email(user) -> None:
             message,
             getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
             [user.email],
-            fail_silently=True,
+            fail_silently=False,
         )
-    except Exception as exc:
-        print(f"[send_verification_email] Failed: {exc}")
+    except Exception:
+        logger.exception("[send_verification_email] Failed to send to %s", user.email)
 
 
 def send_password_reset_email(user) -> None:
@@ -134,7 +144,7 @@ def send_password_reset_email(user) -> None:
             message,
             getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
             [user.email],
-            fail_silently=True,
+            fail_silently=False,
         )
-    except Exception as exc:
-        print(f"[send_password_reset_email] Failed: {exc}")
+    except Exception:
+        logger.exception("[send_password_reset_email] Failed to send to %s", user.email)

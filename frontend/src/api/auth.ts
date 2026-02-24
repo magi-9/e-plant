@@ -36,8 +36,8 @@ export const requestPasswordReset = async (email: string) => {
     return response.data;
 };
 
-export const confirmPasswordReset = async (uid: string, token: string, new_password: string) => {
-    const response = await client.post('/auth/password-reset/confirm/', { uid, token, new_password });
+export const confirmPasswordReset = async (uid: string, token: string, newPassword: string) => {
+    const response = await client.post('/auth/password-reset/confirm/', { uid, token, new_password: newPassword });
     return response.data;
 };
 

@@ -7,10 +7,8 @@ Tests for:
 """
 
 from datetime import timedelta
-from unittest.mock import patch
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.urls import reverse
@@ -21,8 +19,6 @@ from rest_framework import status
 
 from users.models import EmailRateLimit
 from users.utils import BLOCK_HOURS, COOLDOWN_SECONDS, MAX_ATTEMPTS, check_and_record_rate_limit
-
-User = get_user_model()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +143,8 @@ def test_password_reset_confirm_token_used_twice(api_client, user_factory):
     first = api_client.post(url, payload, format="json")
     assert first.status_code == status.HTTP_200_OK
 
-    # Token is now invalid because password_last_changed changed
+    # Token is now invalid because Django's token generator hashes the password,
+    # so changing the password hash invalidates any previously issued token.
     second = api_client.post(
         url,
         {"uid": uid, "token": token, "new_password": "secondPassword2"},
@@ -202,13 +199,13 @@ def test_resend_verification_sends_email(api_client, user_factory):
 
 @pytest.mark.django_db
 def test_resend_verification_already_active(api_client, user_factory):
-    """Already-active accounts get a 400 (no point resending)."""
+    """Already-active accounts get a generic 200 (no enumeration) and no email is sent."""
     user = user_factory(is_active=True)
     url = reverse("resend_verification")
 
     response = api_client.post(url, {"email": user.email}, format="json")
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_200_OK
     assert len(mail.outbox) == 0
 
 
@@ -332,7 +329,7 @@ def test_password_reset_request_rate_limited_via_api(api_client, user_factory):
     """Spamming the password-reset endpoint returns 429 after exhausting quota."""
     user = user_factory()
     url = reverse("password_reset_request")
-    key = f"reset:{user.email.lower()}"
+    key = f"reset:{user.pk}"
 
     for _ in range(MAX_ATTEMPTS):
         # Bypass cooldown between iterations
@@ -355,7 +352,7 @@ def test_resend_verification_rate_limited_via_api(api_client, user_factory):
     """Spamming the resend-verification endpoint returns 429 after exhausting quota."""
     user = user_factory(is_active=False)
     url = reverse("resend_verification")
-    key = f"verify:{user.email.lower()}"
+    key = f"verify:{user.pk}"
 
     for _ in range(MAX_ATTEMPTS):
         record, _ = EmailRateLimit.objects.get_or_create(key=key)
