@@ -1,6 +1,6 @@
 import csv
 from io import StringIO
-from rest_framework import generics, permissions, filters, status
+from rest_framework import permissions, filters, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -8,43 +8,25 @@ from .models import Product
 from .serializers import ProductSerializer
 
 
-class ProductList(generics.ListAPIView):
+class ProductViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for handling Product CRUD operations.
+    - List/Retrieve: AllowAny (public)
+    - Create/Update/Delete: IsAdminUser (admin only)
+    """
+
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = (permissions.AllowAny,)
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     ordering_fields = ["name", "price", "category", "stock_quantity"]
     search_fields = ["name", "description", "category"]
 
-
-class ProductDetail(generics.RetrieveAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = (permissions.AllowAny,)
-
-
-class AdminProductCreate(generics.CreateAPIView):
-    """Admin endpoint to create a product"""
-
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = (permissions.IsAdminUser,)
-
-
-class AdminProductUpdate(generics.UpdateAPIView):
-    """Admin endpoint to update product"""
-
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = (permissions.IsAdminUser,)
-
-
-class AdminProductDelete(generics.DestroyAPIView):
-    """Admin endpoint to delete product"""
-
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = (permissions.IsAdminUser,)
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAdminUser]
+        return [permission() for permission in permission_classes]
 
 
 class AdminProductImport(APIView):
