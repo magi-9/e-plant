@@ -21,7 +21,7 @@ while True:
 "
 echo "PostgreSQL started properly."
 
-# apply database migrations
+# migrate
 python manage.py migrate
 
 # collect static files

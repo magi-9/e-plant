@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 from decimal import Decimal, InvalidOperation
+from django.db import transaction
 from rest_framework import generics, permissions, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -73,10 +74,37 @@ class AdminProductImport(APIView):
 
             # Read all rows first
             rows = list(reader)
+
+            # Check for large files
+            if len(rows) > 10000:
+                return Response(
+                    {"error": "File too large. Maximum 10,000 rows allowed."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if not rows:
                 return Response(
                     {"message": "Successfully processed 0 products."},
                     status=status.HTTP_200_OK,
+                )
+
+            # Check for duplicate names in CSV
+            seen_names = set()
+            duplicates = set()
+            for row in rows:
+                name = row.get("name")
+                if name:
+                    if name in seen_names:
+                        duplicates.add(name)
+                    seen_names.add(name)
+
+            if duplicates:
+                return Response(
+                    {
+                        "error": "Duplicate product names found in CSV.",
+                        "duplicates": sorted(list(duplicates)),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             product_names = set(row.get("name") for row in rows if row.get("name"))
@@ -84,17 +112,37 @@ class AdminProductImport(APIView):
             # Fetch existing products
             # Using filter instead of in_bulk(field_name='name') to handle potential non-unique names safely
             existing_products_qs = Product.objects.filter(name__in=product_names)
-            existing_products_map = {p.name: p for p in existing_products_qs}
+
+            # Check for duplicates in database
+            existing_products_map = {}
+            db_duplicates = set()
+            for p in existing_products_qs:
+                if p.name in existing_products_map:
+                    db_duplicates.add(p.name)
+                existing_products_map[p.name] = p
+
+            if db_duplicates:
+                return Response(
+                    {
+                        "error": "Multiple products with the same name found in the database.",
+                        "duplicate_names": sorted(list(db_duplicates)),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             products_to_create = {}  # name -> Product instance
             products_to_update = {}  # pk -> Product instance
-
-            processed_count = 0
 
             for row in rows:
                 name = row.get("name")
                 if not name:
                     continue
+
+                # Validate name length
+                if len(name) > 255:
+                    raise ValidationError(
+                        f"Product name too long (max 255 characters): {name[:50]}..."
+                    )
 
                 product = None
                 is_new = False
@@ -116,6 +164,7 @@ class AdminProductImport(APIView):
                     product.price = Decimal("0.00")
                     product.stock_quantity = 0
                     product.low_stock_threshold = 5
+                    product.low_stock_alert_sent = False  # Explicit initialization
                     products_to_create[name] = product
 
                 # Update fields with type conversion
@@ -125,28 +174,31 @@ class AdminProductImport(APIView):
                 if "category" in row:
                     product.category = row["category"]
 
-                if "price" in row:
+                price_value = row.get("price")
+                if price_value is not None and str(price_value).strip():
                     try:
-                        product.price = Decimal(row["price"])
+                        product.price = Decimal(price_value)
                     except (ValueError, InvalidOperation):
                         raise ValidationError(
-                            f"Invalid price for product {name}: {row['price']}"
+                            f"Invalid price for product {name}: {price_value}"
                         )
 
-                if "stock_quantity" in row:
+                stock_value = row.get("stock_quantity")
+                if stock_value is not None and str(stock_value).strip():
                     try:
-                        product.stock_quantity = int(row["stock_quantity"])
+                        product.stock_quantity = int(stock_value)
                     except (ValueError, TypeError):
                         raise ValidationError(
-                            f"Invalid stock_quantity for product {name}: {row['stock_quantity']}"
+                            f"Invalid stock_quantity for product {name}: {stock_value}"
                         )
 
-                if "low_stock_threshold" in row:
+                threshold_value = row.get("low_stock_threshold")
+                if threshold_value is not None and str(threshold_value).strip():
                     try:
-                        product.low_stock_threshold = int(row["low_stock_threshold"])
+                        product.low_stock_threshold = int(threshold_value)
                     except (ValueError, TypeError):
                         raise ValidationError(
-                            f"Invalid low_stock_threshold for product {name}: {row['low_stock_threshold']}"
+                            f"Invalid low_stock_threshold for product {name}: {threshold_value}"
                         )
 
                 # Custom logic for alert reset
@@ -159,24 +211,26 @@ class AdminProductImport(APIView):
                 if not is_new:
                     products_to_update[product.pk] = product
 
-                processed_count += 1
+            # Count unique products actually being created or updated
+            processed_count = len(products_to_create) + len(products_to_update)
 
-            # Perform bulk operations
-            if products_to_create:
-                Product.objects.bulk_create(products_to_create.values())
+            # Perform bulk operations inside a transaction
+            with transaction.atomic():
+                if products_to_create:
+                    Product.objects.bulk_create(products_to_create.values())
 
-            if products_to_update:
-                fields_to_update = [
-                    "description",
-                    "category",
-                    "price",
-                    "stock_quantity",
-                    "low_stock_threshold",
-                    "low_stock_alert_sent",
-                ]
-                Product.objects.bulk_update(
-                    products_to_update.values(), fields_to_update
-                )
+                if products_to_update:
+                    fields_to_update = [
+                        "description",
+                        "category",
+                        "price",
+                        "stock_quantity",
+                        "low_stock_threshold",
+                        "low_stock_alert_sent",
+                    ]
+                    Product.objects.bulk_update(
+                        products_to_update.values(), fields_to_update
+                    )
 
             return Response(
                 {"message": f"Successfully processed {processed_count} products."},
@@ -184,6 +238,9 @@ class AdminProductImport(APIView):
             )
 
         except Exception as e:
+            # Re-raise ValidationErrors so DRF handles them properly (400 Bad Request)
+            if isinstance(e, ValidationError):
+                raise e
             return Response(
                 {"error": f"Error processing file: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
