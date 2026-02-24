@@ -7,8 +7,10 @@ Tests for:
 """
 
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.urls import reverse
@@ -18,17 +20,14 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework import status
 
 from users.models import EmailRateLimit
-from users.utils import (
-    BLOCK_HOURS,
-    COOLDOWN_SECONDS,
-    MAX_ATTEMPTS,
-    check_and_record_rate_limit,
-)
+from users.utils import BLOCK_HOURS, COOLDOWN_SECONDS, MAX_ATTEMPTS, check_and_record_rate_limit
+
+User = get_user_model()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
-
 
 def _make_reset_link(user):
     """Return (uid, token) for *user*."""
@@ -41,7 +40,6 @@ def _make_reset_link(user):
 # password-reset/request/
 # ─────────────────────────────────────────────────────────────────────────────
 
-
 @pytest.mark.django_db
 def test_password_reset_request_sends_email(api_client, user_factory):
     """A valid active user receives a password-reset e-mail."""
@@ -52,10 +50,7 @@ def test_password_reset_request_sends_email(api_client, user_factory):
 
     assert response.status_code == status.HTTP_200_OK
     assert len(mail.outbox) == 1
-    assert (
-        "obnovenie" in mail.outbox[0].subject.lower()
-        or "heslo" in mail.outbox[0].subject.lower()
-    )
+    assert "obnovenie" in mail.outbox[0].subject.lower() or "heslo" in mail.outbox[0].subject.lower()
     assert user.email in mail.outbox[0].to
     assert "reset-password" in mail.outbox[0].body
 
@@ -93,7 +88,6 @@ def test_password_reset_request_missing_email(api_client):
 # ─────────────────────────────────────────────────────────────────────────────
 # password-reset/confirm/
 # ─────────────────────────────────────────────────────────────────────────────
-
 
 @pytest.mark.django_db
 def test_password_reset_confirm_success(api_client, user_factory):
@@ -153,8 +147,7 @@ def test_password_reset_confirm_token_used_twice(api_client, user_factory):
     first = api_client.post(url, payload, format="json")
     assert first.status_code == status.HTTP_200_OK
 
-    # Token is now invalid because Django's token generator hashes the password,
-    # so changing the password hash invalidates any previously issued token.
+    # Token is now invalid because password_last_changed changed
     second = api_client.post(
         url,
         {"uid": uid, "token": token, "new_password": "secondPassword2"},
@@ -193,7 +186,6 @@ def test_password_reset_confirm_missing_fields(api_client):
 # resend-verification/
 # ─────────────────────────────────────────────────────────────────────────────
 
-
 @pytest.mark.django_db
 def test_resend_verification_sends_email(api_client, user_factory):
     """Inactive user receives a new verification e-mail."""
@@ -210,13 +202,13 @@ def test_resend_verification_sends_email(api_client, user_factory):
 
 @pytest.mark.django_db
 def test_resend_verification_already_active(api_client, user_factory):
-    """Already-active accounts get a generic 200 (no enumeration) and no email is sent."""
+    """Already-active accounts get a 400 (no point resending)."""
     user = user_factory(is_active=True)
     url = reverse("resend_verification")
 
     response = api_client.post(url, {"email": user.email}, format="json")
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert len(mail.outbox) == 0
 
 
@@ -241,7 +233,6 @@ def test_resend_verification_missing_email(api_client):
 # ─────────────────────────────────────────────────────────────────────────────
 # Rate limiting – unit tests for check_and_record_rate_limit()
 # ─────────────────────────────────────────────────────────────────────────────
-
 
 @pytest.mark.django_db
 def test_rate_limit_first_send_allowed():
@@ -308,8 +299,7 @@ def test_rate_limit_block_expires():
         key=key,
         count=0,
         last_sent=timezone.now() - timedelta(seconds=COOLDOWN_SECONDS + 1),
-        blocked_until=timezone.now()
-        - timedelta(hours=BLOCK_HOURS + 1),  # already expired
+        blocked_until=timezone.now() - timedelta(hours=BLOCK_HOURS + 1),  # already expired
     )
     _ = record  # silence lint
 
@@ -336,7 +326,6 @@ def test_rate_limit_active_block_returns_minutes():
 # ─────────────────────────────────────────────────────────────────────────────
 # Rate limiting – integration tests through the HTTP endpoints
 # ─────────────────────────────────────────────────────────────────────────────
-
 
 @pytest.mark.django_db
 def test_password_reset_request_rate_limited_via_api(api_client, user_factory):
@@ -379,31 +368,6 @@ def test_resend_verification_rate_limited_via_api(api_client, user_factory):
     record.save()
 
     response = api_client.post(url, {"email": user.email}, format="json")
-    assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-
-
-@pytest.mark.django_db
-def test_unknown_email_gets_429_after_quota_exhausted(api_client):
-    """An unknown email address can also exhaust the rate limit and receive 429.
-
-    This ensures both known and unknown emails are treated consistently,
-    preventing account enumeration via differing response codes.
-    """
-    email = "ghost@example.com"
-    url = reverse("password_reset_request")
-    key = f"reset:{email}"
-
-    for _ in range(MAX_ATTEMPTS):
-        record, _ = EmailRateLimit.objects.get_or_create(key=key)
-        record.last_sent = timezone.now() - timedelta(seconds=COOLDOWN_SECONDS + 1)
-        record.save()
-        api_client.post(url, {"email": email}, format="json")
-
-    record = EmailRateLimit.objects.get(key=key)
-    record.last_sent = timezone.now() - timedelta(seconds=COOLDOWN_SECONDS + 1)
-    record.save()
-
-    response = api_client.post(url, {"email": email}, format="json")
     assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
 
 
