@@ -206,3 +206,5 @@ def test_create_order_invalid_product(api_client, user_factory):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert isinstance(response.data, list)
     assert response.data[0] == "Product with id 999999 does not exist."
+    assert Order.objects.count() == 0
+    assert OrderItem.objects.count() == 0
