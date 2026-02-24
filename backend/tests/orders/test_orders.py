@@ -204,4 +204,5 @@ def test_create_order_invalid_product(api_client, user_factory):
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "Product with id 999999 does not exist." in str(response.data)
+    assert isinstance(response.data, list)
+    assert response.data[0] == "Product with id 999999 does not exist."
