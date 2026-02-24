@@ -1,13 +1,8 @@
 from django.contrib.auth import get_user_model
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
-from django.conf import settings
 from rest_framework import serializers
-import os
 
 from .models import GlobalSettings
+from .utils import send_verification_email
 
 User = get_user_model()
 
@@ -29,33 +24,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.is_active = False
         user.save()
 
-        # Send Verification Email
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-
-        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5001")
-        verify_url = f"{frontend_url}/verify-email/{uid}/{token}/"
-
-        subject = "Overenie e-mailovej adresy - DentalShop"
-        message = (
-            "Dobrý deň,\n\n"
-            "Ďakujeme za vašu registráciu na DentalShop.\n"
-            "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
-            f"{verify_url}\n\n"
-            "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
-            "S pozdravom,\nDentalShop Tím"
-        )
-
-        try:
-            send_mail(
-                subject,
-                message,
-                getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
-                [user.email],
-                fail_silently=True,
-            )
-        except Exception as e:
-            print(f"Failed to send email: {e}")
+        send_verification_email(user)
 
         return user
 
