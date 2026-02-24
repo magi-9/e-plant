@@ -3,8 +3,6 @@ from .models import Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    price = serializers.SerializerMethodField()
-
     class Meta:
         model = Product
         fields = (
@@ -17,8 +15,9 @@ class ProductSerializer(serializers.ModelSerializer):
             "image",
         )
 
-    def get_price(self, obj):
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
         request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return obj.price
-        return None
+        if not (request and request.user.is_authenticated):
+            ret["price"] = None
+        return ret
