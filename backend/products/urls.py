@@ -1,21 +1,27 @@
 from django.urls import path
 from .views import (
-    ProductList,
-    ProductDetail,
-    AdminProductCreate,
-    AdminProductUpdate,
-    AdminProductDelete,
+    ProductViewSet,
     AdminProductImport,
 )
 
 urlpatterns = [
-    path("", ProductList.as_view(), name="product_list"),
-    path("<int:pk>/", ProductDetail.as_view(), name="product_detail"),
-    path("admin/create/", AdminProductCreate.as_view(), name="admin_product_create"),
-    path("admin/<int:pk>/", AdminProductUpdate.as_view(), name="admin_product_update"),
+    path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
+    path(
+        "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"
+    ),
+    path(
+        "admin/create/",
+        ProductViewSet.as_view({"post": "create"}),
+        name="admin_product_create",
+    ),
+    path(
+        "admin/<int:pk>/",
+        ProductViewSet.as_view({"put": "update", "patch": "partial_update"}),
+        name="admin_product_update",
+    ),
     path(
         "admin/<int:pk>/delete/",
-        AdminProductDelete.as_view(),
+        ProductViewSet.as_view({"delete": "destroy"}),
         name="admin_product_delete",
     ),
     path("admin/import/", AdminProductImport.as_view(), name="admin_product_import"),
