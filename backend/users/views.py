@@ -15,7 +15,11 @@ from .serializers import (
     AdminUserUpdateSerializer,
 )
 from .models import GlobalSettings
-from .utils import check_and_record_rate_limit, send_verification_email, send_password_reset_email
+from .utils import (
+    check_and_record_rate_limit,
+    send_verification_email,
+    send_password_reset_email,
+)
 
 User = get_user_model()
 
@@ -69,16 +73,22 @@ class ResendVerificationView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        generic_response = Response({"detail": "Ak účet existuje a nebol overený, odoslali sme nový odkaz."})
+        # Rate-limit by email before user lookup so all addresses
+        # get consistent 429 responses (prevents account enumeration).
+        rate_error = check_and_record_rate_limit(f"verify:{email}")
+        if rate_error:
+            return Response(
+                {"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
+        generic_response = Response(
+            {"detail": "Ak účet existuje a nebol overený, odoslali sme nový odkaz."}
+        )
 
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             return generic_response  # Don't leak whether the email exists
-
-        rate_error = check_and_record_rate_limit(f"verify:{user.pk}")
-        if rate_error:
-            return Response({"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         if not user.is_active:
             send_verification_email(user)
@@ -97,18 +107,24 @@ class PasswordResetRequestView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Rate-limit by email before user lookup so all addresses
+        # get consistent 429 responses (prevents account enumeration).
+        rate_error = check_and_record_rate_limit(f"reset:{email}")
+        if rate_error:
+            return Response(
+                {"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
         generic_response = Response(
-            {"detail": "Ak účet s touto adresou existuje, odoslali sme odkaz na obnovenie hesla."}
+            {
+                "detail": "Ak účet s touto adresou existuje, odoslali sme odkaz na obnovenie hesla."
+            }
         )
 
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             return generic_response  # Don't leak whether the email exists
-
-        rate_error = check_and_record_rate_limit(f"reset:{user.pk}")
-        if rate_error:
-            return Response({"error": rate_error}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         if user.is_active:
             send_password_reset_email(user)
@@ -145,7 +161,9 @@ class PasswordResetConfirmView(views.APIView):
         if user is not None and default_token_generator.check_token(user, token):
             user.set_password(new_password)
             user.save()
-            return Response({"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."})
+            return Response(
+                {"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."}
+            )
         else:
             return Response(
                 {"error": "Odkaz na obnovenie hesla je neplatný alebo expiroval."},

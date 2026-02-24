@@ -1,10 +1,12 @@
 """
 Email rate-limiting helpers and shared email-sending functions.
 
-Rate limit rules (per unique key, e.g. "reset:<user.pk>"):
+Rate limit rules (per email-derived key, e.g. "reset:user@example.com"):
   - Must wait 60 seconds between sends (cooldown).
   - After 5 sends since the last reset, the key is blocked for 2 hours.
   - Once a block expires the counter resets automatically.
+  - Rate-limiting is applied before the user lookup so that unknown
+    and known email addresses receive consistent responses (no enumeration).
 """
 
 import logging
@@ -27,14 +29,15 @@ logger = logging.getLogger(__name__)
 # Configuration
 # --------------------------------------------------------------------------- #
 
-COOLDOWN_SECONDS = 60          # minimum gap between consecutive sends
-MAX_ATTEMPTS = 5               # sends before triggering a block
-BLOCK_HOURS = 2                # how long the block lasts
+COOLDOWN_SECONDS = 60  # minimum gap between consecutive sends
+MAX_ATTEMPTS = 5  # sends before triggering a block
+BLOCK_HOURS = 2  # how long the block lasts
 
 
 # --------------------------------------------------------------------------- #
 # Rate limiting
 # --------------------------------------------------------------------------- #
+
 
 def check_and_record_rate_limit(key: str) -> str | None:
     """
@@ -88,8 +91,9 @@ def check_and_record_rate_limit(key: str) -> str | None:
 # Email helpers
 # --------------------------------------------------------------------------- #
 
+
 def _frontend_url() -> str:
-    return os.environ.get("FRONTEND_URL", "http://localhost:5001")
+    return os.environ.get("FRONTEND_URL", "http://localhost:5001").rstrip("/")
 
 
 def send_verification_email(user) -> None:
