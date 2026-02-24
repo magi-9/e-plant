@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-import os
 
 from .models import GlobalSettings
 from .utils import send_verification_email
