@@ -1,11 +1,17 @@
+import logging
+
 from rest_framework import serializers
 from .models import Order, OrderItem
 from products.models import Product
 from decimal import Decimal
 import uuid
 from django.db import transaction
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.conf import settings
+from users.models import GlobalSettings
+from .invoice import generate_invoice_pdf
+
+logger = logging.getLogger(__name__)
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -49,6 +55,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "company_name",
             "ico",
             "dic",
+            "dic_dph",
             "payment_method",
             "notes",
             "items",
@@ -109,20 +116,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     }
                 )
 
-            # Update all product stocks and check for low stock levels
-            low_stock_products = []
+            # Update all product stocks
             for product in products_to_update:
-                if (
-                    product.stock_quantity < product.low_stock_threshold
-                    and not product.low_stock_alert_sent
-                ):
-                    product.low_stock_alert_sent = True
-                    low_stock_products.append(product)
                 product.save()
-
-            # Send low stock emails
-            if low_stock_products:
-                self._send_low_stock_emails(low_stock_products)
 
             # Get user if authenticated
             request = self.context.get("request")
@@ -148,36 +144,51 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             for item_data in items_to_create:
                 OrderItem.objects.create(order=order, **item_data)
 
-            # Send confirmation emails
-            self._send_order_emails(order)
+            # Send confirmation emails after the transaction commits so DB locks
+            # are released before the (potentially slow) PDF generation + SMTP calls.
+            transaction.on_commit(lambda: self._send_order_emails(order))
 
             return order
 
     def _send_order_emails(self, order):
-        """Send confirmation emails to customer and warehouse"""
-        # Customer email
-        customer_subject = f"Potvrdenie objednávky #{order.order_number}"
-        customer_message = self._build_customer_email(order)
-        send_mail(
-            customer_subject,
-            customer_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [order.email],
-            fail_silently=True,
-        )
+        """Send confirmation emails (with PDF invoice) to customer and warehouse."""
+        shop = GlobalSettings.load()
+        try:
+            pdf_bytes = generate_invoice_pdf(order, shop)
+        except Exception:
+            logger.exception(
+                "Failed to generate invoice PDF for order %s", order.order_number
+            )
+            pdf_bytes = None
 
-        # Warehouse email
-        warehouse_subject = f"Nová objednávka #{order.order_number}"
-        warehouse_message = self._build_warehouse_email(order)
-        send_mail(
-            warehouse_subject,
-            warehouse_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [settings.WAREHOUSE_EMAIL],
-            fail_silently=True,
-        )
+        filename = f"faktura_{order.order_number}.pdf"
 
-    def _build_customer_email(self, order):
+        def _make_email(subject, body, to):
+            msg = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to],
+            )
+            if pdf_bytes:
+                msg.attach(filename, pdf_bytes, "application/pdf")
+            return msg
+
+        warehouse_email = shop.warehouse_email or settings.WAREHOUSE_EMAIL
+
+        _make_email(
+            f"Potvrdenie objednávky #{order.order_number}",
+            self._build_customer_email(order, shop),
+            order.email,
+        ).send(fail_silently=True)
+
+        _make_email(
+            f"Nová objednávka #{order.order_number}",
+            self._build_warehouse_email(order),
+            warehouse_email,
+        ).send(fail_silently=True)
+
+    def _build_customer_email(self, order, shop):
         """Build customer confirmation email body"""
         items_text = "\n".join(
             [
@@ -188,22 +199,21 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         payment_info = ""
         if order.payment_method == "bank_transfer":
+            iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
             payment_info = f"""
 PLATOBNÉ ÚDAJE:
-Variabilný symbol: {order.order_number}
-IBAN: SK00 0000 0000 0000 0000 0000
+Variabilný symbol: {order.order_number}{iban_line}
 Suma: {order.total_price}€
-
-Po prijatí platby vám zašleme potvrdenie a objednávku expedujeme.
 """
 
         company_info = ""
         if order.is_company:
+            dic_dph_line = f"\nIČ DPH: {order.dic_dph}" if order.dic_dph else ""
             company_info = f"""
 Fakturačné údaje:
 {order.company_name}
 IČO: {order.ico}
-DIČ: {order.dic}
+DIČ: {order.dic}{dic_dph_line}
 """
 
         return f"""Dobrý deň {order.customer_name},
@@ -235,20 +245,27 @@ Tím DentalShop
 
     def _build_warehouse_email(self, order):
         """Build warehouse notification email body"""
-        items_text = "\n".join(
-            [
-                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
-                for item in order.items.all()
-            ]
-        )
+        item_lines = []
+        for item in order.items.all():
+            remaining = item.product.stock_quantity
+            threshold = item.product.low_stock_threshold
+            warning = (
+                "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
+            )
+            item_lines.append(
+                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}\n"
+                f"    →  zostatok na sklade: {remaining} ks{warning}"
+            )
+        items_text = "\n".join(item_lines)
 
         company_info = ""
         if order.is_company:
+            dic_dph_line = f"\nIČ DPH: {order.dic_dph}" if order.dic_dph else ""
             company_info = f"""
 FIREMNÁ OBJEDNÁVKA:
 {order.company_name}
 IČO: {order.ico}
-DIČ: {order.dic}
+DIČ: {order.dic}{dic_dph_line}
 """
 
         return f"""NOVÁ OBJEDNÁVKA #{order.order_number}
@@ -271,32 +288,6 @@ Stav: {order.get_status_display()}
 Poznámka zákazníka: {order.notes or "Žiadna"}
 """
 
-    def _send_low_stock_emails(self, products):
-        """Send notifications about low stock items to warehouse"""
-        for product in products:
-            subject = f'Upozornenie: Nízky stav zásob pre "{product.name}"'
-            message = f"""Dobrý deň,
-
-Týmto Vás automatický systém upozorňuje na nízky stav zásob produktu:
-
-Produkt: {product.name} (ID: {product.id})
-Aktuálny stav: {product.stock_quantity} ks
-Nastavený limit: {product.low_stock_threshold} ks
-
-Prosím, zvážte včasné doobjednanie tovaru.
-Tento email nebol odoslaný opakovane, kým nedoplníte zásoby nad limit.
-
-S pozdravom,
-Automatický systém DentalShop
-"""
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.WAREHOUSE_EMAIL],
-                fail_silently=True,
-            )
-
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -317,6 +308,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "company_name",
             "ico",
             "dic",
+            "dic_dph",
             "payment_method",
             "status",
             "total_price",

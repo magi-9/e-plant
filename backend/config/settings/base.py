@@ -144,6 +144,8 @@ REST_FRAMEWORK = {
 
 AUTH_USER_MODEL = "users.CustomUser"
 
+# Password reset link validity (seconds) — 30 minutes
+PASSWORD_RESET_TIMEOUT = 30 * 60
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

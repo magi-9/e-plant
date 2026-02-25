@@ -20,6 +20,12 @@ DATABASES = {
 }
 
 # Email configuration for development
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Mailhog catches all outgoing mail — view at http://localhost:8025
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "mailhog")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 1025))
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = ""
+EMAIL_HOST_PASSWORD = ""
 DEFAULT_FROM_EMAIL = "noreply@dentalshop.sk"
 WAREHOUSE_EMAIL = "warehouse@dentalshop.sk"

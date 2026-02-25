@@ -5,6 +5,19 @@ export interface GlobalSettings {
     low_stock_threshold: number;
     currency: string;
     shipping_cost: string;
+    // Company / seller info (printed on invoices)
+    company_name: string;
+    company_ico: string;
+    company_dic: string;
+    company_street: string;
+    company_city: string;
+    company_postal_code: string;
+    company_state: string;
+    company_phone: string;
+    company_email: string;
+    iban: string;
+    bank_name: string;
+    bank_swift: string;
 }
 
 export const getGlobalSettings = async (): Promise<GlobalSettings> => {

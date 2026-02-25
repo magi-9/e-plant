@@ -38,6 +38,24 @@ class GlobalSettings(models.Model):
     currency = models.CharField(max_length=10, default="EUR (€)")
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=5.00)
 
+    # Our company / seller info (used on invoices)
+    company_name = models.CharField(max_length=255, blank=True, default="")
+    company_ico = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="IČO"
+    )
+    company_dic = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="DIČ"
+    )
+    company_street = models.CharField(max_length=255, blank=True, default="")
+    company_city = models.CharField(max_length=100, blank=True, default="")
+    company_postal_code = models.CharField(max_length=20, blank=True, default="")
+    company_state = models.CharField(max_length=100, blank=True, default="")
+    company_phone = models.CharField(max_length=30, blank=True, default="")
+    company_email = models.EmailField(max_length=254, blank=True, default="")
+    iban = models.CharField(max_length=34, blank=True, default="")
+    bank_name = models.CharField(max_length=100, blank=True, default="")
+    bank_swift = models.CharField(max_length=20, blank=True, default="")
+
     class Meta:
         verbose_name = "Global Settings"
         verbose_name_plural = "Global Settings"

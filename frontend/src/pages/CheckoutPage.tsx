@@ -37,6 +37,7 @@ export default function CheckoutPage() {
         company_name: '',
         ico: '',
         dic: '',
+        dic_dph: '',
         payment_method: 'bank_transfer' as 'bank_transfer' | 'card',
         notes: ''
     });
@@ -98,6 +99,7 @@ export default function CheckoutPage() {
                 company_name: formData.company_name,
                 ico: formData.ico,
                 dic: formData.dic,
+                dic_dph: formData.dic_dph,
                 payment_method: formData.payment_method,
                 notes: formData.notes,
                 items: items.map(item => ({
@@ -152,14 +154,11 @@ export default function CheckoutPage() {
                             <p className="text-sm text-gray-700 mb-2">
                                 Variabilný symbol: <span className="font-mono font-bold">{orderNumber}</span>
                             </p>
-                            <p className="text-sm text-gray-700 mb-2">
-                                IBAN: SK00 0000 0000 0000 0000 0000
-                            </p>
                             <p className="text-sm text-gray-700">
                                 Suma: <span className="font-bold">{getTotalPrice().toFixed(2)} €</span>
                             </p>
                             <p className="mt-3 text-xs text-gray-600">
-                                Po prijatí platby vám zašleme potvrdenie emailom.
+                                Podrobné platobné údaje (IBAN, banka) nájdete v priloženej PDF faktúre vo Vašom emaili.
                             </p>
                         </div>
                     )}
@@ -389,6 +388,21 @@ export default function CheckoutPage() {
                                             />
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label htmlFor="dic_dph" className="block text-sm font-medium text-gray-700">
+                                            IČ DPH
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="dic_dph"
+                                            name="dic_dph"
+                                            value={formData.dic_dph}
+                                            onChange={handleChange}
+                                            placeholder="SK1234567890"
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-2 border"
+                                        />
+                                    </div>
                                 </>
                             )}
 
@@ -477,6 +491,7 @@ export default function CheckoutPage() {
                                     <p className="font-medium text-gray-900">{formData.company_name}</p>
                                     <p>IČO: {formData.ico}</p>
                                     {formData.dic && <p>DIČ: {formData.dic}</p>}
+                                    {formData.dic_dph && <p>IČ DPH: {formData.dic_dph}</p>}
                                 </div>
                             )}
 

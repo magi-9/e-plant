@@ -17,6 +17,7 @@ export interface CreateOrderData {
     company_name?: string;
     ico?: string;
     dic?: string;
+    dic_dph?: string;
     payment_method: 'bank_transfer' | 'card';
     notes?: string;
     items: OrderItem[];
@@ -36,6 +37,7 @@ export interface Order {
     company_name: string;
     ico: string;
     dic: string;
+    dic_dph: string;
     payment_method: string;
     status: string;
     total_price: string;

@@ -136,7 +136,7 @@ def send_password_reset_email(user) -> None:
         "Dostali sme žiadosť o obnovenie hesla pre váš účet na DentalShop.\n"
         "Pre nastavenie nového hesla kliknite na nasledujúci odkaz:\n\n"
         f"{reset_url}\n\n"
-        "Odkaz je platný 3 dni.\n\n"
+        "Odkaz je platný 30 minút.\n\n"
         "Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — "
         "vaše heslo zostane nezmenené.\n\n"
         "S pozdravom,\nDentalShop Tím"
