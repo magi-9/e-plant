@@ -40,8 +40,12 @@ class GlobalSettings(models.Model):
 
     # Our company / seller info (used on invoices)
     company_name = models.CharField(max_length=255, blank=True, default="")
-    company_ico = models.CharField(max_length=20, blank=True, default="", verbose_name="IČO")
-    company_dic = models.CharField(max_length=20, blank=True, default="", verbose_name="DIČ")
+    company_ico = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="IČO"
+    )
+    company_dic = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="DIČ"
+    )
     company_street = models.CharField(max_length=255, blank=True, default="")
     company_city = models.CharField(max_length=100, blank=True, default="")
     company_postal_code = models.CharField(max_length=20, blank=True, default="")

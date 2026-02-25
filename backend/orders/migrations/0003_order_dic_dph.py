@@ -11,6 +11,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="order",
             name="dic_dph",
-            field=models.CharField(blank=True, default="", max_length=50, verbose_name="IČ DPH"),
+            field=models.CharField(
+                blank=True, default="", max_length=50, verbose_name="IČ DPH"
+            ),
         ),
     ]

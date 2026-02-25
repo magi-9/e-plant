@@ -16,12 +16,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="globalsettings",
             name="company_ico",
-            field=models.CharField(blank=True, default="", max_length=20, verbose_name="IČO"),
+            field=models.CharField(
+                blank=True, default="", max_length=20, verbose_name="IČO"
+            ),
         ),
         migrations.AddField(
             model_name="globalsettings",
             name="company_dic",
-            field=models.CharField(blank=True, default="", max_length=20, verbose_name="DIČ"),
+            field=models.CharField(
+                blank=True, default="", max_length=20, verbose_name="DIČ"
+            ),
         ),
         migrations.AddField(
             model_name="globalsettings",

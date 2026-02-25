@@ -6,7 +6,9 @@ from decimal import Decimal
 
 
 @pytest.mark.django_db
-def test_low_stock_warning_in_warehouse_order_email(api_client, user_factory, product_factory):
+def test_low_stock_warning_in_warehouse_order_email(
+    api_client, user_factory, product_factory
+):
     """When stock drops below threshold the warehouse order email flags it — no separate alert email."""
     user = user_factory()
     # Initially 10 in stock, threshold is 5
@@ -52,7 +54,9 @@ def test_low_stock_warning_in_warehouse_order_email(api_client, user_factory, pr
 
 
 @pytest.mark.django_db
-def test_order_always_sends_exactly_two_emails(api_client, user_factory, product_factory):
+def test_order_always_sends_exactly_two_emails(
+    api_client, user_factory, product_factory
+):
     """Every order sends exactly 2 emails: 1 customer + 1 warehouse. No separate low-stock email."""
     user = user_factory()
     product = product_factory(

@@ -3,6 +3,7 @@ PDF invoice generator using ReportLab.
 Usage:
     pdf_bytes = generate_invoice_pdf(order, global_settings)
 """
+
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -44,7 +45,9 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     small = _style("ds_small", fontSize=8, textColor=colors.HexColor("#6B7280"))
     bold = _style("ds_bold", fontSize=9, fontName="Helvetica-Bold")
     big_bold = _style("ds_bigbold", fontSize=18, fontName="Helvetica-Bold")
-    right_bold = _style("ds_right_bold", fontSize=9, fontName="Helvetica-Bold", alignment=TA_RIGHT)
+    right_bold = _style(
+        "ds_right_bold", fontSize=9, fontName="Helvetica-Bold", alignment=TA_RIGHT
+    )
     right_normal = _style("ds_right_normal", fontSize=9, alignment=TA_RIGHT)
 
     BLUE = colors.HexColor("#2563EB")
@@ -55,7 +58,9 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     # ── HEADER: seller (left) + invoice meta (right) ─────────────────────
     seller_name = shop_settings.company_name or "DentalShop"
 
-    seller_block = [Paragraph(seller_name, _style("sn", fontSize=13, fontName="Helvetica-Bold"))]
+    seller_block = [
+        Paragraph(seller_name, _style("sn", fontSize=13, fontName="Helvetica-Bold"))
+    ]
     if shop_settings.company_street:
         seller_block.append(Paragraph(shop_settings.company_street, normal))
     addr = f"{shop_settings.company_postal_code} {shop_settings.company_city}".strip()
@@ -84,10 +89,12 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         colWidths=[110 * mm, 60 * mm],
     )
     header_tbl.setStyle(
-        TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-        ])
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ]
+        )
     )
     story.append(header_tbl)
     story.append(Spacer(1, 6 * mm))
@@ -127,7 +134,9 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         if shop_settings.bank_name:
             payment_block.append(Paragraph(f"Banka: {shop_settings.bank_name}", normal))
         if shop_settings.bank_swift:
-            payment_block.append(Paragraph(f"SWIFT: {shop_settings.bank_swift}", normal))
+            payment_block.append(
+                Paragraph(f"SWIFT: {shop_settings.bank_swift}", normal)
+            )
         payment_block.append(
             Paragraph(f"Var. symbol: <b>{order.order_number}</b>", normal)
         )
@@ -143,8 +152,16 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     # ── ITEMS TABLE ──────────────────────────────────────────────────────
     COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
 
-    th_style = _style("th", fontSize=9, fontName="Helvetica-Bold", textColor=colors.white)
-    th_r = _style("th_r", fontSize=9, fontName="Helvetica-Bold", textColor=colors.white, alignment=TA_RIGHT)
+    th_style = _style(
+        "th", fontSize=9, fontName="Helvetica-Bold", textColor=colors.white
+    )
+    th_r = _style(
+        "th_r",
+        fontSize=9,
+        fontName="Helvetica-Bold",
+        textColor=colors.white,
+        alignment=TA_RIGHT,
+    )
     td_r = _style("td_r", fontSize=9, alignment=TA_RIGHT)
 
     rows = [
@@ -157,40 +174,46 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     ]
 
     for item in order.items.all():
-        rows.append([
-            Paragraph(item.product.name, normal),
-            Paragraph(str(item.quantity), td_r),
-            Paragraph(f"{item.price_snapshot:.2f} €", td_r),
-            Paragraph(f"{item.get_subtotal():.2f} €", td_r),
-        ])
+        rows.append(
+            [
+                Paragraph(item.product.name, normal),
+                Paragraph(str(item.quantity), td_r),
+                Paragraph(f"{item.price_snapshot:.2f} €", td_r),
+                Paragraph(f"{item.get_subtotal():.2f} €", td_r),
+            ]
+        )
 
     # Spacer row then total
     rows.append(["", "", "", ""])
-    rows.append([
-        "",
-        "",
-        Paragraph("<b>Celkom:</b>", right_bold),
-        Paragraph(f"<b>{order.total_price:.2f} €</b>", right_bold),
-    ])
+    rows.append(
+        [
+            "",
+            "",
+            Paragraph("<b>Celkom:</b>", right_bold),
+            Paragraph(f"<b>{order.total_price:.2f} €</b>", right_bold),
+        ]
+    )
 
     n_item_rows = len(rows) - 2  # excluding total spacer + total rows
 
     items_tbl = Table(rows, colWidths=COL_W, repeatRows=1)
     items_tbl.setStyle(
-        TableStyle([
-            # Header
-            ("BACKGROUND", (0, 0), (-1, 0), BLUE),
-            ("ROWBACKGROUNDS", (0, 1), (-1, n_item_rows), [colors.white, LIGHT]),
-            # Grid on data rows only
-            ("GRID", (0, 0), (-1, n_item_rows), 0.5, colors.HexColor("#E5E7EB")),
-            # Total separator
-            ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ])
+        TableStyle(
+            [
+                # Header
+                ("BACKGROUND", (0, 0), (-1, 0), BLUE),
+                ("ROWBACKGROUNDS", (0, 1), (-1, n_item_rows), [colors.white, LIGHT]),
+                # Grid on data rows only
+                ("GRID", (0, 0), (-1, n_item_rows), 0.5, colors.HexColor("#E5E7EB")),
+                # Total separator
+                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
     )
     story.append(items_tbl)
 
@@ -200,7 +223,9 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         story.append(Paragraph(f"Poznámka: {order.notes}", small))
 
     story.append(Spacer(1, 10 * mm))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9CA3AF")))
+    story.append(
+        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9CA3AF"))
+    )
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(f"Vystavil: {seller_name}", small))
 

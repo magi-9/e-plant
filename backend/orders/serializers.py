@@ -240,7 +240,9 @@ Tím DentalShop
         for item in order.items.all():
             remaining = item.product.stock_quantity
             threshold = item.product.low_stock_threshold
-            warning = "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
+            warning = (
+                "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
+            )
             item_lines.append(
                 f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
                 f"  →  zostatok na sklade: {remaining} ks{warning}"
