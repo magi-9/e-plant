@@ -12,13 +12,16 @@ services:
 
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:5002
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:5002"
     volumes:
       - ./backend:/app
     ports:
       - "5002:5002"
     depends_on:
       - db
+      - mailhog
     environment:
       - POSTGRES_DB=e_plant_db
       - POSTGRES_USER=postgres
@@ -27,6 +30,14 @@ services:
       - DB_PORT=5432
       - DEBUG=1
       - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - EMAIL_HOST=mailhog
+      - EMAIL_PORT=1025
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
 
   frontend:
     build: ./frontend
