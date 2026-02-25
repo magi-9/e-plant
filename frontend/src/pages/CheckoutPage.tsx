@@ -1,20 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
 import { getMe } from '../api/auth';
+import client from '../api/client';
 import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { items, getTotalPrice, clearCart } = useCartStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderNumber, setOrderNumber] = useState<string>('');
+    const [saveToProfile, setSaveToProfile] = useState(false);
     const isLoggedIn = !!localStorage.getItem('access_token');
 
     const { data: userProfile } = useQuery({
@@ -109,6 +113,28 @@ export default function CheckoutPage() {
             };
 
             const order = await createOrder(orderData);
+
+            if (saveToProfile && isLoggedIn) {
+                try {
+                    await client.patch('/auth/me/', {
+                        first_name: formData.first_name,
+                        last_name: formData.last_name,
+                        phone: formData.phone,
+                        street: formData.street,
+                        city: formData.city,
+                        postal_code: formData.postal_code,
+                        is_company: formData.is_company,
+                        company_name: formData.company_name,
+                        ico: formData.ico,
+                        dic: formData.dic,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['me'] });
+                    toast.success('Údaje boli uložené do profilu.');
+                } catch {
+                    toast.error('Objednávka bola vytvorená, ale profil sa nepodarilo uložiť.');
+                }
+            }
+
             setOrderNumber(order.order_number);
             setOrderSuccess(true);
             clearCart();
@@ -404,6 +430,23 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                 </>
+                            )}
+
+                            {isLoggedIn && (
+                                <div className="border-t border-gray-200 pt-4">
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="save_to_profile"
+                                            checked={saveToProfile}
+                                            onChange={e => setSaveToProfile(e.target.checked)}
+                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <label htmlFor="save_to_profile" className="ml-2 block text-sm text-gray-900">
+                                            Zapamätať údaje pre budúce objednávky
+                                        </label>
+                                    </div>
+                                </div>
                             )}
 
                             <div>
