@@ -5,6 +5,7 @@ Usage:
 """
 
 from io import BytesIO
+from xml.sax.saxutils import escape as esc
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_RIGHT
@@ -59,28 +60,34 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     seller_name = shop_settings.company_name or "DentalShop"
 
     seller_block = [
-        Paragraph(seller_name, _style("sn", fontSize=13, fontName="Helvetica-Bold"))
+        Paragraph(
+            esc(seller_name), _style("sn", fontSize=13, fontName="Helvetica-Bold")
+        )
     ]
     if shop_settings.company_street:
-        seller_block.append(Paragraph(shop_settings.company_street, normal))
+        seller_block.append(Paragraph(esc(shop_settings.company_street), normal))
     addr = f"{shop_settings.company_postal_code} {shop_settings.company_city}".strip()
     if shop_settings.company_state:
         addr += f", {shop_settings.company_state}"
     if addr.strip(",").strip():
-        seller_block.append(Paragraph(addr, normal))
+        seller_block.append(Paragraph(esc(addr), normal))
     if shop_settings.company_phone:
-        seller_block.append(Paragraph(f"Tel.: {shop_settings.company_phone}", normal))
+        seller_block.append(
+            Paragraph(f"Tel.: {esc(shop_settings.company_phone)}", normal)
+        )
     if shop_settings.company_email:
-        seller_block.append(Paragraph(f"Email: {shop_settings.company_email}", normal))
+        seller_block.append(
+            Paragraph(f"Email: {esc(shop_settings.company_email)}", normal)
+        )
     if shop_settings.company_ico:
-        seller_block.append(Paragraph(f"IČO: {shop_settings.company_ico}", normal))
+        seller_block.append(Paragraph(f"IČO: {esc(shop_settings.company_ico)}", normal))
     if shop_settings.company_dic:
-        seller_block.append(Paragraph(f"DIČ: {shop_settings.company_dic}", normal))
+        seller_block.append(Paragraph(f"DIČ: {esc(shop_settings.company_dic)}", normal))
 
     invoice_block = [
         Paragraph("FAKTÚRA", big_bold),
         Spacer(1, 2 * mm),
-        Paragraph(f"Číslo: <b>{order.order_number}</b>", right_normal),
+        Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", right_normal),
         Paragraph(f"Dátum: {order.created_at.strftime('%d.%m.%Y')}", right_normal),
     ]
 
@@ -104,41 +111,43 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     # ── BUYER (left) + PAYMENT (right) ───────────────────────────────────
     buyer_block = [Paragraph("Odberateľ:", small)]
     if order.is_company and order.company_name:
-        buyer_block.append(Paragraph(order.company_name, bold))
+        buyer_block.append(Paragraph(esc(order.company_name), bold))
     buyer_block.append(
         Paragraph(
-            order.customer_name,
+            esc(order.customer_name),
             normal if (order.is_company and order.company_name) else bold,
         )
     )
     if order.street:
-        buyer_block.append(Paragraph(order.street, normal))
+        buyer_block.append(Paragraph(esc(order.street), normal))
     buyer_addr = f"{order.postal_code} {order.city}".strip()
     if buyer_addr.strip():
-        buyer_block.append(Paragraph(buyer_addr, normal))
+        buyer_block.append(Paragraph(esc(buyer_addr), normal))
     if order.is_company:
         if order.ico:
-            buyer_block.append(Paragraph(f"IČO: {order.ico}", normal))
+            buyer_block.append(Paragraph(f"IČO: {esc(order.ico)}", normal))
         if order.dic:
-            buyer_block.append(Paragraph(f"DIČ: {order.dic}", normal))
+            buyer_block.append(Paragraph(f"DIČ: {esc(order.dic)}", normal))
         if order.dic_dph:
-            buyer_block.append(Paragraph(f"IČ DPH: {order.dic_dph}", normal))
-    buyer_block.append(Paragraph(f"Email: {order.email}", normal))
-    buyer_block.append(Paragraph(f"Tel.: {order.phone}", normal))
+            buyer_block.append(Paragraph(f"IČ DPH: {esc(order.dic_dph)}", normal))
+    buyer_block.append(Paragraph(f"Email: {esc(order.email)}", normal))
+    buyer_block.append(Paragraph(f"Tel.: {esc(order.phone)}", normal))
 
     payment_block = [Paragraph("Platba:", small)]
     payment_block.append(Paragraph(order.get_payment_method_display(), bold))
     if order.payment_method == "bank_transfer":
         if shop_settings.iban:
-            payment_block.append(Paragraph(f"IBAN: {shop_settings.iban}", normal))
+            payment_block.append(Paragraph(f"IBAN: {esc(shop_settings.iban)}", normal))
         if shop_settings.bank_name:
-            payment_block.append(Paragraph(f"Banka: {shop_settings.bank_name}", normal))
+            payment_block.append(
+                Paragraph(f"Banka: {esc(shop_settings.bank_name)}", normal)
+            )
         if shop_settings.bank_swift:
             payment_block.append(
-                Paragraph(f"SWIFT: {shop_settings.bank_swift}", normal)
+                Paragraph(f"SWIFT: {esc(shop_settings.bank_swift)}", normal)
             )
         payment_block.append(
-            Paragraph(f"Var. symbol: <b>{order.order_number}</b>", normal)
+            Paragraph(f"Var. symbol: <b>{esc(order.order_number)}</b>", normal)
         )
 
     billing_tbl = Table(
@@ -176,7 +185,7 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     for item in order.items.all():
         rows.append(
             [
-                Paragraph(item.product.name, normal),
+                Paragraph(esc(item.product.name), normal),
                 Paragraph(str(item.quantity), td_r),
                 Paragraph(f"{item.price_snapshot:.2f} €", td_r),
                 Paragraph(f"{item.get_subtotal():.2f} €", td_r),
@@ -220,14 +229,14 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     # ── NOTES & FOOTER ───────────────────────────────────────────────────
     if order.notes:
         story.append(Spacer(1, 6 * mm))
-        story.append(Paragraph(f"Poznámka: {order.notes}", small))
+        story.append(Paragraph(f"Poznámka: {esc(order.notes)}", small))
 
     story.append(Spacer(1, 10 * mm))
     story.append(
         HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9CA3AF"))
     )
     story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(f"Vystavil: {seller_name}", small))
+    story.append(Paragraph(f"Vystavil: {esc(seller_name)}", small))
 
     try:
         doc.build(story)

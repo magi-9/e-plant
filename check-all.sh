@@ -24,11 +24,11 @@ echo "========================================"
 echo " Running all checks against dev stack"
 echo "========================================"
 
-run_step "black (format check)" docker compose exec backend black . --check
+run_step "black (format check)" docker compose exec -T backend black . --check
 
-run_step "flake8" docker compose exec backend flake8 . --max-line-length=120
+run_step "flake8" docker compose exec -T backend flake8 . --max-line-length=120
 
-run_step "pytest" docker compose exec \
+run_step "pytest" docker compose exec -T \
     -e DJANGO_SETTINGS_MODULE=config.settings.dev \
     -e SECRET_KEY=ci-cd-testing-secret-key-123 \
     backend pytest tests/ -v

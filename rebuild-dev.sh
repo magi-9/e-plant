@@ -22,12 +22,25 @@ echo "--- Starting containers ---"
 docker compose up -d
 
 echo ""
-echo "--- Waiting for backend to be ready ---"
-sleep 3
+echo "--- Waiting for database to be ready ---"
+MAX_ATTEMPTS=30
+SLEEP_SECONDS=2
+for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+  if docker compose exec -T db pg_isready -U postgres > /dev/null 2>&1; then
+    echo "Database is ready (attempt $attempt)."
+    break
+  fi
+  if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
+    echo "ERROR: Database did not become ready after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds."
+    exit 1
+  fi
+  echo "Not ready yet ($attempt/$MAX_ATTEMPTS). Retrying in ${SLEEP_SECONDS}s..."
+  sleep "$SLEEP_SECONDS"
+done
 
 echo ""
 echo "--- Applying migrations ---"
-docker compose exec backend python manage.py migrate
+docker compose exec -T backend python manage.py migrate
 
 echo ""
 echo "✅ Dev stack is up! Services:"

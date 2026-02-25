@@ -173,19 +173,21 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 msg.attach(filename, pdf_bytes, "application/pdf")
             return msg
 
+        warehouse_email = shop.warehouse_email or settings.WAREHOUSE_EMAIL
+
         _make_email(
             f"Potvrdenie objednávky #{order.order_number}",
-            self._build_customer_email(order),
+            self._build_customer_email(order, shop),
             order.email,
         ).send(fail_silently=True)
 
         _make_email(
             f"Nová objednávka #{order.order_number}",
             self._build_warehouse_email(order),
-            settings.WAREHOUSE_EMAIL,
+            warehouse_email,
         ).send(fail_silently=True)
 
-    def _build_customer_email(self, order):
+    def _build_customer_email(self, order, shop):
         """Build customer confirmation email body"""
         items_text = "\n".join(
             [
@@ -196,7 +198,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         payment_info = ""
         if order.payment_method == "bank_transfer":
-            shop = GlobalSettings.load()
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
             payment_info = f"""
 PLATOBNÉ ÚDAJE:
