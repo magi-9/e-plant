@@ -27,7 +27,6 @@ export default function RegisterPage() {
     });
     const [emailTouched, setEmailTouched] = useState(false);
     const [passwordTouched, setPasswordTouched] = useState(false);
-    const [submitAttempted, setSubmitAttempted] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
@@ -60,7 +59,6 @@ export default function RegisterPage() {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrorMsg('');
-        setSubmitAttempted(true);
         setEmailTouched(true);
         if (!canSubmit) return;
         mutation.mutate();
