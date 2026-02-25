@@ -33,8 +33,8 @@ class Command(BaseCommand):
 
         self.stdout.write("Seeding products...")
 
-        # Clear existing products
-        Product.objects.all().delete()
+        # Clear existing products that are not referenced by any orders
+        Product.objects.filter(orderitem__isnull=True).delete()
 
         categories = [
             "Implantáty",
