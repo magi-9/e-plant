@@ -28,6 +28,7 @@ export default function RegisterPage() {
     });
     const [emailTouched, setEmailTouched] = useState(false);
     const [passwordTouched, setPasswordTouched] = useState(false);
+    const [submitAttempted, setSubmitAttempted] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
@@ -61,6 +62,8 @@ export default function RegisterPage() {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrorMsg('');
+        setSubmitAttempted(true);
+        setEmailTouched(true);
         if (!canSubmit) return;
         mutation.mutate();
     };
@@ -123,8 +126,13 @@ export default function RegisterPage() {
                                 value={formData.username}
                                 onChange={handleChange}
                                 placeholder="napr. jan.novak"
+                                aria-describedby="username-error"
+                                aria-invalid={submitAttempted && !formData.username.trim() ? true : undefined}
                                 className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
                             />
+                            {submitAttempted && !formData.username.trim() && (
+                                <p id="username-error" className="mt-1 text-xs text-red-600" role="alert">Zadajte používateľské meno.</p>
+                            )}
                         </div>
 
                         {/* Email */}
@@ -148,7 +156,9 @@ export default function RegisterPage() {
                                             ? emailValid
                                                 ? 'border-green-400 focus:border-green-500 focus:ring-green-400'
                                                 : 'border-red-400 focus:border-red-500 focus:ring-red-400'
-                                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                            : emailTouched && !formData.email
+                                                ? 'border-red-400 focus:border-red-500 focus:ring-red-400'
+                                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                                     }`}
                                 />
                                 {emailTouched && formData.email && (
@@ -160,6 +170,9 @@ export default function RegisterPage() {
                                     </span>
                                 )}
                             </div>
+                            {emailTouched && !formData.email && (
+                                <p className="mt-1 text-xs text-red-600" role="alert">Zadajte emailovú adresu.</p>
+                            )}
                             {emailTouched && formData.email && !emailValid && (
                                 <p className="mt-1 text-xs text-red-600">Zadajte platnú emailovú adresu.</p>
                             )}

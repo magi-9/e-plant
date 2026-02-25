@@ -5,7 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
 import { getMe } from '../api/auth';
-import { getGlobalSettings } from '../api/settings';
+import { getPaymentSettings } from '../api/settings';
 import client from '../api/client';
 import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
@@ -30,8 +30,8 @@ export default function CheckoutPage() {
     });
 
     const { data: globalSettings } = useQuery({
-        queryKey: ['globalSettings'],
-        queryFn: getGlobalSettings,
+        queryKey: ['global-settings'],
+        queryFn: getPaymentSettings,
     });
 
     const [step, setStep] = useState<1 | 2>(1);
