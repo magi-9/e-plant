@@ -12,12 +12,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "password")
+        fields = ("id", "email", "password")
 
     def create(self, validated_data):
         user = User.objects.create_user(
-            username=validated_data["username"],
-            email=validated_data.get("email", ""),
+            email=validated_data["email"],
             password=validated_data["password"],
         )
         # Deactivate user until email is verified
@@ -34,7 +33,6 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
-            "username",
             "email",
             "first_name",
             "last_name",
@@ -73,7 +71,6 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            "username",
             "email",
             "first_name",
             "last_name",

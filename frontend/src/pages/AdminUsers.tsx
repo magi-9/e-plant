@@ -7,7 +7,7 @@ export default function AdminUsers() {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [formData, setFormData] = useState({ username: '', email: '', password: '', is_staff: false, is_active: true });
+    const [formData, setFormData] = useState({ email: '', password: '', is_staff: false, is_active: true });
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
 
@@ -28,13 +28,13 @@ export default function AdminUsers() {
 
     const handleAdd = () => {
         setEditingUser(null);
-        setFormData({ username: '', email: '', password: '', is_staff: false, is_active: true });
+        setFormData({ email: '', password: '', is_staff: false, is_active: true });
         setIsModalOpen(true);
     };
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
-        setFormData({ username: user.username, email: user.email, password: '', is_staff: user.is_staff, is_active: user.is_active });
+        setFormData({ email: user.email, password: '', is_staff: user.is_staff, is_active: user.is_active });
         setIsModalOpen(true);
     };
 
@@ -74,7 +74,6 @@ export default function AdminUsers() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Používateľ</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rola</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -88,12 +87,11 @@ export default function AdminUsers() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
                                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <span className="text-blue-600 font-bold text-lg">{user.username.charAt(0).toUpperCase()}</span>
+                                                <span className="text-blue-600 font-bold text-lg">{user.email.charAt(0).toUpperCase()}</span>
                                             </div>
-                                            <div className="ml-4 font-medium text-gray-900">{user.username}</div>
+                                            <div className="ml-4 font-medium text-gray-900">{user.email}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_staff ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
                                             {user.is_staff ? <><ShieldCheckIcon className="h-4 w-4 mr-1" /> Admin</> : "Používateľ"}
@@ -136,12 +134,8 @@ export default function AdminUsers() {
                                         </h3>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Prihlasovacie meno</label>
-                                                <input type="text" required value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" disabled={!!editingUser} />
-                                            </div>
-                                            <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                                <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
+                                                <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" disabled={!!editingUser} />
                                             </div>
                                             {!editingUser && (
                                                 <div>
