@@ -1,6 +1,7 @@
 import { Disclosure } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
 import { useCartStore } from '../store/cartStore';
 
@@ -10,6 +11,8 @@ function classNames(...classes: string[]) {
 
 export default function Navbar() {
     const location = useLocation();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isLoggedIn && isAdmin();
     const totalItems = useCartStore((state) => state.getTotalItems());
@@ -19,10 +22,11 @@ export default function Navbar() {
     ];
 
     const handleLogout = () => {
+        queryClient.clear();
         useCartStore.getState().clearCart();
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        globalThis.location.href = '/login';
+        navigate('/login', { replace: true });
     };
 
     return (

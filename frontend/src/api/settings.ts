@@ -29,3 +29,15 @@ export const updateGlobalSettings = async (data: Partial<GlobalSettings>): Promi
     const response = await client.patch<GlobalSettings>('/auth/settings/', data);
     return response.data;
 };
+
+export interface PaymentSettings {
+    iban: string;
+    bank_name: string;
+    bank_swift: string;
+}
+
+export const getPaymentSettings = async (): Promise<PaymentSettings> => {
+    const response = await client.get<GlobalSettings>('/auth/settings/');
+    const { iban, bank_name, bank_swift } = response.data;
+    return { iban, bank_name, bank_swift };
+};
