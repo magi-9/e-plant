@@ -37,7 +37,9 @@ class Order(models.Model):
     company_name = models.CharField(max_length=255, blank=True)
     ico = models.CharField(max_length=50, blank=True, verbose_name="IČO")
     dic = models.CharField(max_length=50, blank=True, verbose_name="DIČ")
-    dic_dph = models.CharField(max_length=50, blank=True, verbose_name="IČ DPH")
+    dic_dph = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="IČ DPH"
+    )
 
     # Order info
     user = models.ForeignKey(

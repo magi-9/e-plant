@@ -229,5 +229,8 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(f"Vystavil: {seller_name}", small))
 
-    doc.build(story)
-    return buffer.getvalue()
+    try:
+        doc.build(story)
+        return buffer.getvalue()
+    finally:
+        buffer.close()

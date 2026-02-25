@@ -55,7 +55,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="globalsettings",
             name="company_email",
-            field=models.EmailField(blank=True, default=""),
+            field=models.EmailField(blank=True, default="", max_length=254),
         ),
         migrations.AddField(
             model_name="globalsettings",

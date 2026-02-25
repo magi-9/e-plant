@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import serializers
 from .models import Order, OrderItem
 from products.models import Product
@@ -8,6 +10,8 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from users.models import GlobalSettings
 from .invoice import generate_invoice_pdf
+
+logger = logging.getLogger(__name__)
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -151,6 +155,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         try:
             pdf_bytes = generate_invoice_pdf(order, shop)
         except Exception:
+            logger.exception(
+                "Failed to generate invoice PDF for order %s", order.order_number
+            )
             pdf_bytes = None
 
         filename = f"faktura_{order.order_number}.pdf"
@@ -244,8 +251,8 @@ Tím DentalShop
                 "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
             )
             item_lines.append(
-                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
-                f"  →  zostatok na sklade: {remaining} ks{warning}"
+                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}\n"
+                f"    →  zostatok na sklade: {remaining} ks{warning}"
             )
         items_text = "\n".join(item_lines)
 

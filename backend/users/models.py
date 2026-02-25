@@ -51,7 +51,7 @@ class GlobalSettings(models.Model):
     company_postal_code = models.CharField(max_length=20, blank=True, default="")
     company_state = models.CharField(max_length=100, blank=True, default="")
     company_phone = models.CharField(max_length=30, blank=True, default="")
-    company_email = models.EmailField(blank=True, default="")
+    company_email = models.EmailField(max_length=254, blank=True, default="")
     iban = models.CharField(max_length=34, blank=True, default="")
     bank_name = models.CharField(max_length=100, blank=True, default="")
     bank_swift = models.CharField(max_length=20, blank=True, default="")
