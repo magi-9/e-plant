@@ -203,7 +203,7 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         ]
     )
 
-    n_item_rows = len(rows) - 2  # excluding total spacer + total rows
+    n_item_rows = len(rows) - 3  # index of last item row (excludes spacer + total rows)
 
     items_tbl = Table(rows, colWidths=COL_W, repeatRows=1)
     items_tbl.setStyle(

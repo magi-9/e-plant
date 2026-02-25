@@ -5,7 +5,7 @@ from django.core import mail
 from decimal import Decimal
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_customer_email_sent_after_order(api_client, user_factory, product_factory):
     """Test that customer receives email after order creation"""
     user = user_factory()
@@ -54,7 +54,7 @@ def test_customer_email_sent_after_order(api_client, user_factory, product_facto
     assert len(content) > 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_warehouse_email_sent_after_order(api_client, user_factory, product_factory):
     """Test that warehouse receives email after order creation"""
     user = user_factory()
@@ -107,7 +107,7 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     assert len(content) > 0
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_email_sent_regardless_of_payment_status(
     api_client, user_factory, product_factory
 ):

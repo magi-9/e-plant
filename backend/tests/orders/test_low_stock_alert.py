@@ -5,7 +5,7 @@ from django.core import mail
 from decimal import Decimal
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_low_stock_warning_in_warehouse_order_email(
     api_client, user_factory, product_factory
 ):
@@ -53,7 +53,7 @@ def test_low_stock_warning_in_warehouse_order_email(
     assert "NÍZKY STAV" in warehouse_email.body
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_order_always_sends_exactly_two_emails(
     api_client, user_factory, product_factory
 ):

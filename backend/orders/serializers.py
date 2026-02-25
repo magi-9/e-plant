@@ -144,8 +144,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             for item_data in items_to_create:
                 OrderItem.objects.create(order=order, **item_data)
 
-            # Send confirmation emails
-            self._send_order_emails(order)
+            # Send confirmation emails after the transaction commits so DB locks
+            # are released before the (potentially slow) PDF generation + SMTP calls.
+            transaction.on_commit(lambda: self._send_order_emails(order))
 
             return order
 
