@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
 import { getMe } from '../api/auth';
+import { getGlobalSettings } from '../api/settings';
 import client from '../api/client';
 import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
@@ -18,6 +19,7 @@ export default function CheckoutPage() {
     const [error, setError] = useState<string | null>(null);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderNumber, setOrderNumber] = useState<string>('');
+    const [orderTotal, setOrderTotal] = useState<number>(0);
     const [saveToProfile, setSaveToProfile] = useState(false);
     const isLoggedIn = !!localStorage.getItem('access_token');
 
@@ -25,6 +27,11 @@ export default function CheckoutPage() {
         queryKey: ['me'],
         queryFn: getMe,
         enabled: isLoggedIn
+    });
+
+    const { data: globalSettings } = useQuery({
+        queryKey: ['globalSettings'],
+        queryFn: getGlobalSettings,
     });
 
     const [step, setStep] = useState<1 | 2>(1);
@@ -136,6 +143,7 @@ export default function CheckoutPage() {
             }
 
             setOrderNumber(order.order_number);
+            setOrderTotal(getTotalPrice());
             setOrderSuccess(true);
             clearCart();
         } catch (error: unknown) {
@@ -176,15 +184,37 @@ export default function CheckoutPage() {
                     </div>
                     {formData.payment_method === 'bank_transfer' && (
                         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left">
-                            <h3 className="font-semibold text-gray-900 mb-2">Inštrukcie pre platbu:</h3>
-                            <p className="text-sm text-gray-700 mb-2">
-                                Variabilný symbol: <span className="font-mono font-bold">{orderNumber}</span>
-                            </p>
-                            <p className="text-sm text-gray-700">
-                                Suma: <span className="font-bold">{getTotalPrice().toFixed(2)} €</span>
-                            </p>
-                            <p className="mt-3 text-xs text-gray-600">
-                                Podrobné platobné údaje (IBAN, banka) nájdete v priloženej PDF faktúre vo Vašom emaili.
+                            <h3 className="font-semibold text-gray-900 mb-3">Inštrukcie pre platbu:</h3>
+                            <div className="space-y-2 text-sm text-gray-700">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Suma:</span>
+                                    <span className="font-bold text-gray-900">{orderTotal.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Variabilný symbol:</span>
+                                    <span className="font-mono font-bold text-gray-900">{orderNumber}</span>
+                                </div>
+                                {globalSettings?.iban && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">IBAN:</span>
+                                        <span className="font-mono font-bold text-gray-900">{globalSettings.iban}</span>
+                                    </div>
+                                )}
+                                {globalSettings?.bank_name && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Banka:</span>
+                                        <span className="font-medium text-gray-900">{globalSettings.bank_name}</span>
+                                    </div>
+                                )}
+                                {globalSettings?.bank_swift && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">SWIFT/BIC:</span>
+                                        <span className="font-mono font-medium text-gray-900">{globalSettings.bank_swift}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="mt-3 text-xs text-gray-500 border-t border-yellow-200 pt-3">
+                                Faktúra s platobnými údajmi bola zaslaná na váš e-mail.
                             </p>
                         </div>
                     )}
