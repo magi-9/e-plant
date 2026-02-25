@@ -4,8 +4,10 @@ from products.models import Product
 from decimal import Decimal
 import uuid
 from django.db import transaction
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage
 from django.conf import settings
+from users.models import GlobalSettings
+from .invoice import generate_invoice_pdf
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -49,6 +51,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "company_name",
             "ico",
             "dic",
+            "dic_dph",
             "payment_method",
             "notes",
             "items",
@@ -143,28 +146,37 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             return order
 
     def _send_order_emails(self, order):
-        """Send confirmation emails to customer and warehouse"""
-        # Customer email
-        customer_subject = f"Potvrdenie objednávky #{order.order_number}"
-        customer_message = self._build_customer_email(order)
-        send_mail(
-            customer_subject,
-            customer_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [order.email],
-            fail_silently=True,
-        )
+        """Send confirmation emails (with PDF invoice) to customer and warehouse."""
+        shop = GlobalSettings.load()
+        try:
+            pdf_bytes = generate_invoice_pdf(order, shop)
+        except Exception:
+            pdf_bytes = None
 
-        # Warehouse email
-        warehouse_subject = f"Nová objednávka #{order.order_number}"
-        warehouse_message = self._build_warehouse_email(order)
-        send_mail(
-            warehouse_subject,
-            warehouse_message,
-            settings.DEFAULT_FROM_EMAIL,
-            [settings.WAREHOUSE_EMAIL],
-            fail_silently=True,
-        )
+        filename = f"faktura_{order.order_number}.pdf"
+
+        def _make_email(subject, body, to):
+            msg = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to],
+            )
+            if pdf_bytes:
+                msg.attach(filename, pdf_bytes, "application/pdf")
+            return msg
+
+        _make_email(
+            f"Potvrdenie objednávky #{order.order_number}",
+            self._build_customer_email(order),
+            order.email,
+        ).send(fail_silently=True)
+
+        _make_email(
+            f"Nová objednávka #{order.order_number}",
+            self._build_warehouse_email(order),
+            settings.WAREHOUSE_EMAIL,
+        ).send(fail_silently=True)
 
     def _build_customer_email(self, order):
         """Build customer confirmation email body"""
@@ -177,22 +189,22 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         payment_info = ""
         if order.payment_method == "bank_transfer":
+            shop = GlobalSettings.load()
+            iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
             payment_info = f"""
 PLATOBNÉ ÚDAJE:
-Variabilný symbol: {order.order_number}
-IBAN: SK00 0000 0000 0000 0000 0000
+Variabilný symbol: {order.order_number}{iban_line}
 Suma: {order.total_price}€
-
-Po prijatí platby vám zašleme potvrdenie a objednávku expedujeme.
 """
 
         company_info = ""
         if order.is_company:
+            dic_dph_line = f"\nIČ DPH: {order.dic_dph}" if order.dic_dph else ""
             company_info = f"""
 Fakturačné údaje:
 {order.company_name}
 IČO: {order.ico}
-DIČ: {order.dic}
+DIČ: {order.dic}{dic_dph_line}
 """
 
         return f"""Dobrý deň {order.customer_name},
@@ -237,11 +249,12 @@ Tím DentalShop
 
         company_info = ""
         if order.is_company:
+            dic_dph_line = f"\nIČ DPH: {order.dic_dph}" if order.dic_dph else ""
             company_info = f"""
 FIREMNÁ OBJEDNÁVKA:
 {order.company_name}
 IČO: {order.ico}
-DIČ: {order.dic}
+DIČ: {order.dic}{dic_dph_line}
 """
 
         return f"""NOVÁ OBJEDNÁVKA #{order.order_number}
@@ -284,6 +297,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "company_name",
             "ico",
             "dic",
+            "dic_dph",
             "payment_method",
             "status",
             "total_price",

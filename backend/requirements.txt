@@ -13,3 +13,4 @@ black
 flake8
 Pillow
 django-cors-headers
+reportlab

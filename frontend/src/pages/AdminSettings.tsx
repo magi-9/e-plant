@@ -12,7 +12,19 @@ export default function AdminSettings() {
         warehouse_email: 'warehouse@dentalshop.sk',
         low_stock_threshold: 5,
         currency: 'EUR (€)',
-        shipping_cost: '5.00'
+        shipping_cost: '5.00',
+        company_name: '',
+        company_ico: '',
+        company_dic: '',
+        company_street: '',
+        company_city: '',
+        company_postal_code: '',
+        company_state: '',
+        company_phone: '',
+        company_email: '',
+        iban: '',
+        bank_name: '',
+        bank_swift: '',
     });
 
     useEffect(() => {
@@ -79,6 +91,65 @@ export default function AdminSettings() {
                             <div className="mt-4">
                                 <label className="block text-sm font-medium text-gray-700">Cena dopravy</label>
                                 <input type="number" step="0.01" value={formData.shipping_cost} onChange={e => setFormData({ ...formData, shipping_cost: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Naša spoločnosť (faktúry)</h3>
+                            <p className="text-sm text-gray-500 mb-4">Tieto údaje sa zobrazujú na automaticky generovaných PDF faktúrach.</p>
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700">Názov spoločnosti</label>
+                                    <input type="text" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">IČO</label>
+                                    <input type="text" value={formData.company_ico} onChange={e => setFormData({ ...formData, company_ico: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">DIČ</label>
+                                    <input type="text" value={formData.company_dic} onChange={e => setFormData({ ...formData, company_dic: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>
+                                    <input type="text" value={formData.company_street} onChange={e => setFormData({ ...formData, company_street: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Mesto</label>
+                                    <input type="text" value={formData.company_city} onChange={e => setFormData({ ...formData, company_city: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">PSČ</label>
+                                    <input type="text" value={formData.company_postal_code} onChange={e => setFormData({ ...formData, company_postal_code: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Štát</label>
+                                    <input type="text" value={formData.company_state} onChange={e => setFormData({ ...formData, company_state: e.target.value })} placeholder="Slovensko" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Telefón</label>
+                                    <input type="text" value={formData.company_phone} onChange={e => setFormData({ ...formData, company_phone: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Email spoločnosti</label>
+                                    <input type="email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                            </div>
+
+                            <h4 className="text-sm font-semibold text-gray-700 mt-5 mb-3">Bankové údaje</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700">IBAN</label>
+                                    <input type="text" value={formData.iban} onChange={e => setFormData({ ...formData, iban: e.target.value })} placeholder="SK00 0000 0000 0000 0000 0000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Názov banky</label>
+                                    <input type="text" value={formData.bank_name} onChange={e => setFormData({ ...formData, bank_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">SWIFT / BIC</label>
+                                    <input type="text" value={formData.bank_swift} onChange={e => setFormData({ ...formData, bank_swift: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                                </div>
                             </div>
                         </div>
 
