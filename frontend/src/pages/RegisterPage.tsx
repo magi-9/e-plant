@@ -21,14 +21,12 @@ function Requirement({ met, label }: { met: boolean; label: string }) {
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
-        username: '',
         email: '',
         password: '',
         confirmPassword: ''
     });
     const [emailTouched, setEmailTouched] = useState(false);
     const [passwordTouched, setPasswordTouched] = useState(false);
-    const [submitAttempted, setSubmitAttempted] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
@@ -36,11 +34,10 @@ export default function RegisterPage() {
     const hasMinLength = formData.password.length >= 8;
     const hasNumber = /\d/.test(formData.password);
     const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
-    const canSubmit = emailValid && hasMinLength && hasNumber && passwordsMatch && formData.username.trim() !== '';
+    const canSubmit = emailValid && hasMinLength && hasNumber && passwordsMatch;
 
     const mutation = useMutation({
         mutationFn: () => register({
-            username: formData.username,
             email: formData.email,
             password: formData.password
         }),
@@ -51,7 +48,7 @@ export default function RegisterPage() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const err = error as any;
             console.error('Registration failed', err);
-            setErrorMsg(err.response?.data?.username?.[0] || 'Registrácia zlyhala. Skúste to prosím znova.');
+            setErrorMsg(err.response?.data?.email?.[0] || 'Registrácia zlyhala. Skúste to prosím znova.');
         }
     });
 
@@ -62,7 +59,6 @@ export default function RegisterPage() {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrorMsg('');
-        setSubmitAttempted(true);
         setEmailTouched(true);
         if (!canSubmit) return;
         mutation.mutate();
@@ -111,29 +107,6 @@ export default function RegisterPage() {
                                 <p className="text-sm text-red-700">{errorMsg}</p>
                             </div>
                         )}
-
-                        {/* Username */}
-                        <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                                Používateľské meno <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                required
-                                autoComplete="username"
-                                value={formData.username}
-                                onChange={handleChange}
-                                placeholder="napr. jan.novak"
-                                aria-describedby="username-error"
-                                aria-invalid={submitAttempted && !formData.username.trim() ? true : undefined}
-                                className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
-                            />
-                            {submitAttempted && !formData.username.trim() && (
-                                <p id="username-error" className="mt-1 text-xs text-red-600" role="alert">Zadajte používateľské meno.</p>
-                            )}
-                        </div>
 
                         {/* Email */}
                         <div>

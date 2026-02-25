@@ -8,7 +8,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         # Add custom claims
-        token["username"] = user.username
+        token["email"] = user.email
         token["is_staff"] = user.is_staff
         token["is_superuser"] = user.is_superuser
 

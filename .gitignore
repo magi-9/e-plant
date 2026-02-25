@@ -25,3 +25,7 @@ build/
 
 *.md
 *.txt
+
+# dev sh files
+check-all.sh
+rebuild-dev.sh

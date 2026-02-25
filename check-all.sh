@@ -24,6 +24,8 @@ echo "========================================"
 echo " Running all checks against dev stack"
 echo "========================================"
 
+run_step "eslint" docker compose exec -T frontend npm run lint
+
 run_step "black (format check)" docker compose exec -T backend black . --check
 
 run_step "flake8" docker compose exec -T backend flake8 . --max-line-length=120

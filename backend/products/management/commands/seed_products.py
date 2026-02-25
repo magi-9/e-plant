@@ -14,16 +14,20 @@ class Command(BaseCommand):
         self.stdout.write("Seeding users...")
 
         # Create Admin
-        if not User.objects.filter(username="admin").exists():
-            User.objects.create_superuser("admin", "admin@example.com", "admin")
-            self.stdout.write(self.style.SUCCESS("Created admin user (admin/admin)"))
+        if not User.objects.filter(email="admin@example.com").exists():
+            User.objects.create_superuser("admin@example.com", "admin")
+            self.stdout.write(
+                self.style.SUCCESS("Created admin user (admin@example.com/admin)")
+            )
         else:
             self.stdout.write("Admin user already exists")
 
         # Create Client
-        if not User.objects.filter(username="client").exists():
-            User.objects.create_user("client", "client@example.com", "client")
-            self.stdout.write(self.style.SUCCESS("Created client user (client/client)"))
+        if not User.objects.filter(email="client@example.com").exists():
+            User.objects.create_user("client@example.com", "client")
+            self.stdout.write(
+                self.style.SUCCESS("Created client user (client@example.com/client)")
+            )
         else:
             self.stdout.write("Client user already exists")
 

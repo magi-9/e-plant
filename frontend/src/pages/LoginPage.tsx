@@ -5,13 +5,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
 
 export default function LoginPage() {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
     const [errorMsg, setErrorMsg] = useState('');
 
     const mutation = useMutation({
-        mutationFn: () => login(username, password),
+        mutationFn: () => login(email, password),
         onSuccess: (data) => {
             localStorage.setItem('access_token', data.access);
             localStorage.setItem('refresh_token', data.refresh);
@@ -19,7 +19,7 @@ export default function LoginPage() {
         },
         onError: (error: Error) => {
             console.error('Login failed', error);
-            setErrorMsg('Invalid username or password');
+            setErrorMsg('Nesprávny email alebo heslo');
         }
     });
 
@@ -51,23 +51,23 @@ export default function LoginPage() {
                         <div className="rounded-md bg-red-50 p-4">
                             <div className="flex">
                                 <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-red-800">Nesprávne používateľské meno alebo heslo</h3>
+                                    <h3 className="text-sm font-medium text-red-800">Nesprávny email alebo heslo</h3>
                                 </div>
                             </div>
                         </div>
                     )}
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
-                            <label htmlFor="username" className="sr-only">Používateľské meno</label>
+                            <label htmlFor="email" className="sr-only">Email</label>
                             <input
-                                id="username"
-                                name="username"
-                                type="text"
+                                id="email"
+                                name="email"
+                                type="email"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                placeholder="Používateľské meno"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
                         <div>

@@ -28,11 +28,22 @@ python manage.py migrate
 python manage.py collectstatic --noinput --clear
 
 # Create superuser if env variables exist
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ]; then
-    echo "Creating admin user $DJANGO_SUPERUSER_USERNAME"
+if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "Creating admin user $DJANGO_SUPERUSER_EMAIL"
     python manage.py createsuperuser --noinput || echo "Superuser might already exist"
-    # Ensure superuser password is set to default from env
-    python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); u = User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').first(); u and u.set_password('$DJANGO_SUPERUSER_PASSWORD'); u and u.save()" || echo "Failed to set password"
+    # Ensure superuser password is set — env vars are read inside Python, never interpolated into code
+    python manage.py shell -c "
+import os
+from django.contrib.auth import get_user_model
+User = get_user_model()
+email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
+password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+if email and password:
+    u = User.objects.filter(email=email).first()
+    if u:
+        u.set_password(password)
+        u.save()
+" || echo "Failed to set password"
 fi
 
 # start gunicorn

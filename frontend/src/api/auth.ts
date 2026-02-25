@@ -5,14 +5,13 @@ export interface LoginResponse {
     refresh: string;
 }
 
-export const login = async (username: string, password: string): Promise<LoginResponse> => {
-    const response = await client.post<LoginResponse>('/auth/login/', { username, password });
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
+    const response = await client.post<LoginResponse>('/auth/login/', { email, password });
     return response.data;
 };
 
 export interface RegisterData {
-    username: string;
-    email?: string;
+    email: string;
     password: string;
 }
 
