@@ -16,14 +16,18 @@ class Command(BaseCommand):
         # Create Admin
         if not User.objects.filter(email="admin@example.com").exists():
             User.objects.create_superuser("admin@example.com", "admin")
-            self.stdout.write(self.style.SUCCESS("Created admin user (admin@example.com/admin)"))
+            self.stdout.write(
+                self.style.SUCCESS("Created admin user (admin@example.com/admin)")
+            )
         else:
             self.stdout.write("Admin user already exists")
 
         # Create Client
         if not User.objects.filter(email="client@example.com").exists():
             User.objects.create_user("client@example.com", "client")
-            self.stdout.write(self.style.SUCCESS("Created client user (client@example.com/client)"))
+            self.stdout.write(
+                self.style.SUCCESS("Created client user (client@example.com/client)")
+            )
         else:
             self.stdout.write("Client user already exists")
 
