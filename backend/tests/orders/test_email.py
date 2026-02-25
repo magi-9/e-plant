@@ -80,8 +80,8 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     assert response.status_code == status.HTTP_201_CREATED
 
     # Check that warehouse email was sent
-    # We expect 3 emails: 1 for customer order, 1 for warehouse order, 1 for warehouse low stock warning
-    assert len(mail.outbox) == 3
+    # We expect 2 emails: 1 for customer, 1 for warehouse (low-stock info is inline in warehouse email)
+    assert len(mail.outbox) == 2
     warehouse_emails = [
         e
         for e in mail.outbox

@@ -109,20 +109,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     }
                 )
 
-            # Update all product stocks and check for low stock levels
-            low_stock_products = []
+            # Update all product stocks
             for product in products_to_update:
-                if (
-                    product.stock_quantity < product.low_stock_threshold
-                    and not product.low_stock_alert_sent
-                ):
-                    product.low_stock_alert_sent = True
-                    low_stock_products.append(product)
                 product.save()
-
-            # Send low stock emails
-            if low_stock_products:
-                self._send_low_stock_emails(low_stock_products)
 
             # Get user if authenticated
             request = self.context.get("request")
@@ -235,12 +224,16 @@ Tím DentalShop
 
     def _build_warehouse_email(self, order):
         """Build warehouse notification email body"""
-        items_text = "\n".join(
-            [
+        item_lines = []
+        for item in order.items.all():
+            remaining = item.product.stock_quantity
+            threshold = item.product.low_stock_threshold
+            warning = "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
+            item_lines.append(
                 f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
-                for item in order.items.all()
-            ]
-        )
+                f"  →  zostatok na sklade: {remaining} ks{warning}"
+            )
+        items_text = "\n".join(item_lines)
 
         company_info = ""
         if order.is_company:
@@ -270,32 +263,6 @@ Stav: {order.get_status_display()}
 
 Poznámka zákazníka: {order.notes or "Žiadna"}
 """
-
-    def _send_low_stock_emails(self, products):
-        """Send notifications about low stock items to warehouse"""
-        for product in products:
-            subject = f'Upozornenie: Nízky stav zásob pre "{product.name}"'
-            message = f"""Dobrý deň,
-
-Týmto Vás automatický systém upozorňuje na nízky stav zásob produktu:
-
-Produkt: {product.name} (ID: {product.id})
-Aktuálny stav: {product.stock_quantity} ks
-Nastavený limit: {product.low_stock_threshold} ks
-
-Prosím, zvážte včasné doobjednanie tovaru.
-Tento email nebol odoslaný opakovane, kým nedoplníte zásoby nad limit.
-
-S pozdravom,
-Automatický systém DentalShop
-"""
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.WAREHOUSE_EMAIL],
-                fail_silently=True,
-            )
 
 
 class OrderSerializer(serializers.ModelSerializer):

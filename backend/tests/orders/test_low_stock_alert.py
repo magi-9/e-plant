@@ -6,8 +6,8 @@ from decimal import Decimal
 
 
 @pytest.mark.django_db
-def test_low_stock_alert_sent(api_client, user_factory, product_factory):
-    """Test that warehouse receives a low stock alert email when stock falls below threshold"""
+def test_low_stock_warning_in_warehouse_order_email(api_client, user_factory, product_factory):
+    """When stock drops below threshold the warehouse order email flags it — no separate alert email."""
     user = user_factory()
     # Initially 10 in stock, threshold is 5
     product = product_factory(
@@ -36,35 +36,34 @@ def test_low_stock_alert_sent(api_client, user_factory, product_factory):
 
     assert response.status_code == status.HTTP_201_CREATED
 
-    # Check that emails were sent (1 customer, 1 warehouse for order, 1 warehouse for low stock)
-    assert len(mail.outbox) == 3
+    # Only 2 emails: 1 customer + 1 warehouse order (no separate low-stock email)
+    assert len(mail.outbox) == 2
 
+    # No separate low-stock subject email
     low_stock_email = [
         email for email in mail.outbox if "Nízky stav zásob" in email.subject
     ]
-    assert len(low_stock_email) == 1
-    assert "Upozornenie: Nízky stav zásob" in low_stock_email[0].subject
+    assert len(low_stock_email) == 0
 
-    product.refresh_from_db()
-    assert product.low_stock_alert_sent is True
+    # Warehouse order email contains the stock warning inline
+    warehouse_email = next(e for e in mail.outbox if "Nová objednávka" in e.subject)
+    assert "zostatok na sklade: 4 ks" in warehouse_email.body
+    assert "NÍZKY STAV" in warehouse_email.body
 
 
 @pytest.mark.django_db
-def test_low_stock_alert_not_sent_again(api_client, user_factory, product_factory):
-    """Test that low stock alert is not sent repeatedly if flag is already True"""
+def test_order_always_sends_exactly_two_emails(api_client, user_factory, product_factory):
+    """Every order sends exactly 2 emails: 1 customer + 1 warehouse. No separate low-stock email."""
     user = user_factory()
-    # Initially 6 in stock, threshold is 10, flag is already True
     product = product_factory(
         name="Test Product",
         price=Decimal("100.00"),
         stock_quantity=6,
         low_stock_threshold=10,
-        low_stock_alert_sent=True,
     )
 
     api_client.force_authenticate(user=user)
 
-    # Ordering 1 item will bring stock to 5, which is still < 10, but flag is True
     order_data = {
         "customer_name": "Test User",
         "email": "test@example.com",
@@ -79,12 +78,10 @@ def test_low_stock_alert_not_sent_again(api_client, user_factory, product_factor
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-
-    # Check that only order emails were sent (1 customer, 1 warehouse for order), no low stock email
     assert len(mail.outbox) == 2
 
-    low_stock_email = [email for email in mail.outbox if "Nízky" in email.subject]
-    assert len(low_stock_email) == 0
+    subjects = [e.subject for e in mail.outbox]
+    assert not any("Nízky" in s for s in subjects)
 
 
 @pytest.mark.django_db
