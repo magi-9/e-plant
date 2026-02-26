@@ -17,6 +17,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import ComplaintsPage from './pages/ComplaintsPage';
 import WithdrawalPage from './pages/WithdrawalPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
@@ -39,6 +40,7 @@ function App() {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/orders" element={<OrdersPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/admin" element={<AdminDashboard />} />

@@ -153,7 +153,6 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     s_th_r = _s("th_r", bold=True, size=9, color=colors.white, align=TA_RIGHT)
     s_td_r = _s("td_r", align=TA_RIGHT)
     s_total_r = _s("total_r", bold=True, size=11, align=TA_RIGHT)
-    s_footer = _s("footer", size=8, color=_GRAY)
 
     seller_name = shop_settings.company_name or "E-Plant"
     story = []
@@ -343,14 +342,6 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         story.append(Paragraph("Poznámka:", s_label))
         story.append(Spacer(1, 1 * mm))
         story.append(Paragraph(esc(order.notes), s_normal))
-
-    # ── FOOTER ────────────────────────────────────────────────────────────
-    story.append(Spacer(1, 10 * mm))
-    story.append(
-        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#D1D5DB"))
-    )
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(f"Faktúru vystavil: {esc(seller_name)}", s_footer))
 
     doc.build(story)
     pdf = buffer.getvalue()

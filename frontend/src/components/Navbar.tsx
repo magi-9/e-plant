@@ -99,12 +99,26 @@ export default function Navbar() {
                                             </Link>
                                         )}
                                         {!userIsAdmin && (
-                                            <Link
-                                                to="/profile"
-                                                className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                                            >
-                                                Profil
-                                            </Link>
+                                            <>
+                                                <Link
+                                                    to="/orders"
+                                                    className={classNames(
+                                                        location.pathname === '/orders' ? 'bg-blue-950 text-white' : 'text-blue-100 hover:bg-blue-700 hover:text-white',
+                                                        'rounded-md px-3 py-2 text-sm font-medium transition-colors'
+                                                    )}
+                                                >
+                                                    Objednávky
+                                                </Link>
+                                                <Link
+                                                    to="/profile"
+                                                    className={classNames(
+                                                        location.pathname === '/profile' ? 'bg-blue-950 text-white' : 'text-blue-100 hover:bg-blue-700 hover:text-white',
+                                                        'rounded-md px-3 py-2 text-sm font-medium transition-colors'
+                                                    )}
+                                                >
+                                                    Profil
+                                                </Link>
+                                            </>
                                         )}
                                         <button
                                             onClick={handleLogout}
@@ -151,13 +165,22 @@ export default function Navbar() {
                                 </Disclosure.Button>
                             )}
                             {isLoggedIn && !userIsAdmin && (
-                                <Disclosure.Button
-                                    as={Link}
-                                    to="/profile"
-                                    className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
-                                >
-                                    Profil
-                                </Disclosure.Button>
+                                <>
+                                    <Disclosure.Button
+                                        as={Link}
+                                        to="/orders"
+                                        className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
+                                    >
+                                        Objednávky
+                                    </Disclosure.Button>
+                                    <Disclosure.Button
+                                        as={Link}
+                                        to="/profile"
+                                        className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
+                                    >
+                                        Profil
+                                    </Disclosure.Button>
+                                </>
                             )}
                         </div>
                     </Disclosure.Panel>
