@@ -7,24 +7,51 @@ import client from '../api/client';
 import toast from 'react-hot-toast';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
+const STATUS_LABELS: Record<string, string> = {
+    new: 'Nová',
+    awaiting_payment: 'Čaká na platbu',
+    paid: 'Zaplatená',
+    shipped: 'Odoslaná',
+    cancelled: 'Zrušená',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+    new: 'bg-blue-100 text-blue-800',
+    awaiting_payment: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    shipped: 'bg-indigo-100 text-indigo-800',
+    cancelled: 'bg-red-100 text-red-800',
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+    bank_transfer: 'Bankový prevod',
+    card: 'Karta',
+};
+
+const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
 export default function ProfilePage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
+    const isUserAdmin = isAdmin();
     useEffect(() => {
-        if (isAdmin()) navigate('/admin', { replace: true });
-    }, [navigate]);
+        if (isUserAdmin) navigate('/admin', { replace: true });
+    }, [navigate, isUserAdmin]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
     const { data: userProfile, isLoading } = useQuery({
         queryKey: ['me'],
         queryFn: getMe,
+        enabled: !isUserAdmin,
     });
 
-    const { data: myOrders, isLoading: ordersLoading } = useQuery({
+    const { data: myOrders, isLoading: ordersLoading, isError: ordersError } = useQuery({
         queryKey: ['my-orders'],
         queryFn: getMyOrders,
+        enabled: !isUserAdmin,
     });
 
     const [formData, setFormData] = useState({
@@ -102,32 +129,6 @@ export default function ProfilePage() {
     };
 
     if (isLoading) return <div className="p-8 text-center text-gray-500">Načítavam dáta...</div>;
-
-    const statusLabels: Record<string, string> = {
-        new: 'Nová',
-        awaiting_payment: 'Čaká na platbu',
-        paid: 'Zaplatená',
-        shipped: 'Odoslaná',
-        cancelled: 'Zrušená',
-    };
-
-    const statusColors: Record<string, string> = {
-        new: 'bg-blue-100 text-blue-800',
-        awaiting_payment: 'bg-yellow-100 text-yellow-800',
-        paid: 'bg-green-100 text-green-800',
-        shipped: 'bg-indigo-100 text-indigo-800',
-        cancelled: 'bg-red-100 text-red-800',
-    };
-
-    const paymentLabels: Record<string, string> = {
-        bank_transfer: 'Bankový prevod',
-        card: 'Karta',
-    };
-
-    const formatDate = (iso: string) =>
-        new Date(iso).toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-    const toggleOrder = (id: number) => setExpandedOrder(prev => (prev === id ? null : id));
 
     return (
         <div className="min-h-screen bg-gray-50 py-12">
@@ -215,6 +216,10 @@ export default function ProfilePage() {
 
                     {ordersLoading ? (
                         <div className="text-center text-gray-500 py-8">Načítavam objednávky...</div>
+                    ) : ordersError ? (
+                        <div className="bg-white shadow rounded-lg p-8 text-center text-red-600">
+                            Nepodarilo sa načítať objednávky. Skúste to znova neskôr.
+                        </div>
                     ) : !myOrders || myOrders.length === 0 ? (
                         <div className="bg-white shadow rounded-lg p-8 text-center text-gray-500">
                             <svg className="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -229,15 +234,17 @@ export default function ProfilePage() {
                                     {/* Order header row */}
                                     <button
                                         type="button"
-                                        onClick={() => toggleOrder(order.id)}
+                                        onClick={() => setExpandedOrder(prev => (prev === order.id ? null : order.id))}
+                                        aria-expanded={expandedOrder === order.id}
+                                        aria-controls={`order-panel-${order.id}`}
                                         className="w-full text-left px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-gray-50 transition-colors"
                                     >
                                         <div className="flex flex-wrap items-center gap-3">
                                             <span className="font-mono font-semibold text-gray-900 text-sm">#{order.order_number}</span>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[order.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                                                {statusLabels[order.status] ?? order.status}
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-700'}`}>
+                                                {STATUS_LABELS[order.status] ?? order.status}
                                             </span>
-                                            <span className="text-xs text-gray-500">{paymentLabels[order.payment_method] ?? order.payment_method}</span>
+                                            <span className="text-xs text-gray-500">{PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</span>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <span className="text-sm text-gray-500">{formatDate(order.created_at)}</span>
@@ -251,7 +258,7 @@ export default function ProfilePage() {
 
                                     {/* Expandable items */}
                                     {expandedOrder === order.id && (
-                                        <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
+                                        <div id={`order-panel-${order.id}`} className="border-t border-gray-100 px-5 py-4 bg-gray-50">
                                             <table className="w-full text-sm">
                                                 <thead>
                                                     <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-200 pb-1">
