@@ -14,3 +14,4 @@ flake8
 Pillow
 django-cors-headers
 reportlab==4.4.10
+qrcode[pil]
