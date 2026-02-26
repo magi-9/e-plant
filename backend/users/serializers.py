@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from .models import GlobalSettings
-from .utils import send_verification_email
+from .utils import send_verification_email, _translate_password_errors
 
 User = get_user_model()
 
@@ -13,6 +15,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "password")
+
+    def validate_password(self, value):
+        """Validate password using Django's validators."""
+        try:
+            # Create a temporary user object for validation context
+            temp_user = User(email=self.initial_data.get("email"))
+            validate_password(value, user=temp_user)
+        except ValidationError as e:
+            raise serializers.ValidationError(_translate_password_errors(e))
+        return value
 
     def create(self, validated_data):
         user = User.objects.create_user(

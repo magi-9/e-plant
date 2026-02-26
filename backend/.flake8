@@ -2,3 +2,6 @@
 max-line-length = 120
 extend-ignore = E203
 exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,migrations
+per-file-ignores =
+    orders/serializers.py:E501
+    users/utils.py:E501
