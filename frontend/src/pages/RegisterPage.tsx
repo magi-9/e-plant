@@ -32,7 +32,7 @@ export default function RegisterPage() {
 
     const emailValid = EMAIL_REGEX.test(formData.email);
     const hasMinLength = formData.password.length >= 8;
-    const hasNumber = /\d/.test(formData.password);
+    const hasNumber = !/^\d+$/.test(formData.password);
     const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
     const canSubmit = emailValid && hasMinLength && hasNumber && passwordsMatch;
 
@@ -171,7 +171,7 @@ export default function RegisterPage() {
                             {(passwordTouched || formData.password) && (
                                 <ul className="mt-3 space-y-1 pl-1">
                                     <Requirement met={hasMinLength} label="Aspoň 8 znakov" />
-                                    <Requirement met={hasNumber} label="Aspoň jedna číslica" />
+                                    <Requirement met={hasNumber} label="Nesmie obsahovať iba číslice" />
                                 </ul>
                             )}
                         </div>

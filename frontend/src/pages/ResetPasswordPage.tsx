@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
     const [success, setSuccess] = useState(false);
 
     const hasMinLength = newPassword.length >= 8;
-    const hasNumber = /\d/.test(newPassword);
+    const hasNumber = !/^\d+$/.test(newPassword);
     const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
     const canSubmit = hasMinLength && hasNumber && passwordsMatch;
 
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
                                 {(passwordTouched || newPassword) && (
                                     <ul className="mt-3 space-y-1 pl-1">
                                         <Requirement met={hasMinLength} label="Aspoň 8 znakov" />
-                                        <Requirement met={hasNumber} label="Aspoň jedna číslica" />
+                                        <Requirement met={hasNumber} label="Nesmie obsahovať iba číslice" />
                                     </ul>
                                 )}
                             </div>

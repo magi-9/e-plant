@@ -96,6 +96,22 @@ def _frontend_url() -> str:
     return os.environ.get("FRONTEND_URL", "http://localhost:5001").rstrip("/")
 
 
+_PASSWORD_ERRORS_SK = {
+    "password_too_short": "Heslo je príliš krátke. Musí mať aspoň 8 znakov.",
+    "password_too_common": "Toto heslo je príliš bežné.",
+    "password_entirely_numeric": "Heslo nesmí obsahovať iba číslice.",
+    "password_too_similar": "Heslo je príliš podobné Vaším osobným údajom.",
+}
+
+
+def _translate_password_errors(exc) -> str:
+    """Return a Slovak string summarising Django password ValidationError(s)."""
+    messages = [
+        _PASSWORD_ERRORS_SK.get(err.code, err.message) for err in exc.error_list
+    ]
+    return " ".join(messages)
+
+
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
     return f"""<!DOCTYPE html>

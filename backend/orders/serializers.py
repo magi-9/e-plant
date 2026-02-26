@@ -8,6 +8,7 @@ import uuid
 from django.db import transaction
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
+from django.utils.html import escape
 from users.models import GlobalSettings
 from .invoice import generate_invoice_pdf
 
@@ -293,23 +294,24 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
 
     def _build_customer_email_html(self, order, shop) -> str:
         """Build HTML version of customer order confirmation email."""
-        item_rows = ""
+        row_parts = []
         for i, item in enumerate(order.items.select_related("product").all()):
             bg = "#ffffff" if i % 2 == 0 else "#f8fafc"
-            item_rows += (
+            row_parts.append(
                 f'<tr style="background:{bg};">'
-                f'<td style="padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9;">{item.product.name}</td>'
+                f'<td style="padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9;">{escape(item.product.name)}</td>'
                 f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
                 f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:right;border-bottom:1px solid #f1f5f9;">{item.price_snapshot}&nbsp;&euro;</td>'
                 f'<td style="padding:10px 12px;font-size:14px;font-weight:600;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">{item.get_subtotal()}&nbsp;&euro;</td>'
                 "</tr>"
             )
+        item_rows = "".join(row_parts)
 
         payment_block = ""
         if order.payment_method == "bank_transfer":
             iban_row = (
                 f'<tr><td style="padding:4px 16px;font-size:13px;color:#64748b;">IBAN:</td>'
-                f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:600;color:#1e293b;">{shop.iban}</td></tr>'
+                f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:600;color:#1e293b;">{escape(shop.iban)}</td></tr>'
                 if shop.iban
                 else ""
             )
@@ -319,7 +321,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 '<tr><td colspan="2" style="padding:14px 16px 8px;font-size:11px;font-weight:700;color:#1d4ed8;'
                 'text-transform:uppercase;letter-spacing:0.8px;">Platobné údaje</td></tr>'
                 f'<tr><td style="padding:4px 16px;font-size:13px;color:#64748b;">Variabilný symbol:</td>'
-                f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:700;color:#1e40af;">{order.order_number}</td></tr>'
+                f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:700;color:#1e40af;">{escape(order.order_number)}</td></tr>'
                 f"{iban_row}"
                 f'<tr><td style="padding:4px 16px 14px;font-size:13px;color:#64748b;">Suma na úhradu:</td>'
                 f'<td style="padding:4px 16px 14px 8px;font-size:15px;font-weight:700;color:#1d4ed8;">{order.total_price}&nbsp;&euro;</td></tr>'
@@ -330,7 +332,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
         if order.is_company:
             dic_dph_row = (
                 f'<tr><td style="padding:3px 16px;font-size:13px;color:#64748b;">IČ DPH:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.dic_dph}</td></tr>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{escape(order.dic_dph)}</td></tr>'
                 if order.dic_dph
                 else ""
             )
@@ -339,11 +341,11 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 ' style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:16px;border-collapse:collapse;">'
                 '<tr><td colspan="2" style="padding:14px 16px 8px;font-size:11px;font-weight:700;color:#374151;'
                 'text-transform:uppercase;letter-spacing:0.8px;">Fakturačné údaje</td></tr>'
-                f'<tr><td colspan="2" style="padding:4px 16px;font-size:14px;font-weight:600;color:#1e293b;">{order.company_name}</td></tr>'
+                f'<tr><td colspan="2" style="padding:4px 16px;font-size:14px;font-weight:600;color:#1e293b;">{escape(order.company_name)}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:13px;color:#64748b;">IČO:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.ico}</td></tr>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{escape(order.ico)}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:13px;color:#64748b;">DIČ:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.dic}</td></tr>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{escape(order.dic)}</td></tr>'
                 f"{dic_dph_row}"
                 '<tr><td colspan="2" style="padding:8px 16px 14px;"></td></tr>'
                 "</table>"
@@ -352,7 +354,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
         notes_block = (
             '<table width="100%" cellpadding="0" cellspacing="0"'
             ' style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;margin-bottom:16px;border-collapse:collapse;">'
-            f'<tr><td style="padding:12px 16px;font-size:13px;color:#78350f;"><strong>Poznámka:</strong> {order.notes}</td></tr>'
+            f'<tr><td style="padding:12px 16px;font-size:13px;color:#78350f;"><strong>Poznámka:</strong> {escape(order.notes)}</td></tr>'
             "</table>"
             if order.notes
             else ""
@@ -377,13 +379,13 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
         </tr>
         <tr>
           <td style="padding:32px 40px;">
-            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;">Dobrý deň, <strong>{order.customer_name}</strong>,</p>
+            <p style="font-size:16px;color:#1e293b;margin:0 0 6px;">Dobrý deň, <strong>{escape(order.customer_name)}</strong>,</p>
             <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">Ďakujeme za Vašu objednávku v DentalShop! Nižšie nájdete jej kompletný prehľad. Faktúra vo formáte PDF je priložená k tomuto e-mailu.</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 6px 6px 0;margin-bottom:28px;">
               <tr>
                 <td style="padding:14px 18px;">
                   <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;font-weight:600;">Číslo objednávky</span><br>
-                  <strong style="font-size:22px;color:#1e40af;letter-spacing:1px;"># {order.order_number}</strong>
+                  <strong style="font-size:22px;color:#1e40af;letter-spacing:1px;"># {escape(order.order_number)}</strong>
                 </td>
                 <td style="padding:14px 18px;text-align:right;vertical-align:middle;">
                   <span style="background:#dbeafe;color:#1d4ed8;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;">{order.get_status_display()}</span>
@@ -414,10 +416,10 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                   <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">Dodacia adresa</p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
-                      <strong style="color:#1e293b;">{order.customer_name}</strong><br>
-                      {order.street}<br>
-                      {order.city}, {order.postal_code}<br>
-                      <span style="color:#64748b;">Tel: {order.phone}</span>
+                      <strong style="color:#1e293b;">{escape(order.customer_name)}</strong><br>
+                      {escape(order.street)}<br>
+                      {escape(order.city)}, {escape(order.postal_code)}<br>
+                      <span style="color:#64748b;">Tel: {escape(order.phone)}</span>
                     </td></tr>
                   </table>
                 </td>
@@ -449,7 +451,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
 
     def _build_warehouse_email_html(self, order) -> str:
         """Build HTML version of warehouse order notification email."""
-        item_rows = ""
+        row_parts = []
         for i, item in enumerate(order.items.select_related("product").all()):
             remaining = item.product.stock_quantity
             threshold = item.product.low_stock_threshold
@@ -461,15 +463,16 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 else '<span style="color:#16a34a;font-size:12px;font-weight:600;">&#x2713; OK</span>'
             )
             qty_color = "#dc2626" if is_low else "#374151"
-            item_rows += (
+            row_parts.append(
                 f'<tr style="background:{bg};">'
                 f'<td style="padding:10px 12px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">'
-                f'{item.product.name}<br><span style="font-size:11px;color:#94a3b8;">ID: {item.product.id}</span></td>'
+                f'{escape(item.product.name)}<br><span style="font-size:11px;color:#94a3b8;">ID: {item.product.id}</span></td>'
                 f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:#1e293b;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
                 f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:{qty_color};text-align:center;border-bottom:1px solid #f1f5f9;">{remaining}&nbsp;ks</td>'
                 f'<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #f1f5f9;">{stock_cell}</td>'
                 "</tr>"
             )
+        item_rows = "".join(row_parts)
 
         company_block = ""
         if order.is_company:
@@ -479,16 +482,22 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 if order.dic_dph
                 else ""
             )
+            dic_dph_row = (
+                f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">IČ DPH:</td>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{escape(order.dic_dph)}</td></tr>'
+                if order.dic_dph
+                else ""
+            )
             company_block = (
                 '<table width="100%" cellpadding="0" cellspacing="0"'
                 ' style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;margin-bottom:20px;border-collapse:collapse;">'
                 '<tr><td colspan="2" style="padding:12px 16px 8px;font-size:11px;font-weight:700;color:#92400e;'
                 'text-transform:uppercase;letter-spacing:0.8px;">Firemná objednávka</td></tr>'
-                f'<tr><td colspan="2" style="padding:4px 16px;font-size:14px;font-weight:600;color:#1e293b;">{order.company_name}</td></tr>'
+                f'<tr><td colspan="2" style="padding:4px 16px;font-size:14px;font-weight:600;color:#1e293b;">{escape(order.company_name)}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">IČO:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.ico}</td></tr>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{escape(order.ico)}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">DIČ:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.dic}</td></tr>'
+                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{escape(order.dic)}</td></tr>'
                 f"{dic_dph_row}"
                 '<tr><td colspan="2" style="padding:4px 16px 12px;"></td></tr>'
                 "</table>"
@@ -498,7 +507,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
             '<table width="100%" cellpadding="0" cellspacing="0"'
             ' style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;margin-top:16px;border-collapse:collapse;">'
             f'<tr><td style="padding:12px 16px;font-size:13px;color:#78350f;">'
-            f"<strong>Poznámka zákazníka:</strong> {order.notes}"
+            f"<strong>Poznámka zákazníka:</strong> {escape(order.notes)}"
             "</td></tr></table>"
             if order.notes
             else ""
@@ -536,17 +545,17 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
               <tr>
                 <td width="50%" style="padding:14px 16px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
                   <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Meno</p>
-                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{order.customer_name}</p>
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{escape(order.customer_name)}</p>
                 </td>
                 <td width="50%" style="padding:14px 16px;border-bottom:1px solid #e2e8f0;">
                   <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Telefón</p>
-                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{order.phone}</p>
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{escape(order.phone)}</p>
                 </td>
               </tr>
               <tr>
                 <td colspan="2" style="padding:14px 16px;">
                   <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Email</p>
-                  <p style="margin:0;font-size:14px;color:#2563eb;">{order.email}</p>
+                  <p style="margin:0;font-size:14px;color:#2563eb;">{escape(order.email)}</p>
                 </td>
               </tr>
             </table>
@@ -556,7 +565,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                   <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">Dodacia adresa</p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
-                      {order.street}<br>{order.city}, {order.postal_code}
+                      {escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}
                     </td></tr>
                   </table>
                 </td>
