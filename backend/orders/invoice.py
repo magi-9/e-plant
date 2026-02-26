@@ -1,19 +1,27 @@
 """
 PDF invoice generator using ReportLab.
+- Proper UTF-8 / Unicode support via DejaVu TTF fonts (falls back to Helvetica).
+- SEPA EPC payment QR code for bank-transfer orders (requires qrcode[pil]).
+- Clean two/three-column layout.
+
 Usage:
     pdf_bytes = generate_invoice_pdf(order, global_settings)
 """
 
+import os
 from io import BytesIO
 from xml.sax.saxutils import escape as esc
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_RIGHT
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     HRFlowable,
+    Image,
     SimpleDocTemplate,
     Spacer,
     Table,
@@ -21,17 +29,109 @@ from reportlab.platypus import (
     Paragraph,
 )
 
+# ── Unicode font registration ─────────────────────────────────────────────────
+_FONT_SEARCH_PATHS = [
+    "/usr/share/fonts/truetype/dejavu",  # Debian/Ubuntu
+    "/usr/share/fonts/dejavu",  # Fedora/RHEL
+    "/usr/share/fonts/TTF",  # Arch
+    "/Library/Fonts",  # macOS
+]
 
-def _style(name, **kwargs):
-    styles = getSampleStyleSheet()
-    base = kwargs.pop("parent", styles["Normal"])
-    return ParagraphStyle(name, parent=base, **kwargs)
+
+def _find_font(filename):
+    for base in _FONT_SEARCH_PATHS:
+        path = os.path.join(base, filename)
+        if os.path.exists(path):
+            return path
+    return None
 
 
+def _register_fonts():
+    regular = _find_font("DejaVuSans.ttf")
+    bold = _find_font("DejaVuSans-Bold.ttf")
+    if regular and bold:
+        try:
+            pdfmetrics.registerFont(TTFont("Uni", regular))
+            pdfmetrics.registerFont(TTFont("Uni-Bold", bold))
+            return "Uni", "Uni-Bold"
+        except Exception:
+            pass
+    return "Helvetica", "Helvetica-Bold"
+
+
+_FONT, _FONT_BOLD = _register_fonts()
+
+# ── Style helper ─────────────────────────────────────────────────────────────
+_GRAY = colors.HexColor("#6B7280")
+_BLUE = colors.HexColor("#2563EB")
+_LIGHT = colors.HexColor("#F3F4F6")
+
+
+def _s(name, bold=False, size=9, color=None, align=TA_LEFT, **kw):
+    return ParagraphStyle(
+        name,
+        fontName=_FONT_BOLD if bold else _FONT,
+        fontSize=size,
+        textColor=color if color is not None else colors.black,
+        alignment=align,
+        leading=size * 1.4,
+        **kw,
+    )
+
+
+# ── Payment method labels (Slovak) ───────────────────────────────────────────
+_PAYMENT_SK = {
+    "bank_transfer": "Bankový prevod",
+    "card": "Platobná karta",
+}
+
+
+# ── SEPA EPC QR code ─────────────────────────────────────────────────────────
+def _sepa_qr_image(iban, bic, name, amount, reference, size_mm=38):
+    """Return a ReportLab Image of a SEPA EPC QR code, or None on failure."""
+    if not iban:
+        return None
+    try:
+        import qrcode  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        payload = "\n".join(
+            [
+                "BCD",
+                "002",
+                "1",  # encoding: UTF-8
+                "SCT",
+                (bic or "").strip(),
+                (name or "")[:70].strip(),
+                iban.replace(" ", "").upper(),
+                f"EUR{float(amount):.2f}",
+                "",
+                (reference or "")[:35],
+                "",
+            ]
+        )
+        qr = qrcode.QRCode(
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=5,
+            border=1,
+        )
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        sz = size_mm * mm
+        return Image(buf, width=sz, height=sz)
+    except Exception:
+        return None
+
+
+# ── Main generator ────────────────────────────────────────────────────────────
 def generate_invoice_pdf(order, shop_settings) -> bytes:
     """Return raw PDF bytes for *order* using *shop_settings* as the seller."""
     buffer = BytesIO()
-
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -41,205 +141,209 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         bottomMargin=20 * mm,
     )
 
-    # ── Styles ──────────────────────────────────────────────────────────────
-    normal = _style("ds_normal", fontSize=9)
-    small = _style("ds_small", fontSize=8, textColor=colors.HexColor("#6B7280"))
-    bold = _style("ds_bold", fontSize=9, fontName="Helvetica-Bold")
-    big_bold = _style("ds_bigbold", fontSize=18, fontName="Helvetica-Bold")
-    right_bold = _style(
-        "ds_right_bold", fontSize=9, fontName="Helvetica-Bold", alignment=TA_RIGHT
-    )
-    right_normal = _style("ds_right_normal", fontSize=9, alignment=TA_RIGHT)
+    # Styles
+    s_normal = _s("normal")
+    s_bold = _s("bold", bold=True)
+    s_label = _s("label", size=8, color=_GRAY)
+    s_r = _s("r", align=TA_RIGHT)
+    s_r_small = _s("r_small", size=8, align=TA_RIGHT)
+    s_r_bold = _s("r_bold", bold=True, align=TA_RIGHT)
+    s_title = _s("title", bold=True, size=22, color=_BLUE)
+    s_th = _s("th", bold=True, size=9, color=colors.white)
+    s_th_r = _s("th_r", bold=True, size=9, color=colors.white, align=TA_RIGHT)
+    s_td_r = _s("td_r", align=TA_RIGHT)
+    s_total_r = _s("total_r", bold=True, size=11, align=TA_RIGHT)
 
-    BLUE = colors.HexColor("#2563EB")
-    LIGHT = colors.HexColor("#F3F4F6")
-
+    seller_name = shop_settings.company_name or "E-Plant"
     story = []
 
     # ── HEADER: seller (left) + invoice meta (right) ─────────────────────
-    seller_name = shop_settings.company_name or "DentalShop"
-
-    seller_block = [
-        Paragraph(
-            esc(seller_name), _style("sn", fontSize=13, fontName="Helvetica-Bold")
-        )
-    ]
+    seller_cell = [Paragraph(esc(seller_name), _s("sn", bold=True, size=14))]
     if shop_settings.company_street:
-        seller_block.append(Paragraph(esc(shop_settings.company_street), normal))
-    addr = f"{shop_settings.company_postal_code} {shop_settings.company_city}".strip()
-    if shop_settings.company_state:
-        addr += f", {shop_settings.company_state}"
-    if addr.strip(",").strip():
-        seller_block.append(Paragraph(esc(addr), normal))
+        seller_cell.append(Paragraph(esc(shop_settings.company_street), s_normal))
+    city_line = " ".join(
+        filter(
+            None,
+            [
+                shop_settings.company_postal_code,
+                shop_settings.company_city,
+                shop_settings.company_state,
+            ],
+        )
+    )
+    if city_line.strip():
+        seller_cell.append(Paragraph(esc(city_line), s_normal))
     if shop_settings.company_phone:
-        seller_block.append(
-            Paragraph(f"Tel.: {esc(shop_settings.company_phone)}", normal)
+        seller_cell.append(
+            Paragraph(f"Tel.: {esc(shop_settings.company_phone)}", s_normal)
         )
     if shop_settings.company_email:
-        seller_block.append(
-            Paragraph(f"Email: {esc(shop_settings.company_email)}", normal)
+        seller_cell.append(
+            Paragraph(f"Email: {esc(shop_settings.company_email)}", s_normal)
         )
     if shop_settings.company_ico:
-        seller_block.append(Paragraph(f"IČO: {esc(shop_settings.company_ico)}", normal))
+        seller_cell.append(
+            Paragraph(f"IČO: {esc(shop_settings.company_ico)}", s_normal)
+        )
     if shop_settings.company_dic:
-        seller_block.append(Paragraph(f"DIČ: {esc(shop_settings.company_dic)}", normal))
+        seller_cell.append(
+            Paragraph(f"DIČ: {esc(shop_settings.company_dic)}", s_normal)
+        )
 
-    invoice_block = [
-        Paragraph("FAKTÚRA", big_bold),
-        Spacer(1, 2 * mm),
-        Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", right_normal),
-        Paragraph(f"Dátum: {order.created_at.strftime('%d.%m.%Y')}", right_normal),
+    meta_cell = [
+        Paragraph("FAKTÚRA", s_title),
+        Spacer(1, 3 * mm),
+        Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", s_r),
+        Paragraph(f"Dátum: {order.created_at.strftime('%d.%m.%Y')}", s_r_small),
     ]
 
-    header_tbl = Table(
-        [[seller_block, invoice_block]],
-        colWidths=[110 * mm, 60 * mm],
-    )
-    header_tbl.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ]
+    story.append(
+        Table(
+            [[seller_cell, meta_cell]],
+            colWidths=[100 * mm, 70 * mm],
+            style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]),
         )
     )
-    story.append(header_tbl)
-    story.append(Spacer(1, 6 * mm))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.black))
+    story.append(Spacer(1, 5 * mm))
+    story.append(HRFlowable(width="100%", thickness=2, color=_BLUE))
     story.append(Spacer(1, 6 * mm))
 
-    # ── BUYER (left) + PAYMENT (right) ───────────────────────────────────
-    buyer_block = [Paragraph("Odberateľ:", small)]
+    # ── BUYER (left) + PAYMENT (right, optional QR far right) ─────────────
+    buyer_cell = [Paragraph("Odberateľ", s_label), Spacer(1, 1 * mm)]
     if order.is_company and order.company_name:
-        buyer_block.append(Paragraph(esc(order.company_name), bold))
-    buyer_block.append(
-        Paragraph(
-            esc(order.customer_name),
-            normal if (order.is_company and order.company_name) else bold,
-        )
-    )
+        buyer_cell.append(Paragraph(esc(order.company_name), s_bold))
+        buyer_cell.append(Paragraph(esc(order.customer_name), s_normal))
+    else:
+        buyer_cell.append(Paragraph(esc(order.customer_name), s_bold))
     if order.street:
-        buyer_block.append(Paragraph(esc(order.street), normal))
-    buyer_addr = f"{order.postal_code} {order.city}".strip()
-    if buyer_addr.strip():
-        buyer_block.append(Paragraph(esc(buyer_addr), normal))
+        buyer_cell.append(Paragraph(esc(order.street), s_normal))
+    addr = " ".join(filter(None, [order.postal_code, order.city]))
+    if addr.strip():
+        buyer_cell.append(Paragraph(esc(addr), s_normal))
     if order.is_company:
         if order.ico:
-            buyer_block.append(Paragraph(f"IČO: {esc(order.ico)}", normal))
+            buyer_cell.append(Paragraph(f"IČO: {esc(order.ico)}", s_normal))
         if order.dic:
-            buyer_block.append(Paragraph(f"DIČ: {esc(order.dic)}", normal))
+            buyer_cell.append(Paragraph(f"DIČ: {esc(order.dic)}", s_normal))
         if order.dic_dph:
-            buyer_block.append(Paragraph(f"IČ DPH: {esc(order.dic_dph)}", normal))
-    buyer_block.append(Paragraph(f"Email: {esc(order.email)}", normal))
-    buyer_block.append(Paragraph(f"Tel.: {esc(order.phone)}", normal))
+            buyer_cell.append(Paragraph(f"IČ DPH: {esc(order.dic_dph)}", s_normal))
+    buyer_cell.append(Paragraph(f"Email: {esc(order.email)}", s_normal))
+    buyer_cell.append(Paragraph(f"Tel.: {esc(order.phone)}", s_normal))
 
-    payment_block = [Paragraph("Platba:", small)]
-    payment_block.append(Paragraph(order.get_payment_method_display(), bold))
+    payment_label = _PAYMENT_SK.get(
+        order.payment_method, order.get_payment_method_display()
+    )
+    pay_cell = [Paragraph("Spôsob úhrady", s_label), Spacer(1, 1 * mm)]
+    pay_cell.append(Paragraph(esc(payment_label), s_bold))
     if order.payment_method == "bank_transfer":
         if shop_settings.iban:
-            payment_block.append(Paragraph(f"IBAN: {esc(shop_settings.iban)}", normal))
+            pay_cell.append(
+                Paragraph(f"IBAN: <b>{esc(shop_settings.iban)}</b>", s_normal)
+            )
         if shop_settings.bank_name:
-            payment_block.append(
-                Paragraph(f"Banka: {esc(shop_settings.bank_name)}", normal)
-            )
+            pay_cell.append(Paragraph(esc(shop_settings.bank_name), s_normal))
         if shop_settings.bank_swift:
-            payment_block.append(
-                Paragraph(f"SWIFT: {esc(shop_settings.bank_swift)}", normal)
+            pay_cell.append(
+                Paragraph(f"SWIFT: {esc(shop_settings.bank_swift)}", s_normal)
             )
-        payment_block.append(
-            Paragraph(f"Var. symbol: <b>{esc(order.order_number)}</b>", normal)
+        pay_cell.append(
+            Paragraph(f"Var. symbol: <b>{esc(order.order_number)}</b>", s_normal)
         )
 
-    billing_tbl = Table(
-        [[buyer_block, payment_block]],
-        colWidths=[110 * mm, 60 * mm],
+    qr = _sepa_qr_image(
+        iban=shop_settings.iban if order.payment_method == "bank_transfer" else "",
+        bic=shop_settings.bank_swift,
+        name=seller_name,
+        amount=order.total_price,
+        reference=order.order_number,
+        size_mm=38,
     )
-    billing_tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+
+    if qr:
+        qr_cell = [Paragraph("QR platba", s_label), Spacer(1, 1 * mm), qr]
+        billing_tbl = Table(
+            [[buyer_cell, pay_cell, qr_cell]],
+            colWidths=[80 * mm, 48 * mm, 42 * mm],
+            style=TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ]
+            ),
+        )
+    else:
+        billing_tbl = Table(
+            [[buyer_cell, pay_cell]],
+            colWidths=[100 * mm, 70 * mm],
+            style=TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ]
+            ),
+        )
     story.append(billing_tbl)
     story.append(Spacer(1, 8 * mm))
 
-    # ── ITEMS TABLE ──────────────────────────────────────────────────────
+    # ── ITEMS TABLE ───────────────────────────────────────────────────────
     COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
-
-    th_style = _style(
-        "th", fontSize=9, fontName="Helvetica-Bold", textColor=colors.white
-    )
-    th_r = _style(
-        "th_r",
-        fontSize=9,
-        fontName="Helvetica-Bold",
-        textColor=colors.white,
-        alignment=TA_RIGHT,
-    )
-    td_r = _style("td_r", fontSize=9, alignment=TA_RIGHT)
 
     rows = [
         [
-            Paragraph("Popis", th_style),
-            Paragraph("Množ.", th_r),
-            Paragraph("Cena/ks", th_r),
-            Paragraph("Spolu", th_r),
+            Paragraph("Popis", s_th),
+            Paragraph("Množ.", s_th_r),
+            Paragraph("Cena / ks", s_th_r),
+            Paragraph("Spolu", s_th_r),
         ]
     ]
-
     for item in order.items.all():
         rows.append(
             [
-                Paragraph(esc(item.product.name), normal),
-                Paragraph(str(item.quantity), td_r),
-                Paragraph(f"{item.price_snapshot:.2f} €", td_r),
-                Paragraph(f"{item.get_subtotal():.2f} €", td_r),
+                Paragraph(esc(item.product.name), s_normal),
+                Paragraph(str(item.quantity), s_td_r),
+                Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
+                Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
             ]
         )
 
-    # Spacer row then total
-    rows.append(["", "", "", ""])
+    n_last_item = len(rows) - 1  # 0-based index of last item row (before total)
     rows.append(
         [
             "",
             "",
-            Paragraph("<b>Celkom:</b>", right_bold),
-            Paragraph(f"<b>{order.total_price:.2f} €</b>", right_bold),
+            Paragraph("Celkom:", s_r_bold),
+            Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ]
     )
-
-    n_item_rows = len(rows) - 3  # index of last item row (excludes spacer + total rows)
 
     items_tbl = Table(rows, colWidths=COL_W, repeatRows=1)
     items_tbl.setStyle(
         TableStyle(
             [
-                # Header
-                ("BACKGROUND", (0, 0), (-1, 0), BLUE),
-                ("ROWBACKGROUNDS", (0, 1), (-1, n_item_rows), [colors.white, LIGHT]),
-                # Grid on data rows only
-                ("GRID", (0, 0), (-1, n_item_rows), 0.5, colors.HexColor("#E5E7EB")),
-                # Total separator
-                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+                ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
+                ("ROWBACKGROUNDS", (0, 1), (-1, n_last_item), [colors.white, _LIGHT]),
+                ("GRID", (0, 0), (-1, n_last_item), 0.4, colors.HexColor("#E5E7EB")),
+                ("LINEABOVE", (0, -1), (-1, -1), 1.5, _BLUE),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
             ]
         )
     )
     story.append(items_tbl)
 
-    # ── NOTES & FOOTER ───────────────────────────────────────────────────
+    # ── NOTES ─────────────────────────────────────────────────────────────
     if order.notes:
         story.append(Spacer(1, 6 * mm))
-        story.append(Paragraph(f"Poznámka: {esc(order.notes)}", small))
+        story.append(Paragraph("Poznámka:", s_label))
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(esc(order.notes), s_normal))
 
-    story.append(Spacer(1, 10 * mm))
-    story.append(
-        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#9CA3AF"))
-    )
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(f"Vystavil: {esc(seller_name)}", small))
-
-    try:
-        doc.build(story)
-        return buffer.getvalue()
-    finally:
-        buffer.close()
+    doc.build(story)
+    pdf = buffer.getvalue()
+    buffer.close()
+    return pdf

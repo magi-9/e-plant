@@ -39,7 +39,6 @@ export interface Order {
     dic: string;
     dic_dph: string;
     payment_method: string;
-    status: string;
     total_price: string;
     notes: string;
     items: Array<{
@@ -74,7 +73,4 @@ export const getAdminOrders = async (): Promise<Order[]> => {
     return response.data;
 };
 
-export const updateAdminOrderStatus = async (id: number, status: string): Promise<Order> => {
-    const response = await client.patch<Order>(`/orders/admin/orders/${id}/`, { status });
-    return response.data;
-};
+
