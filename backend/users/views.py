@@ -6,6 +6,8 @@ from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from .serializers import (
     UserRegistrationSerializer,
@@ -146,29 +148,32 @@ class PasswordResetConfirmView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(new_password) < 8:
-            return Response(
-                {"error": "Heslo musí mať aspoň 8 znakov."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             user = None
 
-        if user is not None and default_token_generator.check_token(user, token):
-            user.set_password(new_password)
-            user.save()
-            return Response(
-                {"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."}
-            )
-        else:
+        if user is None or not default_token_generator.check_token(user, token):
             return Response(
                 {"error": "Odkaz na obnovenie hesla je neplatný alebo expiroval."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Validate password using Django's validators
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return Response(
+                {"error": " ".join(e.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save()
+        return Response(
+            {"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."}
+        )
 
 
 class MeView(generics.RetrieveUpdateDestroyAPIView):

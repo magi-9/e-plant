@@ -5,12 +5,31 @@ import { useParams, Link } from 'react-router-dom';
 import { LockClosedIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { confirmPasswordReset } from '../api/auth';
 
+function Requirement({ met, label }: { met: boolean; label: string }) {
+    return (
+        <li className="flex items-center gap-2 text-sm">
+            {met ? (
+                <CheckCircleIcon className="h-4 w-4 text-green-500 shrink-0" />
+            ) : (
+                <XCircleIcon className="h-4 w-4 text-gray-300 shrink-0" />
+            )}
+            <span className={met ? 'text-green-700' : 'text-gray-500'}>{label}</span>
+        </li>
+    );
+}
+
 export default function ResetPasswordPage() {
     const { uid, token } = useParams();
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordTouched, setPasswordTouched] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [success, setSuccess] = useState(false);
+
+    const hasMinLength = newPassword.length >= 8;
+    const hasNumber = /\d/.test(newPassword);
+    const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
+    const canSubmit = hasMinLength && hasNumber && passwordsMatch;
 
     const mutation = useMutation({
         mutationFn: () => confirmPasswordReset(uid!, token!, newPassword),
@@ -34,12 +53,8 @@ export default function ResetPasswordPage() {
             setErrorMsg('Neplatný odkaz. Chýbajú parametre.');
             return;
         }
-        if (newPassword.length < 8) {
-            setErrorMsg('Heslo musí mať aspoň 8 znakov.');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            setErrorMsg('Heslá sa nezhodujú.');
+        if (!canSubmit) {
+            setErrorMsg('Prosím, vyplňte všetky požiadavky na heslo.');
             return;
         }
 
@@ -103,12 +118,18 @@ export default function ResetPasswordPage() {
                                     name="new_password"
                                     type="password"
                                     required
-                                    minLength={8}
                                     className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="Minimálne 8 znakov"
+                                    placeholder="Minimálne 8 znakov s číslicou"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
+                                    onBlur={() => setPasswordTouched(true)}
                                 />
+                                {(passwordTouched || newPassword) && (
+                                    <ul className="mt-3 space-y-1 pl-1">
+                                        <Requirement met={hasMinLength} label="Aspoň 8 znakov" />
+                                        <Requirement met={hasNumber} label="Aspoň jedna číslica" />
+                                    </ul>
+                                )}
                             </div>
                             <div>
                                 <label htmlFor="confirm_password" className="block text-sm font-medium text-gray-700">
@@ -124,14 +145,19 @@ export default function ResetPasswordPage() {
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                 />
+                                {confirmPassword && (
+                                    <ul className="mt-3 space-y-1 pl-1">
+                                        <Requirement met={passwordsMatch} label="Heslá sa zhodujú" />
+                                    </ul>
+                                )}
                             </div>
                         </div>
 
                         <div>
                             <button
                                 type="submit"
-                                disabled={mutation.isPending}
-                                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50"
+                                disabled={!canSubmit || mutation.isPending}
+                                className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {mutation.isPending ? 'Ukladám...' : 'Nastaviť nové heslo'}
                             </button>
