@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
 import { getMyOrders, type Order } from '../api/orders';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-import { useEffect } from 'react';
 
 const PAYMENT_LABELS: Record<string, string> = {
     bank_transfer: 'Bankový prevod',
