@@ -95,8 +95,8 @@ export default function ProductsPage() {
                     />
                     <div className="absolute inset-0 bg-blue-950 mix-blend-multiply" aria-hidden="true" />
                 </div>
-                <div className="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                <div className="relative max-w-7xl mx-auto py-14 px-4 sm:py-24 sm:px-6 lg:py-32 lg:px-8">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
                         Dentálne Implantáty Najvyššej Kvality
                     </h1>
                     <p className="mt-6 text-xl text-blue-100 max-w-3xl">
@@ -107,10 +107,10 @@ export default function ProductsPage() {
             </div>
 
             {/* Product Grid */}
-            <div className="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
+            <div className="max-w-2xl mx-auto py-10 px-4 sm:py-16 sm:px-6 lg:max-w-7xl lg:px-8 lg:py-24">
 
                 {/* Search and Filters */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Hľadať produkt</label>
                         <input
@@ -126,7 +126,7 @@ export default function ProductsPage() {
                             onClick={() => {
                                 setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none');
                             }}
-                            className="whitespace-nowrap inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors h-[42px]"
+                            className="w-full md:w-auto whitespace-nowrap inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors h-[42px]"
                         >
                             Zoradiť podľa ceny: {priceSortOrder === 'none' ? 'Štandardne' : priceSortOrder === 'asc' ? 'Najlacnejšie' : 'Najdrahšie'}
                             {priceSortOrder === 'asc' && <span className="ml-2">↑</span>}

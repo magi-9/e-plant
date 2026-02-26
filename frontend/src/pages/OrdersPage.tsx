@@ -74,8 +74,7 @@ export default function OrdersPage() {
                                 </button>
 
                                 {expandedOrder === order.id && (
-                                    <div id={`order-panel-${order.id}`} className="border-t border-gray-100 px-5 py-4 bg-gray-50">
-                                        <table className="w-full text-sm">
+                                    <div id={`order-panel-${order.id}`} className="border-t border-gray-100 px-5 py-4 bg-gray-50">                                            <div className="overflow-x-auto">                                        <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-gray-200 pb-1">
                                                     <th className="pb-2">Produkt</th>
@@ -101,6 +100,7 @@ export default function OrdersPage() {
                                                 </tr>
                                             </tfoot>
                                         </table>
+                                        </div>
                                         {order.notes && (
                                             <p className="mt-3 text-sm text-gray-500 italic">Poznámka: {order.notes}</p>
                                         )}

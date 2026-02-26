@@ -273,7 +273,7 @@ export default function CheckoutPage() {
                         )}
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">Meno *</label>
                                     <input
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="city" className="block text-sm font-medium text-gray-700">
                                         Mesto *
@@ -417,7 +417,7 @@ export default function CheckoutPage() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label htmlFor="ico" className="block text-sm font-medium text-gray-700">
                                                 IČO *

@@ -125,7 +125,7 @@ export default function ProfilePage() {
                             <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>
                             <input type="text" name="street" value={formData.street} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Mesto</label>
                                 <input type="text" name="city" value={formData.city} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
@@ -150,7 +150,7 @@ export default function ProfilePage() {
                                 <label className="block text-sm font-medium text-gray-700">Názov firmy</label>
                                 <input type="text" name="company_name" value={formData.company_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">IČO</label>
                                     <input type="text" name="ico" value={formData.ico} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />

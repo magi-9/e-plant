@@ -68,10 +68,10 @@ export default function CartPage() {
                         <div className="bg-white shadow rounded-lg">
                             <ul className="divide-y divide-gray-200">
                                 {items.map((item) => (
-                                    <li key={item.productId} className="p-6">
-                                        <div className="flex items-center">
+                                    <li key={item.productId} className="p-4 sm:p-6">
+                                        <div className="flex items-start sm:items-center">
                                             {/* Product Image */}
-                                            <div className="flex-shrink-0 w-24 h-24">
+                                            <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24">
                                                 {item.image ? (
                                                     <img
                                                         src={item.image}
@@ -86,10 +86,10 @@ export default function CartPage() {
                                             </div>
 
                                             {/* Product Info */}
-                                            <div className="ml-6 flex-1">
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <h3 className="text-lg font-medium text-gray-900">
+                                            <div className="ml-4 sm:ml-6 flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
                                                             {item.name}
                                                         </h3>
                                                         <p className="mt-1 text-sm text-gray-500">
@@ -105,7 +105,7 @@ export default function CartPage() {
                                                 </div>
 
                                                 {/* Quantity Controls */}
-                                                <div className="mt-4 flex items-center">
+                                                <div className="mt-3 flex flex-wrap items-center gap-3">
                                                     <div className="flex items-center border border-gray-300 rounded-md">
                                                         <button
                                                             onClick={() => updateQuantity(item.productId, item.quantity - 1)}
@@ -123,7 +123,7 @@ export default function CartPage() {
                                                             <PlusIcon className="h-4 w-4 text-gray-600" />
                                                         </button>
                                                     </div>
-                                                    <span className="ml-4 text-sm text-gray-600">
+                                                    <span className="text-sm text-gray-600">
                                                         Spolu: {(Number.parseFloat(item.price) * item.quantity).toFixed(2)} €
                                                     </span>
                                                 </div>

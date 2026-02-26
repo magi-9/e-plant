@@ -74,42 +74,42 @@ export default function AdminUsers() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rola</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dátum reg.</th>
-                                <th scope="col" className="relative px-6 py-3"><span className="sr-only">Akcie</span></th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Rola</th>
+                                <th scope="col" className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dátum reg.</th>
+                                <th scope="col" className="relative px-4 py-3"><span className="sr-only">Akcie</span></th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {users?.map((user) => (
                                 <tr key={user.id} className="hover:bg-gray-50 transition">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-4 py-3 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <span className="text-blue-600 font-bold text-lg">{user.email.charAt(0).toUpperCase()}</span>
+                                            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                <span className="text-blue-600 font-bold text-base sm:text-lg">{user.email.charAt(0).toUpperCase()}</span>
                                             </div>
-                                            <div className="ml-4 font-medium text-gray-900">{user.email}</div>
+                                            <div className="ml-3 font-medium text-gray-900 text-sm truncate max-w-[120px] sm:max-w-none">{user.email}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-4 py-3 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_staff ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
                                             {user.is_staff ? <><ShieldCheckIcon className="h-4 w-4 mr-1" /> Admin</> : "Používateľ"}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {user.is_active ? 'Aktívny' : 'Neaktívny'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                         {user.date_joined ? new Date(user.date_joined).toLocaleDateString('sk-SK') : '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => toggleStaffMutation.mutate(user.id)} className="text-purple-600 hover:text-purple-900 mr-4" title="Prepínač role">
+                                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                        <button onClick={() => toggleStaffMutation.mutate(user.id)} className="text-purple-600 hover:text-purple-900 mr-3" title="Prepínač role">
                                             <ShieldCheckIcon className="h-5 w-5" />
                                         </button>
-                                        <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-4" title="Upraviť">
+                                        <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-3" title="Upraviť">
                                             <PencilIcon className="h-5 w-5" />
                                         </button>
                                         <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-900" title="Odstrániť">
@@ -124,11 +124,11 @@ export default function AdminUsers() {
 
                 {isModalOpen && (
                     <div className="fixed inset-0 z-10 overflow-y-auto">
-                        <div className="flex items-center justify-center min-h-screen px-4">
+                        <div className="flex items-end sm:items-center justify-center min-h-screen px-4 pb-0 pt-4 sm:p-0">
                             <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setIsModalOpen(false)}></div>
-                            <div className="bg-white rounded-lg shadow-xl w-full max-w-md z-20 overflow-hidden transform transition-all">
-                                <form onSubmit={handleSave} className="flex flex-col">
-                                    <div className="px-6 py-5 bg-white">
+                            <div className="bg-white rounded-t-2xl sm:rounded-lg shadow-xl w-full max-w-md z-20 overflow-hidden transform transition-all flex flex-col max-h-[90dvh]">
+                            <form onSubmit={handleSave} className="flex flex-col overflow-hidden">
+                                    <div className="px-6 py-5 bg-white overflow-y-auto flex-1">
                                         <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">
                                             {editingUser ? 'Upraviť používateľa' : 'Pridať používateľa'}
                                         </h3>

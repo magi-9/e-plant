@@ -182,6 +182,24 @@ export default function Navbar() {
                                     </Disclosure.Button>
                                 </>
                             )}
+                            <div className="border-t border-blue-700 mt-1 pt-1">
+                                {isLoggedIn ? (
+                                    <button
+                                        onClick={handleLogout}
+                                        className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
+                                    >
+                                        Odhlásiť sa
+                                    </button>
+                                ) : (
+                                    <Disclosure.Button
+                                        as={Link}
+                                        to="/login"
+                                        className="text-blue-200 hover:bg-blue-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium w-full text-left"
+                                    >
+                                        Prihlásiť sa
+                                    </Disclosure.Button>
+                                )}
+                            </div>
                         </div>
                     </Disclosure.Panel>
                 </>
