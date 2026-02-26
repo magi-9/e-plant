@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { login } from '../api/auth';
 import { useNavigate, Link } from 'react-router-dom';
-import { LockClosedIcon } from '@heroicons/react/24/solid';
+import { LockClosedIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -46,6 +46,12 @@ export default function LoginPage() {
                         </Link>
                     </p>
                 </div>
+                {mutation.isPending && (
+                    <div className="flex items-center justify-center gap-2 bg-blue-50 rounded-md p-4">
+                        <ArrowPathIcon className="h-5 w-5 text-blue-600 animate-spin" />
+                        <p className="text-sm font-medium text-blue-700">Prihlasovanie v priebehu...</p>
+                    </div>
+                )}
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     {errorMsg && (
                         <div className="rounded-md bg-red-50 p-4">
@@ -109,8 +115,9 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={mutation.isPending}
-                            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                            className="group relative w-full flex justify-center items-center gap-2 py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
+                            {mutation.isPending && <ArrowPathIcon className="h-4 w-4 animate-spin" />}
                             {mutation.isPending ? 'Prihlasovanie...' : 'Prihlásiť sa'}
                         </button>
                     </div>
