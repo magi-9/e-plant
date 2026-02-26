@@ -73,18 +73,20 @@ export default function Navbar() {
                                 </div>
                             </div>
                             <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                                {/* Cart Icon */}
-                                <Link
-                                    to="/cart"
-                                    className="relative text-blue-100 hover:text-white p-2 rounded-md transition-colors"
-                                >
-                                    <ShoppingCartIcon className="h-6 w-6" />
-                                    {totalItems > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                                            {totalItems}
-                                        </span>
-                                    )}
-                                </Link>
+                                {/* Cart Icon — hidden for admin */}
+                                {!userIsAdmin && (
+                                    <Link
+                                        to="/cart"
+                                        className="relative text-blue-100 hover:text-white p-2 rounded-md transition-colors"
+                                    >
+                                        <ShoppingCartIcon className="h-6 w-6" />
+                                        {totalItems > 0 && (
+                                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                                {totalItems}
+                                            </span>
+                                        )}
+                                    </Link>
+                                )}
 
                                 {isLoggedIn ? (
                                     <>
@@ -96,12 +98,14 @@ export default function Navbar() {
                                                 Admin
                                             </Link>
                                         )}
-                                        <Link
-                                            to="/profile"
-                                            className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                                        >
-                                            Profil
-                                        </Link>
+                                        {!userIsAdmin && (
+                                            <Link
+                                                to="/profile"
+                                                className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                            >
+                                                Profil
+                                            </Link>
+                                        )}
                                         <button
                                             onClick={handleLogout}
                                             className="text-blue-100 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
@@ -146,7 +150,7 @@ export default function Navbar() {
                                     Admin
                                 </Disclosure.Button>
                             )}
-                            {isLoggedIn && (
+                            {isLoggedIn && !userIsAdmin && (
                                 <Disclosure.Button
                                     as={Link}
                                     to="/profile"

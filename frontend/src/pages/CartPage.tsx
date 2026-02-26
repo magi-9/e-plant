@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { useCartStore } from '../store/cartStore';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { isAdmin } from '../api/auth';
 
 const getItemsLabel = (count: number): string => {
     if (count === 1) return 'položka';
@@ -9,6 +11,10 @@ const getItemsLabel = (count: number): string => {
 };
 
 export default function CartPage() {
+    const navigate = useNavigate();
+    useEffect(() => {
+        if (isAdmin()) navigate('/admin', { replace: true });
+    }, [navigate]);
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
 
     if (items.length === 0) {

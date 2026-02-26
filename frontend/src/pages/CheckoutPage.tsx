@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
-import { getMe } from '../api/auth';
+import { getMe, isAdmin } from '../api/auth';
 import { getPaymentSettings } from '../api/settings';
 import client from '../api/client';
 import { isAxiosError } from 'axios';
@@ -14,6 +14,10 @@ import toast from 'react-hot-toast';
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (isAdmin()) navigate('/admin', { replace: true });
+    }, [navigate]);
     const { items, getTotalPrice, clearCart } = useCartStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
