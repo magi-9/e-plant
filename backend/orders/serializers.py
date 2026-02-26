@@ -302,7 +302,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
                 f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:right;border-bottom:1px solid #f1f5f9;">{item.price_snapshot}&nbsp;&euro;</td>'
                 f'<td style="padding:10px 12px;font-size:14px;font-weight:600;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">{item.get_subtotal()}&nbsp;&euro;</td>'
-                '</tr>'
+                "</tr>"
             )
 
         payment_block = ""
@@ -310,7 +310,8 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
             iban_row = (
                 f'<tr><td style="padding:4px 16px;font-size:13px;color:#64748b;">IBAN:</td>'
                 f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:600;color:#1e293b;">{shop.iban}</td></tr>'
-                if shop.iban else ""
+                if shop.iban
+                else ""
             )
             payment_block = (
                 '<table width="100%" cellpadding="0" cellspacing="0"'
@@ -319,10 +320,10 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 'text-transform:uppercase;letter-spacing:0.8px;">Platobné údaje</td></tr>'
                 f'<tr><td style="padding:4px 16px;font-size:13px;color:#64748b;">Variabilný symbol:</td>'
                 f'<td style="padding:4px 16px 4px 8px;font-size:13px;font-weight:700;color:#1e40af;">{order.order_number}</td></tr>'
-                f'{iban_row}'
+                f"{iban_row}"
                 f'<tr><td style="padding:4px 16px 14px;font-size:13px;color:#64748b;">Suma na úhradu:</td>'
                 f'<td style="padding:4px 16px 14px 8px;font-size:15px;font-weight:700;color:#1d4ed8;">{order.total_price}&nbsp;&euro;</td></tr>'
-                '</table>'
+                "</table>"
             )
 
         company_block = ""
@@ -330,7 +331,8 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
             dic_dph_row = (
                 f'<tr><td style="padding:3px 16px;font-size:13px;color:#64748b;">IČ DPH:</td>'
                 f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.dic_dph}</td></tr>'
-                if order.dic_dph else ""
+                if order.dic_dph
+                else ""
             )
             company_block = (
                 '<table width="100%" cellpadding="0" cellspacing="0"'
@@ -342,17 +344,18 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.ico}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:13px;color:#64748b;">DIČ:</td>'
                 f'<td style="padding:3px 16px 3px 8px;font-size:13px;color:#1e293b;">{order.dic}</td></tr>'
-                f'{dic_dph_row}'
+                f"{dic_dph_row}"
                 '<tr><td colspan="2" style="padding:8px 16px 14px;"></td></tr>'
-                '</table>'
+                "</table>"
             )
 
         notes_block = (
             '<table width="100%" cellpadding="0" cellspacing="0"'
             ' style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;margin-bottom:16px;border-collapse:collapse;">'
             f'<tr><td style="padding:12px 16px;font-size:13px;color:#78350f;"><strong>Poznámka:</strong> {order.notes}</td></tr>'
-            '</table>'
-            if order.notes else ""
+            "</table>"
+            if order.notes
+            else ""
         )
 
         return f"""<!DOCTYPE html>
@@ -454,8 +457,8 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
             bg = "#fff7f7" if is_low else ("#ffffff" if i % 2 == 0 else "#f8fafc")
             stock_cell = (
                 '<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">&#x26A0; NÍZKY STAV</span>'
-                if is_low else
-                '<span style="color:#16a34a;font-size:12px;font-weight:600;">&#x2713; OK</span>'
+                if is_low
+                else '<span style="color:#16a34a;font-size:12px;font-weight:600;">&#x2713; OK</span>'
             )
             qty_color = "#dc2626" if is_low else "#374151"
             item_rows += (
@@ -465,7 +468,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:#1e293b;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
                 f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:{qty_color};text-align:center;border-bottom:1px solid #f1f5f9;">{remaining}&nbsp;ks</td>'
                 f'<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #f1f5f9;">{stock_cell}</td>'
-                '</tr>'
+                "</tr>"
             )
 
         company_block = ""
@@ -473,7 +476,8 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
             dic_dph_row = (
                 f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">IČ DPH:</td>'
                 f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.dic_dph}</td></tr>'
-                if order.dic_dph else ""
+                if order.dic_dph
+                else ""
             )
             company_block = (
                 '<table width="100%" cellpadding="0" cellspacing="0"'
@@ -485,18 +489,19 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.ico}</td></tr>'
                 f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">DIČ:</td>'
                 f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.dic}</td></tr>'
-                f'{dic_dph_row}'
+                f"{dic_dph_row}"
                 '<tr><td colspan="2" style="padding:4px 16px 12px;"></td></tr>'
-                '</table>'
+                "</table>"
             )
 
         notes_block = (
             '<table width="100%" cellpadding="0" cellspacing="0"'
             ' style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;margin-top:16px;border-collapse:collapse;">'
             f'<tr><td style="padding:12px 16px;font-size:13px;color:#78350f;">'
-            f'<strong>Poznámka zákazníka:</strong> {order.notes}'
-            '</td></tr></table>'
-            if order.notes else ""
+            f"<strong>Poznámka zákazníka:</strong> {order.notes}"
+            "</td></tr></table>"
+            if order.notes
+            else ""
         )
 
         return f"""<!DOCTYPE html>
