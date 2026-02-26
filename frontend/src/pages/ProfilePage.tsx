@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMe, deleteMe } from '../api/auth';
+import { getMe, deleteMe, isAdmin } from '../api/auth';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import toast from 'react-hot-toast';
@@ -8,6 +8,10 @@ import toast from 'react-hot-toast';
 export default function ProfilePage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isAdmin()) navigate('/admin', { replace: true });
+    }, [navigate]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const { data: userProfile, isLoading } = useQuery({
