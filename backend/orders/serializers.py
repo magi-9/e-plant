@@ -478,12 +478,6 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
         if order.is_company:
             dic_dph_row = (
                 f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">IČ DPH:</td>'
-                f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{order.dic_dph}</td></tr>'
-                if order.dic_dph
-                else ""
-            )
-            dic_dph_row = (
-                f'<tr><td style="padding:3px 16px;font-size:12px;color:#64748b;">IČ DPH:</td>'
                 f'<td style="padding:3px 16px 3px 8px;font-size:12px;color:#1e293b;">{escape(order.dic_dph)}</td></tr>'
                 if order.dic_dph
                 else ""
@@ -532,7 +526,7 @@ Poznámka zákazníka: {order.notes or "Žiadna"}
                 <h1 style="color:#ffffff;margin:4px 0 0;font-size:22px;font-weight:700;">Nová objednávka</h1>
               </td>
               <td style="text-align:right;vertical-align:middle;">
-                <span style="background:#2563eb;color:#ffffff;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;"># {order.order_number}</span>
+                <span style="background:#2563eb;color:#ffffff;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;"># {escape(order.order_number)}</span>
               </td>
             </tr></table>
           </td>

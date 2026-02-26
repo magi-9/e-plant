@@ -27,9 +27,9 @@ export default function ResetPasswordPage() {
     const [success, setSuccess] = useState(false);
 
     const hasMinLength = newPassword.length >= 8;
-    const hasNumber = !/^\d+$/.test(newPassword);
+    const notEntirelyNumeric = newPassword.length > 0 && !/^\d+$/.test(newPassword);
     const passwordsMatch = newPassword === confirmPassword && confirmPassword !== '';
-    const canSubmit = hasMinLength && hasNumber && passwordsMatch;
+    const canSubmit = hasMinLength && notEntirelyNumeric && passwordsMatch;
 
     const mutation = useMutation({
         mutationFn: () => confirmPasswordReset(uid!, token!, newPassword),
@@ -118,8 +118,9 @@ export default function ResetPasswordPage() {
                                     name="new_password"
                                     type="password"
                                     required
+                                    minLength={8}
                                     className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="Minimálne 8 znakov s číslicou"
+                                    placeholder="Aspoň 8 znakov, nesmie byť iba číslice"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     onBlur={() => setPasswordTouched(true)}
@@ -127,7 +128,7 @@ export default function ResetPasswordPage() {
                                 {(passwordTouched || newPassword) && (
                                     <ul className="mt-3 space-y-1 pl-1">
                                         <Requirement met={hasMinLength} label="Aspoň 8 znakov" />
-                                        <Requirement met={hasNumber} label="Nesmie obsahovať iba číslice" />
+                                        <Requirement met={notEntirelyNumeric} label="Nesmie obsahovať iba číslice" />
                                     </ul>
                                 )}
                             </div>

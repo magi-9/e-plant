@@ -32,9 +32,9 @@ export default function RegisterPage() {
 
     const emailValid = EMAIL_REGEX.test(formData.email);
     const hasMinLength = formData.password.length >= 8;
-    const hasNumber = !/^\d+$/.test(formData.password);
+    const notEntirelyNumeric = formData.password.length > 0 && !/^\d+$/.test(formData.password);
     const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
-    const canSubmit = emailValid && hasMinLength && hasNumber && passwordsMatch;
+    const canSubmit = emailValid && hasMinLength && notEntirelyNumeric && passwordsMatch;
 
     const mutation = useMutation({
         mutationFn: () => register({
@@ -171,7 +171,7 @@ export default function RegisterPage() {
                             {(passwordTouched || formData.password) && (
                                 <ul className="mt-3 space-y-1 pl-1">
                                     <Requirement met={hasMinLength} label="Aspoň 8 znakov" />
-                                    <Requirement met={hasNumber} label="Nesmie obsahovať iba číslice" />
+                                    <Requirement met={notEntirelyNumeric} label="Nesmie obsahovať iba číslice" />
                                 </ul>
                             )}
                         </div>
