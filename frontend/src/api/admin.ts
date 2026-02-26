@@ -6,7 +6,4 @@ export const getAdminOrders = async (): Promise<Order[]> => {
     return response.data;
 };
 
-export const updateOrderStatus = async (orderId: number, data: { status: string }): Promise<Order> => {
-    const response = await client.patch<Order>(`/orders/admin/orders/${orderId}/`, data);
-    return response.data;
-};
+

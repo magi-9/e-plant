@@ -7,22 +7,6 @@ import client from '../api/client';
 import toast from 'react-hot-toast';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
-const STATUS_LABELS: Record<string, string> = {
-    new: 'Nová',
-    awaiting_payment: 'Čaká na platbu',
-    paid: 'Zaplatená',
-    shipped: 'Odoslaná',
-    cancelled: 'Zrušená',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-    new: 'bg-blue-100 text-blue-800',
-    awaiting_payment: 'bg-yellow-100 text-yellow-800',
-    paid: 'bg-green-100 text-green-800',
-    shipped: 'bg-indigo-100 text-indigo-800',
-    cancelled: 'bg-red-100 text-red-800',
-};
-
 const PAYMENT_LABELS: Record<string, string> = {
     bank_transfer: 'Bankový prevod',
     card: 'Karta',
@@ -241,9 +225,6 @@ export default function ProfilePage() {
                                     >
                                         <div className="flex flex-wrap items-center gap-3">
                                             <span className="font-mono font-semibold text-gray-900 text-sm">#{order.order_number}</span>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-700'}`}>
-                                                {STATUS_LABELS[order.status] ?? order.status}
-                                            </span>
                                             <span className="text-xs text-gray-500">{PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</span>
                                         </div>
                                         <div className="flex items-center gap-4">
