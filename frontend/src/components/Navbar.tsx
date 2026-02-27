@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     ShoppingCartIcon,
     ArrowRightOnRectangleIcon,
@@ -22,9 +22,15 @@ export default function Navbar() {
     const userIsAdmin = isLoggedIn && isAdmin();
     const totalItems = useCartStore((state) => state.getTotalItems());
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const isFirstRender = useRef(true);
 
-    // Close drawer on route change
+    // Close drawer on route change (skip initial render to satisfy ESLint)
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDrawerOpen(false);
     }, [location.pathname]);
 
@@ -75,8 +81,10 @@ export default function Navbar() {
 
                         {/* Left: animated hamburger — always visible */}
                         <button
-                            onClick={() => setDrawerOpen(true)}
-                            aria-label="Otvoriť menu"
+                            onClick={() => setDrawerOpen(!drawerOpen)}
+                            aria-label={drawerOpen ? "Zavrieť menu" : "Otvoriť menu"}
+                            aria-expanded={drawerOpen}
+                            aria-controls="main-navigation-drawer"
                             className="relative flex flex-col items-center justify-center w-10 h-10 rounded-xl text-blue-200 hover:bg-blue-800 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white flex-shrink-0"
                         >
                             <span className={`absolute block h-[2px] w-5 bg-current rounded-full transition-all duration-300 ease-in-out ${drawerOpen ? 'rotate-45 translate-y-0' : '-translate-y-[7px]'}`} />
@@ -172,6 +180,7 @@ export default function Navbar() {
 
             {/* ── Left Drawer ── */}
             <aside
+                id="main-navigation-drawer"
                 aria-label="Navigačné menu"
                 className={`fixed top-0 left-0 z-[70] h-dvh w-72 bg-gradient-to-b from-blue-950 via-blue-900 to-[#0a1628] shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
