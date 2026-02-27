@@ -59,19 +59,19 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                             leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                             leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                         >
-                            <Dialog.Panel className="relative transform overflow-visible rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl w-full">
-                                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block z-10">
+                            <Dialog.Panel className="relative transform overflow-hidden rounded-t-2xl sm:rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl w-full flex flex-col max-h-[90dvh] sm:max-h-none">
+                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10">
                                     <button
                                         type="button"
-                                        className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        className="rounded-full bg-white/90 backdrop-blur-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 p-1.5 shadow-sm"
                                         onClick={() => setOpen(false)}
                                     >
                                         <span className="sr-only">Zavrieť</span>
-                                        <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                                        <XMarkIcon className="h-5 w-5" aria-hidden="true" />
                                     </button>
                                 </div>
 
-                                <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                                <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 overflow-y-auto flex-1">
                                     <div className="sm:flex sm:items-start">
                                         <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -194,7 +194,7 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                 </div>
 
                                 {/* Mobile Sticky Footer */}
-                                <div className="bg-gray-50 px-4 py-4 sm:hidden sticky bottom-0 border-t border-gray-200 w-full z-20">
+                                <div className="bg-gray-50 px-4 py-4 sm:hidden border-t border-gray-200 w-full z-20 flex-shrink-0">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="flex-shrink-0">
                                             {product.price ? (

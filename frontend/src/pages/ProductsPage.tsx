@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../api/products';
 import type { Product } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 
@@ -22,6 +23,13 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
+    useEffect(() => {
+        const onScroll = () => setShowScrollTop(window.scrollY > 400);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
 
     const handleProductClick = (product: Product) => {
         setSelectedProduct(product);
@@ -95,8 +103,8 @@ export default function ProductsPage() {
                     />
                     <div className="absolute inset-0 bg-blue-950 mix-blend-multiply" aria-hidden="true" />
                 </div>
-                <div className="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                <div className="relative max-w-7xl mx-auto py-14 px-4 sm:py-24 sm:px-6 lg:py-32 lg:px-8">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
                         Dentálne Implantáty Najvyššej Kvality
                     </h1>
                     <p className="mt-6 text-xl text-blue-100 max-w-3xl">
@@ -107,32 +115,45 @@ export default function ProductsPage() {
             </div>
 
             {/* Product Grid */}
-            <div className="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
+            <div className="max-w-2xl mx-auto py-10 px-4 sm:py-16 sm:px-6 lg:max-w-7xl lg:px-8 lg:py-24">
 
                 {/* Search and Filters */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Hľadať produkt</label>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    {/* Search */}
+                    <div className="relative flex-1">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                         <input
                             type="text"
-                            placeholder="Názov alebo popis..."
+                            placeholder="Hľadať produkt..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-none text-sm"
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                aria-label="Vymazať hľadanie"
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        )}
                     </div>
-                    <div className="flex gap-4 items-center">
-                        <button
-                            onClick={() => {
-                                setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none');
-                            }}
-                            className="whitespace-nowrap inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors h-[42px]"
-                        >
-                            Zoradiť podľa ceny: {priceSortOrder === 'none' ? 'Štandardne' : priceSortOrder === 'asc' ? 'Najlacnejšie' : 'Najdrahšie'}
-                            {priceSortOrder === 'asc' && <span className="ml-2">↑</span>}
-                            {priceSortOrder === 'desc' && <span className="ml-2">↓</span>}
-                        </button>
-                    </div>
+                    {/* Sort */}
+                    <button
+                        onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
+                        title={priceSortOrder === 'none' ? 'Zoradiť podľa ceny' : priceSortOrder === 'asc' ? 'Cena vzostupne' : 'Cena zostupne'}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                            priceSortOrder !== 'none'
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                    >
+                        <ArrowsUpDownIcon className={`h-4 w-4 transition-transform ${
+                            priceSortOrder === 'asc' ? 'rotate-0' : priceSortOrder === 'desc' ? 'rotate-180' : ''
+                        }`} />
+                        <span className="hidden sm:inline">{priceSortOrder === 'none' ? 'Cena' : priceSortOrder === 'asc' ? 'Cena ↑' : 'Cena ↓'}</span>
+                    </button>
                 </div>
 
                 {/* Category Badges */}
@@ -304,6 +325,17 @@ export default function ProductsPage() {
                 setOpen={setOpenModal}
                 product={selectedProduct}
             />
+
+            {/* Scroll to top FAB */}
+            <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                aria-label="Späť na vrch"
+                className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg transition-all duration-300 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    showScrollTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
+                }`}
+            >
+                <ArrowUpIcon className="h-5 w-5" />
+            </button>
         </div>
     );
 }

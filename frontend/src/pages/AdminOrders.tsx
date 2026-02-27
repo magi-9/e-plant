@@ -19,15 +19,15 @@ export default function AdminOrders() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Správa objednávok</h1>
 
-            <div className="bg-white shadow overflow-hidden sm:rounded-md flex flex-col gap-4 p-4">
+<div className="bg-white shadow overflow-hidden sm:rounded-md flex flex-col gap-4 p-3 sm:p-4">
                 {orders?.map((order) => (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-5">
-                        <div className="flex justify-between items-start mb-4">
+                    <div key={order.id} className="border border-gray-200 rounded-lg p-4 sm:p-5">
+                        <div className="flex flex-wrap justify-between items-start gap-2 mb-4">
                             <div>
-                                <h3 className="text-lg font-bold text-blue-800">#{order.order_number}</h3>
-                                <p className="text-sm text-gray-600">Dátum: {new Date(order.created_at).toLocaleString('sk-SK')}</p>
+                                <h3 className="text-base sm:text-lg font-bold text-blue-800">#{order.order_number}</h3>
+                                <p className="text-xs sm:text-sm text-gray-600">Dátum: {new Date(order.created_at).toLocaleString('sk-SK')}</p>
                             </div>
-                            <p className="font-semibold text-gray-800">
+                            <p className="font-semibold text-gray-800 text-sm sm:text-base">
                                 Spolu: {Number(order.total_price).toFixed(2)} €
                             </p>
                         </div>

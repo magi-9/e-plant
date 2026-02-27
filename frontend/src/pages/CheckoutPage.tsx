@@ -96,6 +96,12 @@ export default function CheckoutPage() {
     const proceedToSummary = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const backToForm = () => {
+        setStep(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleFinalSubmit = async () => {
@@ -149,6 +155,7 @@ export default function CheckoutPage() {
             setOrderNumber(order.order_number);
             setOrderTotal(getTotalPrice());
             setOrderSuccess(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             clearCart();
         } catch (error: unknown) {
             console.error('Order creation error:', error);
@@ -172,8 +179,8 @@ export default function CheckoutPage() {
 
     if (orderSuccess) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full text-center">
+            <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-md w-full mx-auto text-center">
                     <CheckCircleIcon className="mx-auto h-24 w-24 text-green-600" />
                     <h2 className="mt-6 text-3xl font-bold text-gray-900">
                         Objednávka úspešná!
@@ -273,7 +280,7 @@ export default function CheckoutPage() {
                         )}
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">Meno *</label>
                                     <input
@@ -349,7 +356,7 @@ export default function CheckoutPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="city" className="block text-sm font-medium text-gray-700">
                                         Mesto *
@@ -417,7 +424,7 @@ export default function CheckoutPage() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label htmlFor="ico" className="block text-sm font-medium text-gray-700">
                                                 IČO *
@@ -600,7 +607,7 @@ export default function CheckoutPage() {
                         <div className="flex gap-4">
                             <button
                                 type="button"
-                                onClick={() => setStep(1)}
+                                onClick={backToForm}
                                 className="flex-1 bg-white text-gray-700 py-3 px-4 rounded-md font-medium border border-gray-300 hover:bg-gray-50 transition-colors"
                             >
                                 Upraviť údaje
