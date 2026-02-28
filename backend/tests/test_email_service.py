@@ -1,9 +1,8 @@
 """Comprehensive tests for email service layer."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from django.test import TestCase
-from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth import get_user_model
 
 from services.email import (
@@ -184,6 +183,7 @@ class TestOrderEmailService:
             name="Test Product",
             price=100.00,
             stock_quantity=10,
+            category="Test Category",
         )
         self.order = Order.objects.create(
             customer_name="John Doe",
@@ -194,6 +194,7 @@ class TestOrderEmailService:
             postal_code="12345",
             payment_method="bank_transfer",
             total_price=100.00,
+            order_number="ORD-2026-001",
         )
         from orders.models import OrderItem
 
@@ -219,7 +220,9 @@ class TestOrderEmailService:
 
     @patch.object(OrderEmailService, "send_email")
     @patch("services.email.order_emails.generate_invoice_pdf")
-    def test_send_confirmation_emails_pdf_generation_fails(self, mock_pdf, mock_send_email):
+    def test_send_confirmation_emails_pdf_generation_fails(
+        self, mock_pdf, mock_send_email
+    ):
         """Test that emails are sent even if PDF generation fails."""
         mock_pdf.side_effect = Exception("PDF generation failed")
         mock_send_email.return_value = 1
@@ -250,7 +253,7 @@ class TestOrderEmailService:
         mock_send_email.return_value = 1
 
         service = OrderEmailService(self.order)
-        result = service._send_warehouse_notification()
+        result = service._send_warehouse_notification(pdf_bytes=None)
 
         assert result is True
         mock_send_email.assert_called_once()

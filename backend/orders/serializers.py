@@ -143,7 +143,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
             # Send confirmation emails after the transaction commits so DB locks
             # are released before the (potentially slow) PDF generation + SMTP calls.
-            transaction.on_commit(lambda: OrderEmailService(order).send_confirmation_emails())
+            transaction.on_commit(
+                lambda: OrderEmailService(order).send_confirmation_emails()
+            )
 
             return order
 

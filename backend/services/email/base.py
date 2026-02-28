@@ -46,7 +46,7 @@ class BaseEmailService:
             fail_silently: Whether to suppress exceptions during sending
 
         Returns:
-            Number of recipients the email was sent to (0 or 1 if fail_silently=True)
+            Number of successfully delivered messages (typically 0 or 1 for this method)
         """
         # Determine recipient list
         if to_email:
@@ -73,7 +73,7 @@ class BaseEmailService:
                     msg.attach(filename, content, mimetype)
 
             return msg.send(fail_silently=fail_silently)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to send email '%s' to %s", subject, to)
             if not fail_silently:
                 raise

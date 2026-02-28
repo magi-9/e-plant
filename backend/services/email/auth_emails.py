@@ -1,10 +1,8 @@
 """Authentication-related email service (verification, password reset)."""
 
-import logging
 import os
 from typing import Optional
 
-from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -12,8 +10,6 @@ from django.utils.http import urlsafe_base64_encode
 from users.models import CustomUser
 from .base import BaseEmailService
 from .templates import verification_email_html, password_reset_email_html
-
-logger = logging.getLogger(__name__)
 
 
 class AuthEmailService(BaseEmailService):
@@ -64,7 +60,7 @@ class AuthEmailService(BaseEmailService):
                 text_body=text_body,
                 html_body=html_body,
                 to_email=user.email,
-                fail_silently=False,
+                fail_silently=True,
             )
             > 0
         )
@@ -102,7 +98,7 @@ class AuthEmailService(BaseEmailService):
                 text_body=text_body,
                 html_body=html_body,
                 to_email=user.email,
-                fail_silently=False,
+                fail_silently=True,
             )
             > 0
         )

@@ -1,13 +1,10 @@
 """Notification email service for alerts and stock notifications."""
 
-import logging
 from typing import Optional
 
-from django.conf import settings
+from django.utils.html import escape
 
 from .base import BaseEmailService
-
-logger = logging.getLogger(__name__)
 
 
 class NotificationEmailService(BaseEmailService):
@@ -44,9 +41,7 @@ class NotificationEmailService(BaseEmailService):
             f"Minimálny limit: {threshold} ks\n\n"
             "Prosím, doobjednajte produkt."
         )
-        html_body = self._low_stock_alert_html(
-            product_name, current_stock, threshold
-        )
+        html_body = self._low_stock_alert_html(product_name, current_stock, threshold)
 
         return (
             self.send_email(
@@ -64,6 +59,7 @@ class NotificationEmailService(BaseEmailService):
         product_name: str, current_stock: int, threshold: int
     ) -> str:
         """Build HTML version of low stock alert email."""
+        product_name_escaped = escape(product_name)
         return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -83,7 +79,7 @@ class NotificationEmailService(BaseEmailService):
         <tr>
           <td style="padding:36px 40px;">
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px;">
-              Produkt <strong>{product_name}</strong> má nízky stav skladu a je potrebný nový nákup.
+              Produkt <strong>{product_name_escaped}</strong> má nízky stav skladu a je potrebný nový nákup.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;margin-bottom:24px;border-collapse:collapse;">
               <tr>

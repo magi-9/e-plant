@@ -5,6 +5,7 @@ from django.utils.html import escape
 
 def verification_email_html(verify_url: str) -> str:
     """HTML template for email verification email."""
+    verify_url_escaped = escape(verify_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -28,12 +29,12 @@ def verification_email_html(verify_url: str) -> str:
               Ďakujeme za Vašu registráciu na <strong>DentalShop</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
-            <a href="{verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{verify_url_escaped}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Overiť e-mailovú adresu
             </a>
             <p style="color:#94a3b8;font-size:12px;margin:24px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{verify_url}" style="color:#2563eb;word-break:break-all;">{verify_url}</a>
+              <a href="{verify_url_escaped}" style="color:#2563eb;word-break:break-all;">{verify_url_escaped}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.
@@ -54,6 +55,7 @@ def verification_email_html(verify_url: str) -> str:
 
 def password_reset_email_html(reset_url: str) -> str:
     """HTML template for password reset email."""
+    reset_url_escaped = escape(reset_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -77,7 +79,7 @@ def password_reset_email_html(reset_url: str) -> str:
               Dostali sme žiadosť o obnovenie hesla pre Váš účet.<br>
               Kliknite na tlačidlo nižšie pre nastavenie nového hesla.
             </p>
-            <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{reset_url_escaped}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Nastaviť nové heslo
             </a>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;margin:24px 0 0;border-collapse:collapse;">
@@ -91,7 +93,7 @@ def password_reset_email_html(reset_url: str) -> str:
             </table>
             <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{reset_url}" style="color:#2563eb;word-break:break-all;">{reset_url}</a>
+              <a href="{reset_url_escaped}" style="color:#2563eb;word-break:break-all;">{reset_url_escaped}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — Vaše heslo zostane nezmenené.
@@ -420,6 +422,7 @@ def order_notification_warehouse_html(order) -> str:
           </td>
         </tr>
       </table>
-    </td></tr></table>
+    </td></tr>
+  </table>
 </body>
 </html>"""

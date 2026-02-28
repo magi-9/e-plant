@@ -4,7 +4,6 @@ import logging
 from typing import Optional
 
 from django.conf import settings
-from django.db import transaction
 
 from orders.models import Order
 from users.models import GlobalSettings
@@ -36,7 +35,7 @@ class OrderEmailService(BaseEmailService):
         """
         Send confirmation emails to customer and warehouse.
 
-        Generates PDF invoice and attaches it to customer email.
+        Generates PDF invoice and attaches it to both customer and warehouse emails.
         Logs any failures but does not raise exceptions.
 
         Returns:
@@ -51,7 +50,7 @@ class OrderEmailService(BaseEmailService):
             pdf_bytes = None
 
         customer_sent = self._send_customer_confirmation(pdf_bytes)
-        warehouse_sent = self._send_warehouse_notification()
+        warehouse_sent = self._send_warehouse_notification(pdf_bytes)
 
         return customer_sent or warehouse_sent
 
@@ -92,9 +91,12 @@ class OrderEmailService(BaseEmailService):
             > 0
         )
 
-    def _send_warehouse_notification(self) -> bool:
+    def _send_warehouse_notification(self, pdf_bytes: Optional[bytes]) -> bool:
         """
         Send order notification email to warehouse.
+
+        Args:
+            pdf_bytes: Optional PDF invoice bytes to attach
 
         Returns:
             True if email was sent successfully
@@ -108,12 +110,18 @@ class OrderEmailService(BaseEmailService):
         text_body = self._build_warehouse_email_text()
         html_body = order_notification_warehouse_html(self.order)
 
+        attachments = []
+        if pdf_bytes:
+            filename = f"faktura_{self.order.order_number}.pdf"
+            attachments.append((filename, pdf_bytes, "application/pdf"))
+
         return (
             self.send_email(
                 subject=subject,
                 text_body=text_body,
                 html_body=html_body,
                 to_email=warehouse_email,
+                attachments=attachments,
                 fail_silently=True,
             )
             > 0
@@ -124,7 +132,7 @@ class OrderEmailService(BaseEmailService):
         items_text = "\n".join(
             [
                 f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
-                for item in self.order.items.all()
+                for item in self.order.items.select_related("product")
             ]
         )
 
@@ -179,13 +187,11 @@ Tím DentalShop
     def _build_warehouse_email_text(self) -> str:
         """Build plain text version of warehouse notification email."""
         item_lines = []
-        for item in self.order.items.all():
+        for item in self.order.items.select_related("product"):
             remaining = item.product.stock_quantity
             threshold = item.product.low_stock_threshold
             warning = (
-                "  ⚠ NÍZKY STAV – treba doobjednať!"
-                if remaining < threshold
-                else ""
+                "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
             )
             item_lines.append(
                 f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}\n"
