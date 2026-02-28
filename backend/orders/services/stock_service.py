@@ -31,75 +31,95 @@ class StockService:
         Validate stock availability and prepare items for order creation.
 
         This method:
-        1. Aggregates quantities by product_id to handle duplicates
+        1. Aggregates quantities by product_id to validate against total (prevents overselling)
         2. Locks products using select_for_update() to prevent race conditions
-        3. Validates that sufficient stock is available
-        4. Deducts stock quantities
-        5. Returns prepared item data with product instances and price snapshots
+        3. Validates that sufficient stock is available for the total quantity
+        4. Deducts stock quantities once per unique product
+        5. Returns individual prepared items (maintains one OrderItem per input item)
 
-        Note: Wraps operations in transaction.atomic() to ensure select_for_update()
-        works correctly. Nested transactions are safe in Django.
+        Note: Only wraps in transaction.atomic() if not already in an atomic block,
+        to avoid unnecessary savepoints.
 
         Args:
             items_data: List of dicts with 'product_id' and 'quantity' keys
 
         Returns:
             List of dicts with 'product', 'quantity', and 'price_snapshot' keys
+            (one entry per input item, preserving order and individual quantities)
 
         Raises:
             serializers.ValidationError: If product not found or insufficient stock
         """
-        with transaction.atomic():
-            # Aggregate quantities by product_id to handle duplicate products
-            product_quantities = {}
-            for item_data in items_data:
-                product_id = item_data["product_id"]
-                quantity = item_data["quantity"]
-                product_quantities[product_id] = (
-                    product_quantities.get(product_id, 0) + quantity
+        # Only create transaction if not already in one (avoid unnecessary savepoint)
+        if not transaction.get_connection().in_atomic_block:
+            with transaction.atomic():
+                return StockService._validate_and_reserve_stock_impl(items_data)
+        else:
+            return StockService._validate_and_reserve_stock_impl(items_data)
+
+    @staticmethod
+    def _validate_and_reserve_stock_impl(
+        items_data: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Internal implementation of validate_and_reserve_stock."""
+        # First pass: aggregate quantities by product_id for validation
+        product_quantities = {}
+        for item_data in items_data:
+            product_id = item_data["product_id"]
+            quantity = item_data["quantity"]
+            product_quantities[product_id] = (
+                product_quantities.get(product_id, 0) + quantity
+            )
+
+        # Second pass: lock products, validate, and deduct stock
+        locked_products = {}  # Cache locked products by id
+        for product_id, total_quantity in product_quantities.items():
+            # Lock the product row to prevent race conditions
+            try:
+                product = Product.objects.select_for_update().get(id=product_id)
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Product with id {product_id} does not exist."
                 )
 
-            products_to_update = []
-            prepared_items = []
-
-            for product_id, total_quantity in product_quantities.items():
-                # Lock the product row to prevent race conditions
-                try:
-                    product = Product.objects.select_for_update().get(id=product_id)
-                except Product.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Product with id {product_id} does not exist."
-                    )
-
-                # Validate stock availability
-                if product.stock_quantity < total_quantity:
-                    raise serializers.ValidationError(
-                        f"Not enough stock for product '{product.name}'. "
-                        f"Available: {product.stock_quantity}, Requested: {total_quantity}"
-                    )
-
-                # Deduct stock
-                product.stock_quantity -= total_quantity
-                products_to_update.append(product)
-
-                # Prepare item data with product instance and price snapshot
-                prepared_items.append(
-                    {
-                        "product": product,
-                        "quantity": total_quantity,
-                        "price_snapshot": product.price,
-                    }
+            # Validate stock availability against total quantity
+            if product.stock_quantity < total_quantity:
+                raise serializers.ValidationError(
+                    f"Not enough stock for product '{product.name}'. "
+                    f"Available: {product.stock_quantity}, Requested: {total_quantity}"
                 )
 
-            # Save all updated products
-            for product in products_to_update:
-                product.save()
-                logger.info(
-                    f"Stock deducted: {product.name} - "
-                    f"New quantity: {product.stock_quantity}"
-                )
+            # Deduct total stock for this product
+            product.stock_quantity -= total_quantity
+            product.save()
+            locked_products[product_id] = product
 
-            return prepared_items
+            logger.debug(
+                "Stock deducted: %s - New quantity: %s",
+                product.name,
+                product.stock_quantity,
+            )
+
+        # Third pass: prepare individual items (maintains original structure)
+        # This ensures one OrderItem per input item, not per unique product
+        prepared_items = []
+        for item_data in items_data:
+            product_id = item_data["product_id"]
+            product = locked_products[product_id]
+            prepared_items.append(
+                {
+                    "product": product,
+                    "quantity": item_data["quantity"],
+                    "price_snapshot": product.price,
+                }
+            )
+
+        logger.info(
+            "Stock reserved for %s items across %s unique products",
+            len(prepared_items),
+            len(locked_products),
+        )
+        return prepared_items
 
     @staticmethod
     def restore_stock(items: List[Dict[str, Any]]) -> None:
@@ -115,6 +135,7 @@ class StockService:
                 product.stock_quantity += item["quantity"]
                 product.save()
                 logger.info(
-                    f"Stock restored: {product.name} - "
-                    f"New quantity: {product.stock_quantity}"
+                    "Stock restored: %s - New quantity: %s",
+                    product.name,
+                    product.stock_quantity,
                 )

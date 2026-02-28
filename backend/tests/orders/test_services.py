@@ -124,7 +124,7 @@ class TestStockService:
     def test_validate_and_reserve_stock_handles_duplicate_products(
         self, product_factory
     ):
-        """Test that duplicate product_ids are aggregated correctly."""
+        """Test that duplicate product_ids are validated correctly but maintain individual items."""
         product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
         # Same product appears multiple times in the order
@@ -136,11 +136,13 @@ class TestStockService:
 
         prepared_items = StockService.validate_and_reserve_stock(items_data)
 
-        # Should aggregate quantities: 2 + 3 + 1 = 6
-        assert len(prepared_items) == 1
-        assert prepared_items[0]["quantity"] == 6
+        # Should return individual items (one OrderItem per input), not aggregated
+        assert len(prepared_items) == 3
+        assert prepared_items[0]["quantity"] == 2
+        assert prepared_items[1]["quantity"] == 3
+        assert prepared_items[2]["quantity"] == 1
 
-        # Stock should be deducted by total quantity
+        # Stock should be deducted by total quantity: 2 + 3 + 1 = 6
         product.refresh_from_db()
         assert product.stock_quantity == 4  # 10 - 6
 

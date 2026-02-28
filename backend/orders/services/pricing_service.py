@@ -41,11 +41,14 @@ class PricingService:
             total_price += subtotal
 
             logger.debug(
-                f"Item pricing: {item.get('product', 'Unknown')} - "
-                f"{quantity} × {price_snapshot} = {subtotal}"
+                "Item pricing: %s - %s × %s = %s",
+                item.get("product", "Unknown"),
+                quantity,
+                price_snapshot,
+                subtotal,
             )
 
-        logger.info(f"Order total calculated: {total_price}")
+        logger.info("Order total calculated: %s", total_price)
         return total_price
 
     @staticmethod

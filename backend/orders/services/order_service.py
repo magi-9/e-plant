@@ -100,8 +100,9 @@ class OrderService:
             transaction.on_commit(lambda: self._send_order_notifications(order))
 
             logger.info(
-                f"Order created successfully: {order.order_number} - "
-                f"Total: {order.total_price}"
+                "Order created successfully: %s - Total: %s",
+                order.order_number,
+                order.total_price,
             )
 
             return order
@@ -156,7 +157,7 @@ class OrderService:
             **validated_data,
         )
 
-        logger.info(f"Order instance created: {order.order_number}")
+        logger.info("Order instance created: %s", order.order_number)
         return order
 
     def _create_order_items(
@@ -173,7 +174,7 @@ class OrderService:
             OrderItem.objects.create(order=order, **item_data)
 
         logger.info(
-            f"Created {len(prepared_items)} order items for {order.order_number}"
+            "Created %s order items for %s", len(prepared_items), order.order_number
         )
 
     def _send_order_notifications(self, order: Order) -> None:
@@ -188,9 +189,9 @@ class OrderService:
         """
         try:
             OrderEmailService(order).send_confirmation_emails()
-            logger.info(f"Email notifications sent for order {order.order_number}")
+            logger.info("Email notifications sent for order %s", order.order_number)
         except Exception:
             # Log the error with full traceback but don't raise - order is already created
             logger.exception(
-                f"Failed to send email notifications for order {order.order_number}"
+                "Failed to send email notifications for order %s", order.order_number
             )
