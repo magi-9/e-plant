@@ -2,11 +2,7 @@ import logging
 
 from rest_framework import serializers
 from .models import Order, OrderItem
-from products.models import Product
-from decimal import Decimal
-import uuid
-from django.db import transaction
-from services.email import OrderEmailService
+from .services import OrderService
 
 logger = logging.getLogger(__name__)
 
@@ -64,90 +60,21 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        items_data = validated_data.pop("items")
+        """
+        Create a new order using the OrderService.
 
-        # Use atomic transaction to ensure all-or-nothing behavior
-        with transaction.atomic():
-            # Generate unique order number
-            order_number = str(uuid.uuid4())[:8].upper()
+        This serializer now delegates all business logic to the service layer,
+        focusing solely on serialization and validation.
+        """
+        # Get user from context if authenticated
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
 
-            # Calculate total and validate products
-            total_price = Decimal("0.00")
-            items_to_create = []
-            products_to_update = []
+        # Delegate to service layer
+        service = OrderService(user=user)
+        order = service.create_order(validated_data)
 
-            for item_data in items_data:
-                try:
-                    # Use select_for_update to lock the row and prevent race conditions
-                    product = Product.objects.select_for_update().get(
-                        id=item_data["product_id"]
-                    )
-                except Product.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Product with id {item_data['product_id']} does not exist."
-                    )
-
-                quantity = item_data["quantity"]
-
-                # Validate stock
-                if product.stock_quantity < quantity:
-                    raise serializers.ValidationError(
-                        f"Not enough stock for product '{product.name}'. "
-                        f"Available: {product.stock_quantity}, Requested: {quantity}"
-                    )
-
-                # Use product's current price as snapshot
-                price_snapshot = product.price
-                subtotal = price_snapshot * quantity
-                total_price += subtotal
-
-                # Deduct stock
-                product.stock_quantity -= quantity
-                products_to_update.append(product)
-
-                items_to_create.append(
-                    {
-                        "product": product,
-                        "quantity": quantity,
-                        "price_snapshot": price_snapshot,
-                    }
-                )
-
-            # Update all product stocks
-            for product in products_to_update:
-                product.save()
-
-            # Get user if authenticated
-            request = self.context.get("request")
-            user = request.user if request and request.user.is_authenticated else None
-
-            # Set status based on payment method
-            payment_method = validated_data.get("payment_method", "bank_transfer")
-            if payment_method == "bank_transfer":
-                status = "awaiting_payment"
-            else:
-                status = "new"
-
-            # Create order
-            order = Order.objects.create(
-                user=user,
-                order_number=order_number,
-                status=status,
-                total_price=total_price,
-                **validated_data,
-            )
-
-            # Create order items
-            for item_data in items_to_create:
-                OrderItem.objects.create(order=order, **item_data)
-
-            # Send confirmation emails after the transaction commits so DB locks
-            # are released before the (potentially slow) PDF generation + SMTP calls.
-            transaction.on_commit(
-                lambda: OrderEmailService(order).send_confirmation_emails()
-            )
-
-            return order
+        return order
 
 
 class OrderSerializer(serializers.ModelSerializer):
