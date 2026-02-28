@@ -3,8 +3,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
+from services.email import AuthEmailService
 from .models import GlobalSettings
-from .utils import send_verification_email, _translate_password_errors
+from .utils import _translate_password_errors
 
 User = get_user_model()
 
@@ -35,7 +36,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.is_active = False
         user.save()
 
-        send_verification_email(user)
+        AuthEmailService().send_verification_email(user)
 
         return user
 

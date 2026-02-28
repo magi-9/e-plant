@@ -5,3 +5,5 @@ exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,migrations
 per-file-ignores =
     orders/serializers.py:E501
     users/utils.py:E501
+    services/email/templates.py:E501
+    services/email/notifications.py:E501

@@ -57,6 +57,7 @@ function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/complaints" element={<ComplaintsPage />} />
               <Route path="/withdrawal" element={<WithdrawalPage />} />
+              <Route path="*" element={<Navigate to="/products" replace />} />
             </Routes>
           </main>
           <footer className="bg-gradient-to-b from-blue-950 to-[#07101f] border-t border-white/10 mt-auto">

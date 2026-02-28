@@ -9,10 +9,9 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from services.email import AuthEmailService
 from .utils import (
     check_and_record_rate_limit,
-    send_verification_email,
-    send_password_reset_email,
     _translate_password_errors,
 )
 from .serializers import (
@@ -94,7 +93,7 @@ class ResendVerificationView(views.APIView):
             return generic_response  # Don't leak whether the email exists
 
         if not user.is_active:
-            send_verification_email(user)
+            AuthEmailService().send_verification_email(user)
 
         return generic_response
 
@@ -130,7 +129,7 @@ class PasswordResetRequestView(views.APIView):
             return generic_response  # Don't leak whether the email exists
 
         if user.is_active:
-            send_password_reset_email(user)
+            AuthEmailService().send_password_reset_email(user)
 
         return generic_response
 
