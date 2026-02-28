@@ -6,6 +6,7 @@ Contains the core business logic for order processing.
 
 import logging
 import uuid
+from decimal import Decimal
 from typing import Dict, Any, Optional, List
 from django.db import transaction
 from django.contrib.auth import get_user_model
@@ -132,7 +133,7 @@ class OrderService:
         self,
         validated_data: Dict[str, Any],
         order_number: str,
-        total_price: Any,
+        total_price: Decimal,
         status: str,
     ) -> Order:
         """
@@ -188,8 +189,8 @@ class OrderService:
         try:
             OrderEmailService(order).send_confirmation_emails()
             logger.info(f"Email notifications sent for order {order.order_number}")
-        except Exception as e:
-            # Log the error but don't raise - order is already created
-            logger.error(
-                f"Failed to send email notifications for order {order.order_number}: {str(e)}"
+        except Exception:
+            # Log the error with full traceback but don't raise - order is already created
+            logger.exception(
+                f"Failed to send email notifications for order {order.order_number}"
             )

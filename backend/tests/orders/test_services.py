@@ -101,22 +101,71 @@ class TestStockService:
         assert product2.stock_quantity == 5
 
     @pytest.mark.django_db
-    def test_select_for_update_prevents_race_condition(self, product_factory):
-        """Test that select_for_update locks prevent race conditions."""
+    def test_validate_and_reserve_stock_with_transaction(self, product_factory):
+        """Test stock reservation and deduction within a database transaction."""
         product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
         items_data = [{"product_id": product.id, "quantity": 5}]
 
-        # This should acquire a lock on the product row
-        with transaction.atomic():
-            prepared_items = StockService.validate_and_reserve_stock(items_data)
+        # Perform stock validation and reservation
+        # (method now wraps itself in transaction.atomic())
+        prepared_items = StockService.validate_and_reserve_stock(items_data)
 
-            # Within this transaction, the product row is locked
-            assert len(prepared_items) == 1
+        # The service should return the expected prepared item
+        assert len(prepared_items) == 1
+        assert prepared_items[0]["product"] == product
+        assert prepared_items[0]["quantity"] == 5
 
-        # Lock is released after transaction commits
+        # After the transaction commits, stock should be reduced
         product.refresh_from_db()
         assert product.stock_quantity == 5
+
+    @pytest.mark.django_db
+    def test_validate_and_reserve_stock_handles_duplicate_products(
+        self, product_factory
+    ):
+        """Test that duplicate product_ids are aggregated correctly."""
+        product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+        # Same product appears multiple times in the order
+        items_data = [
+            {"product_id": product.id, "quantity": 2},
+            {"product_id": product.id, "quantity": 3},
+            {"product_id": product.id, "quantity": 1},
+        ]
+
+        prepared_items = StockService.validate_and_reserve_stock(items_data)
+
+        # Should aggregate quantities: 2 + 3 + 1 = 6
+        assert len(prepared_items) == 1
+        assert prepared_items[0]["quantity"] == 6
+
+        # Stock should be deducted by total quantity
+        product.refresh_from_db()
+        assert product.stock_quantity == 4  # 10 - 6
+
+    @pytest.mark.django_db
+    def test_validate_and_reserve_stock_duplicate_insufficient_stock(
+        self, product_factory
+    ):
+        """Test that duplicate products validate against total quantity."""
+        product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+        # Same product ordered multiple times, total exceeds stock
+        items_data = [
+            {"product_id": product.id, "quantity": 6},
+            {"product_id": product.id, "quantity": 5},  # Total: 11 > 10 available
+        ]
+
+        with pytest.raises(ValidationError) as exc_info:
+            StockService.validate_and_reserve_stock(items_data)
+
+        assert "Not enough stock" in str(exc_info.value)
+        assert "Requested: 11" in str(exc_info.value)
+
+        # Stock should not be deducted
+        product.refresh_from_db()
+        assert product.stock_quantity == 10
 
 
 class TestPricingService:
