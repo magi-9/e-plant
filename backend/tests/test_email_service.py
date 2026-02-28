@@ -236,10 +236,13 @@ class TestOrderEmailService:
     @patch.object(OrderEmailService, "send_email")
     def test_send_customer_confirmation(self, mock_send_email):
         """Test sending customer confirmation email."""
+        from unittest.mock import Mock
+
         mock_send_email.return_value = 1
+        mock_shop = Mock(iban="SK1234567890", warehouse_email="warehouse@test.com")
 
         service = OrderEmailService(self.order)
-        result = service._send_customer_confirmation(None)
+        result = service._send_customer_confirmation(mock_shop, None)
 
         assert result is True
         mock_send_email.assert_called_once()
@@ -250,10 +253,13 @@ class TestOrderEmailService:
     @patch.object(OrderEmailService, "send_email")
     def test_send_warehouse_notification(self, mock_send_email):
         """Test sending warehouse notification email."""
+        from unittest.mock import Mock
+
         mock_send_email.return_value = 1
+        mock_shop = Mock(warehouse_email="warehouse@test.com")
 
         service = OrderEmailService(self.order)
-        result = service._send_warehouse_notification(pdf_bytes=None)
+        result = service._send_warehouse_notification(mock_shop, pdf_bytes=None)
 
         assert result is True
         mock_send_email.assert_called_once()

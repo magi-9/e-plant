@@ -36,40 +36,41 @@ class OrderEmailService(BaseEmailService):
         Send confirmation emails to customer and warehouse.
 
         Generates PDF invoice and attaches it to both customer and warehouse emails.
+        Loads GlobalSettings once and reuses for all email operations.
         Logs any failures but does not raise exceptions.
 
         Returns:
             True if at least one email was sent successfully
         """
+        shop = GlobalSettings.load()
         try:
-            pdf_bytes = self._generate_invoice_pdf()
+            pdf_bytes = self._generate_invoice_pdf(shop)
         except Exception:
             logger.exception(
                 "Failed to generate invoice PDF for order %s", self.order.order_number
             )
             pdf_bytes = None
 
-        customer_sent = self._send_customer_confirmation(pdf_bytes)
-        warehouse_sent = self._send_warehouse_notification(pdf_bytes)
+        customer_sent = self._send_customer_confirmation(shop, pdf_bytes)
+        warehouse_sent = self._send_warehouse_notification(shop, pdf_bytes)
 
         return customer_sent or warehouse_sent
 
-    def _generate_invoice_pdf(self) -> Optional[bytes]:
+    def _generate_invoice_pdf(self, shop) -> Optional[bytes]:
         """Generate invoice PDF for the order."""
-        shop = GlobalSettings.load()
         return generate_invoice_pdf(self.order, shop)
 
-    def _send_customer_confirmation(self, pdf_bytes: Optional[bytes]) -> bool:
+    def _send_customer_confirmation(self, shop, pdf_bytes: Optional[bytes]) -> bool:
         """
         Send order confirmation email to customer.
 
         Args:
+            shop: GlobalSettings instance (pre-loaded to avoid extra queries)
             pdf_bytes: Optional PDF invoice bytes to attach
 
         Returns:
             True if email was sent successfully
         """
-        shop = GlobalSettings.load()
         subject = f"Potvrdenie objednávky #{self.order.order_number}"
         text_body = self._build_customer_email_text(shop)
         html_body = order_confirmation_customer_html(self.order, shop)
@@ -91,17 +92,17 @@ class OrderEmailService(BaseEmailService):
             > 0
         )
 
-    def _send_warehouse_notification(self, pdf_bytes: Optional[bytes]) -> bool:
+    def _send_warehouse_notification(self, shop, pdf_bytes: Optional[bytes]) -> bool:
         """
         Send order notification email to warehouse.
 
         Args:
+            shop: GlobalSettings instance (pre-loaded to avoid extra queries)
             pdf_bytes: Optional PDF invoice bytes to attach
 
         Returns:
             True if email was sent successfully
         """
-        shop = GlobalSettings.load()
         warehouse_email = shop.warehouse_email or getattr(
             settings, "WAREHOUSE_EMAIL", "warehouse@dentalshop.sk"
         )
