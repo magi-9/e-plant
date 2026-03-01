@@ -206,7 +206,7 @@ class GlobalSettingsView(generics.RetrieveUpdateAPIView):
         return [permissions.AllowAny()]
 
     def get_object(self):
-        return GlobalSettings.load()
+        return GlobalSettings.objects.get_settings()
 
 
 class AdminUsersListView(generics.ListAPIView):

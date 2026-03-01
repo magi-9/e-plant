@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.db import IntegrityError, transaction
 from django.db import models
 
 
@@ -57,7 +58,22 @@ class CustomUser(AbstractUser):
     dic = models.CharField(max_length=20, blank=True)
 
 
+class GlobalSettingsManager(models.Manager):
+    def get_settings(self):
+        try:
+            with transaction.atomic():
+                obj, _ = self.get_or_create(pk=1)
+                return obj
+        except IntegrityError:
+            return self.get(pk=1)
+
+    def clear_cache(self):
+        return None
+
+
 class GlobalSettings(models.Model):
+    objects = GlobalSettingsManager()
+
     warehouse_email = models.EmailField(default="warehouse@dentalshop.sk")
     low_stock_threshold = models.IntegerField(default=5)
     currency = models.CharField(max_length=10, default="EUR (€)")
@@ -85,11 +101,13 @@ class GlobalSettings(models.Model):
         verbose_name = "Global Settings"
         verbose_name_plural = "Global Settings"
 
-    def save(self, *args, **kwargs):
-        self.pk = 1
-        super(GlobalSettings, self).save(*args, **kwargs)
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(pk=1),
+                name="globalsettings_singleton_pk_1",
+            )
+        ]
 
     @classmethod
     def load(cls):
-        obj, created = cls.objects.get_or_create(pk=1)
-        return obj
+        return cls.objects.get_settings()

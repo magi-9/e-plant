@@ -11,7 +11,13 @@ class CustomUserAdmin(admin.ModelAdmin):
 
 @admin.register(GlobalSettings)
 class GlobalSettingsAdmin(admin.ModelAdmin):
-    pass
+    def has_add_permission(self, request):
+        if GlobalSettings.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(EmailRateLimit)
