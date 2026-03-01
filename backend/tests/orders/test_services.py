@@ -5,9 +5,12 @@ Tests the business logic layer separated from serialization.
 """
 
 import pytest
+import threading
 from decimal import Decimal
 from django.db import transaction
+from django.db import close_old_connections
 from rest_framework.serializers import ValidationError
+from unittest.mock import patch
 
 from orders.services import OrderService, StockService, PricingService
 from orders.models import Order, OrderItem
@@ -168,6 +171,43 @@ class TestStockService:
         # Stock should not be deducted
         product.refresh_from_db()
         assert product.stock_quantity == 10
+
+    @pytest.mark.django_db(transaction=True)
+    def test_validate_and_reserve_stock_concurrent_orders(self, product_factory):
+        """Test concurrent stock reservations do not oversell the same product."""
+        product = product_factory(price=Decimal("100.00"), stock_quantity=5)
+
+        start_barrier = threading.Barrier(2)
+        success_results = []
+        errors = []
+
+        def reserve_stock(quantity):
+            close_old_connections()
+            try:
+                start_barrier.wait()
+                result = StockService.validate_and_reserve_stock(
+                    [{"product_id": product.id, "quantity": quantity}]
+                )
+                success_results.append(result)
+            except ValidationError as exc:
+                errors.append(str(exc))
+            finally:
+                close_old_connections()
+
+        thread_1 = threading.Thread(target=reserve_stock, args=(4,))
+        thread_2 = threading.Thread(target=reserve_stock, args=(4,))
+
+        thread_1.start()
+        thread_2.start()
+        thread_1.join()
+        thread_2.join()
+
+        product.refresh_from_db()
+
+        assert len(success_results) == 1
+        assert len(errors) == 1
+        assert "Not enough stock" in errors[0]
+        assert product.stock_quantity == 1
 
 
 class TestPricingService:
@@ -458,3 +498,71 @@ class TestOrderService:
         status = service._determine_initial_status("card")
 
         assert status == "new"
+
+    @pytest.mark.django_db
+    def test_create_order_rolls_back_when_item_creation_fails(
+        self, user_factory, product_factory
+    ):
+        """Test full rollback when order item creation fails after stock reservation."""
+        user = user_factory()
+        product = product_factory(price=Decimal("20.00"), stock_quantity=10)
+        order_data = {
+            "customer_name": "Rollback User",
+            "email": "rollback@example.com",
+            "phone": "+421900555555",
+            "payment_method": "card",
+            "items": [{"product_id": product.id, "quantity": 3}],
+        }
+
+        service = OrderService(user=user)
+
+        with patch.object(
+            service,
+            "_create_order_items",
+            side_effect=RuntimeError("Order item write failed"),
+        ):
+            with pytest.raises(RuntimeError, match="Order item write failed"):
+                service.create_order(order_data)
+
+        assert Order.objects.count() == 0
+        assert OrderItem.objects.count() == 0
+        product.refresh_from_db()
+        assert product.stock_quantity == 10
+
+    @pytest.mark.django_db
+    def test_create_order_sends_notifications_after_commit(
+        self, user_factory, product_factory, django_capture_on_commit_callbacks
+    ):
+        """Test that OrderService invokes order email notifications after order creation."""
+        user = user_factory()
+        product = product_factory(price=Decimal("15.00"), stock_quantity=5)
+        order_data = {
+            "customer_name": "Notify User",
+            "email": "notify@example.com",
+            "phone": "+421900666666",
+            "payment_method": "card",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        with patch(
+            "orders.services.order_service.OrderEmailService.send_confirmation_emails",
+            return_value=True,
+        ) as mock_send_confirmation:
+            with django_capture_on_commit_callbacks(execute=True):
+                service = OrderService(user=user)
+                order = service.create_order(order_data)
+
+        assert order.id is not None
+        mock_send_confirmation.assert_called_once()
+
+    @pytest.mark.django_db
+    def test_send_order_notifications_swallow_email_exceptions(self):
+        """Test email notification errors are logged and not re-raised."""
+        order = Order(order_number="ABCD1234")
+        service = OrderService(user=None)
+
+        with patch(
+            "orders.services.order_service.OrderEmailService.send_confirmation_emails",
+            side_effect=Exception("SMTP unavailable"),
+        ):
+            service._send_order_notifications(order)
