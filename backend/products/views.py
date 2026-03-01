@@ -9,6 +9,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
 from .models import Product
 from .serializers import ProductSerializer
+from .services import ProductService
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -30,6 +31,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAdminUser]
         return [permission() for permission in permission_classes]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response.data = ProductService.apply_price_visibility(response.data, request.user)
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        response.data = ProductService.apply_price_visibility(response.data, request.user)
+        return response
 
 
 class AdminProductImport(APIView):

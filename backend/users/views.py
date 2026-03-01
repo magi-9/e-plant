@@ -14,6 +14,7 @@ from .utils import (
     check_and_record_rate_limit,
     _translate_password_errors,
 )
+from .services import UserService
 from .serializers import (
     UserRegistrationSerializer,
     UserSerializer,
@@ -29,6 +30,14 @@ User = get_user_model()
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = (permissions.AllowAny,)
+
+    def perform_create(self, serializer):
+        serializer.instance = UserService.register_user(
+            email=serializer.validated_data["email"],
+            password=serializer.validated_data["password"],
+            is_active=False,
+            send_verification_email=True,
+        )
 
 
 class VerifyEmailView(views.APIView):
@@ -214,6 +223,14 @@ class AdminUserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = (IsAdminUser,)
+
+    def perform_create(self, serializer):
+        serializer.instance = UserService.register_user(
+            email=serializer.validated_data["email"],
+            password=serializer.validated_data["password"],
+            is_active=False,
+            send_verification_email=True,
+        )
 
 
 class AdminUserUpdateView(generics.UpdateAPIView):

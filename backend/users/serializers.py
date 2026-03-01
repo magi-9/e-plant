@@ -3,7 +3,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
-from services.email import AuthEmailService
 from .models import GlobalSettings
 from .utils import _translate_password_errors
 
@@ -26,19 +25,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         except ValidationError as e:
             raise serializers.ValidationError(_translate_password_errors(e))
         return value
-
-    def create(self, validated_data):
-        user = User.objects.create_user(
-            email=validated_data["email"],
-            password=validated_data["password"],
-        )
-        # Deactivate user until email is verified
-        user.is_active = False
-        user.save()
-
-        AuthEmailService().send_verification_email(user)
-
-        return user
 
 
 class UserSerializer(serializers.ModelSerializer):
