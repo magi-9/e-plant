@@ -17,6 +17,7 @@ def test_use_registration(api_client):
     response = api_client.post(url, data)
     assert response.status_code == status.HTTP_201_CREATED
     assert User.objects.filter(email="newuser@example.com").exists()
+    assert User.objects.filter(email="newuser@example.com").count() == 1
 
 
 @pytest.mark.django_db

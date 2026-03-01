@@ -13,9 +13,8 @@ class UserService:
         user = User.objects.create_user(
             email=email,
             password=password,
+            is_active=is_active,
         )
-        user.is_active = is_active
-        user.save()
 
         if send_verification_email:
             AuthEmailService().send_verification_email(user)

@@ -65,9 +65,6 @@ class GlobalSettingsManager(models.Manager):
         except IntegrityError:
             return self.get(pk=1)
 
-    def clear_cache(self):
-        return None
-
 
 class GlobalSettings(models.Model):
     objects = GlobalSettingsManager()

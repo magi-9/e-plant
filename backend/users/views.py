@@ -27,17 +27,21 @@ from .models import GlobalSettings
 User = get_user_model()
 
 
+def _perform_user_registration(serializer):
+    serializer.instance = UserService.register_user(
+        email=serializer.validated_data["email"],
+        password=serializer.validated_data["password"],
+        is_active=False,
+        send_verification_email=True,
+    )
+
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = (permissions.AllowAny,)
 
     def perform_create(self, serializer):
-        serializer.instance = UserService.register_user(
-            email=serializer.validated_data["email"],
-            password=serializer.validated_data["password"],
-            is_active=False,
-            send_verification_email=True,
-        )
+        _perform_user_registration(serializer)
 
 
 class VerifyEmailView(views.APIView):
@@ -225,12 +229,7 @@ class AdminUserCreateView(generics.CreateAPIView):
     permission_classes = (IsAdminUser,)
 
     def perform_create(self, serializer):
-        serializer.instance = UserService.register_user(
-            email=serializer.validated_data["email"],
-            password=serializer.validated_data["password"],
-            is_active=False,
-            send_verification_email=True,
-        )
+        _perform_user_registration(serializer)
 
 
 class AdminUserUpdateView(generics.UpdateAPIView):
