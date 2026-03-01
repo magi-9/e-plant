@@ -4,6 +4,7 @@ djangorestframework-simplejwt
 psycopg2-binary
 pytest-django
 pytest
+pytest-cov
 factory-boy
 pytest-factoryboy
 django-environ

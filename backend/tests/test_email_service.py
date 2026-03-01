@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import patch
 import uuid
 from django.test import TestCase
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 
 from services.email import (
@@ -336,3 +337,45 @@ class TestEmailIntegration(TestCase):
         auth_service.send_password_reset_email(self.user)
 
         mock_send.assert_called_once()
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+    EMAIL_HOST="smtp.test.local",
+    EMAIL_PORT=2525,
+    EMAIL_USE_TLS=False,
+    EMAIL_USE_SSL=False,
+)
+class TestBaseEmailServiceSMTP(TestCase):
+    """Test BaseEmailService behavior against mocked SMTP transport."""
+
+    def setUp(self):
+        self.service = BaseEmailService()
+
+    @patch("django.core.mail.backends.smtp.smtplib.SMTP")
+    def test_send_email_with_mocked_smtp_success(self, mock_smtp):
+        smtp_instance = mock_smtp.return_value
+        smtp_instance.sendmail.return_value = {}
+
+        result = self.service.send_email(
+            subject="SMTP test",
+            text_body="Transport through mocked SMTP",
+            to_email="smtp-user@example.com",
+        )
+
+        assert result == 1
+        assert mock_smtp.called
+        smtp_instance.sendmail.assert_called_once()
+
+    @patch("django.core.mail.backends.smtp.smtplib.SMTP")
+    def test_send_email_with_mocked_smtp_failure_not_silent(self, mock_smtp):
+        smtp_instance = mock_smtp.return_value
+        smtp_instance.sendmail.side_effect = OSError("SMTP connection failed")
+
+        with pytest.raises(OSError, match="SMTP connection failed"):
+            self.service.send_email(
+                subject="SMTP fail",
+                text_body="Expected failure",
+                to_email="smtp-user@example.com",
+                fail_silently=False,
+            )
