@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.db import IntegrityError, transaction
 from django.db import models
+from common.models import AddressModel
 
 
 class CustomUserManager(BaseUserManager):
@@ -38,7 +40,7 @@ class EmailRateLimit(models.Model):
         return self.key
 
 
-class CustomUser(AbstractUser):
+class CustomUser(AbstractUser, AddressModel):
     username = None
     email = models.EmailField(unique=True, verbose_name="email address")
 
@@ -48,16 +50,25 @@ class CustomUser(AbstractUser):
     objects = CustomUserManager()
 
     phone = models.CharField(max_length=20, blank=True)
-    street = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
     is_company = models.BooleanField(default=False)
     company_name = models.CharField(max_length=255, blank=True)
     ico = models.CharField(max_length=20, blank=True)
     dic = models.CharField(max_length=20, blank=True)
 
 
+class GlobalSettingsManager(models.Manager):
+    def get_settings(self):
+        try:
+            with transaction.atomic():
+                obj, _ = self.get_or_create(pk=1)
+                return obj
+        except IntegrityError:
+            return self.get(pk=1)
+
+
 class GlobalSettings(models.Model):
+    objects = GlobalSettingsManager()
+
     warehouse_email = models.EmailField(default="warehouse@dentalshop.sk")
     low_stock_threshold = models.IntegerField(default=5)
     currency = models.CharField(max_length=10, default="EUR (€)")
@@ -85,11 +96,13 @@ class GlobalSettings(models.Model):
         verbose_name = "Global Settings"
         verbose_name_plural = "Global Settings"
 
-    def save(self, *args, **kwargs):
-        self.pk = 1
-        super(GlobalSettings, self).save(*args, **kwargs)
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(pk=1),
+                name="globalsettings_singleton_pk_1",
+            )
+        ]
 
     @classmethod
     def load(cls):
-        obj, created = cls.objects.get_or_create(pk=1)
-        return obj
+        return cls.objects.get_settings()

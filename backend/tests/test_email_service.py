@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import patch
+import uuid
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
@@ -194,7 +195,7 @@ class TestOrderEmailService:
             postal_code="12345",
             payment_method="bank_transfer",
             total_price=100.00,
-            order_number="ORD-2026-001",
+            order_number=f"ORD-{uuid.uuid4().hex[:8].upper()}",
         )
         from orders.models import OrderItem
 
@@ -207,8 +208,16 @@ class TestOrderEmailService:
 
     @patch.object(OrderEmailService, "send_email")
     @patch("services.email.order_emails.generate_invoice_pdf")
-    def test_send_confirmation_emails(self, mock_pdf, mock_send_email):
+    @patch("services.email.order_emails.GlobalSettings.objects.get_settings")
+    def test_send_confirmation_emails(
+        self, mock_get_settings, mock_pdf, mock_send_email
+    ):
         """Test sending order confirmation emails."""
+        mock_get_settings.return_value = type(
+            "ShopSettings",
+            (),
+            {"iban": "", "warehouse_email": "warehouse@test.com"},
+        )()
         mock_pdf.return_value = b"PDF content"
         mock_send_email.return_value = 1
 
@@ -220,10 +229,16 @@ class TestOrderEmailService:
 
     @patch.object(OrderEmailService, "send_email")
     @patch("services.email.order_emails.generate_invoice_pdf")
+    @patch("services.email.order_emails.GlobalSettings.objects.get_settings")
     def test_send_confirmation_emails_pdf_generation_fails(
-        self, mock_pdf, mock_send_email
+        self, mock_get_settings, mock_pdf, mock_send_email
     ):
         """Test that emails are sent even if PDF generation fails."""
+        mock_get_settings.return_value = type(
+            "ShopSettings",
+            (),
+            {"iban": "", "warehouse_email": "warehouse@test.com"},
+        )()
         mock_pdf.side_effect = Exception("PDF generation failed")
         mock_send_email.return_value = 1
 

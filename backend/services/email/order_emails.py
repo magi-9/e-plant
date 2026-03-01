@@ -42,7 +42,7 @@ class OrderEmailService(BaseEmailService):
         Returns:
             True if at least one email was sent successfully
         """
-        shop = GlobalSettings.load()
+        shop = GlobalSettings.objects.get_settings()
         try:
             pdf_bytes = self._generate_invoice_pdf(shop)
         except Exception:

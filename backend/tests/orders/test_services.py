@@ -440,7 +440,7 @@ class TestOrderService:
 
         # Should be 8 characters, uppercase alphanumeric
         assert len(order_number) == 8
-        assert order_number.isupper()
+        assert order_number == order_number.upper()
         assert order_number.isalnum()
 
     def test_determine_initial_status_bank_transfer(self):

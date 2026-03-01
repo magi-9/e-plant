@@ -1,11 +1,12 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from products.models import Product
+from common.models import AddressModel
 
 User = get_user_model()
 
 
-class Order(models.Model):
+class Order(AddressModel):
     STATUS_CHOICES = [
         ("new", "New"),
         ("awaiting_payment", "Awaiting Payment"),
@@ -24,10 +25,6 @@ class Order(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=50)
 
-    # Address fields
-    street = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
     shipping_address = models.TextField(
         blank=True
     )  # Legacy field, kept for backward compatibility
