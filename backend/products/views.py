@@ -34,12 +34,16 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
-        response.data = ProductService.apply_price_visibility(response.data, request.user)
+        response.data = ProductService.apply_price_visibility(
+            response.data, request.user
+        )
         return response
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
-        response.data = ProductService.apply_price_visibility(response.data, request.user)
+        response.data = ProductService.apply_price_visibility(
+            response.data, request.user
+        )
         return response
 
 
