@@ -1,4 +1,6 @@
 import axios from 'axios';
+import type { AxiosError, AxiosInstance } from 'axios';
+import { authService, AuthService } from './authService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
 
@@ -9,9 +11,63 @@ const client = axios.create({
     },
 });
 
+type ErrorWithConfig = AxiosError & {
+    config?: {
+        url?: string;
+        _retry?: boolean;
+        _skipAuthRefresh?: boolean;
+        headers?: Record<string, string>;
+    };
+};
+
+type RefreshService = Pick<AuthService, 'refreshAccessToken' | 'redirectToLogin'>;
+
+export const shouldAttemptTokenRefresh = (error: ErrorWithConfig): boolean => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const requestUrl = originalRequest?.url || '';
+
+    if (status !== 401) {
+        return false;
+    }
+
+    if (!originalRequest || originalRequest._retry || originalRequest._skipAuthRefresh) {
+        return false;
+    }
+
+    if (requestUrl.includes('/auth/refresh/')) {
+        return false;
+    }
+
+    return true;
+};
+
+export const createAuthRefreshErrorHandler = (
+    apiClient: AxiosInstance,
+    refreshService: RefreshService
+) => async (error: ErrorWithConfig) => {
+    const originalRequest = error.config;
+
+    if (!shouldAttemptTokenRefresh(error) || !originalRequest) {
+        return Promise.reject(error);
+    }
+
+    try {
+        originalRequest._retry = true;
+        const accessToken = await refreshService.refreshAccessToken();
+
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return apiClient(originalRequest);
+    } catch (refreshError) {
+        refreshService.redirectToLogin('/login');
+        return Promise.reject(refreshError);
+    }
+};
+
 client.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('access_token');
+        const token = authService.getAccessToken();
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -22,37 +78,7 @@ client.interceptors.request.use(
 
 client.interceptors.response.use(
     (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-
-        // If error is 401 and we haven't retried yet
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            const refreshToken = localStorage.getItem('refresh_token');
-
-            if (refreshToken) {
-                try {
-                    const response = await axios.post(`${API_URL}/auth/refresh/`, {
-                        refresh: refreshToken,
-                    });
-
-                    const { access } = response.data;
-                    localStorage.setItem('access_token', access);
-
-                    originalRequest.headers.Authorization = `Bearer ${access}`;
-                    return client(originalRequest);
-                } catch (refreshError) {
-                    // Verify refresh token creates infinite loop if 401?
-                    // Logout user if refresh fails
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
-                    window.location.href = '/login';
-                    return Promise.reject(refreshError);
-                }
-            }
-        }
-        return Promise.reject(error);
-    }
+    createAuthRefreshErrorHandler(client, authService)
 );
 
 export default client;
