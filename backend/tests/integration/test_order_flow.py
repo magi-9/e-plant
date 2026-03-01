@@ -110,6 +110,9 @@ def test_order_status_transitions_via_admin_update(
     )
     assert paid_response.status_code == status.HTTP_200_OK
     assert paid_response.data["status"] == "paid"
+    assert paid_response.data["order_number"] == order.order_number
+    assert "total_price" in paid_response.data
+    assert "items" in paid_response.data
 
     shipped_response = api_client.patch(
         reverse("admin_order_update", kwargs={"pk": order.id}),

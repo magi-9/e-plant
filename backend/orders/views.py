@@ -57,3 +57,12 @@ class AdminOrderUpdateView(generics.UpdateAPIView):
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.all()
     partial = True  # Allow PATCH requests
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        output_serializer = OrderSerializer(instance=serializer.instance)
+        return Response(output_serializer.data)
