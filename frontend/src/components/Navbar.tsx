@@ -75,7 +75,7 @@ export default function Navbar() {
     return (
         <>
             {/* ── Navbar bar ── */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 shadow-lg">
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 shadow-lg border-b border-cyan-500/20">
                 <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
                     <div className="flex h-16 items-center">
 
@@ -94,11 +94,14 @@ export default function Navbar() {
 
                         {/* Center: logo — icon only on mobile, icon+name on sm+ */}
                         <div className="flex-1 flex items-center justify-center sm:justify-start sm:ml-4">
-                            <Link to="/products" className="flex items-center gap-2 group" aria-label="DentalShop – domov">
-                                <svg className="h-8 w-8 text-blue-300 group-hover:text-white transition-colors flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <Link to="/" className="flex items-center gap-2 group" aria-label="DentalTech Lab – domov">
+                                <svg className="h-8 w-8 text-cyan-300 group-hover:text-cyan-200 transition-colors flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                                 </svg>
-                                <span className="hidden sm:block text-xl font-bold text-white tracking-wide">DentalShop</span>
+                                <span className="hidden sm:block text-xl font-bold text-white tracking-wide">
+                                    DentalTech&nbsp;
+                                    <span className="text-cyan-300">Lab</span>
+                                </span>
                             </Link>
                         </div>
 
@@ -111,7 +114,7 @@ export default function Navbar() {
                                     to="/cart"
                                     aria-label="Košík"
                                     title="Košík"
-                                    className={`relative p-2.5 rounded-xl transition-colors ${isActive('/cart') ? 'bg-blue-800 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}
+                                    className={`relative p-2.5 rounded-xl transition-colors ${isActive('/cart') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
                                 >
                                     <ShoppingCartIcon className="h-6 w-6" />
                                     {totalItems > 0 && (
@@ -128,7 +131,7 @@ export default function Navbar() {
                                     to="/orders"
                                     aria-label="Moje objednávky"
                                     title="Moje objednávky"
-                                    className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${isActive('/orders') ? 'bg-blue-800 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}
+                                    className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${isActive('/orders') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
                                 >
                                     <ClipboardDocumentListIcon className="h-6 w-6" />
                                 </Link>
@@ -140,7 +143,7 @@ export default function Navbar() {
                                     to="/admin"
                                     aria-label="Admin panel"
                                     title="Admin panel"
-                                    className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-blue-800 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}
+                                    className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
                                 >
                                     <ShieldCheckIcon className="h-6 w-6" />
                                 </Link>
@@ -152,7 +155,7 @@ export default function Navbar() {
                                     onClick={handleLogout}
                                     aria-label="Odhlásiť sa"
                                     title="Odhlásiť sa"
-                                    className="hidden sm:flex p-2.5 rounded-xl text-blue-200 hover:bg-red-700/50 hover:text-red-200 transition-colors"
+                                    className="hidden sm:flex p-2.5 rounded-xl text-slate-200 hover:bg-red-700/50 hover:text-red-100 transition-colors"
                                 >
                                     <ArrowRightOnRectangleIcon className="h-6 w-6" />
                                 </button>
@@ -161,7 +164,7 @@ export default function Navbar() {
                                     to="/login"
                                     aria-label="Prihlásiť sa"
                                     title="Prihlásiť sa"
-                                    className="hidden sm:flex p-2.5 rounded-xl text-blue-200 hover:bg-blue-800 hover:text-white transition-colors"
+                                    className="hidden sm:flex p-2.5 rounded-xl text-cyan-100 hover:bg-slate-800 hover:text-white transition-colors"
                                 >
                                     <ArrowRightOnRectangleIcon className="h-6 w-6" />
                                 </Link>
@@ -182,15 +185,15 @@ export default function Navbar() {
             <aside
                 id="main-navigation-drawer"
                 aria-label="Navigačné menu"
-                className={`fixed top-0 left-0 z-[70] h-dvh w-72 bg-gradient-to-b from-blue-950 via-blue-900 to-[#0a1628] shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed top-0 left-0 z-[70] h-dvh w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 {/* Drawer header */}
                 <div className="flex items-center justify-between px-5 h-16 border-b border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-2.5">
-                        <svg className="h-7 w-7 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-7 w-7 text-cyan-300" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                         </svg>
-                        <span className="text-lg font-bold text-white tracking-wide">DentalShop</span>
+                        <span className="text-lg font-bold text-white tracking-wide">DentalTech Lab</span>
                     </div>
                     <button
                         onClick={() => setDrawerOpen(false)}
@@ -204,7 +207,7 @@ export default function Navbar() {
                 {/* Nav links */}
                 <nav className="flex-1 px-3 py-5 overflow-y-auto space-y-1">
                     {isLoggedIn && (
-                        <p className="px-3 mb-3 text-[10px] text-blue-400/70 uppercase tracking-[0.15em] font-semibold">
+                        <p className="px-3 mb-3 text-[10px] text-cyan-300/80 uppercase tracking-[0.15em] font-semibold">
                             {userIsAdmin ? 'Administrácia' : 'Menu'}
                         </p>
                     )}
@@ -214,8 +217,8 @@ export default function Navbar() {
                             to={href}
                             className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${
                                 isActive(href)
-                                    ? 'bg-white/15 text-white shadow-sm'
-                                    : 'text-blue-100/80 hover:bg-white/10 hover:text-white'
+                                    ? 'bg-cyan-500/15 text-white shadow-sm border border-cyan-400/40'
+                                    : 'text-slate-100/80 hover:bg-slate-800/80 hover:text-white'
                             }`}
                         >
                             <Icon className="h-5 w-5 flex-shrink-0 opacity-80" />
@@ -229,13 +232,13 @@ export default function Navbar() {
                     {isLoggedIn && (
                         <button
                             onClick={handleLogout}
-                            className="flex w-full items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-red-300/80 hover:bg-red-500/15 hover:text-red-200 transition-all duration-150"
+                            className="flex w-full items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-red-300/80 hover:bg-red-500/15 hover:text-red-100 transition-all duration-150"
                         >
                             <ArrowRightOnRectangleIcon className="h-5 w-5 flex-shrink-0" />
                             Odhlásiť sa
                         </button>
                     )}
-                    <p className="px-4 pt-2 text-[11px] text-blue-500/60">© 2026 DentalShop</p>
+                    <p className="px-4 pt-2 text-[11px] text-slate-400/80">© 2026 DentalTech Lab</p>
                 </div>
             </aside>
         </>

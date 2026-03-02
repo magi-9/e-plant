@@ -53,8 +53,8 @@ export default function ProductsPage() {
     };
 
     if (isLoading) return (
-        <div className="flex justify-center items-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex justify-center items-center min-h-screen bg-slate-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
         </div>
     );
 
@@ -90,26 +90,26 @@ export default function ProductsPage() {
     }
 
     return (
-        <div className="bg-gray-50 flex flex-col min-h-screen">
+        <div className="bg-slate-50 flex flex-col min-h-screen text-slate-900">
             {/* Sticky Navbar padding is handled in App.tsx or by main margin */}
 
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900">
+            <div className="relative bg-gradient-to-r from-cyan-50 via-sky-50 to-white">
                 <div className="absolute inset-0">
                     <img
                         className="w-full h-full object-cover opacity-20"
-                        src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80"
+                        src="https://images.unsplash.com/photo-1609840170480-4ac5b9e159c8?auto=format&fit=crop&w=1950&q=80"
                         alt="Dental background"
                     />
-                    <div className="absolute inset-0 bg-blue-950 mix-blend-multiply" aria-hidden="true" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-100/80 via-sky-100/70 to-white/90" aria-hidden="true" />
                 </div>
                 <div className="relative max-w-7xl mx-auto py-14 px-4 sm:py-24 sm:px-6 lg:py-32 lg:px-8">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                        Dentálne Implantáty Najvyššej Kvality
+                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                        E‑shop pre modernú implantológiu
                     </h1>
-                    <p className="mt-6 text-xl text-blue-100 max-w-3xl">
-                        Objavte našu prémiovú kolekciu dentálnych implantátov a chirurgických nástrojov.
-                        Od presných abutmentov až po vysokokvalitné nástroje pre implantológiu - všetko pre vašu zubnú prax.
+                    <p className="mt-6 text-xl text-slate-700 max-w-3xl">
+                        Prémiové komponenty a príslušenstvo pre dentálnu implantológiu, starostlivo
+                        vybrané jedným laboratóriom pre reálnu prax – od skenovacích tiel až po Multi‑Unit riešenia.
                     </p>
                 </div>
             </div>
@@ -118,7 +118,7 @@ export default function ProductsPage() {
             <div className="max-w-2xl mx-auto py-10 px-4 sm:py-16 sm:px-6 lg:max-w-7xl lg:px-8 lg:py-24">
 
                 {/* Search and Filters */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     {/* Search */}
                     <div className="relative flex-1">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -127,7 +127,7 @@ export default function ProductsPage() {
                             placeholder="Hľadať produkt..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-none text-sm"
+                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
                         />
                         {searchQuery && (
                             <button
@@ -145,8 +145,8 @@ export default function ProductsPage() {
                         title={priceSortOrder === 'none' ? 'Zoradiť podľa ceny' : priceSortOrder === 'asc' ? 'Cena vzostupne' : 'Cena zostupne'}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                             priceSortOrder !== 'none'
-                                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                         }`}
                     >
                         <ArrowsUpDownIcon className={`h-4 w-4 transition-transform ${
@@ -170,8 +170,8 @@ export default function ProductsPage() {
                                     );
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border shadow-sm ${selectedCategories.includes(cat)
-                                        ? 'bg-blue-600 border-blue-600 text-white'
-                                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-cyan-600 border-cyan-500 text-white'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                                     }`}
                             >
                                 {cat}
@@ -181,20 +181,20 @@ export default function ProductsPage() {
                 )}
 
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold tracking-tight text-gray-900">Naše Produkty</h2>
-                    <span className="text-sm text-gray-500">{filteredProducts.length} produktov</span>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
+                    <span className="text-sm text-slate-600">{filteredProducts.length} produktov</span>
                 </div>
 
                 {filteredProducts.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-lg border border-gray-100">
-                        <p className="text-gray-500 text-lg">Nenašli sa žiadne produkty vyhovujúce filtrom.</p>
+                    <div className="text-center py-20 bg-white rounded-lg border border-slate-200">
+                        <p className="text-slate-600 text-lg">Nenašli sa žiadne produkty vyhovujúce filtrom.</p>
                         <button
                             onClick={() => {
                                 setSearchQuery('');
                                 setSelectedCategories([]);
                                 setPriceSortOrder('none');
                             }}
-                            className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                            className="mt-4 text-cyan-600 hover:text-cyan-500 font-medium"
                         >
                             Zrušiť filtre
                         </button>
@@ -205,9 +205,9 @@ export default function ProductsPage() {
                             <div
                                 key={product.id}
                                 onClick={() => handleProductClick(product)}
-                                className="group relative bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 cursor-pointer flex flex-col"
+                                className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
                             >
-                                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 xl:aspect-w-7 xl:aspect-h-8">
+                                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-slate-100 xl:aspect-w-7 xl:aspect-h-8">
                                     {product.image ? (
                                         <img
                                             src={product.image}
@@ -215,7 +215,7 @@ export default function ProductsPage() {
                                             className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-in-out"
                                         />
                                     ) : (
-                                        <div className="h-64 w-full bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
+                                        <div className="h-64 w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
                                             <span className="sr-only">Bez obrázka</span>
                                             <svg className="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
@@ -226,19 +226,19 @@ export default function ProductsPage() {
                                 <div className="p-4 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                                            <h3 className="text-lg font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">
                                                 {product.name}
                                             </h3>
-                                            <p className="mt-1 text-sm text-blue-600 font-medium">{product.category}</p>
+                                            <p className="mt-1 text-sm text-cyan-700 font-medium">{product.category}</p>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-gray-600 line-clamp-2 mb-4 flex-grow">{product.description || 'Kvalitný dentálny produkt pre vašu prax.'}</p>
+                                    <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">{product.description || 'Kvalitný dentálny produkt pre vašu prax.'}</p>
 
-                                    <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                                         {product.price ? (
-                                            <p className="text-xl font-bold text-blue-700">{product.price} €</p>
+                                            <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
                                         ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
                                                 Členská cena
                                             </span>
                                         )}
@@ -250,7 +250,7 @@ export default function ProductsPage() {
 
                                             if (cartItem) {
                                                 return (
-                                                    <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-10 w-full shadow-sm">
+                                                    <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-10 w-full shadow-sm">
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -260,19 +260,19 @@ export default function ProductsPage() {
                                                                     removeItem(product.id);
                                                                 }
                                                             }}
-                                                            className="w-10 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold"
+                                                            className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
                                                         >
                                                             -
                                                         </button>
-                                                        <span className="font-bold text-blue-900 border-x border-blue-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                            {cartItem.quantity} <span className="text-xs font-normal text-blue-500 ml-1">v košíku</span>
+                                                        <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                            {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
                                                         </span>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 updateQuantity(product.id, cartItem.quantity + 1);
                                                             }}
-                                                            className="w-10 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold"
+                                                            className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
                                                         >
                                                             +
                                                         </button>
@@ -284,8 +284,8 @@ export default function ProductsPage() {
                                                 <button
                                                     onClick={(e) => handleAddToCart(e, product)}
                                                     className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
-                                                        ? 'bg-green-500 scale-105'
-                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                                        ? 'bg-emerald-500 scale-105'
+                                                        : 'bg-cyan-600 hover:bg-cyan-700'
                                                         }`}
                                                 >
                                                     {addingId === product.id ? (
@@ -307,7 +307,7 @@ export default function ProductsPage() {
                                             <Link
                                                 to="/login"
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="w-full flex justify-center items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none transition-colors h-10"
+                                                className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
                                             >
                                                 Prihláste sa
                                             </Link>
@@ -330,7 +330,7 @@ export default function ProductsPage() {
             <button
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 aria-label="Späť na vrch"
-                className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg transition-all duration-300 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-cyan-600 text-white shadow-lg transition-all duration-300 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-50 ${
                     showScrollTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
                 }`}
             >
