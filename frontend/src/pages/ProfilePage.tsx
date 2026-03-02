@@ -95,75 +95,75 @@ export default function ProfilePage() {
         mutation.mutate(formData);
     };
 
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Načítavam dáta...</div>;
+    if (isLoading) return <div className="p-8 text-center text-slate-500">Načítavam dáta...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12">
+        <div className="min-h-screen bg-slate-50 py-12">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">Môj Profil</h1>
+                <h1 className="text-3xl font-bold text-slate-900 mb-8">Môj Profil</h1>
 
-                <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900 border-b pb-2">Osobné údaje</h3>
+                <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6 border border-slate-100">
+                    <h3 className="text-lg font-medium leading-6 text-slate-900 border-b pb-2">Osobné údaje</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Meno</label>
-                            <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                            <label className="block text-sm font-medium text-slate-700">Meno</label>
+                            <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Priezvisko</label>
-                            <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                            <label className="block text-sm font-medium text-slate-700">Priezvisko</label>
+                            <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Telefón</label>
-                            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                            <label className="block text-sm font-medium text-slate-700">Telefón</label>
+                            <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                     </div>
 
-                    <h3 className="text-lg font-medium leading-6 text-gray-900 border-b pb-2 mt-8">Adresa dodania / Fakturačná adresa</h3>
+                    <h3 className="text-lg font-medium leading-6 text-slate-900 border-b pb-2 mt-8">Adresa dodania / Fakturačná adresa</h3>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>
-                            <input type="text" name="street" value={formData.street} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                            <label className="block text-sm font-medium text-slate-700">Ulica a číslo</label>
+                            <input type="text" name="street" value={formData.street} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Mesto</label>
-                                <input type="text" name="city" value={formData.city} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-slate-700">Mesto</label>
+                                <input type="text" name="city" value={formData.city} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">PSČ</label>
-                                <input type="text" name="postal_code" value={formData.postal_code} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-slate-700">PSČ</label>
+                                <input type="text" name="postal_code" value={formData.postal_code} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4 border-slate-200">
                         <label className="flex items-center gap-2">
-                            <input type="checkbox" name="is_company" checked={formData.is_company} onChange={handleChange} className="rounded text-blue-600 focus:ring-blue-500" />
-                            <span className="text-sm text-gray-900 font-medium">Nakupujem na firmu</span>
+                            <input type="checkbox" name="is_company" checked={formData.is_company} onChange={handleChange} className="rounded text-cyan-600 focus:ring-cyan-500" />
+                            <span className="text-sm text-slate-900 font-medium">Nakupujem na firmu</span>
                         </label>
                     </div>
 
                     {formData.is_company && (
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Názov firmy</label>
-                                <input type="text" name="company_name" value={formData.company_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-slate-700">Názov firmy</label>
+                                <input type="text" name="company_name" value={formData.company_name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">IČO</label>
-                                    <input type="text" name="ico" value={formData.ico} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                                    <label className="block text-sm font-medium text-slate-700">IČO</label>
+                                    <input type="text" name="ico" value={formData.ico} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">DIČ / IČ DPH</label>
-                                    <input type="text" name="dic" value={formData.dic} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border rounded-md" />
+                                    <label className="block text-sm font-medium text-slate-700">DIČ / IČ DPH</label>
+                                    <input type="text" name="dic" value={formData.dic} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-6 mt-6 border-t">
+                    <div className="flex justify-between items-center pt-6 mt-6 border-t border-slate-200">
                         <button
                             type="button"
                             onClick={() => setIsDeleteModalOpen(true)}
@@ -171,7 +171,7 @@ export default function ProfilePage() {
                         >
                             Zabudnúť ma (zmazať účet)
                         </button>
-                        <button type="submit" disabled={mutation.isPending} className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition">
+                        <button type="submit" disabled={mutation.isPending} className="px-6 py-2 bg-cyan-600 text-white rounded-md font-medium hover:bg-cyan-700 transition disabled:opacity-70">
                             {mutation.isPending ? 'Ukladám...' : 'Uložiť profil'}
                         </button>
                     </div>
@@ -181,8 +181,8 @@ export default function ProfilePage() {
                 {isDeleteModalOpen && (
                     <div className="fixed inset-0 z-50 overflow-y-auto">
                         <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsDeleteModalOpen(false)}></div>
-                            <div className="relative bg-white rounded-lg shadow-xl text-left overflow-hidden transform transition-all sm:my-8 sm:w-full sm:max-w-md">
+                            <div className="fixed inset-0 bg-slate-500/60 transition-opacity" onClick={() => setIsDeleteModalOpen(false)}></div>
+                            <div className="relative bg-white rounded-lg shadow-xl text-left overflow-hidden transform transition-all sm:my-8 sm:w-full sm:max-w-md border border-slate-100">
                                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                                     <div className="sm:flex sm:items-start">
                                         <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -191,18 +191,18 @@ export default function ProfilePage() {
                                             </svg>
                                         </div>
                                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                            <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                            <h3 className="text-lg leading-6 font-medium text-slate-900">
                                                 Naozaj vymazať účet?
                                             </h3>
                                             <div className="mt-2">
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm text-slate-600">
                                                     Naozaj chcete natrvalo vymazať váš účet, všetky osobné údaje a históriu objednávok z nášho systému? Táto akcia je <strong>nevratná</strong> v zmysle podmienok ochrany osobných údajov ("Právo na zabudnutie").
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-gray-50 px-4 py-3 sm:px-6 flex flex-row-reverse gap-3">
+                                <div className="bg-slate-50 px-4 py-3 sm:px-6 flex flex-row-reverse gap-3">
                                     <button
                                         type="button"
                                         onClick={() => deleteMutation.mutate()}
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                                     <button
                                         type="button"
                                         onClick={() => setIsDeleteModalOpen(false)}
-                                        className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm"
+                                        className="w-full inline-flex justify-center rounded-md border border-slate-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-slate-700 hover:bg-slate-50 sm:w-auto sm:text-sm"
                                     >
                                         Zrušiť
                                     </button>
