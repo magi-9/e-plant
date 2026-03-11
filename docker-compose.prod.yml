@@ -1,65 +1,46 @@
 services:
   db:
     image: postgres:15
-    env_file: .env
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    restart: unless-stopped
+    deploy:
+      restart_policy:
+        condition: on-failure
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     command: /app/entrypoint.prod.sh
-    env_file: .env
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-    expose:
-      - "8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
-      - "traefik.http.routers.backend.entrypoints=${TRAEFIK_ENTRYPOINTS:-web,websecure}"
-      - "traefik.http.routers.backend.tls=true"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    ports:
+      - "5002:8000" # Formát "HOST:CONTAINER"
     depends_on:
       - db
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    restart: unless-stopped
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
-    env_file: .env
-    expose:
-      - "80"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
-      - "traefik.http.routers.frontend.entrypoints=${TRAEFIK_ENTRYPOINTS:-web,websecure}"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+    ports:
+      - "5001:80" # Nginx vnútri beží na 80, vonku ho uvidíš na 5001
     depends_on:
       - backend
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    restart: unless-stopped
+    deploy:
+      restart_policy:
+        condition: on-failure
 
 volumes:
   postgres_data_prod:
   static_volume:
   media_volume:
+
+networks:
+  dokploy-network:
+    external: true
