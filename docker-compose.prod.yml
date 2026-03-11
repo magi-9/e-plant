@@ -15,8 +15,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
     volumes:
       - static_volume:/app/staticfiles
