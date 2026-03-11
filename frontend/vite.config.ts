@@ -1,4 +1,5 @@
-import { defineConfig, loadEnv } from 'vitest/config'
+import { defineConfig } from 'vitest/config'
+import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 
@@ -7,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const allowedHosts = (env.VITE_ALLOWED_HOSTS || 'localhost,127.0.0.1,dent.tomag.xyz')
     .split(',')
-    .map((host) => host.trim())
+    .map((host: string) => host.trim())
     .filter(Boolean)
 
   return {
