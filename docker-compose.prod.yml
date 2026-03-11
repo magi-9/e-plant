@@ -3,6 +3,8 @@ services:
     image: postgres:15
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - dokploy-network
     deploy:
       restart_policy:
         condition: on-failure
@@ -16,9 +18,11 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
-      - "5002:8000" # Formát "HOST:CONTAINER"
+      - "5002:8000"
     depends_on:
       - db
+    networks:
+      - dokploy-network
     deploy:
       replicas: 1
       restart_policy:
@@ -28,10 +32,12 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.yourdomain.com/api}
     ports:
-      - "5001:80" # Nginx vnútri beží na 80, vonku ho uvidíš na 5001
-    depends_on:
-      - backend
+      - "5001:80"
+    networks:
+      - dokploy-network
     deploy:
       restart_policy:
         condition: on-failure
