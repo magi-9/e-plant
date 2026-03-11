@@ -11,8 +11,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
     volumes:
       - static_volume:/app/staticfiles
@@ -30,8 +30,8 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.prod
+      context: ./frontend
+      dockerfile: Dockerfile.prod
       args:
         VITE_API_URL: ${VITE_API_URL:-https://api.yourdomain.com/api}
     ports:
