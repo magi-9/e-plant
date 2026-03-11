@@ -4,6 +4,11 @@ services:
     env_file: .env
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
   backend:
@@ -13,41 +18,48 @@ services:
     command: /app/entrypoint.prod.sh
     env_file: .env
     volumes:
-      - ./backend:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     expose:
       - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.backend.entrypoints=${TRAEFIK_ENTRYPOINTS:-web,websecure}"
+      - "traefik.http.routers.backend.tls=true"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     depends_on:
       - db
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     restart: unless-stopped
 
-  frontend-build:
+  frontend:
     build:
       context: ./frontend
-    command: sh -c "npm install && npm run build && rm -rf /output/* && cp -r dist/* /output/"
+      dockerfile: Dockerfile.prod
     env_file: .env
-    volumes:
-      - ./frontend:/app
-      - build_volume:/output
-
-  nginx:
-    image: nginx:1.25-alpine
-    ports:
-      - "${NGINX_HOST_PORT:-2050}:80" # Set NGINX_HOST_PORT in .env to override (default 2050)
-      #- "443:443" # Uncomment when applying SSL certs in future
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_volume:/usr/src/app/static:ro
-      - media_volume:/usr/src/app/media:ro
-      - build_volume:/usr/share/nginx/html:ro
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=${TRAEFIK_ENTRYPOINTS:-web,websecure}"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
     depends_on:
       - backend
-      - frontend-build
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     restart: unless-stopped
 
 volumes:
   postgres_data_prod:
   static_volume:
   media_volume:
-  build_volume:
