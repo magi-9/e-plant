@@ -34,10 +34,28 @@ services:
       - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-backend.priority=10"
       - "traefik.http.services.eplant-prod-backend.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     deploy:
       replicas: 1
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
 
   frontend:
     build:
@@ -55,9 +73,28 @@ services:
       - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-frontend.priority=1"
       - "traefik.http.services.eplant-prod-frontend.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:80', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 20s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
 
   dokploy-webhook-relay:
     image: alpine/socat:1.8.0.3
