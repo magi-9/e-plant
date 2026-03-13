@@ -48,4 +48,11 @@ fi
 
 # start gunicorn
 echo "Starting Gunicorn production server..."
-exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 4
+exec gunicorn config.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers "${GUNICORN_WORKERS:-4}" \
+    --threads "${GUNICORN_THREADS:-4}" \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level "${GUNICORN_LOG_LEVEL:-info}" \
+    --capture-output
