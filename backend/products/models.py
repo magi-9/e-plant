@@ -1,6 +1,18 @@
 from django.db import models
 
 
+class ProductGroup(models.Model):
+    name = models.CharField(max_length=255)
+    prefix = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.prefix})"
+
+
 class Product(models.Model):
     name = models.CharField(max_length=255)
     reference = models.CharField(max_length=100, blank=True, db_index=True)
@@ -11,11 +23,34 @@ class Product(models.Model):
     low_stock_threshold = models.IntegerField(default=5)
     low_stock_alert_sent = models.BooleanField(default=False)
     image = models.ImageField(upload_to="products/", blank=True, null=True)
+    group = models.ForeignKey(
+        ProductGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+    )
+    is_active = models.BooleanField(default=True)
+    is_visible = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         if self.stock_quantity > self.low_stock_threshold and self.low_stock_alert_sent:
             self.low_stock_alert_sent = False
+        self._auto_assign_group()
         super().save(*args, **kwargs)
+
+    def _auto_assign_group(self):
+        """Assign to the ProductGroup whose prefix is the longest match for this reference."""
+        if not self.reference:
+            self.group = None
+            return
+        best = None
+        best_len = -1
+        for group in ProductGroup.objects.only("id", "prefix"):
+            if self.reference.startswith(group.prefix) and len(group.prefix) > best_len:
+                best = group
+                best_len = len(group.prefix)
+        self.group = best
 
     def __str__(self):
         return self.name
