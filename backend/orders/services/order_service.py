@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional, List
 from django.db import transaction
 from django.contrib.auth import get_user_model
 
-from orders.models import Order, OrderItem
+from orders.models import Order, OrderItem, OrderItemBatch, BatchLot
 from services.email import OrderEmailService
 from .stock_service import StockService
 from .pricing_service import PricingService
@@ -164,14 +164,29 @@ class OrderService:
         self, order: Order, prepared_items: List[Dict[str, Any]]
     ) -> None:
         """
-        Create OrderItem instances for the order.
-
-        Args:
-            order: The order to attach items to
-            prepared_items: List of prepared item data with product, quantity, price_snapshot
+        Create OrderItem instances for the order, plus OrderItemBatch records for FIFO tracking.
         """
         for item_data in prepared_items:
-            OrderItem.objects.create(order=order, **item_data)
+            batch_allocations = item_data.pop("batch_allocations", [])
+            order_item = OrderItem.objects.create(order=order, **item_data)
+
+            if batch_allocations:
+                batch_number_to_lot = {
+                    lot.batch_number: lot
+                    for lot in BatchLot.objects.filter(
+                        product=order_item.product,
+                        batch_number__in=[bn for bn, _ in batch_allocations],
+                    )
+                }
+                OrderItemBatch.objects.bulk_create([
+                    OrderItemBatch(
+                        order_item=order_item,
+                        batch_lot=batch_number_to_lot[batch_number],
+                        quantity=qty,
+                    )
+                    for batch_number, qty in batch_allocations
+                    if batch_number in batch_number_to_lot
+                ])
 
         logger.info(
             "Created %s order items for %s", len(prepared_items), order.order_number

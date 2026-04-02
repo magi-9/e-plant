@@ -1,17 +1,34 @@
 from django.contrib import admin
-from .models import Order, OrderItem
+from django.utils.html import format_html
+from .models import Order, OrderItem, OrderItemBatch, BatchLot, StockReceipt
+from .services.stock_receipt_service import StockReceiptService
+
+
+class OrderItemBatchInline(admin.TabularInline):
+    model = OrderItemBatch
+    extra = 0
+    readonly_fields = ("batch_lot", "quantity")
+    can_delete = False
 
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    readonly_fields = ("product", "quantity", "price_snapshot", "get_subtotal")
+    readonly_fields = ("product", "quantity", "price_snapshot", "get_subtotal", "batch_numbers")
     can_delete = False
 
     def get_subtotal(self, obj):
         return obj.get_subtotal()
 
     get_subtotal.short_description = "Subtotal"
+
+    def batch_numbers(self, obj):
+        batches = obj.batch_allocations.select_related("batch_lot").all()
+        if not batches:
+            return "—"
+        return ", ".join(ba.batch_lot.batch_number for ba in batches)
+
+    batch_numbers.short_description = "Šarže"
 
 
 @admin.register(Order)
@@ -49,3 +66,41 @@ class OrderAdmin(admin.ModelAdmin):
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+class StockReceiptAdminForm(admin.ModelAdmin):
+    """Custom admin for stock receipts that delegates to StockReceiptService."""
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            StockReceiptService.receive_stock(
+                product=obj.product,
+                batch_number=obj.batch_number,
+                quantity=obj.quantity,
+                received_by=request.user,
+                notes=obj.notes,
+            )
+        else:
+            super().save_model(request, obj, form, change)
+
+
+@admin.register(StockReceipt)
+class StockReceiptAdmin(StockReceiptAdminForm):
+    list_display = ("product", "batch_number", "quantity", "received_at", "received_by")
+    list_filter = ("product",)
+    search_fields = ("batch_number", "product__name")
+    readonly_fields = ("received_at", "batch_lot")
+    fields = ("product", "batch_number", "quantity", "notes")
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ("product", "batch_number", "quantity")
+        return self.readonly_fields
+
+
+@admin.register(BatchLot)
+class BatchLotAdmin(admin.ModelAdmin):
+    list_display = ("product", "batch_number", "quantity", "received_at")
+    list_filter = ("product",)
+    search_fields = ("batch_number", "product__name")
+    readonly_fields = ("received_at",)

@@ -288,25 +288,52 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     story.append(Spacer(1, 8 * mm))
 
     # ── ITEMS TABLE ───────────────────────────────────────────────────────
-    COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
+    items_qs = order.items.prefetch_related("batch_allocations__batch_lot").all()
+    has_batches = any(item.batch_allocations.exists() for item in items_qs)
 
-    rows = [
-        [
-            Paragraph("Popis", s_th),
-            Paragraph("Množ.", s_th_r),
-            Paragraph("Cena / ks", s_th_r),
-            Paragraph("Spolu", s_th_r),
-        ]
-    ]
-    for item in order.items.all():
-        rows.append(
+    if has_batches:
+        COL_W = [68 * mm, 22 * mm, 18 * mm, 32 * mm, 30 * mm]
+        rows = [
             [
-                Paragraph(esc(item.product.name), s_normal),
-                Paragraph(str(item.quantity), s_td_r),
-                Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
-                Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                Paragraph("Popis", s_th),
+                Paragraph("Šarža", s_th),
+                Paragraph("Množ.", s_th_r),
+                Paragraph("Cena / ks", s_th_r),
+                Paragraph("Spolu", s_th_r),
             ]
-        )
+        ]
+        for item in items_qs:
+            batch_str = ", ".join(
+                ba.batch_lot.batch_number for ba in item.batch_allocations.all()
+            ) or "—"
+            rows.append(
+                [
+                    Paragraph(esc(item.product.name), s_normal),
+                    Paragraph(esc(batch_str), s_normal),
+                    Paragraph(str(item.quantity), s_td_r),
+                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
+                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                ]
+            )
+    else:
+        COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
+        rows = [
+            [
+                Paragraph("Popis", s_th),
+                Paragraph("Množ.", s_th_r),
+                Paragraph("Cena / ks", s_th_r),
+                Paragraph("Spolu", s_th_r),
+            ]
+        ]
+        for item in items_qs:
+            rows.append(
+                [
+                    Paragraph(esc(item.product.name), s_normal),
+                    Paragraph(str(item.quantity), s_td_r),
+                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
+                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                ]
+            )
 
     n_last_item = len(rows) - 1  # 0-based index of last item row (before total)
     rows.append(
