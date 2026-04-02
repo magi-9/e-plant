@@ -54,6 +54,10 @@ class CustomUser(AbstractUser, AddressModel):
     company_name = models.CharField(max_length=255, blank=True)
     ico = models.CharField(max_length=20, blank=True)
     dic = models.CharField(max_length=20, blank=True)
+    is_vat_payer = models.BooleanField(default=False, verbose_name="VAT payer")
+    vat_id = models.CharField(
+        max_length=20, blank=True, verbose_name="IČ DPH"
+    )
 
 
 class GlobalSettingsManager(models.Manager):
