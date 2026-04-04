@@ -23,11 +23,13 @@ from django.db import transaction
 
 from products.models import Product
 
-BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+BACKEND_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 PROJECT_DIR = os.path.dirname(BACKEND_DIR)
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 CSV_DIR = os.path.join(DATA_DIR, "csv")
-IMAGES_DIR = os.path.join(DATA_DIR, "OneDrive_1_17-3-2026")
+IMAGES_DIR = os.environ.get("PRODUCT_IMAGES_DIR", os.path.join(DATA_DIR, "images"))
 MEDIA_PRODUCTS_DIR = os.path.join(BACKEND_DIR, "media", "products")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
@@ -42,7 +44,7 @@ def normalize_ref(ref_str):
 def ref_to_regex(ref_str):
     """
     Convert a possibly-wildcard reference to a regex pattern.
-    e.g. '54.315.xxx.21-2' → r'^54315\d{3}212$'
+    e.g. '54.315.xxx.21-2' -> r'^54315\\d{3}212$'
     """
     normalized = normalize_ref(ref_str)
     pattern = re.sub(r"x+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized)
@@ -128,13 +130,15 @@ def load_retail_products(retail_prices_path):
             except InvalidOperation:
                 continue
 
-            products.append({
-                "name": name,
-                "reference": ref,
-                "category": section,
-                "price": price,
-                "description": detail,
-            })
+            products.append(
+                {
+                    "name": name,
+                    "reference": ref,
+                    "category": section,
+                    "price": price,
+                    "description": detail,
+                }
+            )
     return products
 
 
@@ -179,14 +183,16 @@ def load_variant_products(products_csv_path, retail_prices_path):
                         price, category = p, cat
                         break
 
-            products.append({
-                "name": name,
-                "reference": ref,
-                "reference_num": ref_num,
-                "category": category,
-                "price": price,
-                "description": "",
-            })
+            products.append(
+                {
+                    "name": name,
+                    "reference": ref,
+                    "reference_num": ref_num,
+                    "category": category,
+                    "price": price,
+                    "description": "",
+                }
+            )
     return products
 
 
@@ -217,10 +223,14 @@ class Command(BaseCommand):
 
         for path, label in [(RETAIL_PRICES_CSV, "retail_prices.csv")]:
             if not os.path.exists(path):
-                raise CommandError(f"{label} not found at {path}\nRun: python data/convert_to_csv.py")
+                raise CommandError(
+                    f"{label} not found at {path}\nRun: python data/convert_to_csv.py"
+                )
 
         if use_variants and not os.path.exists(PRODUCTS_CSV):
-            raise CommandError(f"products.csv not found at {PRODUCTS_CSV}\nRun: python data/convert_to_csv.py")
+            raise CommandError(
+                f"products.csv not found at {PRODUCTS_CSV}\nRun: python data/convert_to_csv.py"
+            )
 
         self.stdout.write("Indexing product images...")
         image_index = build_image_index(IMAGES_DIR) if os.path.isdir(IMAGES_DIR) else {}
@@ -230,7 +240,9 @@ class Command(BaseCommand):
             self.stdout.write("Loading 1885 SKU variants...")
             products = load_variant_products(PRODUCTS_CSV, RETAIL_PRICES_CSV)
             priced = sum(1 for p in products if p["price"] is not None)
-            self.stdout.write(f"  {len(products)} variants, {priced} with matched retail price")
+            self.stdout.write(
+                f"  {len(products)} variants, {priced} with matched retail price"
+            )
         else:
             self.stdout.write("Loading 107 retail products...")
             products = load_retail_products(RETAIL_PRICES_CSV)
@@ -250,7 +262,9 @@ class Command(BaseCommand):
                 continue
 
             ref = prod["reference"]
-            ref_for_image = prod.get("reference_num") or ref  # variants use numeric, retail uses formatted
+            ref_for_image = (
+                prod.get("reference_num") or ref
+            )  # variants use numeric, retail uses formatted
 
             # Find image
             image_key = find_image_for_ref(ref_for_image, image_index)
@@ -261,7 +275,9 @@ class Command(BaseCommand):
                     stats["images"] += 1
 
             # Match existing product
-            existing = existing_refs.get(ref) or (existing_names.get(prod["name"]) if not ref else None)
+            existing = existing_refs.get(ref) or (
+                existing_names.get(prod["name"]) if not ref else None
+            )
 
             if existing:
                 if do_update:
@@ -304,15 +320,23 @@ class Command(BaseCommand):
             if to_create:
                 self.stdout.write("\nProducts that would be created (first 10):")
                 for p in to_create[:10]:
-                    self.stdout.write(f"  [{p.reference or 'no-ref':25s}] {p.name[:55]:55s} €{p.price}")
+                    self.stdout.write(
+                        f"  [{p.reference or 'no-ref':25s}] {p.name[:55]:55s} €{p.price}"
+                    )
             return
 
         with transaction.atomic():
             if to_create:
                 Product.objects.bulk_create(to_create, batch_size=200)
             if to_update:
-                Product.objects.bulk_update(to_update, ["price", "category", "image", "description"], batch_size=200)
+                Product.objects.bulk_update(
+                    to_update,
+                    ["price", "category", "image", "description"],
+                    batch_size=200,
+                )
 
         self.stdout.write(
-            self.style.SUCCESS(f"Done! Created {stats['created']}, updated {stats['updated']} products.")
+            self.style.SUCCESS(
+                f"Done! Created {stats['created']}, updated {stats['updated']} products."
+            )
         )

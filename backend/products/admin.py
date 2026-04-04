@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count, Q
 from django.utils.translation import gettext_lazy as _
 from .models import Product, ProductGroup
 
@@ -16,9 +17,18 @@ class ProductGroupAdmin(admin.ModelAdmin):
     search_fields = ("name", "prefix")
     inlines = [ProductInline]
 
-    @admin.display(description="Products")
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                _product_count=Count("products", filter=Q(products__is_active=True))
+            )
+        )
+
+    @admin.display(description="Products", ordering="_product_count")
     def product_count(self, obj):
-        return obj.products.count()
+        return obj._product_count
 
 
 def _make_active(modeladmin, request, queryset):
@@ -62,7 +72,13 @@ class ProductAdmin(admin.ModelAdmin):
         "is_active",
         "is_visible",
     )
-    list_filter = ("category", "group", "is_active", "is_visible", "low_stock_alert_sent")
+    list_filter = (
+        "category",
+        "group",
+        "is_active",
+        "is_visible",
+        "low_stock_alert_sent",
+    )
     search_fields = ("name", "description", "reference")
     list_editable = ("is_active", "is_visible")
     ordering = ("name",)

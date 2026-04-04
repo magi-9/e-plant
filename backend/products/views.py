@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 from decimal import Decimal, InvalidOperation
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Count
 from rest_framework import generics, permissions, filters, status, viewsets
 from rest_framework.views import APIView
@@ -20,13 +20,18 @@ class ProductGroupListView(generics.ListAPIView):
     serializer_class = ProductGroupSerializer
 
     def get_queryset(self):
-        return ProductGroup.objects.annotate(product_count=Count("products")).order_by("name")
+        return ProductGroup.objects.annotate(
+            product_count=Count(
+                "products",
+                filter=models.Q(products__is_visible=True, products__is_active=True),
+            )
+        ).order_by("name")
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Product CRUD operations.
-    - List/Retrieve: AllowAny (public) — returns only is_visible=True products
+    - List/Retrieve: AllowAny (public) — returns only is_visible=True and is_active=True products
     - Create/Update/Delete: IsAdminUser (admin only) — returns all products
     """
 
@@ -44,7 +49,10 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         group_id = self.request.query_params.get("group")
         if group_id:
-            qs = qs.filter(group_id=group_id)
+            try:
+                qs = qs.filter(group_id=int(group_id))
+            except (ValueError, TypeError):
+                raise ValidationError({"group": "Must be a valid integer ID."})
 
         return qs
 
@@ -226,6 +234,12 @@ class AdminProductImport(APIView):
 
             processed_count = len(products_to_create) + len(products_to_update)
 
+            # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update)
+            for product in products_to_create.values():
+                product._auto_assign_group()
+            for product in products_to_update.values():
+                product._auto_assign_group()
+
             with transaction.atomic():
                 if products_to_create:
                     Product.objects.bulk_create(products_to_create.values())
@@ -238,6 +252,7 @@ class AdminProductImport(APIView):
                         "stock_quantity",
                         "low_stock_threshold",
                         "low_stock_alert_sent",
+                        "group",
                     ]
                     Product.objects.bulk_update(
                         products_to_update.values(), fields_to_update

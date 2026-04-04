@@ -1,6 +1,7 @@
 """
 Tests for Product is_active / is_visible fields and API filtering (Issue #88).
 """
+
 import pytest
 from products.models import Product
 from products.factories import ProductFactory
@@ -31,6 +32,7 @@ class TestProductStorefrontVisibilityFilter:
     def test_api_shows_all_to_admin(self):
         from rest_framework.test import APIClient
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         admin = User.objects.create_superuser(email="admin@test.com", password="pw")
         api_client = APIClient()
@@ -55,6 +57,7 @@ class TestProductStorefrontVisibilityFilter:
 class TestProductGroupFilter:
     def test_filter_by_group(self, client):
         from products.models import ProductGroup
+
         group = ProductGroup.objects.create(name="CAD-CAM", prefix="100")
         ProductFactory(name="In Group", reference="100-001")
         ProductFactory(name="Not In Group", reference="200-001")

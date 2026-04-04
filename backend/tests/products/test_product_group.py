@@ -1,6 +1,7 @@
 """
 Tests for ProductGroup model and auto-assignment logic (Issue #87).
 """
+
 import pytest
 from django.db import IntegrityError
 from products.models import Product, ProductGroup
@@ -9,7 +10,9 @@ from products.models import Product, ProductGroup
 @pytest.mark.django_db
 class TestProductGroupModel:
     def test_create_product_group(self):
-        group = ProductGroup.objects.create(name="CAD-CAM", prefix="100", description="CAD-CAM products")
+        group = ProductGroup.objects.create(
+            name="CAD-CAM", prefix="100", description="CAD-CAM products"
+        )
         assert group.name == "CAD-CAM"
         assert group.prefix == "100"
         assert group.description == "CAD-CAM products"
@@ -91,8 +94,12 @@ class TestProductGroupAutoAssign:
 
     def test_multiple_products_assigned_to_same_group(self):
         group = ProductGroup.objects.create(name="Group", prefix="100")
-        p1 = Product.objects.create(name="P1", reference="100-001", category="T", price=1)
-        p2 = Product.objects.create(name="P2", reference="100-002", category="T", price=1)
+        p1 = Product.objects.create(
+            name="P1", reference="100-001", category="T", price=1
+        )
+        p2 = Product.objects.create(
+            name="P2", reference="100-002", category="T", price=1
+        )
         assert p1.group == group
         assert p2.group == group
 

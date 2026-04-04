@@ -11,7 +11,9 @@ class ProductGroupSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    group_name = serializers.CharField(source="group.name", read_only=True, default=None)
+    group_name = serializers.CharField(
+        source="group.name", read_only=True, default=None
+    )
 
     class Meta:
         model = Product

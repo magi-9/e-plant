@@ -40,16 +40,27 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     def _auto_assign_group(self):
-        """Assign to the ProductGroup whose prefix is the longest match for this reference."""
+        """Assign to the ProductGroup whose prefix is the longest match for this reference.
+
+        Matching requires the prefix to end at a separator boundary (non-alphanumeric
+        character or end of string) so that prefix '10' does not mis-match '101-xxx'.
+        """
         if not self.reference:
             self.group = None
             return
         best = None
         best_len = -1
         for group in ProductGroup.objects.only("id", "prefix"):
-            if self.reference.startswith(group.prefix) and len(group.prefix) > best_len:
+            prefix = group.prefix
+            if not self.reference.startswith(prefix):
+                continue
+            # Boundary check: next char after prefix must be non-alphanumeric or end of string
+            next_pos = len(prefix)
+            if next_pos < len(self.reference) and self.reference[next_pos].isalnum():
+                continue
+            if next_pos > best_len:
                 best = group
-                best_len = len(group.prefix)
+                best_len = next_pos
         self.group = best
 
     def __str__(self):
