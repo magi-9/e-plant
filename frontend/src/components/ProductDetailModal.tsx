@@ -1,5 +1,5 @@
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
@@ -14,17 +14,15 @@ interface ProductDetailModalProps {
 export default function ProductDetailModal({ open, setOpen, product }: ProductDetailModalProps) {
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
-    const variantOptions = product?.parameters?.options || [];
+    const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
+    const [lastProductId, setLastProductId] = useState<number | undefined>(product?.id);
 
-    useEffect(() => {
-        if (hasVariants) {
-            setSelectedVariantRef(variantOptions[0]?.reference || '');
-        } else {
-            setSelectedVariantRef('');
-        }
-    }, [product?.id, hasVariants, variantOptions]);
+    if (product?.id !== lastProductId) {
+        setLastProductId(product?.id);
+        setSelectedVariantRef(hasVariants ? variantOptions[0]?.reference || '' : '');
+    }
 
     if (!product) return null;
 
