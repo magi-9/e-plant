@@ -68,7 +68,7 @@ export default function CartPage() {
                         <div className="bg-white shadow rounded-lg border border-slate-100">
                             <ul className="divide-y divide-slate-200">
                                 {items.map((item) => (
-                                    <li key={item.productId} className="p-4 sm:p-6">
+                                    <li key={`${item.productId}:${item.variantReference || 'default'}`} className="p-4 sm:p-6">
                                         <div className="flex items-start sm:items-center">
                                             {/* Product Image */}
                                             <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24">
@@ -92,12 +92,15 @@ export default function CartPage() {
                                                         <h3 className="text-base sm:text-lg font-medium text-slate-900 truncate">
                                                             {item.name}
                                                         </h3>
+                                                        {item.variantLabel && (
+                                                            <p className="mt-1 text-xs text-cyan-700 break-words">Variant: {item.variantLabel}</p>
+                                                        )}
                                                         <p className="mt-1 text-sm text-slate-500">
                                                             Cena: {item.price} €
                                                         </p>
                                                     </div>
                                                     <button
-                                                        onClick={() => removeItem(item.productId)}
+                                                        onClick={() => removeItem(item.productId, item.variantReference)}
                                                         className="text-red-600 hover:text-red-800"
                                                     >
                                                         <TrashIcon className="h-5 w-5" />
@@ -108,7 +111,7 @@ export default function CartPage() {
                                                 <div className="mt-3 flex flex-wrap items-center gap-3">
                                                     <div className="flex items-center border border-slate-300 rounded-md">
                                                         <button
-                                                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                                            onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
                                                             className="p-2 hover:bg-slate-100 transition-colors"
                                                         >
                                                             <MinusIcon className="h-4 w-4 text-gray-600" />
@@ -117,7 +120,7 @@ export default function CartPage() {
                                                             {item.quantity}
                                                         </span>
                                                         <button
-                                                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                                            onClick={() => updateQuantity(item.productId, item.quantity + 1, item.variantReference)}
                                                             className="p-2 hover:bg-slate-100 transition-colors"
                                                         >
                                                             <PlusIcon className="h-4 w-4 text-gray-600" />

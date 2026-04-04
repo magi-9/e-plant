@@ -30,4 +30,5 @@ class ProductSerializer(serializers.ModelSerializer):
             "group_name",
             "is_active",
             "is_visible",
+            "parameters",
         )

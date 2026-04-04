@@ -1,5 +1,5 @@
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
@@ -14,8 +14,26 @@ interface ProductDetailModalProps {
 export default function ProductDetailModal({ open, setOpen, product }: ProductDetailModalProps) {
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
+    const variantOptions = product?.parameters?.options || [];
+    const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
+    const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
+
+    useEffect(() => {
+        if (hasVariants) {
+            setSelectedVariantRef(variantOptions[0]?.reference || '');
+        } else {
+            setSelectedVariantRef('');
+        }
+    }, [product?.id, hasVariants, variantOptions]);
 
     if (!product) return null;
+
+    const selectedVariant = hasVariants
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || variantOptions[0]
+        : null;
+
+    const effectiveVariantRef = selectedVariant?.reference || '';
+    const effectiveVariantLabel = selectedVariant?.label || '';
 
     const handleAddToCart = () => {
         setIsAdding(true);
@@ -23,7 +41,9 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
             productId: product.id,
             name: product.name,
             price: product.price!,
-            image: product.image
+            image: product.image,
+            variantReference: effectiveVariantRef || undefined,
+            variantLabel: effectiveVariantLabel || undefined,
         });
 
         // Simple animation feedback
@@ -102,6 +122,24 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                         <div className="prose prose-sm text-gray-500 mb-6">
                                                             <p>{product.description || 'Popis produktu pripravujeme.'}</p>
                                                         </div>
+                                                        {hasVariants && (
+                                                            <div className="mb-6">
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Vyber variant podľa parametrov
+                                                                </label>
+                                                                <select
+                                                                    value={selectedVariantRef || variantOptions[0]?.reference || ''}
+                                                                    onChange={(e) => setSelectedVariantRef(e.target.value)}
+                                                                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                                >
+                                                                    {variantOptions.map((option) => (
+                                                                        <option key={option.reference} value={option.reference}>
+                                                                            {option.label || `${option.name} (${option.reference})`}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        )}
                                                         <div className="flex items-center justify-between mb-4">
                                                             <div className="text-sm text-gray-500">
                                                                 Skladom: <span className={product.stock_quantity > 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
@@ -124,7 +162,9 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                 )}
                                                             </div>
                                                             {product.price && (() => {
-                                                                const cartItem = items.find(item => item.productId === product.id);
+                                                                const cartItem = items.find(
+                                                                    item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
+                                                                );
 
                                                                 if (cartItem) {
                                                                     return (
@@ -133,9 +173,9 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     if (cartItem.quantity > 1) {
-                                                                                        updateQuantity(product.id, cartItem.quantity - 1);
+                                                                                        updateQuantity(product.id, cartItem.quantity - 1, effectiveVariantRef || undefined);
                                                                                     } else {
-                                                                                        removeItem(product.id);
+                                                                                        removeItem(product.id, effectiveVariantRef || undefined);
                                                                                     }
                                                                                 }}
                                                                                 className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
@@ -148,7 +188,7 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                             <button
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
-                                                                                    updateQuantity(product.id, cartItem.quantity + 1);
+                                                                                    updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
                                                                                 }}
                                                                                 className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
                                                                             >

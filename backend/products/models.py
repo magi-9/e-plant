@@ -32,6 +32,7 @@ class Product(models.Model):
     )
     is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
+    parameters = models.JSONField(default=dict, blank=True)
 
     def save(self, *args, **kwargs):
         if self.stock_quantity > self.low_stock_threshold and self.low_stock_alert_sent:
