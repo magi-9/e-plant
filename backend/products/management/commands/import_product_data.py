@@ -298,7 +298,10 @@ def load_merged_products(merged_csv_path):
             ),
         )
         representative = sorted_rows[0]
-        prefix = f"{representative.get('ref_segment_1','').strip()}.{representative.get('ref_segment_2','').strip()}.{representative.get('ref_segment_3','').strip()}"
+        seg1 = representative.get("ref_segment_1", "").strip()
+        seg2 = representative.get("ref_segment_2", "").strip()
+        seg3 = representative.get("ref_segment_3", "").strip()
+        prefix = f"{seg1}.{seg2}.{seg3}"
         wildcard_reference = f"{prefix}.xx-2"
 
         options = []
@@ -326,17 +329,23 @@ def load_merged_products(merged_csv_path):
             )
 
         any_has_price = any(r["_has_price"] for r in sorted_rows)
-        min_price = min((r["_price"] for r in sorted_rows if r["_price"] is not None), default=Decimal("0.00"))
+        min_price = min(
+            (r["_price"] for r in sorted_rows if r["_price"] is not None),
+            default=Decimal("0.00"),
+        )
         any_active_category = any(
             str(r.get("is_active_from_categories", "0")).strip()
             in ("1", "true", "True", "yes", "YES")
             for r in sorted_rows
         )
 
-        description = representative.get("generated_description", "").strip() or representative.get(
-            "description", ""
-        ).strip()
-        description = (description + " | " if description else "") + f"Počet variantov: {len(options)}"
+        description = (
+            representative.get("generated_description", "").strip()
+            or representative.get("description", "").strip()
+        )
+        description = (
+            description + " | " if description else ""
+        ) + f"Počet variantov: {len(options)}"
 
         products.append(
             {
@@ -370,7 +379,9 @@ def load_merged_products(merged_csv_path):
     return products
 
 
-def load_grouped_retail_products(products_csv_path, retail_prices_path, merged_csv_path):
+def load_grouped_retail_products(
+    products_csv_path, retail_prices_path, merged_csv_path
+):
     """
     Legacy loader kept for compatibility. Prefer load_merged_products.
     """
@@ -462,7 +473,9 @@ def load_grouped_retail_products(products_csv_path, retail_prices_path, merged_c
                             }
                         )
 
-                variant_options.sort(key=lambda x: (x.get("parameter_code", ""), x["reference"]))
+                variant_options.sort(
+                    key=lambda x: (x.get("parameter_code", ""), x["reference"])
+                )
                 parameters = {
                     "type": "wildcard_group",
                     "wildcard_reference": ref,
@@ -475,9 +488,11 @@ def load_grouped_retail_products(products_csv_path, retail_prices_path, merged_c
                 detail,
                 f"Referenčný kód: {ref}",
                 f"Parametre: {meta.get('options', '')}" if meta.get("options") else "",
-                f"Počet variantov: {len(parameters.get('options', []))}"
-                if parameters.get("type") == "wildcard_group"
-                else "",
+                (
+                    f"Počet variantov: {len(parameters.get('options', []))}"
+                    if parameters.get("type") == "wildcard_group"
+                    else ""
+                ),
             ]
 
             products.append(
@@ -569,8 +584,16 @@ class Command(BaseCommand):
             products = load_retail_products(RETAIL_PRICES_CSV)
             self.stdout.write(f"  {len(products)} products")
 
-        existing_refs = {} if replace_all else {p.reference: p for p in Product.objects.exclude(reference="")}
-        existing_names = {} if replace_all else {p.name: p for p in Product.objects.filter(reference="")}
+        existing_refs = (
+            {}
+            if replace_all
+            else {p.reference: p for p in Product.objects.exclude(reference="")}
+        )
+        existing_names = (
+            {}
+            if replace_all
+            else {p.name: p for p in Product.objects.filter(reference="")}
+        )
 
         stats = {"created": 0, "updated": 0, "skipped": 0, "no_price": 0, "images": 0}
         to_create = []
@@ -659,7 +682,13 @@ class Command(BaseCommand):
             if to_create:
                 Product.objects.bulk_create(to_create, batch_size=200)
             if to_update:
-                update_fields = ["price", "category", "image", "description", "is_active"]
+                update_fields = [
+                    "price",
+                    "category",
+                    "image",
+                    "description",
+                    "is_active",
+                ]
                 if hasattr(Product, "parameters"):
                     update_fields.append("parameters")
                 Product.objects.bulk_update(

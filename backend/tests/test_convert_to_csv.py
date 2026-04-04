@@ -9,7 +9,9 @@ def resolve_converter_path():
     candidates = []
     for parent in current.parents:
         candidates.append(parent / "data" / "convert_to_csv.py")
-    candidates.append(Path("/home/tomas-magula/Documents/Projects/e-plant/data/convert_to_csv.py"))
+    candidates.append(
+        Path("/home/tomas-magula/Documents/Projects/e-plant/data/convert_to_csv.py")
+    )
 
     for candidate in candidates:
         if candidate.exists():
@@ -19,7 +21,9 @@ def resolve_converter_path():
 
 module_path = resolve_converter_path()
 if module_path is None:
-    pytest.skip("convert_to_csv.py is not available in this runtime", allow_module_level=True)
+    pytest.skip(
+        "convert_to_csv.py is not available in this runtime", allow_module_level=True
+    )
 
 SPEC = importlib.util.spec_from_file_location("convert_to_csv", module_path)
 convert_to_csv = importlib.util.module_from_spec(SPEC)
