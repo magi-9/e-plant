@@ -11,8 +11,9 @@ from typing import Dict, Any, Optional, List
 from django.db import transaction
 from django.contrib.auth import get_user_model
 
-from orders.models import Order, OrderItem, OrderItemBatch, BatchLot
+from orders.models import Order, OrderItem, ShippingRate
 from services.email import OrderEmailService
+from users.models import GlobalSettings
 from .stock_service import StockService
 from .pricing_service import PricingService
 
@@ -73,8 +74,21 @@ class OrderService:
             # Validate stock and prepare items (locks products)
             prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
 
-            # Calculate total price
-            total_price = self.pricing_service.calculate_order_total(prepared_items)
+            # Calculate items total
+            items_total = self.pricing_service.calculate_order_total(prepared_items)
+
+            # Resolve shipping cost
+            country = validated_data.get("country", "SK")
+            shipping_rate = ShippingRate.objects.filter(country=country).first()
+            if shipping_rate is not None:
+                shipping_cost = self.pricing_service.calculate_shipping(items_total, shipping_rate)
+                shipping_carrier = shipping_rate.carrier
+            else:
+                shop = GlobalSettings.load()
+                shipping_cost = Decimal(str(shop.shipping_cost))
+                shipping_carrier = ""
+
+            total_price = items_total + shipping_cost
 
             # Generate unique order number
             order_number = self._generate_order_number()
@@ -90,6 +104,8 @@ class OrderService:
                 order_number=order_number,
                 total_price=total_price,
                 status=status,
+                shipping_cost=shipping_cost,
+                shipping_carrier=shipping_carrier,
             )
 
             # Create order items
@@ -136,6 +152,8 @@ class OrderService:
         order_number: str,
         total_price: Decimal,
         status: str,
+        shipping_cost: Decimal = Decimal("0.00"),
+        shipping_carrier: str = "",
     ) -> Order:
         """
         Create the Order instance.
@@ -145,6 +163,8 @@ class OrderService:
             order_number: Generated order number
             total_price: Calculated total price
             status: Initial order status
+            shipping_cost: Calculated shipping cost
+            shipping_carrier: Carrier name from ShippingRate
 
         Returns:
             Created Order instance
@@ -154,6 +174,8 @@ class OrderService:
             order_number=order_number,
             status=status,
             total_price=total_price,
+            shipping_cost=shipping_cost,
+            shipping_carrier=shipping_carrier,
             **validated_data,
         )
 
@@ -164,42 +186,14 @@ class OrderService:
         self, order: Order, prepared_items: List[Dict[str, Any]]
     ) -> None:
         """
-        Create OrderItem instances for the order, plus OrderItemBatch records for FIFO tracking.
+        Create OrderItem instances for the order.
+
+        Args:
+            order: The order to attach items to
+            prepared_items: List of prepared item data with product, quantity, price_snapshot
         """
         for item_data in prepared_items:
-            batch_allocations = item_data.pop("batch_allocations", [])
-            order_item = OrderItem.objects.create(order=order, **item_data)
-
-            if batch_allocations:
-                allocated_batch_numbers = [bn for bn, _ in batch_allocations]
-                batch_number_to_lot = {
-                    lot.batch_number: lot
-                    for lot in BatchLot.objects.filter(
-                        product=order_item.product,
-                        batch_number__in=allocated_batch_numbers,
-                    )
-                }
-                missing = [
-                    bn
-                    for bn in allocated_batch_numbers
-                    if bn not in batch_number_to_lot
-                ]
-                if missing:
-                    raise RuntimeError(
-                        f"FIFO batch lots not found for product "
-                        f"'{order_item.product}': {missing}. "
-                        "Order cannot be created with inconsistent batch data."
-                    )
-                OrderItemBatch.objects.bulk_create(
-                    [
-                        OrderItemBatch(
-                            order_item=order_item,
-                            batch_lot=batch_number_to_lot[batch_number],
-                            quantity=qty,
-                        )
-                        for batch_number, qty in batch_allocations
-                    ]
-                )
+            OrderItem.objects.create(order=order, **item_data)
 
         logger.info(
             "Created %s order items for %s", len(prepared_items), order.order_number

@@ -9,7 +9,7 @@ from orders.models import Order
 
 
 @pytest.mark.django_db(transaction=True)
-def test_complete_order_creation_flow(api_client, user_factory, product_factory):
+def test_complete_order_creation_flow(api_client, user_factory, product_factory, zero_shipping):
     user = user_factory()
     product_1 = product_factory(price=Decimal("99.90"), stock_quantity=10)
     product_2 = product_factory(price=Decimal("50.00"), stock_quantity=5)

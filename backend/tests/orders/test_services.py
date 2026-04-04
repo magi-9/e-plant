@@ -267,7 +267,7 @@ class TestOrderService:
     """Test suite for OrderService."""
 
     @pytest.mark.django_db
-    def test_create_order_success(self, user_factory, product_factory):
+    def test_create_order_success(self, user_factory, product_factory, zero_shipping):
         """Test successful order creation with all components."""
         user = user_factory()
         product1 = product_factory(price=Decimal("100.00"), stock_quantity=10)
@@ -313,7 +313,7 @@ class TestOrderService:
         assert product2.stock_quantity == 4
 
     @pytest.mark.django_db
-    def test_create_order_unauthenticated_user(self, product_factory):
+    def test_create_order_unauthenticated_user(self, product_factory, zero_shipping):
         """Test order creation without authenticated user."""
         product = product_factory(price=Decimal("75.00"), stock_quantity=10)
 

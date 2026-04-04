@@ -1,7 +1,7 @@
 import logging
 
 from rest_framework import serializers
-from .models import Order, OrderItem, OrderItemBatch
+from .models import Order, OrderItem, ShippingRate
 from .services import OrderService
 
 logger = logging.getLogger(__name__)
@@ -12,22 +12,11 @@ class OrderItemInputSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
-class OrderItemBatchSerializer(serializers.ModelSerializer):
-    batch_number = serializers.CharField(
-        source="batch_lot.batch_number", read_only=True
-    )
-
-    class Meta:
-        model = OrderItemBatch
-        fields = ("batch_number", "quantity")
-
-
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
     subtotal = serializers.DecimalField(
         max_digits=10, decimal_places=2, read_only=True, source="get_subtotal"
     )
-    batch_allocations = OrderItemBatchSerializer(many=True, read_only=True)
 
     class Meta:
         model = OrderItem
@@ -38,9 +27,14 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "quantity",
             "price_snapshot",
             "subtotal",
-            "batch_allocations",
         )
         read_only_fields = ("id", "product", "price_snapshot")
+
+
+class ShippingRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShippingRate
+        fields = ("id", "country", "carrier", "price", "free_above")
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -55,6 +49,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "street",
             "city",
             "postal_code",
+            "country",
             "shipping_address",
             "is_company",
             "company_name",
@@ -72,10 +67,20 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        """
+        Create a new order using the OrderService.
+
+        This serializer now delegates all business logic to the service layer,
+        focusing solely on serialization and validation.
+        """
+        # Get user from context if authenticated
         request = self.context.get("request")
         user = request.user if request and request.user.is_authenticated else None
+
+        # Delegate to service layer
         service = OrderService(user=user)
         order = service.create_order(validated_data)
+
         return order
 
 
@@ -93,6 +98,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "street",
             "city",
             "postal_code",
+            "country",
             "shipping_address",
             "is_company",
             "company_name",
@@ -102,6 +108,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "payment_method",
             "status",
             "total_price",
+            "shipping_cost",
+            "shipping_carrier",
             "notes",
             "items",
             "created_at",
