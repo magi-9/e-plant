@@ -1,7 +1,7 @@
 import logging
 
 from rest_framework import serializers
-from .models import Order, OrderItem, BatchLot, OrderItemBatch
+from .models import Order, OrderItem, OrderItemBatch
 from .services import OrderService
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,9 @@ class OrderItemInputSerializer(serializers.Serializer):
 
 
 class OrderItemBatchSerializer(serializers.ModelSerializer):
-    batch_number = serializers.CharField(source="batch_lot.batch_number", read_only=True)
+    batch_number = serializers.CharField(
+        source="batch_lot.batch_number", read_only=True
+    )
 
     class Meta:
         model = OrderItemBatch

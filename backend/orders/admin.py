@@ -1,20 +1,18 @@
 from django.contrib import admin
-from django.utils.html import format_html
-from .models import Order, OrderItem, OrderItemBatch, BatchLot, StockReceipt
+from .models import Order, OrderItem, BatchLot, StockReceipt
 from .services.stock_receipt_service import StockReceiptService
-
-
-class OrderItemBatchInline(admin.TabularInline):
-    model = OrderItemBatch
-    extra = 0
-    readonly_fields = ("batch_lot", "quantity")
-    can_delete = False
 
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    readonly_fields = ("product", "quantity", "price_snapshot", "get_subtotal", "batch_numbers")
+    readonly_fields = (
+        "product",
+        "quantity",
+        "price_snapshot",
+        "get_subtotal",
+        "batch_numbers",
+    )
     can_delete = False
 
     def get_subtotal(self, obj):
@@ -73,13 +71,16 @@ class StockReceiptAdminForm(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         if not change:
-            StockReceiptService.receive_stock(
+            receipt = StockReceiptService.receive_stock(
                 product=obj.product,
                 batch_number=obj.batch_number,
                 quantity=obj.quantity,
                 received_by=request.user,
                 notes=obj.notes,
             )
+            # Sync obj with the created receipt so Django admin redirects work correctly
+            obj.pk = receipt.pk
+            obj.batch_lot = receipt.batch_lot
         else:
             super().save_model(request, obj, form, change)
 
@@ -103,4 +104,3 @@ class BatchLotAdmin(admin.ModelAdmin):
     list_display = ("product", "batch_number", "quantity", "received_at")
     list_filter = ("product",)
     search_fields = ("batch_number", "product__name")
-    readonly_fields = ("received_at",)

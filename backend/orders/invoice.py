@@ -289,7 +289,7 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
 
     # ── ITEMS TABLE ───────────────────────────────────────────────────────
     items_qs = order.items.prefetch_related("batch_allocations__batch_lot").all()
-    has_batches = any(item.batch_allocations.exists() for item in items_qs)
+    has_batches = any(item.batch_allocations.all() for item in items_qs)
 
     if has_batches:
         COL_W = [68 * mm, 22 * mm, 18 * mm, 32 * mm, 30 * mm]
@@ -303,9 +303,12 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             ]
         ]
         for item in items_qs:
-            batch_str = ", ".join(
-                ba.batch_lot.batch_number for ba in item.batch_allocations.all()
-            ) or "—"
+            batch_str = (
+                ", ".join(
+                    ba.batch_lot.batch_number for ba in item.batch_allocations.all()
+                )
+                or "—"
+            )
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),

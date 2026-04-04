@@ -54,9 +54,8 @@ class StockService:
                 product_quantities.get(product_id, 0) + quantity
             )
 
-        # Second pass: lock products, validate, deduct stock, allocate batches
+        # Second pass: lock products, validate, and deduct total stock
         locked_products: Dict[int, Product] = {}
-        batch_allocations_by_product: Dict[int, List[Tuple[str, int]]] = {}
 
         for product_id, total_quantity in product_quantities.items():
             try:
@@ -72,32 +71,30 @@ class StockService:
                     f"Available: {product.stock_quantity}, Requested: {total_quantity}"
                 )
 
-            # FIFO batch allocation
-            allocations = StockService._allocate_batches_fifo(product, total_quantity)
-
             product.stock_quantity -= total_quantity
             product.save(update_fields=["stock_quantity"])
             locked_products[product_id] = product
-            batch_allocations_by_product[product_id] = allocations
 
             logger.debug(
-                "Stock deducted: %s — new qty: %s, batches: %s",
+                "Stock deducted: %s — new qty: %s",
                 product.name,
                 product.stock_quantity,
-                allocations,
             )
 
-        # Third pass: build prepared items
+        # Third pass: build prepared items with per-item FIFO batch allocation
         prepared_items = []
         for item_data in items_data:
             product_id = item_data["product_id"]
+            quantity = item_data["quantity"]
             product = locked_products[product_id]
+            # Allocate batches for this specific item's quantity
+            allocations = StockService._allocate_batches_fifo(product, quantity)
             prepared_items.append(
                 {
                     "product": product,
-                    "quantity": item_data["quantity"],
+                    "quantity": quantity,
                     "price_snapshot": product.price,
-                    "batch_allocations": batch_allocations_by_product[product_id],
+                    "batch_allocations": allocations,
                 }
             )
 
@@ -124,7 +121,7 @@ class StockService:
         lots = list(
             BatchLot.objects.select_for_update()
             .filter(product=product, quantity__gt=0)
-            .order_by("received_at")
+            .order_by("received_at", "id")
         )
 
         if not lots:
@@ -143,16 +140,11 @@ class StockService:
             remaining -= take
 
         if remaining > 0:
-            # This should not happen if stock_quantity was validated first,
-            # but log it defensively and proceed without batch tracking.
-            logger.warning(
-                "FIFO allocation: could not fully allocate %d units for %s from batches "
-                "(remaining %d unallocated). Falling back to stock-only deduction.",
-                quantity,
-                product.name,
-                remaining,
+            raise serializers.ValidationError(
+                f"Batch stock for '{product.name}' is inconsistent: "
+                f"could not allocate {remaining} of {quantity} units from batches. "
+                "Reconcile batch quantities before placing this order."
             )
-            return []
 
         return allocations
 

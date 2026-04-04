@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from products.models import Product
 from common.models import AddressModel
 
@@ -80,7 +81,7 @@ class BatchLot(models.Model):
     )
     batch_number = models.CharField(max_length=100)
     quantity = models.PositiveIntegerField(default=0)
-    received_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(default=timezone.now)
     notes = models.TextField(blank=True)
 
     class Meta:

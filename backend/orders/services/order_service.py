@@ -178,15 +178,17 @@ class OrderService:
                         batch_number__in=[bn for bn, _ in batch_allocations],
                     )
                 }
-                OrderItemBatch.objects.bulk_create([
-                    OrderItemBatch(
-                        order_item=order_item,
-                        batch_lot=batch_number_to_lot[batch_number],
-                        quantity=qty,
-                    )
-                    for batch_number, qty in batch_allocations
-                    if batch_number in batch_number_to_lot
-                ])
+                OrderItemBatch.objects.bulk_create(
+                    [
+                        OrderItemBatch(
+                            order_item=order_item,
+                            batch_lot=batch_number_to_lot[batch_number],
+                            quantity=qty,
+                        )
+                        for batch_number, qty in batch_allocations
+                        if batch_number in batch_number_to_lot
+                    ]
+                )
 
         logger.info(
             "Created %s order items for %s", len(prepared_items), order.order_number
