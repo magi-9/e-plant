@@ -53,6 +53,6 @@ class TestSkontoInvoice:
 
     def test_skonto_date_is_3_days_after_invoice(self):
         from orders.invoice import _skonto_date
-        from datetime import date, timedelta
+        from datetime import date
         invoice_date = date(2026, 1, 1)
         assert _skonto_date(invoice_date) == date(2026, 1, 4)

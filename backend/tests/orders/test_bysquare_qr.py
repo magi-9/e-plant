@@ -1,7 +1,7 @@
 """Tests for BySquare QR code generation (Issue #96)."""
 import pytest
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestBySquareQR:

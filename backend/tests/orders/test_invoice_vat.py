@@ -6,7 +6,6 @@ from users.models import GlobalSettings
 
 
 def _make_order(is_vat_payer=False, country="SK", **extra):
-    from orders.models import Order
     from orders.services.order_service import OrderService
     product = ProductFactory(stock_quantity=10)
     base = dict(
