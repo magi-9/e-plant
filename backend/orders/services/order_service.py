@@ -79,6 +79,7 @@ class OrderService:
 
             # Resolve shipping cost
             country = validated_data.get("country", "SK")
+            # Picks the cheapest carrier for the country (ordering = ["country", "price"]).
             shipping_rate = ShippingRate.objects.filter(country=country).first()
             if shipping_rate is not None:
                 shipping_cost = self.pricing_service.calculate_shipping(items_total, shipping_rate)

@@ -10,10 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelManagers(
-            name="customuser",
-            managers=[],
-        ),
         migrations.AddField(
             model_name="customuser",
             name="country",

@@ -22,6 +22,7 @@ class OrderAdmin(admin.ModelAdmin):
         "email",
         "total_price",
         "shipping_cost",
+        "shipping_carrier",
         "payment_method",
         "status",
         "created_at",
