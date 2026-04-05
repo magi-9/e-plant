@@ -38,6 +38,13 @@ export default function ProductsPage() {
 
     const handleAddToCart = (e: React.MouseEvent, product: Product) => {
         e.stopPropagation(); // Prevent opening modal
+
+        if (product.parameters?.type === 'wildcard_group' && (product.parameters.options || []).length > 0) {
+            setSelectedProduct(product);
+            setOpenModal(true);
+            return;
+        }
+
         setAddingId(product.id);
 
         addItem({
@@ -246,7 +253,9 @@ export default function ProductsPage() {
 
                                     <div className="mt-4">
                                         {product.price ? (() => {
-                                            const cartItem = items.find(item => item.productId === product.id);
+                                            const cartItem = items.find(
+                                                item => item.productId === product.id && !item.variantReference
+                                            );
 
                                             if (cartItem) {
                                                 return (

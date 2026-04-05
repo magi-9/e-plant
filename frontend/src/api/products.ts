@@ -3,11 +3,27 @@ import client from './client';
 export interface Product {
     id: number;
     name: string;
+    reference?: string;
     description: string;
     category: string;
     price: string | null;
     stock_quantity: number;
     image: string | null;
+    parameters?: {
+        type?: 'single' | 'wildcard_group';
+        wildcard_reference?: string;
+        option_fields?: string[];
+        option_tokens?: string;
+        parameter_code?: string;
+        options?: Array<{
+            reference: string;
+            reference_num?: string;
+            name: string;
+            parameter_code?: string;
+            option_tokens?: string;
+            label?: string;
+        }>;
+    };
 }
 
 export const getProducts = async (): Promise<Product[]> => {

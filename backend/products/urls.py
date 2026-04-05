@@ -1,10 +1,12 @@
 from django.urls import path
 from .views import (
     ProductViewSet,
+    ProductGroupListView,
     AdminProductImport,
 )
 
 urlpatterns = [
+    path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
     path(
         "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"

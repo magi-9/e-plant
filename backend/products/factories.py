@@ -11,3 +11,5 @@ class ProductFactory(factory.django.DjangoModelFactory):
     category = "Test Category"
     price = 100.00
     stock_quantity = 10
+    is_active = True
+    is_visible = True
