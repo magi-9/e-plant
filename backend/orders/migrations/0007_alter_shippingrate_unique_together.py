@@ -6,7 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("orders", "0006_merge_20260405_1607"),
+        ("orders", "0006_merge_20260405_1423"),
+        ("orders", "0004_shippingrate_order_shipping_fields"),
     ]
 
     operations = [
