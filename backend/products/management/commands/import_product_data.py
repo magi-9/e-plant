@@ -21,7 +21,7 @@ from decimal import Decimal, InvalidOperation
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from products.models import Product
+from products.models import Product, ProductGroup
 
 BACKEND_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -676,6 +676,14 @@ class Command(BaseCommand):
                     )
             return
 
+        # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
+        # Pre-fetch all groups once to avoid N+1 queries.
+        all_groups = list(ProductGroup.objects.only("id", "prefix"))
+        for product in to_create:
+            product._auto_assign_group(groups=all_groups)
+        for product in to_update:
+            product._auto_assign_group(groups=all_groups)
+
         with transaction.atomic():
             if replace_all:
                 Product.objects.all().delete()
@@ -688,6 +696,7 @@ class Command(BaseCommand):
                     "image",
                     "description",
                     "is_active",
+                    "group",
                 ]
                 if hasattr(Product, "parameters"):
                     update_fields.append("parameters")

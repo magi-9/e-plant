@@ -40,18 +40,31 @@ class Product(models.Model):
         self._auto_assign_group()
         super().save(*args, **kwargs)
 
-    def _auto_assign_group(self):
+    def _auto_assign_group(self, groups=None):
         """Assign to the ProductGroup whose prefix is the longest match for this reference.
 
         Matching requires the prefix to end at a separator boundary (non-alphanumeric
         character or end of string) so that prefix '10' does not mis-match '101-xxx'.
+
+        Args:
+            groups: optional pre-fetched iterable of ProductGroup instances; when
+                provided the method performs no database queries (useful for bulk ops).
         """
         if not self.reference:
             self.group = None
             return
+        # Build candidate prefixes: every prefix ending at a separator boundary.
+        candidate_prefixes = [self.reference]
+        for index, char in enumerate(self.reference):
+            if not char.isalnum() and index > 0:
+                candidate_prefixes.append(self.reference[:index])
+        if groups is None:
+            groups = ProductGroup.objects.filter(
+                prefix__in=candidate_prefixes
+            ).only("id", "prefix")
         best = None
         best_len = -1
-        for group in ProductGroup.objects.only("id", "prefix"):
+        for group in groups:
             prefix = group.prefix
             if not self.reference.startswith(prefix):
                 continue

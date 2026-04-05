@@ -9,10 +9,6 @@ def resolve_converter_path():
     candidates = []
     for parent in current.parents:
         candidates.append(parent / "data" / "convert_to_csv.py")
-    candidates.append(
-        Path("/home/tomas-magula/Documents/Projects/e-plant/data/convert_to_csv.py")
-    )
-
     for candidate in candidates:
         if candidate.exists():
             return candidate

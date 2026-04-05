@@ -234,11 +234,13 @@ class AdminProductImport(APIView):
 
             processed_count = len(products_to_create) + len(products_to_update)
 
-            # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update)
+            # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
+            # Pre-fetch all groups once to avoid N+1 queries.
+            all_groups = list(ProductGroup.objects.only("id", "prefix"))
             for product in products_to_create.values():
-                product._auto_assign_group()
+                product._auto_assign_group(groups=all_groups)
             for product in products_to_update.values():
-                product._auto_assign_group()
+                product._auto_assign_group(groups=all_groups)
 
             with transaction.atomic():
                 if products_to_create:
