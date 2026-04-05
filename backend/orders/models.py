@@ -38,6 +38,7 @@ class Order(AddressModel):
     dic_dph = models.CharField(
         max_length=50, blank=True, default="", verbose_name="IČ DPH"
     )
+    is_vat_payer = models.BooleanField(default=False, verbose_name="VAT payer")
 
     # Order info
     user = models.ForeignKey(
