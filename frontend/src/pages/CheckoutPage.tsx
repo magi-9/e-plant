@@ -109,6 +109,16 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
+            const variantNotes = items
+                .filter((item) => item.variantReference)
+                .map(
+                    (item) =>
+                        `${item.name} x${item.quantity} -> ${item.variantLabel || item.variantReference}`
+                );
+            const mergedNotes = [formData.notes.trim(), variantNotes.length ? `Varianty: ${variantNotes.join(' | ')}` : '']
+                .filter(Boolean)
+                .join('\n\n');
+
             const orderData: CreateOrderData = {
                 customer_name: `${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email,
@@ -122,7 +132,7 @@ export default function CheckoutPage() {
                 dic: formData.dic,
                 dic_dph: formData.dic_dph,
                 payment_method: formData.payment_method,
-                notes: formData.notes,
+                notes: mergedNotes,
                 items: items.map(item => ({
                     product_id: item.productId,
                     quantity: item.quantity
@@ -249,9 +259,9 @@ export default function CheckoutPage() {
                     <h2 className="text-lg font-medium text-slate-900 mb-4">Súhrn objednávky</h2>
                     <div className="space-y-2">
                         {items.map((item) => (
-                            <div key={item.productId} className="flex justify-between text-sm">
+                            <div key={`${item.productId}:${item.variantReference || 'default'}`} className="flex justify-between text-sm">
                                 <span className="text-slate-700">
-                                    {item.name} × {item.quantity}
+                                    {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ''} × {item.quantity}
                                 </span>
                                 <span className="text-slate-900 font-medium">
                                     {(Number.parseFloat(item.price) * item.quantity).toFixed(2)} €

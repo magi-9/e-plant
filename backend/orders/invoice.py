@@ -9,6 +9,8 @@ Usage:
 """
 
 import os
+from datetime import timedelta
+from decimal import Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape as esc
 
@@ -117,6 +119,90 @@ def _sepa_qr_image(iban, bic, name, amount, reference, size_mm=38):
             border=1,
         )
         qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        sz = size_mm * mm
+        return Image(buf, width=sz, height=sz)
+    except Exception:
+        return None
+
+
+# ── VAT rates (SK / CZ) ───────────────────────────────────────────────────────
+VAT_RATES = {
+    "SK": Decimal("0.23"),
+    "CZ": Decimal("0.21"),
+}
+
+
+# ── Skonto helpers ────────────────────────────────────────────────────────────
+def skonto_amount(total) -> Decimal:
+    """Return total after 2% early-payment discount."""
+    return (Decimal(str(total)) * Decimal("0.98")).quantize(Decimal("0.01"))
+
+
+def skonto_date(invoice_date):
+    """Return skonto due date = invoice_date + 3 calendar days."""
+    return invoice_date + timedelta(days=3)
+
+
+# Keep private aliases for backwards compatibility within this module.
+_skonto_amount = skonto_amount
+_skonto_date = skonto_date
+
+
+# ── BySquare (Slovak Pay by Square) QR code ──────────────────────────────────
+def _bysquare_qr_image(
+    iban: str, amount: Decimal, reference: str, currency: str = "EUR", size_mm: int = 38
+):
+    """
+    Return a ReportLab Image of a Pay by Square QR code, or None on failure.
+
+    Returns None (no QR) if pyBySquare or qrcode is not installed, or if
+    generation fails — callers should degrade layout gracefully.
+    """
+    import logging
+    import re
+
+    if not iban:
+        return None
+    try:
+        import qrcode  # noqa: PLC0415
+    except ImportError:
+        return None
+
+    # Pay by Square variable symbol must be numeric (max 10 digits).
+    vs = re.sub(r"\D", "", reference)[:10]
+    # Use fixed-decimal string to avoid float rounding artifacts.
+    amount_str = f"{Decimal(str(amount)):.2f}"
+
+    try:
+        import bysquare  # noqa: PLC0415
+
+        data = bysquare.generate(
+            iban=iban.replace(" ", ""),
+            amount=amount_str,
+            currency_code=currency,
+            variable_symbol=vs,
+        )
+    except ImportError:
+        # pyBySquare not installed — skip QR entirely rather than produce a
+        # mislabelled "Pay by Square" placeholder.
+        return None
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "BySquare QR generation failed for reference %s", reference, exc_info=True
+        )
+        return None
+    try:
+        qr = qrcode.QRCode(
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=5,
+            border=1,
+        )
+        qr.add_data(data)
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
         buf = BytesIO()
@@ -250,70 +336,121 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             Paragraph(f"Var. symbol: <b>{esc(order.order_number)}</b>", s_normal)
         )
 
-    qr = _sepa_qr_image(
-        iban=shop_settings.iban if order.payment_method == "bank_transfer" else "",
+    iban_for_qr = shop_settings.iban if order.payment_method == "bank_transfer" else ""
+    sepa_qr = _sepa_qr_image(
+        iban=iban_for_qr,
         bic=shop_settings.bank_swift,
         name=seller_name,
         amount=order.total_price,
         reference=order.order_number,
-        size_mm=38,
+        size_mm=36,
+    )
+    bysquare_qr = (
+        _bysquare_qr_image(
+            iban=iban_for_qr,
+            amount=order.total_price,
+            reference=order.order_number,
+            size_mm=36,
+        )
+        if iban_for_qr
+        else None
     )
 
-    if qr:
-        qr_cell = [Paragraph("QR platba", s_label), Spacer(1, 1 * mm), qr]
+    tbl_style = TableStyle(
+        [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+    )
+
+    if sepa_qr and bysquare_qr:
+        sepa_cell = [Paragraph("SEPA QR", s_label), Spacer(1, 1 * mm), sepa_qr]
+        bys_cell = [Paragraph("Pay by Square", s_label), Spacer(1, 1 * mm), bysquare_qr]
+        billing_tbl = Table(
+            [[buyer_cell, pay_cell, sepa_cell, bys_cell]],
+            colWidths=[65 * mm, 38 * mm, 30 * mm, 37 * mm],
+            style=tbl_style,
+        )
+    elif sepa_qr or bysquare_qr:
+        active_qr = sepa_qr or bysquare_qr
+        label = "SEPA QR" if sepa_qr else "Pay by Square"
+        qr_cell = [Paragraph(label, s_label), Spacer(1, 1 * mm), active_qr]
         billing_tbl = Table(
             [[buyer_cell, pay_cell, qr_cell]],
             colWidths=[80 * mm, 48 * mm, 42 * mm],
-            style=TableStyle(
-                [
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ]
-            ),
+            style=tbl_style,
         )
     else:
         billing_tbl = Table(
             [[buyer_cell, pay_cell]],
             colWidths=[100 * mm, 70 * mm],
-            style=TableStyle(
-                [
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ]
-            ),
+            style=tbl_style,
         )
     story.append(billing_tbl)
     story.append(Spacer(1, 8 * mm))
 
     # ── ITEMS TABLE ───────────────────────────────────────────────────────
-    COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
+    items_qs = order.items.prefetch_related("batch_allocations__batch_lot").all()
+    has_batches = any(item.batch_allocations.all() for item in items_qs)
 
-    rows = [
-        [
-            Paragraph("Popis", s_th),
-            Paragraph("Množ.", s_th_r),
-            Paragraph("Cena / ks", s_th_r),
-            Paragraph("Spolu", s_th_r),
-        ]
-    ]
-    for item in order.items.all():
-        rows.append(
+    if has_batches:
+        COL_W = [68 * mm, 22 * mm, 18 * mm, 32 * mm, 30 * mm]
+        rows = [
             [
-                Paragraph(esc(item.product.name), s_normal),
-                Paragraph(str(item.quantity), s_td_r),
-                Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
-                Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                Paragraph("Popis", s_th),
+                Paragraph("Šarža", s_th),
+                Paragraph("Množ.", s_th_r),
+                Paragraph("Cena / ks", s_th_r),
+                Paragraph("Spolu", s_th_r),
             ]
-        )
+        ]
+        for item in items_qs:
+            batch_str = (
+                ", ".join(
+                    ba.batch_lot.batch_number for ba in item.batch_allocations.all()
+                )
+                or "—"
+            )
+            rows.append(
+                [
+                    Paragraph(esc(item.product.name), s_normal),
+                    Paragraph(esc(batch_str), s_normal),
+                    Paragraph(str(item.quantity), s_td_r),
+                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
+                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                ]
+            )
+    else:
+        COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
+        rows = [
+            [
+                Paragraph("Popis", s_th),
+                Paragraph("Množ.", s_th_r),
+                Paragraph("Cena / ks", s_th_r),
+                Paragraph("Spolu", s_th_r),
+            ]
+        ]
+        for item in items_qs:
+            rows.append(
+                [
+                    Paragraph(esc(item.product.name), s_normal),
+                    Paragraph(str(item.quantity), s_td_r),
+                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
+                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                ]
+            )
 
     n_last_item = len(rows) - 1  # 0-based index of last item row (before total)
+    # For VAT payers the VAT breakdown block below shows "Celkom s DPH" — show
+    # only a subtotal label here to avoid a duplicate total.
+    is_vat_payer = getattr(order, "is_vat_payer", False)
+    total_label = "Medzisúčet:" if is_vat_payer else "Celkom:"
     rows.append(
         [
             "",
             "",
-            Paragraph("Celkom:", s_r_bold),
+            Paragraph(total_label, s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ]
     )
@@ -335,6 +472,74 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         )
     )
     story.append(items_tbl)
+    story.append(Spacer(1, 4 * mm))
+
+    # ── VAT BREAKDOWN (only for VAT payers) ──────────────────────────────
+    if getattr(order, "is_vat_payer", False):
+        country = getattr(order, "country", "SK") or "SK"
+        vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
+        base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
+        vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
+        vat_pct = int(vat_rate * 100)
+
+        vat_rows = [
+            [
+                "",
+                "",
+                Paragraph("Základ dane:", s_r),
+                Paragraph(f"{base:.2f} €", s_td_r),
+            ],
+            [
+                "",
+                "",
+                Paragraph(f"DPH {vat_pct}%:", s_r),
+                Paragraph(f"{vat_amount:.2f} €", s_td_r),
+            ],
+            [
+                "",
+                "",
+                Paragraph("Celkom s DPH:", s_r_bold),
+                Paragraph(f"{order.total_price:.2f} €", s_total_r),
+            ],
+        ]
+        vat_tbl = Table(vat_rows, colWidths=COL_W)
+        vat_tbl.setStyle(
+            TableStyle(
+                [
+                    ("LINEABOVE", (0, 0), (-1, 0), 0.5, _GRAY),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        story.append(vat_tbl)
+        story.append(Spacer(1, 2 * mm))
+
+    # ── SKONTO BLOCK (only for bank_transfer orders) ──────────────────────
+    if order.payment_method == "bank_transfer":
+        invoice_date = order.created_at.date()
+        sk_date = _skonto_date(invoice_date)
+        sk_amount = _skonto_amount(order.total_price)
+        skonto_style = ParagraphStyle(
+            "skonto",
+            fontName=_FONT,
+            fontSize=8.5,
+            textColor=_BLUE,
+            leading=12,
+            backColor=colors.HexColor("#EFF6FF"),
+            borderPad=6,
+        )
+        story.append(
+            Paragraph(
+                f"Pri úhrade do <b>{sk_date.strftime('%d.%m.%Y')}</b>: "
+                f"<b>{sk_amount:.2f} €</b> (-2% skonto za včasnú platbu)",
+                skonto_style,
+            )
+        )
+        story.append(Spacer(1, 4 * mm))
 
     # ── NOTES ─────────────────────────────────────────────────────────────
     if order.notes:

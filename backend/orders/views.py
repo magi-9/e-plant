@@ -1,11 +1,12 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
-from .models import Order
+from .models import Order, ShippingRate
 from .serializers import (
     OrderCreateSerializer,
     OrderSerializer,
     AdminOrderStatusUpdateSerializer,
+    ShippingRateSerializer,
 )
 
 
@@ -48,6 +49,18 @@ class AdminOrdersListView(generics.ListAPIView):
     serializer_class = OrderSerializer
     permission_classes = (IsAdminUser,)
     queryset = Order.objects.all()
+
+
+class ShippingRateListView(generics.ListAPIView):
+    serializer_class = ShippingRateSerializer
+    permission_classes = (permissions.AllowAny,)
+
+    def get_queryset(self):
+        qs = ShippingRate.objects.all()
+        country = self.request.query_params.get("country")
+        if country:
+            qs = qs.filter(country=country)
+        return qs
 
 
 class AdminOrderUpdateView(generics.UpdateAPIView):

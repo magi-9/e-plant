@@ -1,17 +1,32 @@
 from django.contrib import admin
-from .models import Order, OrderItem
+from .models import BatchLot, Order, OrderItem, ShippingRate, StockReceipt
+from .services.stock_receipt_service import StockReceiptService
 
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    readonly_fields = ("product", "quantity", "price_snapshot", "get_subtotal")
+    readonly_fields = (
+        "product",
+        "quantity",
+        "price_snapshot",
+        "get_subtotal",
+        "batch_numbers",
+    )
     can_delete = False
 
     def get_subtotal(self, obj):
         return obj.get_subtotal()
 
     get_subtotal.short_description = "Subtotal"
+
+    def batch_numbers(self, obj):
+        batches = obj.batch_allocations.select_related("batch_lot").all()
+        if not batches:
+            return "—"
+        return ", ".join(ba.batch_lot.batch_number for ba in batches)
+
+    batch_numbers.short_description = "Šarže"
 
 
 @admin.register(Order)
@@ -21,13 +36,24 @@ class OrderAdmin(admin.ModelAdmin):
         "customer_name",
         "email",
         "total_price",
+        "shipping_cost",
+        "shipping_carrier",
         "payment_method",
         "status",
         "created_at",
     )
     list_filter = ("status", "payment_method", "created_at")
     search_fields = ("order_number", "customer_name", "email", "phone")
-    readonly_fields = ("order_number", "created_at", "updated_at", "total_price")
+    # shipping_cost/shipping_carrier are read-only: changing them without
+    # recomputing total_price would leave the order in an inconsistent state.
+    readonly_fields = (
+        "order_number",
+        "created_at",
+        "updated_at",
+        "total_price",
+        "shipping_cost",
+        "shipping_carrier",
+    )
     inlines = [OrderItemInline]
 
     fieldsets = (
@@ -44,8 +70,70 @@ class OrderAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Shipping",
+            {"fields": ("shipping_cost", "shipping_carrier")},
+        ),
+        (
             "Customer Info",
             {"fields": ("customer_name", "email", "phone", "shipping_address", "user")},
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(ShippingRate)
+class ShippingRateAdmin(admin.ModelAdmin):
+    list_display = ("country", "carrier", "price", "free_above")
+    list_filter = ("country",)
+
+
+@admin.register(BatchLot)
+class BatchLotAdmin(admin.ModelAdmin):
+    list_display = ("product", "batch_number", "quantity", "received_at")
+    list_filter = ("product",)
+    search_fields = ("batch_number", "product__name")
+
+
+class StockReceiptAdminForm(admin.ModelAdmin):
+    """Custom admin for stock receipts that delegates to StockReceiptService."""
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            receipt = StockReceiptService.receive_stock(
+                product=obj.product,
+                batch_number=obj.batch_number,
+                quantity=obj.quantity,
+                received_by=request.user,
+                notes=obj.notes,
+            )
+            obj.pk = receipt.pk
+            obj.batch_lot = receipt.batch_lot
+        else:
+            super().save_model(request, obj, form, change)
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(StockReceipt)
+class StockReceiptAdmin(StockReceiptAdminForm):
+    list_display = ("product", "batch_number", "quantity", "received_at", "received_by")
+    list_filter = ("product",)
+    search_fields = ("batch_number", "product__name")
+    readonly_fields = ("received_at", "batch_lot")
+    fields = (
+        "product",
+        "batch_number",
+        "quantity",
+        "notes",
+        "received_at",
+        "batch_lot",
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ("product", "batch_number", "quantity")
+        return self.readonly_fields

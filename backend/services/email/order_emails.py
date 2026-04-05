@@ -130,20 +130,31 @@ class OrderEmailService(BaseEmailService):
 
     def _build_customer_email_text(self, shop) -> str:
         """Build plain text version of customer confirmation email."""
-        items_text = "\n".join(
-            [
-                f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
-                for item in self.order.items.select_related("product")
-            ]
-        )
+        item_lines = []
+        for item in self.order.items.select_related("product").prefetch_related(
+            "batch_allocations__batch_lot"
+        ):
+            line = f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
+            batches = item.batch_allocations.all()
+            if batches:
+                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                line += f"\n    Šarža: {batch_str}"
+            item_lines.append(line)
+        items_text = "\n".join(item_lines)
 
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
+            from orders.invoice import skonto_amount, skonto_date
+
+            sk_date = skonto_date(self.order.created_at.date())
+            sk_amount = skonto_amount(self.order.total_price)
             payment_info = f"""
 PLATOBNÉ ÚDAJE:
 Variabilný symbol: {self.order.order_number}{iban_line}
 Suma: {self.order.total_price}€
+
+Pri úhrade do {sk_date.strftime('%d.%m.%Y')}: {sk_amount:.2f}€ (-2% skonto za včasnú platbu)
 """
 
         company_info = ""
@@ -188,14 +199,22 @@ Tím DentalShop
     def _build_warehouse_email_text(self) -> str:
         """Build plain text version of warehouse notification email."""
         item_lines = []
-        for item in self.order.items.select_related("product"):
+        for item in self.order.items.select_related("product").prefetch_related(
+            "batch_allocations__batch_lot"
+        ):
             remaining = item.product.stock_quantity
             threshold = item.product.low_stock_threshold
             warning = (
                 "  ⚠ NÍZKY STAV – treba doobjednať!" if remaining < threshold else ""
             )
+            batch_line = ""
+            batches = item.batch_allocations.all()
+            if batches:
+                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                batch_line = f"\n    Šarža: {batch_str}"
             item_lines.append(
-                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}\n"
+                f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
+                f"{batch_line}\n"
                 f"    →  zostatok na sklade: {remaining} ks{warning}"
             )
         items_text = "\n".join(item_lines)

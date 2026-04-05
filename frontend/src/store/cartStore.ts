@@ -7,13 +7,15 @@ export interface CartItem {
     price: string;
     quantity: number;
     image?: string | null;
+    variantReference?: string;
+    variantLabel?: string;
 }
 
 interface CartState {
     items: CartItem[];
     addItem: (item: Omit<CartItem, 'quantity'>) => void;
-    removeItem: (productId: number) => void;
-    updateQuantity: (productId: number, quantity: number) => void;
+    removeItem: (productId: number, variantReference?: string) => void;
+    updateQuantity: (productId: number, quantity: number, variantReference?: string) => void;
     clearCart: () => void;
     getTotalItems: () => number;
     getTotalPrice: () => number;
@@ -27,14 +29,17 @@ export const useCartStore = create<CartState>()(
             addItem: (item) => {
                 set((state) => {
                     const existingItem = state.items.find(
-                        (i) => i.productId === item.productId
+                        (i) =>
+                            i.productId === item.productId &&
+                            (i.variantReference || '') === (item.variantReference || '')
                     );
 
                     if (existingItem) {
                         // Increase quantity if item already exists
                         return {
                             items: state.items.map((i) =>
-                                i.productId === item.productId
+                                i.productId === item.productId &&
+                                (i.variantReference || '') === (item.variantReference || '')
                                     ? { ...i, quantity: i.quantity + 1 }
                                     : i
                             ),
@@ -48,21 +53,30 @@ export const useCartStore = create<CartState>()(
                 });
             },
 
-            removeItem: (productId) => {
+            removeItem: (productId, variantReference) => {
                 set((state) => ({
-                    items: state.items.filter((i) => i.productId !== productId),
+                    items: state.items.filter(
+                        (i) =>
+                            !(
+                                i.productId === productId &&
+                                (i.variantReference || '') === (variantReference || '')
+                            )
+                    ),
                 }));
             },
 
-            updateQuantity: (productId, quantity) => {
+            updateQuantity: (productId, quantity, variantReference) => {
                 if (quantity <= 0) {
-                    get().removeItem(productId);
+                    get().removeItem(productId, variantReference);
                     return;
                 }
 
                 set((state) => ({
                     items: state.items.map((i) =>
-                        i.productId === productId ? { ...i, quantity } : i
+                        i.productId === productId &&
+                        (i.variantReference || '') === (variantReference || '')
+                            ? { ...i, quantity }
+                            : i
                     ),
                 }));
             },

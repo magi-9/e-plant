@@ -1,29 +1,60 @@
 import csv
 from io import StringIO
 from decimal import Decimal, InvalidOperation
-from django.db import transaction
-from rest_framework import permissions, filters, status, viewsets
+from django.db import models, transaction
+from django.db.models import Count
+from rest_framework import generics, permissions, filters, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import ValidationError
-from .models import Product
-from .serializers import ProductSerializer
+from .models import Product, ProductGroup
+from .serializers import ProductSerializer, ProductGroupSerializer
 from .services import ProductService
+
+
+class ProductGroupListView(generics.ListAPIView):
+    """Public read-only list of product groups."""
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = ProductGroupSerializer
+
+    def get_queryset(self):
+        return ProductGroup.objects.annotate(
+            product_count=Count(
+                "products",
+                filter=models.Q(products__is_visible=True, products__is_active=True),
+            )
+        ).order_by("name")
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Product CRUD operations.
-    - List/Retrieve: AllowAny (public)
-    - Create/Update/Delete: IsAdminUser (admin only)
+    - List/Retrieve: AllowAny (public) — returns only is_visible=True and is_active=True products
+    - Create/Update/Delete: IsAdminUser (admin only) — returns all products
     """
 
-    queryset = Product.objects.all()
     serializer_class = ProductSerializer
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     ordering_fields = ["name", "price", "category", "stock_quantity"]
     search_fields = ["name", "description", "category"]
+
+    def get_queryset(self):
+        qs = Product.objects.all()
+        if self.action in ["list", "retrieve"] and not (
+            self.request.user and self.request.user.is_staff
+        ):
+            qs = qs.filter(is_visible=True, is_active=True)
+
+        group_id = self.request.query_params.get("group")
+        if group_id:
+            try:
+                qs = qs.filter(group_id=int(group_id))
+            except (ValueError, TypeError):
+                raise ValidationError({"group": "Must be a valid integer ID."})
+
+        return qs
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -107,7 +138,6 @@ class AdminProductImport(APIView):
             product_names = set(row.get("name") for row in rows if row.get("name"))
 
             # Fetch existing products
-            # Using filter instead of in_bulk(field_name='name') to handle potential non-unique names safely
             existing_products_qs = Product.objects.filter(name__in=product_names)
 
             # Check for duplicates in database
@@ -127,15 +157,14 @@ class AdminProductImport(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            products_to_create = {}  # name -> Product instance
-            products_to_update = {}  # pk -> Product instance
+            products_to_create = {}
+            products_to_update = {}
 
             for row in rows:
                 name = row.get("name")
                 if not name:
                     continue
 
-                # Validate name length
                 if len(name) > 255:
                     raise ValidationError(
                         f"Product name too long (max 255 characters): {name[:50]}..."
@@ -144,7 +173,6 @@ class AdminProductImport(APIView):
                 product = None
                 is_new = False
 
-                # Check if we've already seen this product in this batch (created or updated)
                 if name in products_to_create:
                     product = products_to_create[name]
                     is_new = True
@@ -152,19 +180,16 @@ class AdminProductImport(APIView):
                     product = existing_products_map[name]
                     is_new = False
                 else:
-                    # New product
                     is_new = True
                     product = Product(name=name)
-                    # Set defaults
                     product.description = ""
                     product.category = "Uncategorized"
                     product.price = Decimal("0.00")
                     product.stock_quantity = 0
                     product.low_stock_threshold = 5
-                    product.low_stock_alert_sent = False  # Explicit initialization
+                    product.low_stock_alert_sent = False
                     products_to_create[name] = product
 
-                # Update fields with type conversion
                 if "description" in row:
                     product.description = row["description"]
 
@@ -198,7 +223,6 @@ class AdminProductImport(APIView):
                             f"Invalid low_stock_threshold for product {name}: {threshold_value}"
                         )
 
-                # Custom logic for alert reset
                 if (
                     product.stock_quantity > product.low_stock_threshold
                     and product.low_stock_alert_sent
@@ -208,10 +232,16 @@ class AdminProductImport(APIView):
                 if not is_new:
                     products_to_update[product.pk] = product
 
-            # Count unique products actually being created or updated
             processed_count = len(products_to_create) + len(products_to_update)
 
-            # Perform bulk operations inside a transaction
+            # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
+            # Pre-fetch all groups once to avoid N+1 queries.
+            all_groups = list(ProductGroup.objects.only("id", "prefix"))
+            for product in products_to_create.values():
+                product._auto_assign_group(groups=all_groups)
+            for product in products_to_update.values():
+                product._auto_assign_group(groups=all_groups)
+
             with transaction.atomic():
                 if products_to_create:
                     Product.objects.bulk_create(products_to_create.values())
@@ -224,6 +254,7 @@ class AdminProductImport(APIView):
                         "stock_quantity",
                         "low_stock_threshold",
                         "low_stock_alert_sent",
+                        "group",
                     ]
                     Product.objects.bulk_update(
                         products_to_update.values(), fields_to_update
@@ -235,7 +266,6 @@ class AdminProductImport(APIView):
             )
 
         except Exception as e:
-            # Re-raise ValidationErrors so DRF handles them properly (400 Bad Request)
             if isinstance(e, ValidationError):
                 raise e
             return Response(

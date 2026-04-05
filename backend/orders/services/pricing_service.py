@@ -52,6 +52,20 @@ class PricingService:
         return total_price
 
     @staticmethod
+    def calculate_shipping(order_total: Decimal, shipping_rate) -> Decimal:
+        """
+        Calculate shipping cost for an order.
+
+        Returns 0 when order_total >= shipping_rate.free_above (free shipping threshold).
+        """
+        if (
+            shipping_rate.free_above is not None
+            and order_total >= shipping_rate.free_above
+        ):
+            return Decimal("0.00")
+        return Decimal(str(shipping_rate.price))
+
+    @staticmethod
     def calculate_item_subtotal(price: Decimal, quantity: int) -> Decimal:
         """
         Calculate subtotal for a single item.

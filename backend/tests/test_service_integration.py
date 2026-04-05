@@ -19,6 +19,7 @@ class TestServiceIntegrationPoints:
         user_factory,
         product_factory,
         django_capture_on_commit_callbacks,
+        zero_shipping,
     ):
         user = user_factory()
         product = product_factory(price=Decimal("60.00"), stock_quantity=6)
