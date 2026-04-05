@@ -1,4 +1,5 @@
 """Tests for VAT invoice rendering (Issue #94)."""
+
 import pytest
 from decimal import Decimal
 from products.factories import ProductFactory
@@ -7,6 +8,7 @@ from users.models import GlobalSettings
 
 def _make_order(is_vat_payer=False, country="SK", **extra):
     from orders.services.order_service import OrderService
+
     product = ProductFactory(stock_quantity=10)
     base = dict(
         customer_name="Test User",
@@ -35,6 +37,7 @@ def _make_order(is_vat_payer=False, country="SK", **extra):
 class TestVATInvoice:
     def test_non_vat_payer_invoice_has_no_vat_breakdown(self):
         from orders.invoice import generate_invoice_pdf
+
         order = _make_order(is_vat_payer=False)
         shop = GlobalSettings.load()
         pdf = generate_invoice_pdf(order, shop)
@@ -43,6 +46,7 @@ class TestVATInvoice:
 
     def test_vat_payer_invoice_includes_vat_section(self):
         from orders.invoice import generate_invoice_pdf
+
         order = _make_order(is_vat_payer=True, country="SK")
         shop = GlobalSettings.load()
         pdf = generate_invoice_pdf(order, shop)
@@ -73,8 +77,10 @@ class TestVATInvoice:
 class TestVATRates:
     def test_sk_vat_rate_23_percent(self):
         from orders.invoice import VAT_RATES
+
         assert VAT_RATES["SK"] == Decimal("0.23")
 
     def test_cz_vat_rate_21_percent(self):
         from orders.invoice import VAT_RATES
+
         assert VAT_RATES["CZ"] == Decimal("0.21")

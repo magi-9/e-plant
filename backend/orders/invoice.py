@@ -154,7 +154,9 @@ _skonto_date = skonto_date
 
 
 # ── BySquare (Slovak Pay by Square) QR code ──────────────────────────────────
-def _bysquare_qr_image(iban: str, amount: Decimal, reference: str, currency: str = "EUR", size_mm: int = 38):
+def _bysquare_qr_image(
+    iban: str, amount: Decimal, reference: str, currency: str = "EUR", size_mm: int = 38
+):
     """
     Return a ReportLab Image of a Pay by Square QR code, or None on failure.
 
@@ -343,18 +345,24 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         reference=order.order_number,
         size_mm=36,
     )
-    bysquare_qr = _bysquare_qr_image(
-        iban=iban_for_qr,
-        amount=order.total_price,
-        reference=order.order_number,
-        size_mm=36,
-    ) if iban_for_qr else None
+    bysquare_qr = (
+        _bysquare_qr_image(
+            iban=iban_for_qr,
+            amount=order.total_price,
+            reference=order.order_number,
+            size_mm=36,
+        )
+        if iban_for_qr
+        else None
+    )
 
-    tbl_style = TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ])
+    tbl_style = TableStyle(
+        [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+    )
 
     if sepa_qr and bysquare_qr:
         sepa_cell = [Paragraph("SEPA QR", s_label), Spacer(1, 1 * mm), sepa_qr]
@@ -475,19 +483,38 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         vat_pct = int(vat_rate * 100)
 
         vat_rows = [
-            ["", "", Paragraph("Základ dane:", s_r), Paragraph(f"{base:.2f} €", s_td_r)],
-            ["", "", Paragraph(f"DPH {vat_pct}%:", s_r), Paragraph(f"{vat_amount:.2f} €", s_td_r)],
-            ["", "", Paragraph("Celkom s DPH:", s_r_bold), Paragraph(f"{order.total_price:.2f} €", s_total_r)],
+            [
+                "",
+                "",
+                Paragraph("Základ dane:", s_r),
+                Paragraph(f"{base:.2f} €", s_td_r),
+            ],
+            [
+                "",
+                "",
+                Paragraph(f"DPH {vat_pct}%:", s_r),
+                Paragraph(f"{vat_amount:.2f} €", s_td_r),
+            ],
+            [
+                "",
+                "",
+                Paragraph("Celkom s DPH:", s_r_bold),
+                Paragraph(f"{order.total_price:.2f} €", s_total_r),
+            ],
         ]
         vat_tbl = Table(vat_rows, colWidths=COL_W)
-        vat_tbl.setStyle(TableStyle([
-            ("LINEABOVE", (0, 0), (-1, 0), 0.5, _GRAY),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("LEFTPADDING", (0, 0), (-1, -1), 5),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ]))
+        vat_tbl.setStyle(
+            TableStyle(
+                [
+                    ("LINEABOVE", (0, 0), (-1, 0), 0.5, _GRAY),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
         story.append(vat_tbl)
         story.append(Spacer(1, 2 * mm))
 
