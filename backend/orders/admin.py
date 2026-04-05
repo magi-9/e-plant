@@ -84,6 +84,12 @@ class StockReceiptAdminForm(admin.ModelAdmin):
         else:
             super().save_model(request, obj, form, change)
 
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(StockReceipt)
 class StockReceiptAdmin(StockReceiptAdminForm):
@@ -91,7 +97,7 @@ class StockReceiptAdmin(StockReceiptAdminForm):
     list_filter = ("product",)
     search_fields = ("batch_number", "product__name")
     readonly_fields = ("received_at", "batch_lot")
-    fields = ("product", "batch_number", "quantity", "notes")
+    fields = ("product", "batch_number", "quantity", "notes", "received_at", "batch_lot")
 
     def get_readonly_fields(self, request, obj=None):
         if obj:

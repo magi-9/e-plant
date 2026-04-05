@@ -171,13 +171,25 @@ class OrderService:
             order_item = OrderItem.objects.create(order=order, **item_data)
 
             if batch_allocations:
+                allocated_batch_numbers = [bn for bn, _ in batch_allocations]
                 batch_number_to_lot = {
                     lot.batch_number: lot
                     for lot in BatchLot.objects.filter(
                         product=order_item.product,
-                        batch_number__in=[bn for bn, _ in batch_allocations],
+                        batch_number__in=allocated_batch_numbers,
                     )
                 }
+                missing = [
+                    bn
+                    for bn in allocated_batch_numbers
+                    if bn not in batch_number_to_lot
+                ]
+                if missing:
+                    raise RuntimeError(
+                        f"FIFO batch lots not found for product "
+                        f"'{order_item.product}': {missing}. "
+                        "Order cannot be created with inconsistent batch data."
+                    )
                 OrderItemBatch.objects.bulk_create(
                     [
                         OrderItemBatch(
@@ -186,7 +198,6 @@ class OrderService:
                             quantity=qty,
                         )
                         for batch_number, qty in batch_allocations
-                        if batch_number in batch_number_to_lot
                     ]
                 )
 

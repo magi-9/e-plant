@@ -30,7 +30,8 @@ class StockReceiptService:
 
         Returns the created StockReceipt.
         """
-        if not batch_number or not batch_number.strip():
+        batch_number = batch_number.strip() if batch_number else ""
+        if not batch_number:
             raise ValidationError("Batch number must not be empty.")
         if quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
@@ -52,7 +53,7 @@ class StockReceiptService:
             receipt = StockReceipt.objects.create(
                 product=locked_product,
                 batch_lot=lot,
-                batch_number=batch_number,
+                batch_number=batch_number,  # already stripped above
                 quantity=quantity,
                 received_by=received_by,
                 notes=notes,
