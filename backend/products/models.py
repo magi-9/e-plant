@@ -59,9 +59,9 @@ class Product(models.Model):
             if not char.isalnum() and index > 0:
                 candidate_prefixes.append(self.reference[:index])
         if groups is None:
-            groups = ProductGroup.objects.filter(
-                prefix__in=candidate_prefixes
-            ).only("id", "prefix")
+            groups = ProductGroup.objects.filter(prefix__in=candidate_prefixes).only(
+                "id", "prefix"
+            )
         best = None
         best_len = -1
         for group in groups:
