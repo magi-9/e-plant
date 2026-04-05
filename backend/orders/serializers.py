@@ -1,7 +1,7 @@
 import logging
 
 from rest_framework import serializers
-from .models import Order, OrderItem, OrderItemBatch
+from .models import Order, OrderItem, OrderItemBatch, ShippingRate
 from .services import OrderService
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,12 @@ class OrderItemSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "product", "price_snapshot")
 
 
+class ShippingRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShippingRate
+        fields = ("id", "country", "carrier", "price", "free_above")
+
+
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemInputSerializer(many=True, write_only=True)
 
@@ -74,10 +80,20 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        """
+        Create a new order using the OrderService.
+
+        This serializer now delegates all business logic to the service layer,
+        focusing solely on serialization and validation.
+        """
+        # Get user from context if authenticated
         request = self.context.get("request")
         user = request.user if request and request.user.is_authenticated else None
+
+        # Delegate to service layer
         service = OrderService(user=user)
         order = service.create_order(validated_data)
+
         return order
 
 
@@ -106,6 +122,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "payment_method",
             "status",
             "total_price",
+            "shipping_cost",
+            "shipping_carrier",
             "notes",
             "items",
             "created_at",

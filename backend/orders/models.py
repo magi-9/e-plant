@@ -2,9 +2,25 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from products.models import Product
-from common.models import AddressModel
+from common.models import AddressModel, COUNTRY_CHOICES
 
 User = get_user_model()
+
+
+class ShippingRate(models.Model):
+    country = models.CharField(max_length=2, choices=COUNTRY_CHOICES, db_index=True)
+    carrier = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    free_above = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["country", "price"]
+        unique_together = [("country", "carrier")]
+
+    def __str__(self):
+        return f"{self.country} — {self.carrier} ({self.price} €)"
 
 
 class Order(AddressModel):
@@ -49,6 +65,10 @@ class Order(AddressModel):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
     notes = models.TextField(blank=True)
+
+    # Shipping
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    shipping_carrier = models.CharField(max_length=100, blank=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

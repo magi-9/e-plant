@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Order, OrderItem, BatchLot, StockReceipt
+from .models import BatchLot, Order, OrderItem, ShippingRate, StockReceipt
 from .services.stock_receipt_service import StockReceiptService
 
 
@@ -36,13 +36,24 @@ class OrderAdmin(admin.ModelAdmin):
         "customer_name",
         "email",
         "total_price",
+        "shipping_cost",
+        "shipping_carrier",
         "payment_method",
         "status",
         "created_at",
     )
     list_filter = ("status", "payment_method", "created_at")
     search_fields = ("order_number", "customer_name", "email", "phone")
-    readonly_fields = ("order_number", "created_at", "updated_at", "total_price")
+    # shipping_cost/shipping_carrier are read-only: changing them without
+    # recomputing total_price would leave the order in an inconsistent state.
+    readonly_fields = (
+        "order_number",
+        "created_at",
+        "updated_at",
+        "total_price",
+        "shipping_cost",
+        "shipping_carrier",
+    )
     inlines = [OrderItemInline]
 
     fieldsets = (
@@ -59,11 +70,28 @@ class OrderAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Shipping",
+            {"fields": ("shipping_cost", "shipping_carrier")},
+        ),
+        (
             "Customer Info",
             {"fields": ("customer_name", "email", "phone", "shipping_address", "user")},
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(ShippingRate)
+class ShippingRateAdmin(admin.ModelAdmin):
+    list_display = ("country", "carrier", "price", "free_above")
+    list_filter = ("country",)
+
+
+@admin.register(BatchLot)
+class BatchLotAdmin(admin.ModelAdmin):
+    list_display = ("product", "batch_number", "quantity", "received_at")
+    list_filter = ("product",)
+    search_fields = ("batch_number", "product__name")
 
 
 class StockReceiptAdminForm(admin.ModelAdmin):
@@ -78,7 +106,6 @@ class StockReceiptAdminForm(admin.ModelAdmin):
                 received_by=request.user,
                 notes=obj.notes,
             )
-            # Sync obj with the created receipt so Django admin redirects work correctly
             obj.pk = receipt.pk
             obj.batch_lot = receipt.batch_lot
         else:
@@ -110,10 +137,3 @@ class StockReceiptAdmin(StockReceiptAdminForm):
         if obj:
             return self.readonly_fields + ("product", "batch_number", "quantity")
         return self.readonly_fields
-
-
-@admin.register(BatchLot)
-class BatchLotAdmin(admin.ModelAdmin):
-    list_display = ("product", "batch_number", "quantity", "received_at")
-    list_filter = ("product",)
-    search_fields = ("batch_number", "product__name")
