@@ -10,10 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelManagers(
-            name="customuser",
-            managers=[],
-        ),
         migrations.AddField(
             model_name="customuser",
             name="country",
@@ -32,6 +28,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="customuser",
             name="vat_id",
-            field=models.CharField(blank=True, max_length=20, verbose_name="IČ DPH"),
+            field=models.CharField(blank=True, default="", max_length=20, verbose_name="IČ DPH"),
         ),
     ]

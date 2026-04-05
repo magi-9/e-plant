@@ -145,9 +145,9 @@ class OrderEmailService(BaseEmailService):
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
-            from orders.invoice import _skonto_amount, _skonto_date
-            sk_date = _skonto_date(self.order.created_at.date())
-            sk_amount = _skonto_amount(self.order.total_price)
+            from orders.invoice import skonto_amount, skonto_date
+            sk_date = skonto_date(self.order.created_at.date())
+            sk_amount = skonto_amount(self.order.total_price)
             payment_info = f"""
 PLATOBNÉ ÚDAJE:
 Variabilný symbol: {self.order.order_number}{iban_line}

@@ -56,8 +56,29 @@ class CustomUser(AbstractUser, AddressModel):
     dic = models.CharField(max_length=20, blank=True)
     is_vat_payer = models.BooleanField(default=False, verbose_name="VAT payer")
     vat_id = models.CharField(
-        max_length=20, blank=True, verbose_name="IČ DPH"
+        max_length=20, blank=True, default="", verbose_name="IČ DPH"
     )
+
+    def clean(self):
+        super().clean()
+        if self.is_vat_payer and not self.vat_id:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError({"vat_id": "VAT ID is required for VAT payers."})
+        if self.vat_id:
+            import re
+            from django.core.exceptions import ValidationError
+
+            country = self.country or "SK"
+            patterns = {
+                "SK": r"^SK\d{10}$",
+                "CZ": r"^CZ\d{8,10}$",
+            }
+            pattern = patterns.get(country)
+            if pattern and not re.match(pattern, self.vat_id):
+                raise ValidationError(
+                    {"vat_id": f"Invalid VAT ID format for {country}."}
+                )
 
 
 class GlobalSettingsManager(models.Manager):

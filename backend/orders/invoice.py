@@ -138,14 +138,19 @@ VAT_RATES = {
 
 
 # ── Skonto helpers ────────────────────────────────────────────────────────────
-def _skonto_amount(total) -> Decimal:
+def skonto_amount(total) -> Decimal:
     """Return total after 2% early-payment discount."""
     return (Decimal(str(total)) * Decimal("0.98")).quantize(Decimal("0.01"))
 
 
-def _skonto_date(invoice_date):
+def skonto_date(invoice_date):
     """Return skonto due date = invoice_date + 3 calendar days."""
     return invoice_date + timedelta(days=3)
+
+
+# Keep private aliases for backwards compatibility within this module.
+_skonto_amount = skonto_amount
+_skonto_date = skonto_date
 
 
 # ── BySquare (Slovak Pay by Square) QR code ──────────────────────────────────
@@ -153,31 +158,42 @@ def _bysquare_qr_image(iban: str, amount: Decimal, reference: str, currency: str
     """
     Return a ReportLab Image of a Pay by Square QR code, or None on failure.
 
-    Falls back gracefully if pyBySquare or qrcode is not installed.
+    Returns None (no QR) if pyBySquare or qrcode is not installed, or if
+    generation fails — callers should degrade layout gracefully.
     """
+    import logging
+    import re
+
     if not iban:
         return None
     try:
         import qrcode  # noqa: PLC0415
     except ImportError:
         return None
+
+    # Pay by Square variable symbol must be numeric (max 10 digits).
+    vs = re.sub(r"\D", "", reference)[:10]
+    # Use fixed-decimal string to avoid float rounding artifacts.
+    amount_str = f"{Decimal(str(amount)):.2f}"
+
     try:
         import bysquare  # noqa: PLC0415
 
         data = bysquare.generate(
             iban=iban.replace(" ", ""),
-            amount=float(amount),
+            amount=amount_str,
             currency_code=currency,
-            variable_symbol=reference[:10].replace("/", ""),
+            variable_symbol=vs,
         )
-    except (ImportError, Exception):
-        # pyBySquare not installed or generation failed — generate a simple QR
-        # using the same data as SEPA but labelled as BySquare placeholder
-        try:
-            vs = reference[:10].replace("/", "")
-            data = f"PAY:{iban.replace(' ', '')}|AM:{float(amount):.2f}|CC:{currency}|VS:{vs}"
-        except Exception:
-            return None
+    except ImportError:
+        # pyBySquare not installed — skip QR entirely rather than produce a
+        # mislabelled "Pay by Square" placeholder.
+        return None
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "BySquare QR generation failed for reference %s", reference, exc_info=True
+        )
+        return None
     try:
         qr = qrcode.QRCode(
             error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -418,11 +434,15 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             )
 
     n_last_item = len(rows) - 1  # 0-based index of last item row (before total)
+    # For VAT payers the VAT breakdown block below shows "Celkom s DPH" — show
+    # only a subtotal label here to avoid a duplicate total.
+    is_vat_payer = getattr(order, "is_vat_payer", False)
+    total_label = "Medzisúčet:" if is_vat_payer else "Celkom:"
     rows.append(
         [
             "",
             "",
-            Paragraph("Celkom:", s_r_bold),
+            Paragraph(total_label, s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ]
     )
