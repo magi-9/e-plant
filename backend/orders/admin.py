@@ -97,7 +97,14 @@ class StockReceiptAdmin(StockReceiptAdminForm):
     list_filter = ("product",)
     search_fields = ("batch_number", "product__name")
     readonly_fields = ("received_at", "batch_lot")
-    fields = ("product", "batch_number", "quantity", "notes", "received_at", "batch_lot")
+    fields = (
+        "product",
+        "batch_number",
+        "quantity",
+        "notes",
+        "received_at",
+        "batch_lot",
+    )
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
