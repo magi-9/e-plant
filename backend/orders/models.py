@@ -11,7 +11,9 @@ class ShippingRate(models.Model):
     country = models.CharField(max_length=2, choices=COUNTRY_CHOICES, db_index=True)
     carrier = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    free_above = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    free_above = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
 
     class Meta:
         ordering = ["country", "price"]
@@ -64,9 +66,7 @@ class Order(AddressModel):
     notes = models.TextField(blank=True)
 
     # Shipping
-    shipping_cost = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0
-    )
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     shipping_carrier = models.CharField(max_length=100, blank=True)
 
     # Timestamps

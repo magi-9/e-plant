@@ -18,6 +18,7 @@ def api_client():
 def zero_shipping():
     """Set global shipping cost to 0 for tests that don't exercise shipping logic."""
     from users.models import GlobalSettings
+
     shop = GlobalSettings.load()
     shop.shipping_cost = Decimal("0.00")
     shop.save()

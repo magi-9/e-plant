@@ -38,7 +38,9 @@ def test_create_order_success(api_client, user_factory, product_factory):
 
 
 @pytest.mark.django_db
-def test_order_total_calculated_correctly(api_client, user_factory, product_factory, zero_shipping):
+def test_order_total_calculated_correctly(
+    api_client, user_factory, product_factory, zero_shipping
+):
     """Test that order total is calculated correctly on backend"""
     user = user_factory()
     product1 = product_factory(price=Decimal("100.00"), stock_quantity=10)

@@ -1,7 +1,7 @@
 import logging
 
 from rest_framework import serializers
-from .models import Order, OrderItem, ShippingRate
+from .models import Order, OrderItem, OrderItemBatch, ShippingRate
 from .services import OrderService
 
 logger = logging.getLogger(__name__)
@@ -12,11 +12,22 @@ class OrderItemInputSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
+class OrderItemBatchSerializer(serializers.ModelSerializer):
+    batch_number = serializers.CharField(
+        source="batch_lot.batch_number", read_only=True
+    )
+
+    class Meta:
+        model = OrderItemBatch
+        fields = ("batch_number", "quantity")
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
     subtotal = serializers.DecimalField(
         max_digits=10, decimal_places=2, read_only=True, source="get_subtotal"
     )
+    batch_allocations = OrderItemBatchSerializer(many=True, read_only=True)
 
     class Meta:
         model = OrderItem
@@ -27,6 +38,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "quantity",
             "price_snapshot",
             "subtotal",
+            "batch_allocations",
         )
         read_only_fields = ("id", "product", "price_snapshot")
 

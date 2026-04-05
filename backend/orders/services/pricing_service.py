@@ -58,7 +58,10 @@ class PricingService:
 
         Returns 0 when order_total >= shipping_rate.free_above (free shipping threshold).
         """
-        if shipping_rate.free_above is not None and order_total >= shipping_rate.free_above:
+        if (
+            shipping_rate.free_above is not None
+            and order_total >= shipping_rate.free_above
+        ):
             return Decimal("0.00")
         return Decimal(str(shipping_rate.price))
 
