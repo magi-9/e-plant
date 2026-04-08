@@ -47,8 +47,9 @@ class TestShippingRateAPI:
         response = client.get("/api/shipping-rates/?country=SK")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["country"] == "SK"
+        results = data.get("results", data)
+        assert len(results) == 1
+        assert results[0]["country"] == "SK"
 
     def test_list_all_rates_without_filter(self, client):
         from orders.models import ShippingRate
@@ -57,7 +58,9 @@ class TestShippingRateAPI:
         ShippingRate.objects.create(country="CZ", carrier="PPL", price=Decimal("5.50"))
         response = client.get("/api/shipping-rates/")
         assert response.status_code == 200
-        assert len(response.json()) == 2
+        data = response.json()
+        results = data.get("results", data)
+        assert len(results) == 2
 
     def test_rate_response_includes_free_above(self, client):
         from orders.models import ShippingRate
@@ -70,7 +73,8 @@ class TestShippingRateAPI:
         )
         response = client.get("/api/shipping-rates/?country=SK")
         data = response.json()
-        assert data[0]["free_above"] == "50.00"
+        results = data.get("results", data)
+        assert results[0]["free_above"] == "50.00"
 
 
 @pytest.mark.django_db

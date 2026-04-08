@@ -53,9 +53,20 @@ export default function AdminOrders() {
                             <h4 className="text-sm font-semibold text-gray-900 mb-2 border-b pb-1">Položky:</h4>
                             <ul className="space-y-1 mb-2">
                                 {order.items.map(item => (
-                                    <li key={item.id} className="text-sm text-gray-700 flex justify-between">
-                                        <span>{item.quantity}x {item.product_name}</span>
-                                        <span>{Number(item.subtotal).toFixed(2)} €</span>
+                                    <li key={item.id} className="text-sm text-gray-700">
+                                        <div className="flex justify-between">
+                                            <span>{item.quantity}x {item.product_name}</span>
+                                            <span>{Number(item.subtotal).toFixed(2)} €</span>
+                                        </div>
+                                        {item.batch_allocations?.length > 0 && (
+                                            <div className="mt-0.5 flex flex-wrap gap-1">
+                                                {item.batch_allocations.map((b, i) => (
+                                                    <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700 border border-blue-100">
+                                                        Šarža {b.batch_number} ({b.quantity} ks)
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

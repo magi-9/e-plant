@@ -143,3 +143,10 @@ class AdminOrderStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ("status",)
+
+
+class StockReceiptInputSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    batch_number = serializers.CharField(max_length=100)
+    quantity = serializers.IntegerField(min_value=1)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
