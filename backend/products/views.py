@@ -1,6 +1,8 @@
 import csv
 from io import StringIO
 from decimal import Decimal, InvalidOperation
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count
 from rest_framework import generics, permissions, filters, status, viewsets
@@ -38,7 +40,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     ordering_fields = ["name", "price", "category", "stock_quantity"]
-    search_fields = ["name", "description", "category"]
+    search_fields = ["name", "description", "category", "parameters__all_categories"]
 
     def get_queryset(self):
         qs = Product.objects.all()
@@ -76,6 +78,89 @@ class ProductViewSet(viewsets.ModelViewSet):
             response.data, request.user
         )
         return response
+
+
+class AdminSeedView(APIView):
+    """
+    Admin endpoint: seeds demo users (admin + client) and imports real products
+    from data/csv/ via the import_product_data management command.
+    """
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        User = get_user_model()
+        messages = []
+
+        # Seed demo users
+        if not User.objects.filter(email="admin@example.com").exists():
+            User.objects.create_superuser("admin@example.com", "admin")
+            messages.append("Vytvorený admin (admin@example.com / admin)")
+        else:
+            messages.append("Admin už existuje")
+
+        if not User.objects.filter(email="client@example.com").exists():
+            User.objects.create_user("client@example.com", "client", is_active=True)
+            messages.append("Vytvorený klient (client@example.com / client)")
+        else:
+            messages.append("Klient už existuje")
+
+        # Import products from final master CSV in data/new/
+        try:
+            out = StringIO()
+            call_command(
+                "import_product_data", master=True, replace_all=True, stdout=out
+            )
+            messages.append(out.getvalue())
+        except Exception as e:
+            return Response(
+                {
+                    "error": f"Import produktov zlyhal: {str(e)}",
+                    "messages": messages,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response({"message": "\n".join(messages)}, status=status.HTTP_200_OK)
+
+
+class AdminBulkDeleteView(APIView):
+    """Admin endpoint: delete multiple products by ID."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        ids = request.data.get("ids", [])
+        if not ids or not isinstance(ids, list):
+            return Response(
+                {"error": "ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        deleted_count, _ = Product.objects.filter(pk__in=ids).delete()
+        return Response({"deleted": deleted_count}, status=status.HTTP_200_OK)
+
+
+class AdminBulkSetActiveView(APIView):
+    """Admin endpoint: set is_active on multiple products by ID."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        ids = request.data.get("ids", [])
+        is_active = request.data.get("is_active")
+        if not ids or not isinstance(ids, list):
+            return Response(
+                {"error": "ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if is_active is None:
+            return Response(
+                {"error": "is_active is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        updated_count = Product.objects.filter(pk__in=ids).update(
+            is_active=bool(is_active)
+        )
+        return Response({"updated": updated_count}, status=status.HTTP_200_OK)
 
 
 class AdminProductImport(APIView):

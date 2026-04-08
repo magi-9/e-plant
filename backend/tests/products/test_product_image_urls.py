@@ -15,5 +15,6 @@ def test_product_image_url_uses_media_prefix(client):
     response = client.get("/api/products/")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert "/media/products/test-image.jpg" in data[0]["image"]
+    results = data.get("results", data)
+    assert len(results) == 1
+    assert "/media/products/test-image.jpg" in results[0]["image"]

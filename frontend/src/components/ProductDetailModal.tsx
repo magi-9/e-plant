@@ -26,6 +26,11 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
 
     if (!product) return null;
 
+    const categoryList = (product.all_categories || product.parameters?.all_categories || product.category || '')
+        .split(';')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
     const selectedVariant = hasVariants
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || variantOptions[0]
         : null;
@@ -116,7 +121,9 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                         <Dialog.Title as="h3" className="text-2xl font-bold leading-6 text-gray-900 mb-2">
                                                             {product.name}
                                                         </Dialog.Title>
-                                                        <p className="text-sm text-blue-600 font-medium mb-4">{product.category}</p>
+                                                        <p className="text-sm text-blue-600 font-medium mb-4">
+                                                            {categoryList.join(', ') || product.category}
+                                                        </p>
                                                         <div className="prose prose-sm text-gray-500 mb-6">
                                                             <p>{product.description || 'Popis produktu pripravujeme.'}</p>
                                                         </div>

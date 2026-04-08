@@ -29,12 +29,15 @@ BACKEND_DIR = os.path.dirname(
 PROJECT_DIR = os.path.dirname(BACKEND_DIR)
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 CSV_DIR = os.path.join(DATA_DIR, "csv")
-IMAGES_DIR = os.environ.get("PRODUCT_IMAGES_DIR", os.path.join(DATA_DIR, "images"))
+NEW_DIR = os.path.join(DATA_DIR, "new")
 MEDIA_PRODUCTS_DIR = os.path.join(BACKEND_DIR, "media", "products")
+DEFAULT_IMAGES_DIR = os.path.join(DATA_DIR, "images")
+RAW_ONEDRIVE_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "OneDrive_1_17-3-2026")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
+MASTER_IMPORT_CSV = os.path.join(NEW_DIR, "product_retail_2025_master.csv")
 
 
 def normalize_ref(ref_str):
@@ -84,6 +87,22 @@ def build_image_index(images_dir):
                 stem = os.path.splitext(fname)[0]
                 index[stem] = os.path.join(root, fname)
     return index
+
+
+def get_image_source_dirs():
+    """Resolve image source directories in priority order."""
+    env_dir = os.environ.get("PRODUCT_IMAGES_DIR")
+    candidates = [
+        env_dir,
+        RAW_ONEDRIVE_IMAGES_DIR,
+        DEFAULT_IMAGES_DIR,
+        MEDIA_PRODUCTS_DIR,
+    ]
+    source_dirs = []
+    for directory in candidates:
+        if directory and os.path.isdir(directory) and directory not in source_dirs:
+            source_dirs.append(directory)
+    return source_dirs
 
 
 def find_image_for_ref(ref_str, image_index):
@@ -379,6 +398,78 @@ def load_merged_products(merged_csv_path):
     return products
 
 
+def load_master_products(master_csv_path):
+    """Load products from final master CSV generated in data/new/."""
+
+    def parse_bool(value):
+        return str(value).strip().lower() in ("1", "true", "yes")
+
+    def first_category(value):
+        parts = [p.strip() for p in str(value or "").split(";") if p.strip()]
+        return parts[0] if parts else ""
+
+    products = []
+    with open(master_csv_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            reference = row.get("reference_formatted", "").strip()
+            product_name = row.get("product_name", "").strip()
+            retail_name = row.get("retail_name", "").strip()
+            name = retail_name or product_name
+
+            if not reference or not name:
+                continue
+
+            price_str = row.get("retail_price", "").strip()
+            if not price_str:
+                price = None
+            else:
+                try:
+                    price = Decimal(price_str)
+                except InvalidOperation:
+                    price = None
+
+            categories = row.get("categories", "").strip()
+            category = first_category(categories)
+            compatibility_codes = row.get("compatibility_codes", "").strip()
+            raw_systems = row.get("raw_systems", "").strip()
+            sections = row.get("sections", "").strip()
+
+            description_parts = [
+                f"Product name: {product_name}" if product_name else "",
+                f"Retail name: {retail_name}" if retail_name else "",
+                f"EAN13: {row.get('ean13', '').strip()}" if row.get("ean13") else "",
+                f"Categories: {categories}" if categories else "",
+                (
+                    f"Compatibility codes: {compatibility_codes}"
+                    if compatibility_codes
+                    else ""
+                ),
+                f"Raw systems: {raw_systems}" if raw_systems else "",
+                f"Sections: {sections}" if sections else "",
+            ]
+
+            products.append(
+                {
+                    "name": name,
+                    "reference": reference,
+                    "reference_num": row.get("reference_number", "").strip(),
+                    "category": category or "Uncategorized",
+                    "price": price,
+                    "description": " | ".join([p for p in description_parts if p]),
+                    "is_active": parse_bool(row.get("active", "false")),
+                    "is_visible": parse_bool(row.get("chosen", "false")),
+                    "parameters": {
+                        "type": "single",
+                        "compatibility_codes": compatibility_codes,
+                        "raw_systems": raw_systems,
+                        "all_categories": categories,
+                    },
+                }
+            )
+
+    return products
+
+
 def load_grouped_retail_products(
     products_csv_path, retail_prices_path, merged_csv_path
 ):
@@ -540,6 +631,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Delete existing products before import",
         )
+        parser.add_argument(
+            "--master",
+            action="store_true",
+            help="Import from data/new/product_retail_2025_master.csv",
+        )
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
@@ -547,9 +643,12 @@ class Command(BaseCommand):
         use_variants = options["variants"]
         use_merged = options["merged"]
         replace_all = options["replace_all"]
+        use_master = options["master"]
 
         required_files = []
-        if use_merged:
+        if use_master:
+            required_files.append((MASTER_IMPORT_CSV, "product_retail_2025_master.csv"))
+        elif use_merged:
             required_files.append((MERGED_IMPORT_CSV, "import_all_merged.csv"))
             required_files.append((PRODUCTS_CSV, "products.csv"))
             required_files.append((RETAIL_PRICES_CSV, "retail_prices.csv"))
@@ -565,10 +664,19 @@ class Command(BaseCommand):
                 )
 
         self.stdout.write("Indexing product images...")
-        image_index = build_image_index(IMAGES_DIR) if os.path.isdir(IMAGES_DIR) else {}
-        self.stdout.write(f"  {len(image_index)} images indexed")
+        image_index = {}
+        image_source_dirs = get_image_source_dirs()
+        for source_dir in image_source_dirs:
+            image_index.update(build_image_index(source_dir))
+        self.stdout.write(
+            f"  {len(image_index)} images indexed from {len(image_source_dirs)} source dirs"
+        )
 
-        if use_merged:
+        if use_master:
+            self.stdout.write("Loading products from final master CSV...")
+            products = load_master_products(MASTER_IMPORT_CSV)
+            self.stdout.write(f"  {len(products)} products from master CSV")
+        elif use_merged:
             self.stdout.write("Loading products from merged CSV...")
             products = load_merged_products(MERGED_IMPORT_CSV)
             self.stdout.write(f"  {len(products)} products with price")
@@ -630,6 +738,8 @@ class Command(BaseCommand):
                         existing.category = prod["category"]
                     if "is_active" in prod:
                         existing.is_active = prod["is_active"]
+                    if "is_visible" in prod:
+                        existing.is_visible = prod["is_visible"]
                     if image_relative:
                         existing.image = image_relative
                     existing.description = prod.get("description", "")
@@ -650,6 +760,7 @@ class Command(BaseCommand):
                     "stock_quantity": 0,
                     "image": image_relative or "",
                     "is_active": prod.get("is_active", True),
+                    "is_visible": prod.get("is_visible", True),
                 }
                 if "parameters" in prod:
                     create_kwargs["parameters"] = prod["parameters"]
@@ -696,6 +807,7 @@ class Command(BaseCommand):
                     "image",
                     "description",
                     "is_active",
+                    "is_visible",
                     "group",
                 ]
                 if hasattr(Product, "parameters"):
