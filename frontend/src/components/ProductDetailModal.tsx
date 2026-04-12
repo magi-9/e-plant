@@ -1,5 +1,5 @@
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
@@ -18,11 +18,6 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
-
-    useEffect(() => {
-        if (!open) return;
-        setSelectedVariantRef(hasVariants ? variantOptions[0]?.reference || '' : '');
-    }, [open, product?.id, hasVariants, variantOptions]);
 
     if (!product) return null;
 
