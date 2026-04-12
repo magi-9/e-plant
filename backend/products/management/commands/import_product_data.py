@@ -762,7 +762,8 @@ class Command(BaseCommand):
         image_index = {}
         image_source_dirs = get_image_source_dirs()
         for source_dir in image_source_dirs:
-            image_index.update(build_image_index(source_dir))
+            for key, value in build_image_index(source_dir).items():
+                image_index.setdefault(key, value)
         self.stdout.write(
             f"  {len(image_index)} images indexed from {len(image_source_dirs)} source dirs"
         )

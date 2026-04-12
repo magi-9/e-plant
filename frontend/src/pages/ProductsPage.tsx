@@ -8,7 +8,7 @@ import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 
 const getCategoryList = (product: Product): string[] => {
-    const raw = product.all_categories || product.parameters?.option_tokens || product.category || '';
+    const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
     return raw
         .split(';')
         .map((value) => value.trim())

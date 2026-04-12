@@ -48,7 +48,7 @@ export default function AdminProducts() {
     useEffect(() => {
         setCurrentPage(0);
         setSelectedIds(new Set());
-    }, [debouncedSearch, sortBy]);
+    }, [debouncedSearch, sortBy, categoryFilter, activeFilter, visibleFilter, stockFilter]);
 
     const invalidateProductQueries = () => {
         queryClient.invalidateQueries({ queryKey: ['products'] });

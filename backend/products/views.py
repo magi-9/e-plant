@@ -83,7 +83,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 class AdminSeedView(APIView):
     """
     Admin endpoint: seeds demo users (admin + client) and imports real products
-    from data/csv/ via the import_product_data management command.
+    by running the import_product_data management command with the master
+    dataset (final master CSV in data/new/).
     """
 
     permission_classes = (permissions.IsAdminUser,)
@@ -134,7 +135,9 @@ class AdminBulkDeleteView(APIView):
                 {"error": "ids must be a non-empty list."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        deleted_count, _ = Product.objects.filter(pk__in=ids).delete()
+        qs = Product.objects.filter(pk__in=ids)
+        deleted_count = qs.count()
+        qs.delete()
         return Response({"deleted": deleted_count}, status=status.HTTP_200_OK)
 
 
@@ -155,6 +158,8 @@ class AdminBulkSetActiveView(APIView):
             return Response(
                 {"error": "is_active is required."}, status=status.HTTP_400_BAD_REQUEST
             )
+        if isinstance(is_active, str):
+            is_active = is_active.lower() in ("true", "1", "yes")
         updated_count = Product.objects.filter(pk__in=ids).update(
             is_active=bool(is_active)
         )
