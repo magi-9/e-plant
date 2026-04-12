@@ -48,7 +48,10 @@ export interface Order {
     dic_dph: string;
     is_vat_payer: boolean;
     payment_method: string;
+    status: string;
     total_price: string;
+    shipping_cost: string;
+    shipping_carrier: string;
     notes: string;
     items: Array<{
         id: number;
@@ -98,6 +101,11 @@ export interface StockReceiptResult {
 
 export const receiveStock = async (data: StockReceiptData): Promise<StockReceiptResult> => {
     const response = await client.post<StockReceiptResult>('/orders/admin/stock-receipts/', data);
+    return response.data;
+};
+
+export const updateOrderStatus = async (id: number, orderStatus: string): Promise<Order> => {
+    const response = await client.patch<Order>(`/orders/admin/orders/${id}/`, { status: orderStatus });
     return response.data;
 };
 

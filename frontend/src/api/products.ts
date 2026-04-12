@@ -27,6 +27,7 @@ export interface Product {
             parameter_code?: string;
             option_tokens?: string;
             label?: string;
+            stock_quantity?: number;
         }>;
     };
 }
