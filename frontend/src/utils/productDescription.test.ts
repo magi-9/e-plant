@@ -13,13 +13,21 @@ const SAMPLE_DESC = [
 ].join(' | ');
 
 describe('buildDescriptionParts', () => {
-    it('returns all parts including Parametre for non-variant products', () => {
+    it('returns all parts (except Retail name) including Parametre for non-variant products', () => {
         const parts = buildDescriptionParts(SAMPLE_DESC, false);
         expect(parts.find((p) => p.key === 'Parametre')).toBeDefined();
         expect(parts.find((p) => p.key === 'Product name')?.value).toBe(
             'Adaptor IO G3 HI. Comp.0050. 5N·cm'
         );
         expect(parts.find((p) => p.key === 'Compatibility codes')?.value).toBe('0049');
+        expect(parts.find((p) => p.key === 'Retail name')).toBeUndefined();
+    });
+
+    it('always hides Retail name regardless of variant mode', () => {
+        const partsNoVariants = buildDescriptionParts(SAMPLE_DESC, false);
+        const partsWithVariants = buildDescriptionParts(SAMPLE_DESC, true);
+        expect(partsNoVariants.find((p) => p.key === 'Retail name')).toBeUndefined();
+        expect(partsWithVariants.find((p) => p.key === 'Retail name')).toBeUndefined();
     });
 
     it('hides Parametre section for variant products (shown separately from option_tokens)', () => {

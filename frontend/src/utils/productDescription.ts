@@ -41,5 +41,10 @@ export function buildDescriptionParts(
 
             return { key, value };
         })
-        .filter((p) => p.value && (hasVariants ? p.key !== 'Parametre' : true));
+        .filter(
+            (p) =>
+                p.value &&
+                p.key !== 'Retail name' &&
+                (hasVariants ? p.key !== 'Parametre' : true)
+        );
 }
