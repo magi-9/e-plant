@@ -53,6 +53,8 @@ export default function CheckoutPage() {
         ico: '',
         dic: '',
         dic_dph: '',
+        is_vat_payer: false,
+        country: 'SK',
         payment_method: 'bank_transfer' as 'bank_transfer' | 'card',
         notes: ''
     });
@@ -69,6 +71,7 @@ export default function CheckoutPage() {
                 street: userProfile.street || '',
                 city: userProfile.city || '',
                 postal_code: userProfile.postal_code || '',
+                country: userProfile.country || 'SK',
                 is_company: userProfile.is_company || false,
                 company_name: userProfile.company_name || '',
                 ico: userProfile.ico || '',
@@ -126,11 +129,13 @@ export default function CheckoutPage() {
                 street: formData.street,
                 city: formData.city,
                 postal_code: formData.postal_code,
+                country: formData.country,
                 is_company: formData.is_company,
                 company_name: formData.company_name,
                 ico: formData.ico,
                 dic: formData.dic,
                 dic_dph: formData.dic_dph,
+                is_vat_payer: formData.is_vat_payer,
                 payment_method: formData.payment_method,
                 notes: mergedNotes,
                 items: items.map(item => ({
@@ -401,6 +406,22 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
+                            <div>
+                                <label htmlFor="country" className="block text-sm font-medium text-slate-700">
+                                    Krajina *
+                                </label>
+                                <select
+                                    id="country"
+                                    name="country"
+                                    value={formData.country}
+                                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
+                                >
+                                    <option value="SK">Slovensko</option>
+                                    <option value="CZ">Česká republika</option>
+                                </select>
+                            </div>
+
                             <div className="border-t border-slate-200 pt-4">
                                 <div className="flex items-center">
                                     <input
@@ -479,6 +500,19 @@ export default function CheckoutPage() {
                                             placeholder="SK1234567890"
                                             className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
                                         />
+                                    </div>
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_vat_payer"
+                                            name="is_vat_payer"
+                                            checked={formData.is_vat_payer}
+                                            onChange={handleChange}
+                                            className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-slate-300 rounded"
+                                        />
+                                        <label htmlFor="is_vat_payer" className="ml-2 block text-sm text-slate-900">
+                                            Som platiteľ DPH
+                                        </label>
                                     </div>
                                 </>
                             )}
@@ -577,6 +611,7 @@ export default function CheckoutPage() {
                                 <p className="font-medium text-slate-900">{formData.first_name} {formData.last_name}</p>
                                 <p>{formData.street}</p>
                                 <p>{formData.postal_code} {formData.city}</p>
+                                <p>{formData.country === 'CZ' ? 'Česká republika' : 'Slovensko'}</p>
                             </div>
 
                             {formData.is_company && (
@@ -586,6 +621,7 @@ export default function CheckoutPage() {
                                     <p>IČO: {formData.ico}</p>
                                     {formData.dic && <p>DIČ: {formData.dic}</p>}
                                     {formData.dic_dph && <p>IČ DPH: {formData.dic_dph}</p>}
+                                    {formData.is_vat_payer && <p className="text-cyan-700 font-medium">Platiteľ DPH</p>}
                                 </div>
                             )}
 

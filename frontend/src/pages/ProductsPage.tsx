@@ -1,30 +1,83 @@
-
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getProducts } from '../api/products';
-import type { Product } from '../api/products';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
 import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 
-export default function ProductsPage() {
-    const { data: products, isLoading, error } = useQuery({
-        queryKey: ['products'],
-        queryFn: getProducts,
-    });
+const getCategoryList = (product: Product): string[] => {
+    const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
+    return raw
+        .split(';')
+        .map((value) => value.trim())
+        .filter(Boolean);
+};
 
+const PAGE_SIZE = 20;
+
+export default function ProductsPage() {
+    const loadMoreRef = useRef<HTMLDivElement>(null);
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
+    
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [openModal, setOpenModal] = useState(false);
     const [addingId, setAddingId] = useState<number | null>(null);
+    const [showScrollTop, setShowScrollTop] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
-    const [showScrollTop, setShowScrollTop] = useState(false);
 
+    // Build query params with filters
+    const buildParams = useCallback((offset: number): ProductListParams => {
+        const params: ProductListParams = { limit: PAGE_SIZE, offset };
+        if (searchQuery) params.search = searchQuery;
+        return params;
+    }, [searchQuery]);
+
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetching,
+        isFetchingNextPage,
+        isLoading,
+        error,
+    } = useInfiniteQuery({
+        queryKey: ['products', searchQuery, selectedCategories, priceSortOrder],
+        queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
+        getNextPageParam: (lastPage) => {
+            if (lastPage.next) {
+                // Extract offset from next URL
+                const url = new URL(lastPage.next, window.location.origin);
+                return parseInt(url.searchParams.get('offset') || '0');
+            }
+            return undefined;
+        },
+        initialPageParam: 0,
+    });
+
+    // Scroll observer for infinite load
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+
+        if (loadMoreRef.current) {
+            observer.observe(loadMoreRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    // Scroll to top
     useEffect(() => {
         const onScroll = () => setShowScrollTop(window.scrollY > 400);
         window.addEventListener('scroll', onScroll, { passive: true });
@@ -37,7 +90,7 @@ export default function ProductsPage() {
     };
 
     const handleAddToCart = (e: React.MouseEvent, product: Product) => {
-        e.stopPropagation(); // Prevent opening modal
+        e.stopPropagation();
 
         if (product.parameters?.type === 'wildcard_group' && (product.parameters.options || []).length > 0) {
             setSelectedProduct(product);
@@ -46,7 +99,6 @@ export default function ProductsPage() {
         }
 
         setAddingId(product.id);
-
         addItem({
             productId: product.id,
             name: product.name,
@@ -71,23 +123,28 @@ export default function ProductsPage() {
         </div>
     );
 
-    const categories = Array.from(new Set((products || []).map((p: Product) => p.category)));
+    // Collect all products from all pages
+    const allProducts = data?.pages.flatMap(page => page.results) || [];
+    const totalCount = data?.pages[0]?.count || 0;
 
-    const filteredProducts = (products || []).filter((product: Product) => {
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            const nameMatch = product.name?.toLowerCase().includes(query);
-            const descMatch = product.description?.toLowerCase().includes(query);
-            if (!nameMatch && !descMatch) return false;
-        }
+    // Extract all unique categories from current products
+    const categories = Array.from(
+        new Set(allProducts.flatMap((product: Product) => getCategoryList(product)))
+    );
 
-        if (selectedCategories.length > 0 && !selectedCategories.includes(product.category)) {
+    // Apply filters to all loaded products
+    const filteredProducts = allProducts.filter((product: Product) => {
+        // Category filter
+        if (
+            selectedCategories.length > 0
+            && !getCategoryList(product).some((category) => selectedCategories.includes(category))
+        ) {
             return false;
         }
-
         return true;
     });
 
+    // Apply price sort
     if (priceSortOrder !== 'none') {
         filteredProducts.sort((a: Product, b: Product) => {
             const priceA = parseFloat(a.price || '0');
@@ -98,8 +155,6 @@ export default function ProductsPage() {
 
     return (
         <div className="bg-slate-50 flex flex-col min-h-screen text-slate-900">
-            {/* Sticky Navbar padding is handled in App.tsx or by main margin */}
-
             {/* Hero Section */}
             <div className="relative bg-gradient-to-r from-cyan-50 via-sky-50 to-white">
                 <div className="absolute inset-0">
@@ -189,10 +244,10 @@ export default function ProductsPage() {
 
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
-                    <span className="text-sm text-slate-600">{filteredProducts.length} produktov</span>
+                    <span className="text-sm text-slate-600">{filteredProducts.length} z {totalCount} produktov</span>
                 </div>
 
-                {filteredProducts.length === 0 ? (
+                {filteredProducts.length === 0 && !isFetching ? (
                     <div className="text-center py-20 bg-white rounded-lg border border-slate-200">
                         <p className="text-slate-600 text-lg">Nenašli sa žiadne produkty vyhovujúce filtrom.</p>
                         <button
@@ -207,125 +262,147 @@ export default function ProductsPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                        {filteredProducts.map((product: Product) => (
-                            <div
-                                key={product.id}
-                                onClick={() => handleProductClick(product)}
-                                className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
-                            >
-                                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-slate-100 xl:aspect-w-7 xl:aspect-h-8">
-                                    {product.image ? (
-                                        <img
-                                            src={product.image}
-                                            alt={product.name}
-                                            className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-in-out"
-                                        />
-                                    ) : (
-                                        <div className="h-64 w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
-                                            <span className="sr-only">Bez obrázka</span>
-                                            <svg className="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="p-4 flex-1 flex flex-col">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">
-                                                {product.name}
-                                            </h3>
-                                            <p className="mt-1 text-sm text-cyan-700 font-medium">{product.category}</p>
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">{product.description || 'Kvalitný dentálny produkt pre vašu prax.'}</p>
-
-                                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                                        {product.price ? (
-                                            <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                    <>
+                        <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                            {filteredProducts.map((product: Product) => (
+                                <div
+                                    key={product.id}
+                                    onClick={() => handleProductClick(product)}
+                                    className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
+                                >
+                                    <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-slate-100 xl:aspect-w-7 xl:aspect-h-8">
+                                        {product.image ? (
+                                            <img
+                                                src={product.image}
+                                                alt={product.name}
+                                                loading="lazy"
+                                                className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-in-out"
+                                            />
                                         ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
-                                                Členská cena
-                                            </span>
+                                            <div className="h-64 w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
+                                                <span className="sr-only">Bez obrázka</span>
+                                                <svg className="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                                                </svg>
+                                            </div>
                                         )}
                                     </div>
-
-                                    <div className="mt-4">
-                                        {product.price ? (() => {
-                                            const cartItem = items.find(
-                                                item => item.productId === product.id && !item.variantReference
-                                            );
-
-                                            if (cartItem) {
-                                                return (
-                                                    <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-10 w-full shadow-sm">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (cartItem.quantity > 1) {
-                                                                    updateQuantity(product.id, cartItem.quantity - 1);
-                                                                } else {
-                                                                    removeItem(product.id);
-                                                                }
-                                                            }}
-                                                            className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
-                                                        >
-                                                            -
-                                                        </button>
-                                                        <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                            {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
-                                                        </span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                updateQuantity(product.id, cartItem.quantity + 1);
-                                                            }}
-                                                            className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                );
-                                            }
-
-                                            return (
-                                                <button
-                                                    onClick={(e) => handleAddToCart(e, product)}
-                                                    className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
-                                                        ? 'bg-emerald-500 scale-105'
-                                                        : 'bg-cyan-600 hover:bg-cyan-700'
-                                                        }`}
-                                                >
-                                                    {addingId === product.id ? (
-                                                        <>
-                                                            <svg className="h-5 w-5 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                            Pridané!
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                            Pridať do košíka
-                                                        </>
-                                                    )}
-                                                </button>
-                                            );
-                                        })() : (
-                                            <Link
-                                                to="/login"
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
-                                            >
-                                                Prihláste sa
-                                            </Link>
+                                    <div className="p-4 flex-1 flex flex-col">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">
+                                                    {product.name}
+                                                </h3>
+                                                <p className="mt-1 text-sm text-cyan-700 font-medium line-clamp-2">
+                                                    {getCategoryList(product).join(', ') || product.category}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {product.description && (
+                                            <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">
+                                                {product.description.split(' | ').map(p => p.replace(/^[^:]+:\s*/, '')).filter(Boolean).join(' · ')}
+                                            </p>
                                         )}
+
+                                        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                                            {product.price ? (
+                                                <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
+                                                    Členská cena
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4">
+                                            {product.price ? (() => {
+                                                const cartItem = items.find(
+                                                    item => item.productId === product.id && !item.variantReference
+                                                );
+
+                                                if (cartItem) {
+                                                    return (
+                                                        <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-10 w-full shadow-sm">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (cartItem.quantity > 1) {
+                                                                        updateQuantity(product.id, cartItem.quantity - 1);
+                                                                    } else {
+                                                                        removeItem(product.id);
+                                                                    }
+                                                                }}
+                                                                className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
+                                                            </span>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateQuantity(product.id, cartItem.quantity + 1);
+                                                                }}
+                                                                className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <button
+                                                        onClick={(e) => handleAddToCart(e, product)}
+                                                        className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
+                                                            ? 'bg-emerald-500 scale-105'
+                                                            : 'bg-cyan-600 hover:bg-cyan-700'
+                                                            }`}
+                                                    >
+                                                        {addingId === product.id ? (
+                                                            <>
+                                                                <svg className="h-5 w-5 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                                Pridané!
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <ShoppingCartIcon className="h-4 w-4 mr-2" />
+                                                                Pridať do košíka
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })() : (
+                                                <Link
+                                                    to="/login"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
+                                                >
+                                                    Prihláste sa
+                                                </Link>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+
+                        {/* Load more trigger */}
+                        <div ref={loadMoreRef} className="py-8 text-center">
+                            {isFetchingNextPage ? (
+                                <div className="flex justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                                </div>
+                            ) : hasNextPage ? (
+                                <p className="text-slate-600">Posuňte sa dolů na načítanie ďalších produktov...</p>
+                            ) : (
+                                <p className="text-slate-600">Všetky produkty boli načítané.</p>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
 

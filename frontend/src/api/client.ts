@@ -35,7 +35,7 @@ export const shouldAttemptTokenRefresh = (error: ErrorWithConfig): boolean => {
         return false;
     }
 
-    if (requestUrl.includes('/auth/refresh/')) {
+    if (requestUrl.includes('/auth/refresh/') || requestUrl.includes('/auth/login/')) {
         return false;
     }
 

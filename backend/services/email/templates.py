@@ -116,11 +116,20 @@ def order_confirmation_customer_html(order, shop) -> str:
     """Build HTML version of customer order confirmation email."""
     # Build item rows
     row_parts = []
-    for i, item in enumerate(order.items.select_related("product").all()):
+    for i, item in enumerate(
+        order.items.select_related("product")
+        .prefetch_related("batch_allocations__batch_lot")
+        .all()
+    ):
         bg = "#ffffff" if i % 2 == 0 else "#f8fafc"
+        batches = item.batch_allocations.all()
+        batch_line = ""
+        if batches:
+            batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+            batch_line = f'<br><span style="font-size:11px;color:#64748b;">Šarža: {escape(batch_str)}</span>'
         row_parts.append(
             f'<tr style="background:{bg};">'
-            f'<td style="padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9;">{escape(item.product.name)}</td>'
+            f'<td style="padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9;">{escape(item.product.name)}{batch_line}</td>'
             f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
             f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:right;border-bottom:1px solid #f1f5f9;">{item.price_snapshot}&nbsp;&euro;</td>'
             f'<td style="padding:10px 12px;font-size:14px;font-weight:600;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">{item.get_subtotal()}&nbsp;&euro;</td>'
@@ -277,7 +286,11 @@ def order_confirmation_customer_html(order, shop) -> str:
 def order_notification_warehouse_html(order) -> str:
     """Build HTML version of warehouse order notification email."""
     row_parts = []
-    for i, item in enumerate(order.items.select_related("product").all()):
+    for i, item in enumerate(
+        order.items.select_related("product")
+        .prefetch_related("batch_allocations__batch_lot")
+        .all()
+    ):
         remaining = item.product.stock_quantity
         threshold = item.product.low_stock_threshold
         is_low = remaining < threshold
@@ -288,11 +301,18 @@ def order_notification_warehouse_html(order) -> str:
             else '<span style="color:#16a34a;font-size:12px;font-weight:600;">&#x2713; OK</span>'
         )
         qty_color = "#dc2626" if is_low else "#374151"
+        batches = item.batch_allocations.all()
+        batch_cell = (
+            escape(", ".join(ba.batch_lot.batch_number for ba in batches))
+            if batches
+            else '<span style="color:#94a3b8;">—</span>'
+        )
         row_parts.append(
             f'<tr style="background:{bg};">'
             f'<td style="padding:10px 12px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">'
             f'{escape(item.product.name)}<br><span style="font-size:11px;color:#94a3b8;">ID: {item.product.id}</span></td>'
             f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:#1e293b;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
+            f'<td style="padding:10px 12px;font-size:12px;color:#475569;text-align:center;border-bottom:1px solid #f1f5f9;">{batch_cell}</td>'
             f'<td style="padding:10px 12px;font-size:13px;font-weight:700;color:{qty_color};text-align:center;border-bottom:1px solid #f1f5f9;">{remaining}&nbsp;ks</td>'
             f'<td style="padding:10px 12px;text-align:center;border-bottom:1px solid #f1f5f9;">{stock_cell}</td>'
             "</tr>"
@@ -407,6 +427,7 @@ def order_notification_warehouse_html(order) -> str:
                 <tr style="background:#0f172a;">
                   <th style="padding:10px 12px;text-align:left;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Produkt</th>
                   <th style="padding:10px 12px;text-align:center;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Počet</th>
+                  <th style="padding:10px 12px;text-align:center;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Šarža</th>
                   <th style="padding:10px 12px;text-align:center;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Zostatok</th>
                   <th style="padding:10px 12px;text-align:center;font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Stav</th>
                 </tr>

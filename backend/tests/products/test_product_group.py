@@ -112,6 +112,7 @@ class TestProductGroupAPI:
         response = client.get("/api/products/groups/")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
-        prefixes = {g["prefix"] for g in data}
+        results = data.get("results", data)
+        assert len(results) == 2
+        prefixes = {g["prefix"] for g in results}
         assert prefixes == {"100", "200"}

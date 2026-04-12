@@ -10,6 +10,22 @@ const PAYMENT_LABELS: Record<string, string> = {
     card: 'Karta',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+    new: 'Nová',
+    awaiting_payment: 'Čaká na platbu',
+    paid: 'Zaplatená',
+    shipped: 'Odoslaná',
+    cancelled: 'Zrušená',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+    new: 'bg-blue-100 text-blue-800',
+    awaiting_payment: 'bg-amber-100 text-amber-800',
+    paid: 'bg-green-100 text-green-800',
+    shipped: 'bg-cyan-100 text-cyan-800',
+    cancelled: 'bg-red-100 text-red-800',
+};
+
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -59,8 +75,13 @@ export default function OrdersPage() {
                                     aria-controls={`order-panel-${order.id}`}
                                     className="w-full text-left px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-gray-50 transition-colors"
                                 >
-                                    <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-mono font-semibold text-gray-900 text-sm">#{order.order_number}</span>
+                                        {order.status && (
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] ?? 'bg-slate-100 text-slate-700'}`}>
+                                                {STATUS_LABELS[order.status] ?? order.status}
+                                            </span>
+                                        )}
                                         <span className="text-xs text-gray-500">{PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</span>
                                     </div>
                                     <div className="flex items-center gap-4">
