@@ -23,6 +23,17 @@ describe('buildDescriptionParts', () => {
         expect(parts.find((p) => p.key === 'Retail name')).toBeUndefined();
     });
 
+    it('puts Product name first regardless of its position in the raw description string', () => {
+        // Reverse-order desc where Product name is last
+        const reversed = [
+            'Categories: BEGO',
+            'Compatibility codes: 0049',
+            'Product name: Adaptor IO G3 HI. Comp.0050. 5N·cm',
+        ].join(' | ');
+        const parts = buildDescriptionParts(reversed, false);
+        expect(parts[0].key).toBe('Product name');
+    });
+
     it('always hides Retail name regardless of variant mode', () => {
         const partsNoVariants = buildDescriptionParts(SAMPLE_DESC, false);
         const partsWithVariants = buildDescriptionParts(SAMPLE_DESC, true);

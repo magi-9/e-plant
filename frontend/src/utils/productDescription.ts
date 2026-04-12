@@ -46,5 +46,11 @@ export function buildDescriptionParts(
                 p.value &&
                 p.key !== 'Retail name' &&
                 (hasVariants ? p.key !== 'Parametre' : true)
-        );
+        )
+        .sort((a, b) => {
+            // 'Product name' always first; other fields keep their original order
+            if (a.key === 'Product name') return -1;
+            if (b.key === 'Product name') return 1;
+            return 0;
+        });
 }
