@@ -408,64 +408,159 @@ def load_master_products(master_csv_path):
         parts = [p.strip() for p in str(value or "").split(";") if p.strip()]
         return parts[0] if parts else ""
 
-    products = []
+    def normalize_category_set(value):
+        categories = [p.strip() for p in str(value or "").split(";") if p.strip()]
+        return ";".join(sorted(set(categories)))
+
+    def build_product_payload(row):
+        reference = row.get("reference_formatted", "").strip()
+        reference_num = row.get("reference_number", "").strip()
+        product_name = row.get("product_name", "").strip()
+        retail_name = row.get("retail_name", "").strip()
+        name = retail_name or product_name
+
+        if not reference or not name:
+            return None
+
+        price_str = row.get("retail_price", "").strip()
+        if not price_str:
+            price = None
+        else:
+            try:
+                price = Decimal(price_str)
+            except InvalidOperation:
+                price = None
+
+        categories = row.get("categories", "").strip()
+        category = first_category(categories)
+        compatibility_codes = row.get("compatibility_codes", "").strip()
+        raw_systems = row.get("raw_systems", "").strip()
+        sections = row.get("sections", "").strip()
+
+        description_parts = [
+            f"Product name: {product_name}" if product_name else "",
+            f"Retail name: {retail_name}" if retail_name else "",
+            f"EAN13: {row.get('ean13', '').strip()}" if row.get("ean13") else "",
+            f"Categories: {categories}" if categories else "",
+            (
+                f"Compatibility codes: {compatibility_codes}"
+                if compatibility_codes
+                else ""
+            ),
+            f"Raw systems: {raw_systems}" if raw_systems else "",
+            f"Sections: {sections}" if sections else "",
+        ]
+
+        return {
+            "name": name,
+            "product_name": product_name,
+            "reference": reference,
+            "reference_num": reference_num,
+            "category": category or "Uncategorized",
+            "price": price,
+            "description": " | ".join([p for p in description_parts if p]),
+            "is_active": parse_bool(row.get("active", "false")),
+            "is_visible": parse_bool(row.get("chosen", "false")),
+            "compatibility_codes": compatibility_codes,
+            "raw_systems": raw_systems,
+            "all_categories": categories,
+            "normalized_categories": normalize_category_set(categories),
+        }
+
+    family_rows = {}
     with open(master_csv_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            reference = row.get("reference_formatted", "").strip()
-            product_name = row.get("product_name", "").strip()
-            retail_name = row.get("retail_name", "").strip()
-            name = retail_name or product_name
-
-            if not reference or not name:
+            payload = build_product_payload(row)
+            if not payload:
                 continue
 
-            price_str = row.get("retail_price", "").strip()
-            if not price_str:
-                price = None
-            else:
-                try:
-                    price = Decimal(price_str)
-                except InvalidOperation:
-                    price = None
+            family_key = (
+                payload["name"].strip().lower(),
+                str(payload["price"]) if payload["price"] is not None else "",
+                payload["normalized_categories"],
+                payload["is_active"],
+                payload["is_visible"],
+            )
+            family_rows.setdefault(family_key, []).append(payload)
 
-            categories = row.get("categories", "").strip()
-            category = first_category(categories)
-            compatibility_codes = row.get("compatibility_codes", "").strip()
-            raw_systems = row.get("raw_systems", "").strip()
-            sections = row.get("sections", "").strip()
-
-            description_parts = [
-                f"Product name: {product_name}" if product_name else "",
-                f"Retail name: {retail_name}" if retail_name else "",
-                f"EAN13: {row.get('ean13', '').strip()}" if row.get("ean13") else "",
-                f"Categories: {categories}" if categories else "",
-                (
-                    f"Compatibility codes: {compatibility_codes}"
-                    if compatibility_codes
-                    else ""
-                ),
-                f"Raw systems: {raw_systems}" if raw_systems else "",
-                f"Sections: {sections}" if sections else "",
-            ]
-
+    products = []
+    for rows in family_rows.values():
+        if len(rows) == 1:
+            row = rows[0]
             products.append(
                 {
-                    "name": name,
-                    "reference": reference,
-                    "reference_num": row.get("reference_number", "").strip(),
-                    "category": category or "Uncategorized",
-                    "price": price,
-                    "description": " | ".join([p for p in description_parts if p]),
-                    "is_active": parse_bool(row.get("active", "false")),
-                    "is_visible": parse_bool(row.get("chosen", "false")),
+                    "name": row["name"],
+                    "reference": row["reference"],
+                    "reference_num": row["reference_num"],
+                    "category": row["category"],
+                    "price": row["price"],
+                    "description": row["description"],
+                    "is_active": row["is_active"],
+                    "is_visible": row["is_visible"],
                     "parameters": {
                         "type": "single",
-                        "compatibility_codes": compatibility_codes,
-                        "raw_systems": raw_systems,
-                        "all_categories": categories,
+                        "compatibility_codes": row["compatibility_codes"],
+                        "raw_systems": row["raw_systems"],
+                        "all_categories": row["all_categories"],
                     },
+                    "hidden_refs": [],
                 }
             )
+            continue
+
+        sorted_rows = sorted(rows, key=lambda r: (r["reference"], r["product_name"]))
+        representative = sorted_rows[0]
+
+        options = []
+        for option_row in sorted_rows:
+            option_label = option_row["product_name"] or (
+                f"{option_row['name']} ({option_row['reference']})"
+            )
+            options.append(
+                {
+                    "reference": option_row["reference"],
+                    "reference_num": option_row["reference_num"],
+                    "name": option_row["name"],
+                    "label": option_label,
+                    "compatibility_codes": option_row["compatibility_codes"],
+                    "raw_systems": option_row["raw_systems"],
+                    "stock_quantity": 0,
+                }
+            )
+
+        hidden_refs = [
+            option_row["reference"]
+            for option_row in sorted_rows
+            if option_row["reference"] != representative["reference"]
+        ]
+
+        products.append(
+            {
+                "name": representative["name"],
+                "reference": representative["reference"],
+                "reference_num": representative["reference_num"],
+                "category": representative["category"],
+                "price": representative["price"],
+                "description": representative["description"],
+                "is_active": representative["is_active"],
+                "is_visible": representative["is_visible"],
+                "parameters": {
+                    "type": "wildcard_group",
+                    "wildcard_reference": representative["reference"],
+                    "option_fields": [
+                        "reference",
+                        "reference_num",
+                        "name",
+                        "label",
+                    ],
+                    "options": options,
+                    "compatibility_codes": representative["compatibility_codes"],
+                    "raw_systems": representative["raw_systems"],
+                    "all_categories": representative["all_categories"],
+                },
+                "hidden_refs": hidden_refs,
+            }
+        )
 
     return products
 
@@ -706,12 +801,31 @@ class Command(BaseCommand):
         stats = {"created": 0, "updated": 0, "skipped": 0, "no_price": 0, "images": 0}
         to_create = []
         to_update = []
+        hidden_refs_to_hide = set()
 
         for prod in products:
             price = prod["price"]
             if price is None:
                 stats["no_price"] += 1
                 continue
+
+            hidden_refs_to_hide.update(prod.get("hidden_refs", []))
+
+            if prod.get("parameters", {}).get("type") == "wildcard_group":
+                options = prod["parameters"].get("options", [])
+                enriched_options = []
+                for option in options:
+                    option_copy = dict(option)
+                    existing_option_product = existing_refs.get(
+                        option_copy.get("reference", "")
+                    )
+                    option_copy["stock_quantity"] = (
+                        existing_option_product.stock_quantity
+                        if existing_option_product is not None
+                        else 0
+                    )
+                    enriched_options.append(option_copy)
+                prod["parameters"]["options"] = enriched_options
 
             ref = prod["reference"]
             ref_for_image = (
@@ -816,6 +930,11 @@ class Command(BaseCommand):
                     to_update,
                     update_fields,
                     batch_size=200,
+                )
+            if hidden_refs_to_hide and not replace_all:
+                Product.objects.filter(reference__in=hidden_refs_to_hide).update(
+                    is_active=False,
+                    is_visible=False,
                 )
 
         self.stdout.write(

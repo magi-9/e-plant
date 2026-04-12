@@ -108,9 +108,7 @@ class AdminSeedView(APIView):
         # Import products from final master CSV in data/new/
         try:
             out = StringIO()
-            call_command(
-                "import_product_data", master=True, replace_all=True, stdout=out
-            )
+            call_command("import_product_data", master=True, update=True, stdout=out)
             messages.append(out.getvalue())
         except Exception as e:
             return Response(
