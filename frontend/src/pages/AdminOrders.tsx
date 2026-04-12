@@ -59,10 +59,16 @@ export default function AdminOrders() {
         return <div className="p-8 text-center text-red-500 text-lg">Chyba pri načítavaní objednávok.</div>;
     }
 
+    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+    };
+
+    const ordersData: unknown = orders;
+
     const ordersList: Order[] = Array.isArray(orders)
         ? orders
-        : Array.isArray((orders as { results?: Order[] } | undefined)?.results)
-            ? ((orders as { results: Order[] }).results)
+        : isPaginated<Order>(ordersData)
+            ? ordersData.results
             : [];
 
     const filtered = statusFilter === 'all'

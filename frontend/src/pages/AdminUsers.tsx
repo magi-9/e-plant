@@ -11,10 +11,16 @@ export default function AdminUsers() {
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
 
+    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+    };
+
+    const usersData: unknown = users;
+
     const usersList: User[] = Array.isArray(users)
         ? users
-        : Array.isArray((users as { results?: User[] } | undefined)?.results)
-            ? (users as { results: User[] }).results
+        : isPaginated<User>(usersData)
+            ? usersData.results
             : [];
 
     const mutationOptions = {

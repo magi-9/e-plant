@@ -59,16 +59,23 @@ export default function AdminDashboard() {
         queryFn: getAdminUsers,
     });
 
+    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+    };
+
+    const ordersData: unknown = orders;
+    const usersData: unknown = users;
+
     const ordersList: Order[] = Array.isArray(orders)
         ? orders
-        : Array.isArray((orders as { results?: Order[] } | undefined)?.results)
-            ? ((orders as { results: Order[] }).results)
+        : isPaginated<Order>(ordersData)
+            ? ordersData.results
             : [];
 
     const usersList: User[] = Array.isArray(users)
         ? users
-        : Array.isArray((users as { results?: User[] } | undefined)?.results)
-            ? ((users as { results: User[] }).results)
+        : isPaginated<User>(usersData)
+            ? usersData.results
             : [];
 
     const totalProducts = productsData?.count ?? '—';
