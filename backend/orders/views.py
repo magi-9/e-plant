@@ -1,13 +1,18 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from products.models import Product
 from .models import Order, ShippingRate
 from .serializers import (
     OrderCreateSerializer,
     OrderSerializer,
     AdminOrderStatusUpdateSerializer,
     ShippingRateSerializer,
+    StockReceiptInputSerializer,
 )
+from .services.stock_receipt_service import StockReceiptService
 
 
 class OrderCreateView(generics.CreateAPIView):
@@ -61,6 +66,35 @@ class ShippingRateListView(generics.ListAPIView):
         if country:
             qs = qs.filter(country=country)
         return qs
+
+
+class AdminStockReceiptView(APIView):
+    """Admin endpoint to record incoming stock with batch lot tracking."""
+
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request):
+        serializer = StockReceiptInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        product = get_object_or_404(Product, pk=data["product_id"])
+        receipt = StockReceiptService.receive_stock(
+            product=product,
+            batch_number=data["batch_number"],
+            quantity=data["quantity"],
+            received_by=request.user,
+            notes=data.get("notes", ""),
+        )
+        product.refresh_from_db()
+        return Response(
+            {
+                "message": f"Naskladnených {receipt.quantity} ks šarže {receipt.batch_number}.",
+                "product_id": product.pk,
+                "new_stock_quantity": product.stock_quantity,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class AdminOrderUpdateView(generics.UpdateAPIView):

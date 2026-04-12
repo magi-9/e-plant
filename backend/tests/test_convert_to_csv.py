@@ -24,7 +24,13 @@ if module_path is None:
 SPEC = importlib.util.spec_from_file_location("convert_to_csv", module_path)
 convert_to_csv = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
-SPEC.loader.exec_module(convert_to_csv)
+try:
+    SPEC.loader.exec_module(convert_to_csv)
+except ImportError as exc:
+    pytest.skip(
+        f"convert_to_csv.py dependencies not installed: {exc}",
+        allow_module_level=True,
+    )
 
 
 def test_parse_reference_parts_splits_numeric_reference():

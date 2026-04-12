@@ -25,7 +25,8 @@ class TestProductStorefrontVisibilityFilter:
         ProductFactory(name="Hidden", is_visible=False)
         response = client.get("/api/products/")
         assert response.status_code == 200
-        names = [p["name"] for p in response.json()]
+        data = response.json()
+        names = [p["name"] for p in data.get("results", data)]
         assert "Visible" in names
         assert "Hidden" not in names
 
@@ -41,7 +42,8 @@ class TestProductStorefrontVisibilityFilter:
         ProductFactory(name="Hidden", is_visible=False)
         response = api_client.get("/api/products/")
         assert response.status_code == 200
-        names = [p["name"] for p in response.json()]
+        data = response.json()
+        names = [p["name"] for p in data.get("results", data)]
         assert "Visible" in names
         assert "Hidden" in names
 
@@ -49,7 +51,8 @@ class TestProductStorefrontVisibilityFilter:
         ProductFactory(name="Active", is_active=True, is_visible=True)
         ProductFactory(name="Inactive", is_active=False, is_visible=True)
         response = client.get("/api/products/")
-        names = [p["name"] for p in response.json()]
+        data = response.json()
+        names = [p["name"] for p in data.get("results", data)]
         assert "Inactive" not in names
 
 
@@ -64,6 +67,7 @@ class TestProductGroupFilter:
 
         response = client.get(f"/api/products/?group={group.pk}")
         assert response.status_code == 200
-        names = [p["name"] for p in response.json()]
+        data = response.json()
+        names = [p["name"] for p in data.get("results", data)]
         assert "In Group" in names
         assert "Not In Group" not in names

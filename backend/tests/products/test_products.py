@@ -13,10 +13,11 @@ def test_anonymous_user_price_hidden(api_client, product_factory):
 
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
-    assert response.data[0]["name"] == product.name
+    results = response.data.get("results", response.data)
+    assert len(results) == 1
+    assert results[0]["name"] == product.name
     # Price should be None or missing for anonymous
-    assert response.data[0]["price"] is None
+    assert results[0]["price"] is None
 
 
 @pytest.mark.django_db
@@ -29,7 +30,8 @@ def test_authenticated_user_price_visible(api_client, user_factory, product_fact
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
-    assert Decimal(response.data[0]["price"]) == Decimal("50.00")
+    results = response.data.get("results", response.data)
+    assert Decimal(results[0]["price"]) == Decimal("50.00")
 
 
 @pytest.mark.django_db

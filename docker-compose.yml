@@ -23,6 +23,7 @@ services:
              python manage.py runserver 0.0.0.0:5002"
     volumes:
       - ./backend:/app
+      - ./data:/data:ro
     ports:
       - "5002:5002"
     depends_on:

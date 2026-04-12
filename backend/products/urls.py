@@ -3,6 +3,9 @@ from .views import (
     ProductViewSet,
     ProductGroupListView,
     AdminProductImport,
+    AdminSeedView,
+    AdminBulkDeleteView,
+    AdminBulkSetActiveView,
 )
 
 urlpatterns = [
@@ -27,4 +30,15 @@ urlpatterns = [
         name="admin_product_delete",
     ),
     path("admin/import/", AdminProductImport.as_view(), name="admin_product_import"),
+    path("admin/seed/", AdminSeedView.as_view(), name="admin_product_seed"),
+    path(
+        "admin/bulk-delete/",
+        AdminBulkDeleteView.as_view(),
+        name="admin_product_bulk_delete",
+    ),
+    path(
+        "admin/bulk-set-active/",
+        AdminBulkSetActiveView.as_view(),
+        name="admin_product_bulk_set_active",
+    ),
 ]
