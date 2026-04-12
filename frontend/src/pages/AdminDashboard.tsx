@@ -79,9 +79,11 @@ export default function AdminDashboard() {
             : [];
 
     const totalProducts = productsData?.count ?? '—';
-    const totalUsers = usersList.length;
-    const pendingOrders = ordersList.filter((o) => o.status === 'new' || o.status === 'awaiting_payment').length;
-    const totalOrders = ordersList.length;
+    const totalUsers = users === undefined ? '—' : usersList.length;
+    const pendingOrders = orders === undefined
+        ? '—'
+        : ordersList.filter((o) => o.status === 'new' || o.status === 'awaiting_payment').length;
+    const totalOrders = orders === undefined ? '—' : ordersList.length;
 
     const stats = [
         {

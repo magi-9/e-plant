@@ -44,7 +44,7 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
             hasVariants,
             selectedVariant,
             effectiveProductCode
-        ).filter((p) => p.key !== 'Categories')
+        )
         : [];
 
     const handleAddToCart = () => {

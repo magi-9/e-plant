@@ -64,7 +64,7 @@ export default function Navbar() {
                                     )}
                                 </Link>
 
-                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:translate-y-0 group-hover/cart:pointer-events-auto z-50">
+                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:translate-y-0 group-hover/cart:pointer-events-auto group-focus-within/cart:opacity-100 group-focus-within/cart:translate-y-0 group-focus-within/cart:pointer-events-auto z-50">
                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em] mb-2">Košík</p>
                                     {items.length === 0 ? (
                                         <p className="text-sm text-slate-500">Košík je prázdny</p>
@@ -83,7 +83,9 @@ export default function Navbar() {
                                             </ul>
                                             <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
                                                 <span className="text-sm text-slate-600">Spolu</span>
-                                                <span className="text-sm font-bold text-cyan-700">{totalPrice} €</span>
+                                                <span className="text-sm font-bold text-cyan-700">
+                                                    {totalPrice.toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                                                </span>
                                             </div>
                                         </>
                                     )}
@@ -96,7 +98,7 @@ export default function Navbar() {
                                 to="/orders"
                                 aria-label="Moje objednávky"
                                 title="Moje objednávky"
-                                className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${isActive('/orders') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
+                                className={`p-2.5 rounded-xl transition-colors ${isActive('/orders') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
                             >
                                 <ClipboardDocumentListIcon className="h-6 w-6" />
                             </Link>
@@ -107,7 +109,7 @@ export default function Navbar() {
                                 to="/admin"
                                 aria-label="Admin panel"
                                 title="Admin panel"
-                                className={`hidden sm:flex p-2.5 rounded-xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
+                                className={`p-2.5 rounded-xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
                             >
                                 <ShieldCheckIcon className="h-6 w-6" />
                             </Link>
