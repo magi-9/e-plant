@@ -7,9 +7,11 @@ export default function ShopLayout() {
     <div className="min-h-screen bg-slate-50 flex flex-col pt-16">
       <ScrollToTop />
       <Navbar />
-      <main className="flex-grow">
+      
+      <main className="flex-1">
         <Outlet />
       </main>
+
       <footer className="bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 border-t border-cyan-500/20 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 pb-8 border-b border-slate-800/70">

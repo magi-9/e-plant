@@ -9,8 +9,8 @@ import {
     ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { getProducts } from '../api/products';
-import { getAdminOrders } from '../api/orders';
-import { getAdminUsers } from '../api/users';
+import { getAdminOrders, type Order } from '../api/orders';
+import { getAdminUsers, type User } from '../api/users';
 
 const menuItems = [
     {
@@ -59,12 +59,22 @@ export default function AdminDashboard() {
         queryFn: getAdminUsers,
     });
 
+    const ordersList: Order[] = Array.isArray(orders)
+        ? orders
+        : Array.isArray((orders as { results?: Order[] } | undefined)?.results)
+            ? ((orders as { results: Order[] }).results)
+            : [];
+
+    const usersList: User[] = Array.isArray(users)
+        ? users
+        : Array.isArray((users as { results?: User[] } | undefined)?.results)
+            ? ((users as { results: User[] }).results)
+            : [];
+
     const totalProducts = productsData?.count ?? '—';
-    const totalUsers = users?.length ?? '—';
-    const pendingOrders = orders
-        ? orders.filter(o => o.status === 'new' || o.status === 'awaiting_payment').length
-        : '—';
-    const totalOrders = orders?.length ?? '—';
+    const totalUsers = usersList.length;
+    const pendingOrders = ordersList.filter((o) => o.status === 'new' || o.status === 'awaiting_payment').length;
+    const totalOrders = ordersList.length;
 
     const stats = [
         {

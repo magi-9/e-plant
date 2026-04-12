@@ -13,17 +13,19 @@ const SAMPLE_DESC = [
 ].join(' | ');
 
 describe('buildDescriptionParts', () => {
-    it('returns all parts (except Retail name) including Parametre for non-variant products', () => {
+    it('returns all translated parts (except hidden fields) including Parametre for non-variant products', () => {
         const parts = buildDescriptionParts(SAMPLE_DESC, false);
         expect(parts.find((p) => p.key === 'Parametre')).toBeDefined();
-        expect(parts.find((p) => p.key === 'Product name')?.value).toBe(
+        expect(parts.find((p) => p.key === 'Názov produktu')?.value).toBe(
             'Adaptor IO G3 HI. Comp.0050. 5N·cm'
         );
-        expect(parts.find((p) => p.key === 'Compatibility codes')?.value).toBe('0049');
+        expect(parts.find((p) => p.key === 'Kompatibilné kódy')?.value).toBe('0049');
         expect(parts.find((p) => p.key === 'Retail name')).toBeUndefined();
+        expect(parts.find((p) => p.key === 'Raw systems')).toBeUndefined();
+        expect(parts.find((p) => p.key === 'Sections')).toBeUndefined();
     });
 
-    it('puts Product name first regardless of its position in the raw description string', () => {
+    it('puts Názov produktu first regardless of its position in the raw description string', () => {
         // Reverse-order desc where Product name is last
         const reversed = [
             'Categories: BEGO',
@@ -31,7 +33,7 @@ describe('buildDescriptionParts', () => {
             'Product name: Adaptor IO G3 HI. Comp.0050. 5N·cm',
         ].join(' | ');
         const parts = buildDescriptionParts(reversed, false);
-        expect(parts[0].key).toBe('Product name');
+        expect(parts[0].key).toBe('Názov produktu');
     });
 
     it('always hides Retail name regardless of variant mode', () => {
@@ -46,38 +48,52 @@ describe('buildDescriptionParts', () => {
         expect(parts.find((p) => p.key === 'Parametre')).toBeUndefined();
     });
 
-    it('keeps non-variant-specific fields unchanged when no variant is passed', () => {
+    it('replaces EAN13 with product code and keeps other fields unchanged when no variant is passed', () => {
         const parts = buildDescriptionParts(SAMPLE_DESC, true);
-        expect(parts.find((p) => p.key === 'EAN13')?.value).toBe('843567350304');
-        expect(parts.find((p) => p.key === 'Categories')?.value).toBe('BEGO');
-        expect(parts.find((p) => p.key === 'Raw systems')?.value).toBe('BEGO');
-        expect(parts.find((p) => p.key === 'Sections')?.value).toBe('SCREWDRIVER');
+        expect(parts.find((p) => p.key === 'EAN13')).toBeUndefined();
+        expect(parts.find((p) => p.key === 'Kód produktu')?.value).toBe('843567350304');
+        expect(parts.find((p) => p.key === 'Kategórie')).toBeUndefined(); // Hidden
     });
 
-    it('overrides Product name with the selected variant name', () => {
+    it('uses explicit product code for Kód produktu replacement when provided', () => {
+        const parts = buildDescriptionParts(SAMPLE_DESC, false, null, '503.000.049');
+        expect(parts.find((p) => p.key === 'Kód produktu')?.value).toBe('503.000.049');
+    });
+
+    it('prefers variant reference over product code for Kód produktu replacement', () => {
+        const variant = {
+            name: 'Adaptor IO G3 HB. Comp.0052. 5N·cm',
+            reference: '503.000.052',
+            reference_num: '0052',
+        };
+        const parts = buildDescriptionParts(SAMPLE_DESC, true, variant, '503.000.049');
+        expect(parts.find((p) => p.key === 'Kód produktu')?.value).toBe('503.000.052');
+    });
+
+    it('overrides Názov produktu with the selected variant name', () => {
         const variant = {
             name: 'Adaptor IO G3 HB. Comp.0052. 5N·cm',
             reference_num: '0052',
         };
         const parts = buildDescriptionParts(SAMPLE_DESC, true, variant);
-        expect(parts.find((p) => p.key === 'Product name')?.value).toBe(
+        expect(parts.find((p) => p.key === 'Názov produktu')?.value).toBe(
             'Adaptor IO G3 HB. Comp.0052. 5N·cm'
         );
     });
 
-    it('overrides Compatibility codes with variant reference_num when provided', () => {
+    it('overrides Kompatibilné kódy with variant reference_num when provided', () => {
         const variant = {
             name: 'Adaptor IO G3 HB. Comp.0052. 5N·cm',
             reference_num: '0052',
         };
         const parts = buildDescriptionParts(SAMPLE_DESC, true, variant);
-        expect(parts.find((p) => p.key === 'Compatibility codes')?.value).toBe('0052');
+        expect(parts.find((p) => p.key === 'Kompatibilné kódy')?.value).toBe('0052');
     });
 
-    it('keeps original Compatibility codes when variant has no reference_num', () => {
+    it('keeps original Kompatibilné kódy when variant has no reference_num', () => {
         const variant = { name: 'Some Variant Without Ref' };
         const parts = buildDescriptionParts(SAMPLE_DESC, true, variant);
-        expect(parts.find((p) => p.key === 'Compatibility codes')?.value).toBe('0049');
+        expect(parts.find((p) => p.key === 'Kompatibilné kódy')?.value).toBe('0049');
     });
 
     it('handles description entries without a colon separator', () => {
@@ -98,8 +114,8 @@ describe('buildDescriptionParts', () => {
 
     it('is not affected by hasVariants when selectedVariant is null', () => {
         const parts = buildDescriptionParts(SAMPLE_DESC, true, null);
-        // Product name stays as original (no override without a variant)
-        expect(parts.find((p) => p.key === 'Product name')?.value).toBe(
+        // Názov produktu stays as original (no override without a variant)
+        expect(parts.find((p) => p.key === 'Názov produktu')?.value).toBe(
             'Adaptor IO G3 HI. Comp.0050. 5N·cm'
         );
     });

@@ -59,11 +59,17 @@ export default function AdminOrders() {
         return <div className="p-8 text-center text-red-500 text-lg">Chyba pri načítavaní objednávok.</div>;
     }
 
-    const filtered = statusFilter === 'all'
-        ? (orders ?? [])
-        : (orders ?? []).filter((o: Order) => o.status === statusFilter);
+    const ordersList: Order[] = Array.isArray(orders)
+        ? orders
+        : Array.isArray((orders as { results?: Order[] } | undefined)?.results)
+            ? ((orders as { results: Order[] }).results)
+            : [];
 
-    const counts = (orders ?? []).reduce((acc: Record<string, number>, o: Order) => {
+    const filtered = statusFilter === 'all'
+        ? ordersList
+        : ordersList.filter((o: Order) => o.status === statusFilter);
+
+    const counts = ordersList.reduce((acc: Record<string, number>, o: Order) => {
         acc[o.status] = (acc[o.status] ?? 0) + 1;
         return acc;
     }, {} as Record<string, number>);
@@ -74,7 +80,7 @@ export default function AdminOrders() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-900">Správa objednávok</h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Celkom: <span className="font-semibold text-slate-700">{orders?.length ?? 0}</span> objednávok
+                        Celkom: <span className="font-semibold text-slate-700">{ordersList.length}</span> objednávok
                     </p>
                 </div>
 
@@ -88,7 +94,7 @@ export default function AdminOrders() {
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
-                        Všetky ({orders?.length ?? 0})
+                        Všetky ({ordersList.length})
                     </button>
                     {Object.entries(STATUS_LABELS).map(([key, label]) => (
                         <button
