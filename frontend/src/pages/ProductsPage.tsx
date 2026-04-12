@@ -298,7 +298,11 @@ export default function ProductsPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">{product.description || 'Kvalitný dentálny produkt pre vašu prax.'}</p>
+                                        {product.description && (
+                                            <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">
+                                                {product.description.split(' | ').map(p => p.replace(/^[^:]+:\s*/, '')).filter(Boolean).join(' · ')}
+                                            </p>
+                                        )}
 
                                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
