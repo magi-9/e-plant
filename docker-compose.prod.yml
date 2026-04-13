@@ -33,7 +33,14 @@ services:
       - "traefik.http.routers.eplant-prod-backend.rule=Host(`${FRONTEND_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/admin`))"
       - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-backend.priority=10"
+      - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
       - "traefik.http.services.eplant-prod-backend.loadbalancer.server.port=8000"
+      # Security headers middleware (defined here, reused by frontend router)
+      - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
+      - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
+      - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()"]
       interval: 30s
@@ -72,6 +79,7 @@ services:
       - "traefik.http.routers.eplant-prod-frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
       - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-frontend.priority=1"
+      - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
       - "traefik.http.services.eplant-prod-frontend.loadbalancer.server.port=80"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:80', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
