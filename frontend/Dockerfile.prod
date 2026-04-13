@@ -14,7 +14,19 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN npm install -g serve && deluser node || true && addgroup -g 999 appuser && adduser -D -u 999 -G appuser appuser
+# The node image already has a node user with UID 1000.
+# Install serve, then delete node user/group and create appuser with matching UID/GID
+RUN npm install -g serve && \
+    if getent passwd 1000 > /dev/null; then \
+        CONF_USER=$(getent passwd 1000 | cut -d: -f1); \
+        deluser "$CONF_USER"; \
+    fi && \
+    if getent group 1000 > /dev/null; then \
+        CONF_GROUP=$(getent group 1000 | cut -d: -f1); \
+        delgroup "$CONF_GROUP"; \
+    fi && \
+    addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
 
 COPY --from=builder --chown=appuser:appuser /app/dist /app/dist
 
