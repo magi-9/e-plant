@@ -19,8 +19,8 @@ class AdminAuditMiddleware(MiddlewareMixin):
             "DELETE",
             "PATCH",
         ]:
-            # Extract user email
-            user_email = getattr(request.user, "email", request.user.username)
+            # Extract user email — CustomUser has no username field, use get_username() as fallback
+            user_email = getattr(request.user, "email", None) or request.user.get_username()
 
             # Log the admin action WITHOUT request body (prevents credential leaking)
             logger.warning(

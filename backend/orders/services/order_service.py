@@ -138,7 +138,7 @@ class OrderService:
             8-character cryptographically secure order number
         """
         # Use first 8 chars of UUID4 converted to hex
-        # This gives us 32^8 possible values (much better than sequential)
+        # This gives us 16^8 (~4.3 billion) possible values (much better than sequential)
         return str(uuid.uuid4()).replace("-", "")[:8].upper()
 
     def _determine_initial_status(self, payment_method: str) -> str:

@@ -14,6 +14,6 @@ COPY . .
 
 USER appuser
 
-EXPOSE 5173
+EXPOSE 5001
 
 CMD ["npm", "run", "dev", "--", "--host"]
