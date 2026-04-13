@@ -43,18 +43,10 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Content Security Policy
-SECURE_CONTENT_SECURITY_POLICY = {
-    "default-src": ("'self'",),
-    "script-src": ("'self'",),
-    "style-src": ("'self'", "'unsafe-inline'"),  # Vite/Tailwind needs unsafe-inline
-    "img-src": ("'self'", "data:", "https:"),
-    "font-src": ("'self'", "data:"),
-    "connect-src": ("'self'",),
-    "frame-ancestors": ("'none'",),
-    "base-uri": ("'self'",),
-    "form-action": ("'self'",),
-}
+# NOTE: Content Security Policy (CSP) is configured in nginx/conf.d/default.conf
+# Django's SECURE_CONTENT_SECURITY_POLICY requires django-csp middleware.
+# For now, CSP is handled by nginx which is sufficient since Traefik
+# terminates SSL and nginx serves as reverse proxy.
 
 # Rate Limiting (Throttling) configuration for APIs
 REST_FRAMEWORK = {

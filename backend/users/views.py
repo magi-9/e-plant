@@ -81,7 +81,7 @@ class VerifyEmailView(views.APIView):
 
 class ResendVerificationView(views.APIView):
     permission_classes = (permissions.AllowAny,)
-    throttle_scope = "auth.password_reset"
+    throttle_scope = "auth.register"
 
     def post(self, request):
         email = request.data.get("email", "").strip().lower()

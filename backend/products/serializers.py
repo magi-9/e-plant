@@ -12,7 +12,7 @@ class ProductImageField(serializers.ImageField):
             validators=[
                 FileExtensionValidator(
                     allowed_extensions=["jpg", "jpeg", "png", "webp"],
-                    message="Only JPG, PNG, or WebP images are allowed",
+                    message="Only JPG, JPEG, PNG, or WebP images are allowed",
                 ),
             ],
             **kwargs,
@@ -36,6 +36,9 @@ class ProductImageField(serializers.ImageField):
                 raise serializers.ValidationError(
                     "Image must be at least 100x100 pixels"
                 )
+        except serializers.ValidationError:
+            # Re-raise validation errors
+            raise
         except Exception as e:
             raise serializers.ValidationError(f"Invalid image format: {str(e)}")
 

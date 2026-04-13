@@ -27,8 +27,9 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-dev-key-only-for-development-change-in-production"
 )
 
-# Warn if using insecure key
-if "insecure" in SECRET_KEY and os.environ.get("DEBUG") == "False":
+# Warn if using insecure key in production (check for debug=False or production env)
+is_production = not os.environ.get("DEBUG", "true").lower() in ("true", "1", "yes")
+if "insecure" in SECRET_KEY and is_production:
     import warnings
 
     warnings.warn(

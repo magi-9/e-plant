@@ -31,4 +31,4 @@ check-all.sh
 rebuild-dev.sh
 
 # Local product data (prices, images - not for version control)
-data/.env.local
+data/

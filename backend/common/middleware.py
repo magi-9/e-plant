@@ -5,7 +5,11 @@ logger = logging.getLogger("django.security.admin")
 
 
 class AdminAuditMiddleware(MiddlewareMixin):
-    """Log all admin actions for audit trail and compliance."""
+    """Log all admin actions for audit trail and compliance.
+
+    NOTE: Logs action metadata only. Request body is NOT logged to prevent
+    leaking credentials, passwords, or PII.
+    """
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         # Only log staff/admin actions
@@ -15,22 +19,15 @@ class AdminAuditMiddleware(MiddlewareMixin):
             "DELETE",
             "PATCH",
         ]:
-            try:
-                # Get request body safely
-                body = request.body.decode("utf-8")[:500]
-            except UnicodeDecodeError:
-                body = "[binary data]"
-
             # Extract user email
             user_email = getattr(request.user, "email", request.user.username)
 
-            # Log the admin action
+            # Log the admin action WITHOUT request body (prevents credential leaking)
             logger.warning(
                 f"ADMIN_ACTION | User: {user_email} | "
                 f"Method: {request.method} | "
                 f"Path: {request.path} | "
-                f"IP: {self.get_client_ip(request)} | "
-                f"Body: {body}"
+                f"IP: {self.get_client_ip(request)}"
             )
         return None
 
