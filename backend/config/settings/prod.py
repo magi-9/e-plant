@@ -30,13 +30,28 @@ DATABASES = {
 }
 
 # Security Headers
+# Traefik terminates SSL — do NOT set SECURE_SSL_REDIRECT=True (causes redirect loops).
+# SECURE_PROXY_SSL_HEADER tells Django to trust the X-Forwarded-Proto header from Traefik.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+
+# HSTS Configuration
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# NOTE: Content Security Policy (CSP) is set via Traefik middleware labels in
+# docker-compose.prod.yml (eplant-security-headers). This covers both the frontend
+# (serve container) and backend (/api, /admin) responses at the Traefik edge.
 
 # Rate Limiting (Throttling) configuration for APIs
 REST_FRAMEWORK = {
@@ -44,8 +59,18 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "100/day", "user": "1000/day"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/hour",  # General anonymous requests
+        "user": "500/hour",  # Authenticated users
+        "auth.login": "10/hour",  # Login attempts
+        "auth.register": "5/hour",  # Registration attempts
+        "auth.password_reset": "5/hour",  # Password reset
+        "products.create": "20/hour",  # Admin product creation
+        "orders.create": "50/hour",  # Guest order creation
+        "orders.lookup": "30/hour",  # Guest order status lookup (prevent enumeration)
+    },
 }
 
 # Static files for production
@@ -58,6 +83,14 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    import warnings
+
+    warnings.warn(
+        "EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not set — outgoing emails will fail.",
+        RuntimeWarning,
+    )
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk")
 WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "warehouse@dentalshop.sk")
@@ -88,6 +121,11 @@ LOGGING = {
             "propagate": False,
         },
         "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security.admin": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,

@@ -56,9 +56,9 @@ jobs:
           SECRET_KEY: ${{ secrets.TEST_SECRET_KEY != '' && secrets.TEST_SECRET_KEY || 'ci-cd-testing-secret-key-123' }}
           DB_HOST: localhost
           DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: password
-          DB_NAME: e_plant_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: e_plant_db
         run: pytest
 
   frontend-lint-and-build:

@@ -72,6 +72,10 @@ done
 
 if [ "$seed_ok" -ne 1 ]; then
 	echo "❌ Failed to create demo users after ${max_attempts} attempts."
+	echo ""
+	echo "Possible cause: Postgres volume initialized with an older password."
+	echo "If backend logs show 'password authentication failed', reset DB volume once:"
+	echo "  docker compose down -v && ./rebuild-dev.sh"
 	exit 1
 fi
 

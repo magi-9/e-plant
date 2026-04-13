@@ -2,15 +2,13 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: e_plant_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB:-e_plant_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_me}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5003:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -32,9 +30,9 @@ services:
       mailhog:
         condition: service_started
     environment:
-      - POSTGRES_DB=e_plant_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=${POSTGRES_DB:-e_plant_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev_password_change_me}
       - DB_HOST=db
       - DB_PORT=5432
       - DEBUG=1
@@ -59,6 +57,7 @@ services:
       - backend
     environment:
       - VITE_API_URL=http://localhost:5002/api
+      - VITE_CACHE_DIR=/tmp/vite-cache
 
 volumes:
   postgres_data:

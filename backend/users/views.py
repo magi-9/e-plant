@@ -39,6 +39,7 @@ def _perform_user_registration(serializer):
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "auth.register"
 
     def perform_create(self, serializer):
         _perform_user_registration(serializer)
@@ -46,6 +47,7 @@ class RegisterView(generics.CreateAPIView):
 
 class VerifyEmailView(views.APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "auth.register"
 
     def post(self, request):
         uidb64 = request.data.get("uid")
@@ -79,6 +81,7 @@ class VerifyEmailView(views.APIView):
 
 class ResendVerificationView(views.APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "auth.register"
 
     def post(self, request):
         email = request.data.get("email", "").strip().lower()
@@ -113,6 +116,7 @@ class ResendVerificationView(views.APIView):
 
 class PasswordResetRequestView(views.APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "auth.password_reset"
 
     def post(self, request):
         email = request.data.get("email", "").strip().lower()
@@ -149,6 +153,7 @@ class PasswordResetRequestView(views.APIView):
 
 class PasswordResetConfirmView(views.APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "auth.password_reset"
 
     def post(self, request):
         uidb64 = request.data.get("uid")

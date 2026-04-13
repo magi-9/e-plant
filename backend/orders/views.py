@@ -37,6 +37,7 @@ class OrderDetailView(generics.RetrieveAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_scope = "orders.lookup"
     lookup_field = "order_number"
 
 
