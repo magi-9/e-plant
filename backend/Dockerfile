@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /app
 
 # Install DejaVu fonts for proper UTF-8 / Unicode support in PDF generation
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
