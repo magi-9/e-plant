@@ -153,10 +153,49 @@ export default function ProductsPage() {
         });
     }
 
+    const visibleCount = selectedCategories.length > 0 ? filteredProducts.length : totalCount;
+
     return (
-        <div className="bg-slate-50 flex flex-col min-h-screen text-slate-900">
+        <div className="bg-slate-50 flex flex-col min-h-screen text-slate-900 relative">
+            {/* Left Sidebar - Categories (Desktop only) */}
+            <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
+                <div className="p-5">
+                    <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-[0.08em]">Kategórie</h3>
+                    <div className="space-y-1.5">
+                        <button
+                            onClick={() => setSelectedCategories([])}
+                            className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
+                                selectedCategories.length === 0
+                                    ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Všetko
+                        </button>
+                        {categories.map((category: string) => (
+                            <button
+                                key={category}
+                                onClick={() => {
+                                    setSelectedCategories(
+                                        selectedCategories.includes(category)
+                                            ? selectedCategories.filter((c) => c !== category)
+                                            : [...selectedCategories, category]
+                                    );
+                                }}
+                                className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
+                                    selectedCategories.includes(category)
+                                        ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
+                                        : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </aside>
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-r from-cyan-50 via-sky-50 to-white">
+            <div className="relative bg-gradient-to-r from-cyan-50 via-sky-50 to-white lg:ml-56">
                 <div className="absolute inset-0">
                     <img
                         className="w-full h-full object-cover opacity-20"
@@ -165,7 +204,7 @@ export default function ProductsPage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-cyan-100/80 via-sky-100/70 to-white/90" aria-hidden="true" />
                 </div>
-                <div className="relative max-w-7xl mx-auto py-14 px-4 sm:py-24 sm:px-6 lg:py-32 lg:px-8">
+                <div className="relative py-14 px-4 sm:py-24 sm:px-6 lg:py-24 lg:px-10 xl:px-12">
                     <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
                         E‑shop pre modernú implantológiu
                     </h1>
@@ -177,7 +216,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Product Grid */}
-            <div className="max-w-2xl mx-auto py-10 px-4 sm:py-16 sm:px-6 lg:max-w-7xl lg:px-8 lg:py-24">
+            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56">
 
                 {/* Search and Filters */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -220,7 +259,7 @@ export default function ProductsPage() {
 
                 {/* Category Badges */}
                 {categories.length > 0 && (
-                    <div className="mb-8 flex flex-wrap gap-2">
+                    <div className="mb-8 flex flex-wrap gap-2 lg:hidden">
                         {categories.map((cat: string) => (
                             <button
                                 key={cat}
@@ -244,7 +283,7 @@ export default function ProductsPage() {
 
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
-                    <span className="text-sm text-slate-600">{filteredProducts.length} z {totalCount} produktov</span>
+                    <span className="text-sm text-slate-600">{visibleCount} produktov</span>
                 </div>
 
                 {filteredProducts.length === 0 && !isFetching ? (
@@ -270,16 +309,16 @@ export default function ProductsPage() {
                                     onClick={() => handleProductClick(product)}
                                     className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
                                 >
-                                    <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-slate-100 xl:aspect-w-7 xl:aspect-h-8">
+                                    <div className="w-full h-56 sm:h-60 lg:h-64 overflow-hidden bg-slate-100">
                                         {product.image ? (
                                             <img
                                                 src={product.image}
                                                 alt={product.name}
                                                 loading="lazy"
-                                                className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-in-out"
+                                                className="h-full w-full object-contain object-center p-3 group-hover:scale-105 transition-transform duration-500 ease-in-out"
                                             />
                                         ) : (
-                                            <div className="h-64 w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
+                                            <div className="h-full w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
                                                 <span className="sr-only">Bez obrázka</span>
                                                 <svg className="h-16 w-16" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
@@ -288,21 +327,19 @@ export default function ProductsPage() {
                                         )}
                                     </div>
                                     <div className="p-4 flex-1 flex flex-col">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">
+                                        <div className="mb-2 min-h-[5.5rem]">
+                                            <div className="min-h-[5.5rem]">
+                                                <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem]">
                                                     {product.name}
                                                 </h3>
-                                                <p className="mt-1 text-sm text-cyan-700 font-medium line-clamp-2">
+                                                {product.reference && (
+                                                    <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
+                                                )}
+                                                <p className="mt-1 text-xs text-cyan-700 font-medium line-clamp-1">
                                                     {getCategoryList(product).join(', ') || product.category}
                                                 </p>
                                             </div>
                                         </div>
-                                        {product.description && (
-                                            <p className="mt-2 text-sm text-slate-600 line-clamp-2 mb-4 flex-grow">
-                                                {product.description.split(' | ').map(p => p.replace(/^[^:]+:\s*/, '')).filter(Boolean).join(' · ')}
-                                            </p>
-                                        )}
 
                                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (

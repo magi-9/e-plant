@@ -9,8 +9,8 @@ import {
     ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { getProducts } from '../api/products';
-import { getAdminOrders } from '../api/orders';
-import { getAdminUsers } from '../api/users';
+import { getAdminOrders, type Order } from '../api/orders';
+import { getAdminUsers, type User } from '../api/users';
 
 const menuItems = [
     {
@@ -59,12 +59,31 @@ export default function AdminDashboard() {
         queryFn: getAdminUsers,
     });
 
+    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+    };
+
+    const ordersData: unknown = orders;
+    const usersData: unknown = users;
+
+    const ordersList: Order[] = Array.isArray(orders)
+        ? orders
+        : isPaginated<Order>(ordersData)
+            ? ordersData.results
+            : [];
+
+    const usersList: User[] = Array.isArray(users)
+        ? users
+        : isPaginated<User>(usersData)
+            ? usersData.results
+            : [];
+
     const totalProducts = productsData?.count ?? '—';
-    const totalUsers = users?.length ?? '—';
-    const pendingOrders = orders
-        ? orders.filter(o => o.status === 'new' || o.status === 'awaiting_payment').length
-        : '—';
-    const totalOrders = orders?.length ?? '—';
+    const totalUsers = users === undefined ? '—' : usersList.length;
+    const pendingOrders = orders === undefined
+        ? '—'
+        : ordersList.filter((o) => o.status === 'new' || o.status === 'awaiting_payment').length;
+    const totalOrders = orders === undefined ? '—' : ordersList.length;
 
     const stats = [
         {

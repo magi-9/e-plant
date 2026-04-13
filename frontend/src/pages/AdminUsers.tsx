@@ -11,6 +11,18 @@ export default function AdminUsers() {
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
 
+    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+    };
+
+    const usersData: unknown = users;
+
+    const usersList: User[] = Array.isArray(users)
+        ? users
+        : isPaginated<User>(usersData)
+            ? usersData.results
+            : [];
+
     const mutationOptions = {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -82,7 +94,7 @@ export default function AdminUsers() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {users?.map((user) => (
+                            {usersList.map((user) => (
                                 <tr key={user.id} className="hover:bg-gray-50 transition">
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <div className="flex items-center">
