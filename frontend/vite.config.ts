@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    cacheDir: '/tmp/vite-cache',
     test: {
       environment: 'jsdom',
       include: ['src/**/*.test.ts'],
