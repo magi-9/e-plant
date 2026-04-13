@@ -27,8 +27,11 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-dev-key-only-for-development-change-in-production"
 )
 
-# Warn if using insecure key in production (check for debug=False or production env)
-is_production = not os.environ.get("DEBUG", "true").lower() in ("true", "1", "yes")
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get("DEBUG", "false").lower() in ("true", "1", "yes")
+
+# Derived from DEBUG so both always use the same source of truth
+is_production = not DEBUG
 if "insecure" in SECRET_KEY and is_production:
     import warnings
 
@@ -37,9 +40,6 @@ if "insecure" in SECRET_KEY and is_production:
         "Set SECRET_KEY environment variable immediately.",
         RuntimeWarning,
     )
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "false").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = []
 

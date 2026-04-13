@@ -14,9 +14,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser
 
 COPY . .
+
+# Create writable dirs for named volumes and fix ownership after COPY
+# (COPY runs as root, so chown must come after to cover all app files)
+RUN mkdir -p /app/staticfiles /app/media && chown -R appuser:appuser /app
 
 USER appuser
 

@@ -16,4 +16,4 @@ USER appuser
 
 EXPOSE 5173
 
-CMD ["sh", "-c", "rm -rf node_modules/.vite && npm run dev -- --host --force"]
+CMD ["npm", "run", "dev", "--", "--host"]

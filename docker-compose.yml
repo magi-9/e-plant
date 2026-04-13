@@ -57,6 +57,7 @@ services:
       - backend
     environment:
       - VITE_API_URL=http://localhost:5002/api
+      - VITE_CACHE_DIR=/tmp/vite-cache
 
 volumes:
   postgres_data:
