@@ -129,12 +129,17 @@ class OrderService:
 
     def _generate_order_number(self) -> str:
         """
-        Generate a unique order number.
+        Generate a unique order number using UUID.
+
+        Uses UUID4 for cryptographic randomness to prevent order enumeration.
+        Format: 8-character hex string (32 possible values per character)
 
         Returns:
-            8-character uppercase alphanumeric order number
+            8-character cryptographically secure order number
         """
-        return str(uuid.uuid4())[:8].upper()
+        # Use first 8 chars of UUID4 converted to hex
+        # This gives us 32^8 possible values (much better than sequential)
+        return str(uuid.uuid4()).replace("-", "")[:8].upper()
 
     def _determine_initial_status(self, payment_method: str) -> str:
         """

@@ -38,14 +38,41 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
+# HSTS Configuration
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Content Security Policy
+SECURE_CONTENT_SECURITY_POLICY = {
+    "default-src": ("'self'",),
+    "script-src": ("'self'",),
+    "style-src": ("'self'", "'unsafe-inline'"),  # Vite/Tailwind needs unsafe-inline
+    "img-src": ("'self'", "data:", "https:"),
+    "font-src": ("'self'", "data:"),
+    "connect-src": ("'self'",),
+    "frame-ancestors": ("'none'",),
+    "base-uri": ("'self'",),
+    "form-action": ("'self'",),
+}
+
 # Rate Limiting (Throttling) configuration for APIs
 REST_FRAMEWORK = {
     **BASE_REST_FRAMEWORK,
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "100/day", "user": "1000/day"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/hour",  # General anonymous requests
+        "user": "500/hour",  # Authenticated users
+        "auth.login": "10/hour",  # Login attempts
+        "auth.register": "5/hour",  # Registration attempts
+        "auth.password_reset": "5/hour",  # Password reset
+        "products.create": "20/hour",  # Admin product creation
+        "orders.create": "50/hour",  # Guest order creation
+    },
 }
 
 # Static files for production
@@ -88,6 +115,11 @@ LOGGING = {
             "propagate": False,
         },
         "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security.admin": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,

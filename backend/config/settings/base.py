@@ -22,9 +22,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# In production, this MUST be set via environment variable
 SECRET_KEY = os.environ.get(
-    "SECRET_KEY", "django-insecure-ikl)!6jxq-#cs9%y)$g_7d)dg$vtqunxiau^=_p_bbrb9(bm0y"
+    "SECRET_KEY", "django-insecure-dev-key-only-for-development-change-in-production"
 )
+
+# Warn if using insecure key
+if "insecure" in SECRET_KEY and os.environ.get("DEBUG") == "False":
+    import warnings
+
+    warnings.warn(
+        "CRITICAL: You are using an insecure SECRET_KEY in production! "
+        "Set SECRET_KEY environment variable immediately.",
+        RuntimeWarning,
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "false").lower() in ("true", "1", "yes")
@@ -60,6 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "common.middleware.AdminAuditMiddleware",  # Admin action logging
 ]
 
 CORS_ALLOWED_ORIGINS = [

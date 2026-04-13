@@ -12,9 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-co
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create .env example if not exists
-RUN touch .env
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 
 COPY . .
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:5002"]
+USER appuser
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
