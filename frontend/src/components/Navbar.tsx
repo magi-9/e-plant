@@ -8,7 +8,8 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
-import { useCartStore } from '../store/cartStore';
+import { useCartStore, type CartState } from '../store/cartStore';
+import type { CartItem } from '../store/cartStore';
 
 export default function Navbar() {
     const location = useLocation();
@@ -16,9 +17,9 @@ export default function Navbar() {
     const queryClient = useQueryClient();
     const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isLoggedIn && isAdmin();
-    const totalItems = useCartStore((state) => state.getTotalItems());
-    const items = useCartStore((state) => state.items);
-    const totalPrice = useCartStore((state) => state.getTotalPrice());
+    const totalItems = useCartStore((state: CartState) => state.getTotalItems());
+    const items = useCartStore((state: CartState) => state.items);
+    const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
 
     const handleLogout = () => {
         queryClient.clear();
@@ -54,7 +55,7 @@ export default function Navbar() {
                                     to="/cart"
                                     aria-label="Košík"
                                     title="Košík"
-                                    className={`relative p-2.5 rounded-xl transition-colors ${isActive('/cart') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
+                                    className={`relative flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isActive('/cart') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent group-hover/cart:bg-slate-700/50 group-hover/cart:text-white'}`}
                                 >
                                     <ShoppingCartIcon className="h-6 w-6" />
                                     {totalItems > 0 && (
@@ -64,7 +65,7 @@ export default function Navbar() {
                                     )}
                                 </Link>
 
-                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-xl opacity-0 translate-y-1 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:translate-y-0 group-hover/cart:pointer-events-auto group-focus-within/cart:opacity-100 group-focus-within/cart:translate-y-0 group-focus-within/cart:pointer-events-auto z-50">
+                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg opacity-0 scale-95 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:scale-100 group-hover/cart:pointer-events-auto group-focus-within/cart:opacity-100 group-focus-within/cart:scale-100 group-focus-within/cart:pointer-events-auto z-50">
                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em] mb-2">Košík</p>
                                     {items.length === 0 ? (
                                         <p className="text-sm text-slate-500">Košík je prázdny</p>
@@ -72,7 +73,7 @@ export default function Navbar() {
                                         <>
                                             <p className="text-sm font-semibold text-slate-900 mb-2">{totalItems} produktov</p>
                                             <ul className="space-y-1.5 mb-3">
-                                                {items.slice(0, 3).map((item) => (
+                                                {items.slice(0, 3).map((item: CartItem) => (
                                                     <li key={`${item.productId}:${item.variantReference || 'default'}`} className="text-sm text-slate-700 truncate">
                                                         {item.name}
                                                     </li>
@@ -98,7 +99,7 @@ export default function Navbar() {
                                 to="/orders"
                                 aria-label="Moje objednávky"
                                 title="Moje objednávky"
-                                className={`p-2.5 rounded-xl transition-colors ${isActive('/orders') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
+                                className={`flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isActive('/orders') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white'}`}
                             >
                                 <ClipboardDocumentListIcon className="h-6 w-6" />
                             </Link>
@@ -109,7 +110,7 @@ export default function Navbar() {
                                 to="/admin"
                                 aria-label="Admin panel"
                                 title="Admin panel"
-                                className={`p-2.5 rounded-xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-800 hover:text-white'}`}
+                                className={`flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${location.pathname.startsWith('/admin') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white'}`}
                             >
                                 <ShieldCheckIcon className="h-6 w-6" />
                             </Link>
@@ -120,7 +121,7 @@ export default function Navbar() {
                                 onClick={handleLogout}
                                 aria-label="Odhlásiť sa"
                                 title="Odhlásiť sa"
-                                className="p-2.5 rounded-xl text-slate-200 hover:bg-red-700/50 hover:text-red-100 transition-colors"
+                                className="flex items-center justify-center p-3 rounded-lg text-cyan-100 bg-transparent hover:bg-red-700/40 hover:text-red-100 transition-all duration-200"
                             >
                                 <ArrowRightOnRectangleIcon className="h-6 w-6" />
                             </button>
@@ -129,7 +130,7 @@ export default function Navbar() {
                                 to="/login"
                                 aria-label="Prihlásiť sa"
                                 title="Prihlásiť sa"
-                                className="p-2.5 rounded-xl text-cyan-100 hover:bg-slate-800 hover:text-white transition-colors"
+                                className="flex items-center justify-center p-3 rounded-lg text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white transition-all duration-200"
                             >
                                 <ArrowRightOnRectangleIcon className="h-6 w-6" />
                             </Link>

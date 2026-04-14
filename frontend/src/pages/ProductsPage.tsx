@@ -163,7 +163,10 @@ export default function ProductsPage() {
                     <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-[0.08em]">Kategórie</h3>
                     <div className="space-y-1.5">
                         <button
-                            onClick={() => setSelectedCategories([])}
+                            onClick={() => {
+                                setSelectedCategories([]);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
                             className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
                                 selectedCategories.length === 0
                                     ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
@@ -181,6 +184,7 @@ export default function ProductsPage() {
                                             ? selectedCategories.filter((c) => c !== category)
                                             : [...selectedCategories, category]
                                     );
+                                    window.scrollTo({ top: 280, behavior: 'smooth' });
                                 }}
                                 className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
                                     selectedCategories.includes(category)
@@ -216,7 +220,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Product Grid */}
-            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56">
+            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56 min-h-screen flex flex-col">
 
                 {/* Search and Filters */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
