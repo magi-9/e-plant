@@ -11,7 +11,7 @@ export interface CartItem {
     variantLabel?: string;
 }
 
-interface CartState {
+export interface CartState {
     items: CartItem[];
     addItem: (item: Omit<CartItem, 'quantity'>) => void;
     removeItem: (productId: number, variantReference?: string) => void;
