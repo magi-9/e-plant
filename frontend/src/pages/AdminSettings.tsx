@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getGlobalSettings, updateGlobalSettings } from '../api/settings';
 import type { GlobalSettings } from '../api/settings';
 import toast from 'react-hot-toast';
+import AdminNav from '../components/AdminNav';
 
 export default function AdminSettings() {
     const queryClient = useQueryClient();
@@ -55,6 +56,7 @@ export default function AdminSettings() {
     return (
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AdminNav />
                 <h1 className="text-3xl font-bold text-slate-900 mb-8">Globálne nastavenia obchodu</h1>
 
                 <div className="bg-white shadow overflow-hidden sm:rounded-xl border border-slate-200">

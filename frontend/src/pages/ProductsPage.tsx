@@ -3,9 +3,10 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
+import { isAdmin } from '../api/auth';
 
 const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
@@ -19,6 +20,8 @@ const PAGE_SIZE = 20;
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const filtersRef = useRef<HTMLDivElement>(null);
+    const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -46,7 +49,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', searchQuery, selectedCategories, priceSortOrder],
+        queryKey: ['products', searchQuery],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -58,6 +61,8 @@ export default function ProductsPage() {
         },
         initialPageParam: 0,
     });
+
+    // Check if we're filtering (comparing currentPrevious state to detect filter changes)
 
     // Scroll observer for infinite load
     useEffect(() => {
@@ -82,6 +87,10 @@ export default function ProductsPage() {
         const onScroll = () => setShowScrollTop(window.scrollY > 400);
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
+    const scrollToFilters = useCallback(() => {
+        filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
     const handleProductClick = (product: Product) => {
@@ -125,7 +134,6 @@ export default function ProductsPage() {
 
     // Collect all products from all pages
     const allProducts = data?.pages.flatMap(page => page.results) || [];
-    const totalCount = data?.pages[0]?.count || 0;
 
     // Extract all unique categories from current products
     const categories = Array.from(
@@ -153,10 +161,10 @@ export default function ProductsPage() {
         });
     }
 
-    const visibleCount = selectedCategories.length > 0 ? filteredProducts.length : totalCount;
+    const visibleCount = filteredProducts.length;
 
     return (
-        <div className="bg-slate-50 flex flex-col min-h-screen text-slate-900 relative">
+        <div className="bg-slate-50 flex flex-col text-slate-900 relative">
             {/* Left Sidebar - Categories (Desktop only) */}
             <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
                 <div className="p-5">
@@ -165,7 +173,7 @@ export default function ProductsPage() {
                         <button
                             onClick={() => {
                                 setSelectedCategories([]);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                scrollToFilters();
                             }}
                             className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
                                 selectedCategories.length === 0
@@ -184,7 +192,7 @@ export default function ProductsPage() {
                                             ? selectedCategories.filter((c) => c !== category)
                                             : [...selectedCategories, category]
                                     );
-                                    window.scrollTo({ top: 280, behavior: 'smooth' });
+                                    scrollToFilters();
                                 }}
                                 className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
                                     selectedCategories.includes(category)
@@ -199,31 +207,59 @@ export default function ProductsPage() {
                 </div>
             </aside>
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-r from-cyan-50 via-sky-50 to-white lg:ml-56">
-                <div className="absolute inset-0">
-                    <img
-                        className="w-full h-full object-cover opacity-20"
-                        src="https://images.unsplash.com/photo-1609840170480-4ac5b9e159c8?auto=format&fit=crop&w=1950&q=80"
-                        alt="Dental background"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-100/80 via-sky-100/70 to-white/90" aria-hidden="true" />
+            <div className="relative bg-gradient-to-br from-cyan-50 via-sky-50 to-emerald-50 lg:ml-56 scroll-mt-16" id="hero-section">
+                <div className="absolute inset-0 opacity-30" aria-hidden="true">
+                    <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-cyan-200 blur-3xl" />
+                    <div className="absolute -bottom-10 left-1/3 w-72 h-72 rounded-full bg-emerald-200 blur-3xl" />
                 </div>
-                <div className="relative py-14 px-4 sm:py-24 sm:px-6 lg:py-24 lg:px-10 xl:px-12">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                        E‑shop pre modernú implantológiu
-                    </h1>
-                    <p className="mt-6 text-xl text-slate-700 max-w-3xl">
-                        Prémiové komponenty a príslušenstvo pre dentálnu implantológiu, starostlivo
-                        vybrané jedným laboratóriom pre reálnu prax – od skenovacích tiel až po Multi‑Unit riešenia.
-                    </p>
+                <div className="relative py-16 px-4 sm:py-24 sm:px-6 lg:py-32 lg:px-10 xl:px-12 flex flex-col items-center text-center">
+                    {/* Logo */}
+                    <div className="mb-8 rounded-[2rem] bg-white/90 px-6 py-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur-sm">
+                        <img
+                            src="/digitalabutment-logo.png"
+                            alt="Dynamic Abutment Solutions"
+                            className="block h-auto w-[18rem] max-w-[70vw] sm:w-[22rem] md:w-[24rem] object-contain"
+                        />
+                    </div>
+                    {/* Brand Description */}
+                    <div className="mt-4 max-w-3xl">
+                        <p className="text-sm font-semibold text-cyan-700 uppercase tracking-widest mb-2">
+                            Exkluzívny distribútor pre Slovensko
+                        </p>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl mb-4">
+                            Dynamic Abutment Solutions
+                        </h1>
+                        <p className="text-lg text-slate-700 mb-6">
+                            Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu.
+                            Komplexné riešenia – od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM
+                            individuálne suprakonstrukcie.
+                        </p>
+                        <p className="text-sm text-slate-600">
+                            Všetky produkty sú originálne zo{' '}
+                            <a
+                                href="https://www.dynamicabutmentstore.com/es"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-semibold text-emerald-600 hover:text-emerald-500 inline-flex items-center gap-1 transition-colors"
+                            >
+                                oficiálneho distribútora
+                                <span className="text-xs">↗</span>
+                            </a>
+                        </p>
+                    </div>
+                    {/* Animated arrow CTA */}
+                    <div className="mt-12 flex flex-col items-center animate-bounce" style={{ animationDuration: '2s' }}>
+                        <p className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-widest">Prejdite na produkty</p>
+                        <ChevronDownIcon className="w-6 h-6 text-cyan-600" />
+                    </div>
                 </div>
             </div>
 
             {/* Product Grid */}
-            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56 min-h-screen flex flex-col">
+            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56 flex flex-col">
 
                 {/* Search and Filters */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div ref={filtersRef} id="product-filters" className="scroll-mt-24 flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     {/* Search */}
                     <div className="relative flex-1">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -273,6 +309,7 @@ export default function ProductsPage() {
                                             ? prev.filter(c => c !== cat)
                                             : [...prev, cat]
                                     );
+                                    scrollToFilters();
                                 }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border shadow-sm ${selectedCategories.includes(cat)
                                         ? 'bg-cyan-600 border-cyan-500 text-white'
@@ -307,10 +344,13 @@ export default function ProductsPage() {
                 ) : (
                     <>
                         <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
-                            {filteredProducts.map((product: Product) => (
+                            {filteredProducts.map((product: Product, index: number) => (
                                 <div
                                     key={product.id}
                                     onClick={() => handleProductClick(product)}
+                                    style={{
+                                        animation: `slideUp 0.5s ease-out ${Math.min((index % PAGE_SIZE) * 40, 320)}ms both`,
+                                    }}
                                     className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
                                 >
                                     <div className="w-full h-56 sm:h-60 lg:h-64 overflow-hidden bg-slate-100">
@@ -355,6 +395,7 @@ export default function ProductsPage() {
                                             )}
                                         </div>
 
+                                        {!userIsAdmin && (
                                         <div className="mt-4">
                                             {product.price ? (() => {
                                                 const cartItem = items.find(
@@ -426,6 +467,7 @@ export default function ProductsPage() {
                                                 </Link>
                                             )}
                                         </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -434,11 +476,13 @@ export default function ProductsPage() {
                         {/* Load more trigger */}
                         <div ref={loadMoreRef} className="py-8 text-center">
                             {isFetchingNextPage ? (
-                                <div className="flex justify-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                                <div className="flex justify-center items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-cyan-500 animate-bounce [animation-delay:-0.2s]" />
+                                    <div className="h-2 w-2 rounded-full bg-cyan-500 animate-bounce [animation-delay:-0.1s]" />
+                                    <div className="h-2 w-2 rounded-full bg-cyan-500 animate-bounce" />
                                 </div>
                             ) : hasNextPage ? (
-                                <p className="text-slate-600">Posuňte sa dolů na načítanie ďalších produktov...</p>
+                                <div className="h-4" />
                             ) : (
                                 <p className="text-slate-600">Všetky produkty boli načítané.</p>
                             )}
@@ -455,8 +499,8 @@ export default function ProductsPage() {
 
             {/* Scroll to top FAB */}
             <button
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                aria-label="Späť na vrch"
+                onClick={scrollToFilters}
+                aria-label="Späť na filtre"
                 className={`fixed bottom-6 right-6 z-50 p-3 rounded-full bg-cyan-600 text-white shadow-lg transition-all duration-300 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-50 ${
                     showScrollTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
                 }`}

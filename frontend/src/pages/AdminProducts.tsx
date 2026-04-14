@@ -5,6 +5,8 @@ import { receiveStock } from '../api/orders';
 import { PencilIcon, TrashIcon, PlusIcon, ArrowUpTrayIcon, ArchiveBoxArrowDownIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
 import toast from 'react-hot-toast';
+import AdminNav from '../components/AdminNav';
+import ProductDetailModal from '../components/ProductDetailModal';
 
 const PAGE_SIZE = 50;
 
@@ -24,6 +26,9 @@ export default function AdminProducts() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
+
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+    const [viewModalOpen, setViewModalOpen] = useState(false);
 
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '' });
@@ -264,6 +269,7 @@ export default function AdminProducts() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AdminNav />
                 <div className="sm:flex sm:items-center sm:justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Správa produktov</h1>
@@ -475,17 +481,29 @@ export default function AdminProducts() {
                                             />
                                         </td>
                                         <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap">
-                                            {product.image ? (
-                                                <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover" />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border">Žiadny</div>
-                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                className="block"
+                                                title="Zobraziť detail"
+                                            >
+                                                {product.image ? (
+                                                    <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover hover:ring-2 hover:ring-blue-400 transition" />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border hover:bg-gray-300 transition">Žiadny</div>
+                                                )}
+                                            </button>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div>
-                                                <div className="text-sm font-bold text-gray-900">{product.name}</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                className="text-left w-full group"
+                                                title="Zobraziť detail"
+                                            >
+                                                <div className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
                                                 <div className="text-xs text-gray-500 max-w-[180px] truncate md:max-w-xs" title={product.description}>{product.description}</div>
-                                            </div>
+                                            </button>
                                         </td>
                                         <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 max-w-xs">
                                             <span className="line-clamp-2" title={getCategoryList(product).join(', ')}>
@@ -533,6 +551,13 @@ export default function AdminProducts() {
                         </div>
                     </>
                 )}
+
+                <ProductDetailModal
+                    open={viewModalOpen}
+                    setOpen={setViewModalOpen}
+                    product={viewingProduct}
+                    onEdit={(p) => { setViewModalOpen(false); handleEdit(p); }}
+                />
 
                 {isModalOpen && (
                         <div className="fixed inset-0 z-10 overflow-y-auto">

@@ -1,7 +1,7 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
@@ -10,9 +10,10 @@ interface ProductDetailModalProps {
     open: boolean;
     setOpen: (open: boolean) => void;
     product: Product | null;
+    onEdit?: (product: Product) => void;
 }
 
-export default function ProductDetailModal({ open, setOpen, product }: ProductDetailModalProps) {
+export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
@@ -91,7 +92,17 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                         leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     >
                         <Dialog.Panel className="relative transform overflow-hidden rounded-t-2xl sm:rounded-lg bg-white text-left shadow-xl transition-all w-full h-[95vh] sm:h-auto sm:max-w-5xl lg:max-w-6xl sm:max-h-[92dvh] flex flex-col">
-                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10">
+                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10 flex items-center gap-2">
+                                    {onEdit && product && (
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2.5 py-1.5 text-sm font-medium shadow-sm transition-colors"
+                                            onClick={() => { setOpen(false); onEdit(product); }}
+                                        >
+                                            <PencilIcon className="h-4 w-4" />
+                                            Upraviť
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         className="rounded-full bg-white/90 backdrop-blur-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 p-1.5 shadow-sm"

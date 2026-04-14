@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PencilIcon, TrashIcon, ShieldCheckIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { getAdminUsers, toggleUserStaff, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
+import AdminNav from '../components/AdminNav';
 
 export default function AdminUsers() {
     const queryClient = useQueryClient();
@@ -71,6 +72,7 @@ export default function AdminUsers() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AdminNav />
                 <div className="sm:flex sm:items-center sm:justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Správa používateľov</h1>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminOrders, updateOrderStatus, type Order } from '../api/orders';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import AdminNav from '../components/AdminNav';
 
 const STATUS_LABELS: Record<string, string> = {
     new: 'Nová',
@@ -83,6 +84,7 @@ export default function AdminOrders() {
     return (
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AdminNav />
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-900">Správa objednávok</h1>
                     <p className="mt-1 text-sm text-slate-500">
