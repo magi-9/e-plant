@@ -31,5 +31,9 @@ build/
 check-all.sh
 rebuild-dev.sh
 
-# Local product data (prices, images - not for version control)
-data/
+# Local product data (raw images - not for version control)
+# BUT: data/csv/ and data/convert_to_csv.py should be committed
+data/raw/
+data/to_import/
+data/new/
+data/__pycache__/
