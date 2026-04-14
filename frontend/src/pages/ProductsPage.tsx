@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { isAdmin } from '../api/auth';
@@ -280,6 +280,15 @@ export default function ProductsPage() {
                             </button>
                         )}
                     </div>
+                    {/* Info Button */}
+                    <Link
+                        to="/about"
+                        className="flex items-center justify-center p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:text-cyan-600 hover:border-cyan-300 hover:bg-cyan-50 transition-all"
+                        title="O nás a GDPR informácie"
+                        aria-label="O nás"
+                    >
+                        <InformationCircleIcon className="h-5 w-5" />
+                    </Link>
                     {/* Sort */}
                     <button
                         onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}

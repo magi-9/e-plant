@@ -13,6 +13,7 @@ import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminSettings from './pages/AdminSettings';
+import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ComplaintsPage from './pages/ComplaintsPage';
@@ -38,6 +39,7 @@ function App() {
           {/* E-shop — with Navbar + footer */}
           <Route element={<ShopLayout />}>
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />

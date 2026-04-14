@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProducts, createProduct, updateProduct, deleteProduct, importProductsCsv, bulkDeleteProducts, bulkSetActiveProducts } from '../api/products';
+import { getProducts, createProduct, updateProduct, deleteProduct, importProductsCsv, bulkDeleteProducts } from '../api/products';
 import { receiveStock } from '../api/orders';
 import { PencilIcon, TrashIcon, PlusIcon, ArrowUpTrayIcon, ArchiveBoxArrowDownIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import ProductDetailModal from '../components/ProductDetailModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const PAGE_SIZE = 50;
 
@@ -34,16 +35,16 @@ export default function AdminProducts() {
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '' });
 
     // Form states
-    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_active: true, is_visible: true });
+    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
     const [isUploadingCSV, setIsUploadingCSV] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('-name');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('all');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [confirmDelete, setConfirmDelete] = useState<{ mode: 'single'; product: Product } | { mode: 'bulk'; count: number } | null>(null);
 
     useEffect(() => {
         const timeout = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
@@ -53,7 +54,7 @@ export default function AdminProducts() {
     useEffect(() => {
         setCurrentPage(0);
         setSelectedIds(new Set());
-    }, [debouncedSearch, sortBy, categoryFilter, activeFilter, visibleFilter, stockFilter]);
+    }, [debouncedSearch, sortBy, categoryFilter, visibleFilter, stockFilter]);
 
     const invalidateProductQueries = () => {
         queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -85,15 +86,13 @@ export default function AdminProducts() {
 
         return products.filter((product) => {
             if (categoryFilter !== 'all' && !getCategoryList(product).includes(categoryFilter)) return false;
-            if (activeFilter === 'active' && !product.is_active) return false;
-            if (activeFilter === 'inactive' && product.is_active) return false;
             if (visibleFilter === 'visible' && !product.is_visible) return false;
             if (visibleFilter === 'hidden' && product.is_visible) return false;
             if (stockFilter === 'in' && product.stock_quantity <= 0) return false;
             if (stockFilter === 'out' && product.stock_quantity > 0) return false;
             return true;
         });
-    }, [products, categoryFilter, activeFilter, visibleFilter, stockFilter]);
+    }, [products, categoryFilter, visibleFilter, stockFilter]);
 
     const receiveStockMutation = useMutation({
         mutationFn: receiveStock,
@@ -127,15 +126,6 @@ export default function AdminProducts() {
         onError: () => toast.error('Chyba pri hromadnom odstraňovaní.'),
     });
 
-    const bulkSetActiveMutation = useMutation({
-        mutationFn: ({ ids, is_active }: { ids: number[]; is_active: boolean }) => bulkSetActiveProducts(ids, is_active),
-        onSuccess: (res) => {
-            invalidateProductQueries();
-            setSelectedIds(new Set());
-            toast.success(`Aktualizovaných ${res.updated} produktov.`);
-        },
-        onError: () => toast.error('Chyba pri hromadnej aktualizácii.'),
-    });
 
     const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.has(p.id));
     const someSelected = filteredProducts.some((p) => selectedIds.has(p.id));
@@ -165,14 +155,7 @@ export default function AdminProducts() {
     };
 
     const handleBulkDelete = () => {
-        const ids = Array.from(selectedIds);
-        if (confirm(`Naozaj chcete natrvalo odstrániť ${ids.length} produktov?`)) {
-            bulkDeleteMutation.mutate(ids);
-        }
-    };
-
-    const handleBulkSetActive = (is_active: boolean) => {
-        bulkSetActiveMutation.mutate({ ids: Array.from(selectedIds), is_active });
+        setConfirmDelete({ mode: 'bulk', count: selectedIds.size });
     };
 
     const handleEdit = (product: Product) => {
@@ -184,7 +167,7 @@ export default function AdminProducts() {
 
     const handleAdd = () => {
         setEditingProduct(null);
-        setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_active: true, is_visible: true });
+        setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
         setImageFile(null);
         setIsModalOpen(true);
     };
@@ -207,7 +190,6 @@ export default function AdminProducts() {
             payload.append('image', imageFile);
         }
 
-        payload.append('is_active', (formData.is_active ?? true).toString());
         payload.append('is_visible', (formData.is_visible ?? true).toString());
 
         if (editingProduct) {
@@ -223,13 +205,8 @@ export default function AdminProducts() {
         }
     };
 
-    const handleDelete = (productId: number) => {
-        if (confirm('Naozaj chcete natrvalo odstrániť tento produkt?')) {
-            deleteMutation.mutate(productId, {
-                onSuccess: () => toast.success('Produkt odstránený.'),
-                onError: () => toast.error('Chyba pri odstraňovaní produktu.')
-            });
-        }
+    const handleDelete = (product: Product) => {
+        setConfirmDelete({ mode: 'single', product });
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,18 +310,6 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Aktívnosť</label>
-                                    <select
-                                        value={activeFilter}
-                                        onChange={(e) => setActiveFilter(e.target.value as 'all' | 'active' | 'inactive')}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="all">Všetky</option>
-                                        <option value="active">Aktívne</option>
-                                        <option value="inactive">Neaktívne</option>
-                                    </select>
-                                </div>
-                                <div>
                                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Viditeľnosť</label>
                                     <select
                                         value={visibleFilter}
@@ -378,7 +343,6 @@ export default function AdminProducts() {
                                             setSearchTerm('');
                                             setSortBy('-name');
                                             setCategoryFilter('all');
-                                            setActiveFilter('all');
                                             setVisibleFilter('all');
                                             setStockFilter('all');
                                         }}
@@ -417,20 +381,6 @@ export default function AdminProducts() {
                         {selectedIds.size > 0 && (
                             <div className="mb-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
                                 <span className="text-sm font-medium text-blue-800">Vybrané: {selectedIds.size}</span>
-                                <button
-                                    onClick={() => handleBulkSetActive(true)}
-                                    disabled={bulkSetActiveMutation.isPending}
-                                    className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                    Nastaviť aktívne
-                                </button>
-                                <button
-                                    onClick={() => handleBulkSetActive(false)}
-                                    disabled={bulkSetActiveMutation.isPending}
-                                    className="rounded-md bg-gray-600 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-                                >
-                                    Nastaviť neaktívne
-                                </button>
                                 <button
                                     onClick={handleBulkDelete}
                                     disabled={bulkDeleteMutation.isPending}
@@ -517,14 +467,9 @@ export default function AdminProducts() {
                                             </span>
                                         </td>
                                         <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col gap-1">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_active ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {product.is_active ? 'Aktívny' : 'Neaktívny'}
-                                                </span>
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                    {product.is_visible ? 'Viditeľný' : 'Skrytý'}
-                                                </span>
-                                            </div>
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                {product.is_visible ? 'Viditeľný' : 'Skrytý'}
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                             <button onClick={() => { setReceiptProduct(product); setReceiptForm({ batch_number: '', quantity: 1, notes: '' }); }} className="text-emerald-600 hover:text-emerald-900 mr-3" title="Naskladniť">
@@ -533,7 +478,7 @@ export default function AdminProducts() {
                                             <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-900 mr-3">
                                                 <PencilIcon className="h-5 w-5" />
                                             </button>
-                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">
+                                            <button onClick={() => handleDelete(product)} className="text-red-600 hover:text-red-900">
                                                 <TrashIcon className="h-5 w-5" />
                                             </button>
                                         </td>
@@ -601,16 +546,7 @@ export default function AdminProducts() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-6 pt-1">
-                                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.is_active ?? true}
-                                                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                                                    />
-                                                    Aktívny
-                                                </label>
+                                            <div className="pt-1">
                                                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                                                     <input
                                                         type="checkbox"
@@ -693,6 +629,31 @@ export default function AdminProducts() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                open={!!confirmDelete}
+                title={confirmDelete?.mode === 'bulk' ? 'Odstrániť produkty' : 'Odstrániť produkt'}
+                message={
+                    confirmDelete?.mode === 'bulk'
+                        ? `Naozaj chcete natrvalo odstrániť ${confirmDelete.count} produktov?`
+                        : `Naozaj chcete natrvalo odstrániť produkt "${confirmDelete?.mode === 'single' ? confirmDelete.product.name : ''}"?`
+                }
+                confirmLabel="Odstrániť"
+                isPending={deleteMutation.isPending || bulkDeleteMutation.isPending}
+                onConfirm={() => {
+                    if (!confirmDelete) return;
+                    if (confirmDelete.mode === 'single') {
+                        deleteMutation.mutate(confirmDelete.product.id, {
+                            onSuccess: () => { toast.success('Produkt odstránený.'); setConfirmDelete(null); },
+                            onError: () => toast.error('Chyba pri odstraňovaní produktu.')
+                        });
+                    } else {
+                        bulkDeleteMutation.mutate(Array.from(selectedIds));
+                        setConfirmDelete(null);
+                    }
+                }}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

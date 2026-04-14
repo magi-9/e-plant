@@ -39,13 +39,21 @@ export default function Navbar() {
             <div className="px-3 sm:px-4 lg:px-6">
                 <div className="flex h-16 items-center justify-between">
                     <div className="flex items-center">
-                        <Link to="/products" className="flex items-center gap-2 group" aria-label="Digital Abutment Solutions – e-shop">
+                        <button
+                            onClick={() => {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                navigate('/products');
+                            }}
+                            className="flex items-center gap-2 group"
+                            aria-label="Digital Abutment Solutions – e-shop"
+                            title="Späť na začiatok"
+                        >
                             <img
                                 src={logoUrl}
                                 alt="Digital Abutment Solutions"
-                                className="h-8 w-auto object-contain brightness-0 invert group-hover:opacity-80 transition-opacity"
+                                className="h-8 w-auto object-contain brightness-0 invert group-hover:opacity-80 transition-opacity cursor-pointer"
                             />
-                        </Link>
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
