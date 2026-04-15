@@ -4,6 +4,7 @@ Tests for ProductGroup model and auto-assignment logic (Issue #87).
 
 import pytest
 from django.db import IntegrityError
+
 from products.models import Product, ProductGroup
 
 

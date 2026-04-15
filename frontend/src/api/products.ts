@@ -36,8 +36,12 @@ export interface ProductListParams {
     search?: string;
     ordering?: string;
     group?: number;
+    categories?: string[];
     limit?: number;
     offset?: number;
+    is_visible?: boolean;
+    stock?: 'in' | 'out';
+    admin_view?: '1';
 }
 
 export interface PaginatedResponse<T> {
@@ -47,9 +51,26 @@ export interface PaginatedResponse<T> {
     results: T[];
 }
 
+interface ProductCountResponse {
+    count: number;
+}
+
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
     return response.data;
+};
+
+export const getProductCount = async (params?: ProductListParams): Promise<number> => {
+    const query = new URLSearchParams();
+
+    if (params?.search) query.set('search', params.search);
+    if (typeof params?.group === 'number') query.set('group', String(params.group));
+    (params?.categories || []).forEach((category) => query.append('categories', category));
+
+    const suffix = query.toString();
+    const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
+    const response = await client.get<ProductCountResponse>(endpoint);
+    return response.data.count;
 };
 
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
@@ -99,4 +120,19 @@ export const importProductsCsv = async (file: File): Promise<{ message: string, 
         },
     });
     return response.data;
+};
+
+export const bulkSetVisibleProducts = async (ids: number[], is_visible: boolean): Promise<{ updated: number }> => {
+    const response = await client.post('/products/admin/bulk-set-visible/', { ids, is_visible });
+    return response.data;
+};
+
+export const getAdminProductIds = async (params?: Omit<ProductListParams, 'limit' | 'offset'>): Promise<number[]> => {
+    const response = await client.get<{ ids: number[] }>('/products/admin/all-ids/', { params });
+    return response.data.ids;
+};
+
+export const getAdminCategories = async (): Promise<string[]> => {
+    const response = await client.get<{ categories: string[] }>('/products/admin/categories/');
+    return response.data.categories;
 };

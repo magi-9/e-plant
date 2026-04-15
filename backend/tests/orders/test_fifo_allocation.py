@@ -1,6 +1,7 @@
 """Tests for FIFO batch allocation on order creation (Issue #92)."""
 
 import pytest
+
 from products.factories import ProductFactory
 
 

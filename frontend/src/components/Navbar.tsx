@@ -1,15 +1,19 @@
+import { useEffect, useState } from 'react';
 import logoUrl from '../assets/digitalabutment-logo.png';
 import {
     ShoppingCartIcon,
     ArrowRightOnRectangleIcon,
     ClipboardDocumentListIcon,
     ShieldCheckIcon,
+    UserCircleIcon,
+    InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
+import ConfirmModal from './ConfirmModal';
 
 export default function Navbar() {
     const location = useLocation();
@@ -20,12 +24,34 @@ export default function Navbar() {
     const totalItems = useCartStore((state: CartState) => state.getTotalItems());
     const items = useCartStore((state: CartState) => state.items);
     const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [cartPulse, setCartPulse] = useState(false);
 
-    const handleLogout = () => {
+    useEffect(() => {
+        let pulseTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        const handleCartAdded = () => {
+            setCartPulse(true);
+
+            if (pulseTimeout) clearTimeout(pulseTimeout);
+
+            pulseTimeout = setTimeout(() => setCartPulse(false), 700);
+        };
+
+        window.addEventListener('cart:item-added', handleCartAdded as EventListener);
+
+        return () => {
+            window.removeEventListener('cart:item-added', handleCartAdded as EventListener);
+            if (pulseTimeout) clearTimeout(pulseTimeout);
+        };
+    }, []);
+
+    const confirmLogout = () => {
         queryClient.clear();
         useCartStore.getState().clearCart();
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        setShowLogoutConfirm(false);
         navigate('/login', { replace: true });
     };
 
@@ -35,27 +61,45 @@ export default function Navbar() {
             : location.pathname === href || location.pathname.startsWith(href + '/');
 
     return (
+        <>
         <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 shadow-lg border-b border-cyan-500/20">
             <div className="px-3 sm:px-4 lg:px-6">
                 <div className="flex h-16 items-center justify-between">
                     <div className="flex items-center">
-                        <Link to="/products" className="flex items-center gap-2 group" aria-label="Digital Abutment Solutions – e-shop">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                navigate('/products');
+                            }}
+                            className="flex items-center gap-2 group"
+                            aria-label="Digital Abutment Solutions – e-shop"
+                            title="Späť na začiatok"
+                        >
                             <img
                                 src={logoUrl}
                                 alt="Digital Abutment Solutions"
-                                className="h-8 w-auto object-contain brightness-0 invert group-hover:opacity-80 transition-opacity"
+                                className="h-8 w-auto object-contain brightness-0 invert group-hover:opacity-80 transition-opacity cursor-pointer"
                             />
-                        </Link>
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Link
+                            to="/about"
+                            aria-label="O nás"
+                            title="O nás a GDPR informácie"
+                            className={`flex items-center justify-center p-3 rounded-lg transition-all ${isActive('/about') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-700/50 hover:text-white'}`}
+                        >
+                            <InformationCircleIcon className="h-6 w-6" />
+                        </Link>
                         {!userIsAdmin && (
                             <div className="relative group/cart">
                                 <Link
                                     to="/cart"
                                     aria-label="Košík"
                                     title="Košík"
-                                    className={`relative flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isActive('/cart') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent group-hover/cart:bg-slate-700/50 group-hover/cart:text-white'}`}
+                                    className={`relative flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${cartPulse ? 'scale-110' : ''} ${isActive('/cart') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent group-hover/cart:bg-slate-700/50 group-hover/cart:text-white'}`}
                                 >
                                     <ShoppingCartIcon className="h-6 w-6" />
                                     {totalItems > 0 && (
@@ -65,7 +109,7 @@ export default function Navbar() {
                                     )}
                                 </Link>
 
-                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg opacity-0 scale-95 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:scale-100 group-hover/cart:pointer-events-auto group-focus-within/cart:opacity-100 group-focus-within/cart:scale-100 group-focus-within/cart:pointer-events-auto z-50">
+                                <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-lg opacity-0 scale-95 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:scale-100 group-hover/cart:pointer-events-auto z-50">
                                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em] mb-2">Košík</p>
                                     {items.length === 0 ? (
                                         <p className="text-sm text-slate-500">Košík je prázdny</p>
@@ -91,6 +135,8 @@ export default function Navbar() {
                                         </>
                                     )}
                                 </div>
+
+
                             </div>
                         )}
 
@@ -116,9 +162,20 @@ export default function Navbar() {
                             </Link>
                         )}
 
+                        {isLoggedIn && !userIsAdmin && (
+                            <Link
+                                to="/profile"
+                                aria-label="Profil"
+                                title="Profil"
+                                className={`flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isActive('/profile') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white'}`}
+                            >
+                                <UserCircleIcon className="h-6 w-6" />
+                            </Link>
+                        )}
+
                         {isLoggedIn ? (
                             <button
-                                onClick={handleLogout}
+                                onClick={() => setShowLogoutConfirm(true)}
                                 aria-label="Odhlásiť sa"
                                 title="Odhlásiť sa"
                                 className="flex items-center justify-center p-3 rounded-lg text-cyan-100 bg-transparent hover:bg-red-700/40 hover:text-red-100 transition-all duration-200"
@@ -139,5 +196,14 @@ export default function Navbar() {
                 </div>
             </div>
         </nav>
+        <ConfirmModal
+            open={showLogoutConfirm}
+            title="Odhlásenie"
+            message="Naozaj sa chcete odhlásiť?"
+            confirmLabel="Odhlásiť sa"
+            onConfirm={confirmLogout}
+            onCancel={() => setShowLogoutConfirm(false)}
+        />
+        </>
     );
 }

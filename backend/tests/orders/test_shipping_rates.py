@@ -1,7 +1,9 @@
 """Tests for ShippingRate model and API (Issue #101)."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
+
 from products.factories import ProductFactory
 
 

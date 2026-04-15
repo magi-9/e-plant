@@ -1,8 +1,9 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 from django.utils import timezone
+
+from common.models import COUNTRY_CHOICES, AddressModel
 from products.models import Product
-from common.models import AddressModel, COUNTRY_CHOICES
 
 User = get_user_model()
 

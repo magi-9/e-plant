@@ -1,16 +1,17 @@
 from django.urls import path
+
 from .views import (
-    RegisterView,
-    VerifyEmailView,
-    ResendVerificationView,
-    PasswordResetRequestView,
-    PasswordResetConfirmView,
-    MeView,
-    AdminUsersListView,
     AdminUserCreateView,
-    AdminUserUpdateView,
     AdminUserDeleteView,
+    AdminUsersListView,
+    AdminUserUpdateView,
     GlobalSettingsView,
+    MeView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    RegisterView,
+    ResendVerificationView,
+    VerifyEmailView,
     admin_toggle_staff,
 )
 

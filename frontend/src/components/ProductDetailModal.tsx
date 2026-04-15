@@ -1,23 +1,38 @@
 
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
 import type { Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
+import toast from 'react-hot-toast';
+
+const VISIBLE_CATEGORIES_COUNT = 6;
 
 interface ProductDetailModalProps {
     open: boolean;
     setOpen: (open: boolean) => void;
     product: Product | null;
+    onEdit?: (product: Product) => void;
 }
 
-export default function ProductDetailModal({ open, setOpen, product }: ProductDetailModalProps) {
+export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
+    const navigate = useNavigate();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
-    const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
+    const [showActionButtons, setShowActionButtons] = useState(false);
+    const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
+
+    // Reset UI states when product changes (intentional state reset on product id change)
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIsAdding(false);
+        setShowActionButtons(false);
+        setSelectedVariantRef('');
+    }, [product?.id]);
 
     if (!product) return null;
 
@@ -25,8 +40,8 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
         .split(';')
         .map((value) => value.trim())
         .filter(Boolean);
-    const visibleCategories = categoryList.slice(0, 6);
-    const hiddenCategories = categoryList.slice(6);
+    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
+    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
 
     const defaultVariantRef = hasVariants ? variantOptions[0]?.reference || '' : '';
 
@@ -37,7 +52,7 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
     const effectiveVariantRef = selectedVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
-    const effectiveStockQuantity = selectedVariant?.stock_quantity ?? product.stock_quantity;
+    const effectiveStockQuantity = (selectedVariant?.stock_quantity ?? product.stock_quantity) ?? 0;
     const descriptionParts = product.description
         ? buildDescriptionParts(
             product.description,
@@ -48,21 +63,36 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
         : [];
 
     const handleAddToCart = () => {
+        const currentQuantity = items.find(
+            item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
+        )?.quantity ?? 0;
+
+        if (effectiveStockQuantity <= 0) {
+            toast.error('Produkt nie je skladom.');
+            return;
+        }
+
+        if (currentQuantity >= effectiveStockQuantity) {
+            toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+            return;
+        }
+
         setIsAdding(true);
         addItem({
             productId: product.id,
             name: product.name,
             price: product.price!,
             image: product.image,
+            stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
             variantLabel: effectiveVariantLabel || undefined,
         });
 
-        // Simple animation feedback
+        // Show action buttons after adding
         setTimeout(() => {
             setIsAdding(false);
-            setOpen(false);
-        }, 600);
+            setShowActionButtons(true);
+        }, 300);
     };
 
     return (
@@ -91,7 +121,17 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                         leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     >
                         <Dialog.Panel className="relative transform overflow-hidden rounded-t-2xl sm:rounded-lg bg-white text-left shadow-xl transition-all w-full h-[95vh] sm:h-auto sm:max-w-5xl lg:max-w-6xl sm:max-h-[92dvh] flex flex-col">
-                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10">
+                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10 flex items-center gap-2">
+                                    {onEdit && product && (
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2.5 py-1.5 text-sm font-medium shadow-sm transition-colors"
+                                            onClick={() => { setOpen(false); onEdit(product); }}
+                                        >
+                                            <PencilIcon className="h-4 w-4" />
+                                            Upraviť
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         className="rounded-full bg-white/90 backdrop-blur-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 p-1.5 shadow-sm"
@@ -182,6 +222,34 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
 
+                                                            if (showActionButtons) {
+                                                                return (
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                navigate('/cart');
+                                                                                setOpen(false);
+                                                                                setShowActionButtons(false);
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-all sm:w-auto"
+                                                                        >
+                                                                            Prejsť do košíka
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                setShowActionButtons(false);
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 shadow-sm transition-all sm:w-auto"
+                                                                        >
+                                                                            Pokračovať v nákupe
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            }
+
                                                             if (cartItem) {
                                                                 return (
                                                                     <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-12 w-48 shadow-sm">
@@ -204,8 +272,13 @@ export default function ProductDetailModal({ open, setOpen, product }: ProductDe
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
+                                                                                if (cartItem.quantity >= effectiveStockQuantity) {
+                                                                                    toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+                                                                                    return;
+                                                                                }
                                                                                 updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
                                                                             }}
+                                                                            disabled={cartItem.quantity >= effectiveStockQuantity}
                                                                             className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
                                                                         >
                                                                             +

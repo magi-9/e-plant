@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.db import IntegrityError, transaction
-from django.db import models
+from django.db import IntegrityError, models, transaction
+
 from common.models import AddressModel
 
 
@@ -67,6 +67,7 @@ class CustomUser(AbstractUser, AddressModel):
             raise ValidationError({"vat_id": "VAT ID is required for VAT payers."})
         if self.vat_id:
             import re
+
             from django.core.exceptions import ValidationError
 
             country = self.country or "SK"

@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProducts, createProduct, updateProduct, deleteProduct, importProductsCsv, bulkDeleteProducts, bulkSetActiveProducts } from '../api/products';
+import { getProducts, createProduct, updateProduct, deleteProduct, importProductsCsv, bulkDeleteProducts, bulkSetVisibleProducts, getAdminProductIds, getAdminCategories } from '../api/products';
 import { receiveStock } from '../api/orders';
 import { PencilIcon, TrashIcon, PlusIcon, ArrowUpTrayIcon, ArchiveBoxArrowDownIcon } from '@heroicons/react/24/outline';
 import type { Product } from '../api/products';
 import toast from 'react-hot-toast';
+import AdminNav from '../components/AdminNav';
+import ProductDetailModal from '../components/ProductDetailModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const PAGE_SIZE = 50;
 
@@ -25,6 +28,9 @@ export default function AdminProducts() {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
 
+    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '' });
 
@@ -35,10 +41,10 @@ export default function AdminProducts() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('-name');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('all');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [confirmDelete, setConfirmDelete] = useState<{ mode: 'single'; product: Product } | { mode: 'bulk'; count: number } | null>(null);
 
     useEffect(() => {
         const timeout = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
@@ -48,16 +54,33 @@ export default function AdminProducts() {
     useEffect(() => {
         setCurrentPage(0);
         setSelectedIds(new Set());
-    }, [debouncedSearch, sortBy, categoryFilter, activeFilter, visibleFilter, stockFilter]);
+    }, [debouncedSearch, sortBy, categoryFilter, visibleFilter, stockFilter]);
 
     const invalidateProductQueries = () => {
         queryClient.invalidateQueries({ queryKey: ['products'] });
         queryClient.invalidateQueries({ queryKey: ['products-admin'] });
     };
 
+    const buildAdminParams = (page: number) => ({
+        search: debouncedSearch,
+        ordering: sortBy,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
+        admin_view: '1' as const,
+        ...(categoryFilter !== 'all' ? { categories: [categoryFilter] } : {}),
+        ...(visibleFilter === 'visible' ? { is_visible: true } : visibleFilter === 'hidden' ? { is_visible: false } : {}),
+        ...(stockFilter !== 'all' ? { stock: stockFilter as 'in' | 'out' } : {}),
+    });
+
     const { data: paginatedData, isLoading } = useQuery({
-        queryKey: ['products-admin', debouncedSearch, sortBy, currentPage],
-        queryFn: () => getProducts({ search: debouncedSearch, ordering: sortBy, limit: PAGE_SIZE, offset: currentPage * PAGE_SIZE }),
+        queryKey: ['products-admin', debouncedSearch, sortBy, currentPage, categoryFilter, visibleFilter, stockFilter],
+        queryFn: () => getProducts(buildAdminParams(currentPage)),
+    });
+
+    const { data: adminCategories } = useQuery({
+        queryKey: ['admin-categories'],
+        queryFn: getAdminCategories,
+        staleTime: 5 * 60 * 1000,
     });
 
     const products = useMemo(() => paginatedData?.results || [], [paginatedData]);
@@ -70,25 +93,9 @@ export default function AdminProducts() {
         }
     }, [currentPage, totalPages]);
 
-    const categories = useMemo(() => {
-        if (!products) return [];
-        return [...new Set(products.flatMap((product) => getCategoryList(product)))].sort((a, b) => a.localeCompare(b));
-    }, [products]);
+    const categories = adminCategories || [];
 
-    const filteredProducts = useMemo(() => {
-        if (!products) return [];
-
-        return products.filter((product) => {
-            if (categoryFilter !== 'all' && !getCategoryList(product).includes(categoryFilter)) return false;
-            if (activeFilter === 'active' && !product.is_active) return false;
-            if (activeFilter === 'inactive' && product.is_active) return false;
-            if (visibleFilter === 'visible' && !product.is_visible) return false;
-            if (visibleFilter === 'hidden' && product.is_visible) return false;
-            if (stockFilter === 'in' && product.stock_quantity <= 0) return false;
-            if (stockFilter === 'out' && product.stock_quantity > 0) return false;
-            return true;
-        });
-    }, [products, categoryFilter, activeFilter, visibleFilter, stockFilter]);
+    const filteredProducts = products;
 
     const receiveStockMutation = useMutation({
         mutationFn: receiveStock,
@@ -122,32 +129,38 @@ export default function AdminProducts() {
         onError: () => toast.error('Chyba pri hromadnom odstraňovaní.'),
     });
 
-    const bulkSetActiveMutation = useMutation({
-        mutationFn: ({ ids, is_active }: { ids: number[]; is_active: boolean }) => bulkSetActiveProducts(ids, is_active),
-        onSuccess: (res) => {
+    const bulkSetVisibleMutation = useMutation({
+        mutationFn: ({ ids, is_visible }: { ids: number[]; is_visible: boolean }) =>
+            bulkSetVisibleProducts(ids, is_visible),
+        onSuccess: (res, { is_visible }) => {
             invalidateProductQueries();
             setSelectedIds(new Set());
-            toast.success(`Aktualizovaných ${res.updated} produktov.`);
+            toast.success(`${is_visible ? 'Zobrazených' : 'Skrytých'} ${res.updated} produktov.`);
         },
-        onError: () => toast.error('Chyba pri hromadnej aktualizácii.'),
+        onError: () => toast.error('Chyba pri zmene viditeľnosti.'),
     });
 
-    const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.has(p.id));
-    const someSelected = filteredProducts.some((p) => selectedIds.has(p.id));
+    const selectAllMutation = useMutation({
+        mutationFn: () => getAdminProductIds({
+            search: debouncedSearch,
+            ordering: sortBy,
+            admin_view: '1',
+            ...(categoryFilter !== 'all' ? { categories: [categoryFilter] } : {}),
+            ...(visibleFilter === 'visible' ? { is_visible: true } : visibleFilter === 'hidden' ? { is_visible: false } : {}),
+            ...(stockFilter !== 'all' ? { stock: stockFilter as 'in' | 'out' } : {}),
+        }),
+        onSuccess: (ids) => setSelectedIds(new Set(ids)),
+        onError: () => toast.error('Chyba pri výbere všetkých produktov.'),
+    });
+
+    const someSelected = selectedIds.size > 0;
+    const allPagesSelected = selectedIds.size === totalCount && totalCount > 0;
 
     const toggleSelectAll = () => {
-        if (allFilteredSelected) {
-            setSelectedIds((prev) => {
-                const next = new Set(prev);
-                filteredProducts.forEach((p) => next.delete(p.id));
-                return next;
-            });
+        if (someSelected) {
+            setSelectedIds(new Set());
         } else {
-            setSelectedIds((prev) => {
-                const next = new Set(prev);
-                filteredProducts.forEach((p) => next.add(p.id));
-                return next;
-            });
+            selectAllMutation.mutate();
         }
     };
 
@@ -160,14 +173,7 @@ export default function AdminProducts() {
     };
 
     const handleBulkDelete = () => {
-        const ids = Array.from(selectedIds);
-        if (confirm(`Naozaj chcete natrvalo odstrániť ${ids.length} produktov?`)) {
-            bulkDeleteMutation.mutate(ids);
-        }
-    };
-
-    const handleBulkSetActive = (is_active: boolean) => {
-        bulkSetActiveMutation.mutate({ ids: Array.from(selectedIds), is_active });
+        setConfirmDelete({ mode: 'bulk', count: selectedIds.size });
     };
 
     const handleEdit = (product: Product) => {
@@ -179,7 +185,7 @@ export default function AdminProducts() {
 
     const handleAdd = () => {
         setEditingProduct(null);
-        setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_active: true, is_visible: true });
+        setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
         setImageFile(null);
         setIsModalOpen(true);
     };
@@ -202,7 +208,6 @@ export default function AdminProducts() {
             payload.append('image', imageFile);
         }
 
-        payload.append('is_active', (formData.is_active ?? true).toString());
         payload.append('is_visible', (formData.is_visible ?? true).toString());
 
         if (editingProduct) {
@@ -218,13 +223,8 @@ export default function AdminProducts() {
         }
     };
 
-    const handleDelete = (productId: number) => {
-        if (confirm('Naozaj chcete natrvalo odstrániť tento produkt?')) {
-            deleteMutation.mutate(productId, {
-                onSuccess: () => toast.success('Produkt odstránený.'),
-                onError: () => toast.error('Chyba pri odstraňovaní produktu.')
-            });
-        }
+    const handleDelete = (product: Product) => {
+        setConfirmDelete({ mode: 'single', product });
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,6 +264,7 @@ export default function AdminProducts() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <AdminNav />
                 <div className="sm:flex sm:items-center sm:justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Správa produktov</h1>
@@ -327,18 +328,6 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Aktívnosť</label>
-                                    <select
-                                        value={activeFilter}
-                                        onChange={(e) => setActiveFilter(e.target.value as 'all' | 'active' | 'inactive')}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="all">Všetky</option>
-                                        <option value="active">Aktívne</option>
-                                        <option value="inactive">Neaktívne</option>
-                                    </select>
-                                </div>
-                                <div>
                                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Viditeľnosť</label>
                                     <select
                                         value={visibleFilter}
@@ -353,7 +342,7 @@ export default function AdminProducts() {
                             </div>
                             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                                 <div className="text-sm text-gray-600">
-                                    Zobrazené <span className="font-semibold text-gray-900">{filteredProducts.length}</span> z <span className="font-semibold text-gray-900">{products.length}</span> produktov na stránke
+                                    Nájdených <span className="font-semibold text-gray-900">{totalCount}</span> produktov
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sklad</label>
@@ -372,7 +361,6 @@ export default function AdminProducts() {
                                             setSearchTerm('');
                                             setSortBy('-name');
                                             setCategoryFilter('all');
-                                            setActiveFilter('all');
                                             setVisibleFilter('all');
                                             setStockFilter('all');
                                         }}
@@ -409,28 +397,33 @@ export default function AdminProducts() {
                         </div>
 
                         {selectedIds.size > 0 && (
-                            <div className="mb-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
-                                <span className="text-sm font-medium text-blue-800">Vybrané: {selectedIds.size}</span>
+                            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
+                                <span className="text-sm font-semibold text-blue-800">
+                                    Vybrané: {selectedIds.size}
+                                    {allPagesSelected && totalCount > PAGE_SIZE && (
+                                        <span className="ml-1 font-normal text-blue-600">(všetky)</span>
+                                    )}
+                                </span>
                                 <button
-                                    onClick={() => handleBulkSetActive(true)}
-                                    disabled={bulkSetActiveMutation.isPending}
-                                    className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                                    onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: true })}
+                                    disabled={bulkSetVisibleMutation.isPending}
+                                    className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                                 >
-                                    Nastaviť aktívne
+                                    Zobraziť
                                 </button>
                                 <button
-                                    onClick={() => handleBulkSetActive(false)}
-                                    disabled={bulkSetActiveMutation.isPending}
-                                    className="rounded-md bg-gray-600 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+                                    onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: false })}
+                                    disabled={bulkSetVisibleMutation.isPending}
+                                    className="rounded-md bg-yellow-500 px-3 py-1 text-xs font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
                                 >
-                                    Nastaviť neaktívne
+                                    Skryť
                                 </button>
                                 <button
                                     onClick={handleBulkDelete}
                                     disabled={bulkDeleteMutation.isPending}
                                     className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                                 >
-                                    Odstrániť vybrané
+                                    Odstrániť
                                 </button>
                                 <button
                                     onClick={() => setSelectedIds(new Set())}
@@ -448,10 +441,12 @@ export default function AdminProducts() {
                                     <th className="px-4 py-3">
                                         <input
                                             type="checkbox"
-                                            checked={allFilteredSelected}
-                                            ref={(el) => { if (el) el.indeterminate = someSelected && !allFilteredSelected; }}
+                                            checked={allPagesSelected}
+                                            ref={(el) => { if (el) el.indeterminate = someSelected && !allPagesSelected || selectAllMutation.isPending; }}
                                             onChange={toggleSelectAll}
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                            disabled={selectAllMutation.isPending}
+                                            title={`Vybrať všetkých ${totalCount} produktov`}
+                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer disabled:cursor-wait"
                                         />
                                     </th>
                                     <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obrázok</th>
@@ -475,17 +470,29 @@ export default function AdminProducts() {
                                             />
                                         </td>
                                         <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap">
-                                            {product.image ? (
-                                                <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover" />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border">Žiadny</div>
-                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                className="block"
+                                                title="Zobraziť detail"
+                                            >
+                                                {product.image ? (
+                                                    <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover hover:ring-2 hover:ring-blue-400 transition" />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border hover:bg-gray-300 transition">Žiadny</div>
+                                                )}
+                                            </button>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div>
-                                                <div className="text-sm font-bold text-gray-900">{product.name}</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                className="text-left w-full group"
+                                                title="Zobraziť detail"
+                                            >
+                                                <div className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
                                                 <div className="text-xs text-gray-500 max-w-[180px] truncate md:max-w-xs" title={product.description}>{product.description}</div>
-                                            </div>
+                                            </button>
                                         </td>
                                         <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 max-w-xs">
                                             <span className="line-clamp-2" title={getCategoryList(product).join(', ')}>
@@ -499,14 +506,9 @@ export default function AdminProducts() {
                                             </span>
                                         </td>
                                         <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap">
-                                            <div className="flex flex-col gap-1">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_active ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {product.is_active ? 'Aktívny' : 'Neaktívny'}
-                                                </span>
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                    {product.is_visible ? 'Viditeľný' : 'Skrytý'}
-                                                </span>
-                                            </div>
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                {product.is_visible ? 'Viditeľný' : 'Skrytý'}
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                             <button onClick={() => { setReceiptProduct(product); setReceiptForm({ batch_number: '', quantity: 1, notes: '' }); }} className="text-emerald-600 hover:text-emerald-900 mr-3" title="Naskladniť">
@@ -515,7 +517,7 @@ export default function AdminProducts() {
                                             <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-900 mr-3">
                                                 <PencilIcon className="h-5 w-5" />
                                             </button>
-                                            <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">
+                                            <button onClick={() => handleDelete(product)} className="text-red-600 hover:text-red-900">
                                                 <TrashIcon className="h-5 w-5" />
                                             </button>
                                         </td>
@@ -533,6 +535,13 @@ export default function AdminProducts() {
                         </div>
                     </>
                 )}
+
+                <ProductDetailModal
+                    open={viewModalOpen}
+                    setOpen={setViewModalOpen}
+                    product={viewingProduct}
+                    onEdit={(p) => { setViewModalOpen(false); handleEdit(p); }}
+                />
 
                 {isModalOpen && (
                         <div className="fixed inset-0 z-10 overflow-y-auto">
@@ -576,16 +585,7 @@ export default function AdminProducts() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex gap-6 pt-1">
-                                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.is_active ?? true}
-                                                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                                                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                                                    />
-                                                    Aktívny
-                                                </label>
+                                            <div className="pt-1">
                                                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                                                     <input
                                                         type="checkbox"
@@ -668,6 +668,31 @@ export default function AdminProducts() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                open={!!confirmDelete}
+                title={confirmDelete?.mode === 'bulk' ? 'Odstrániť produkty' : 'Odstrániť produkt'}
+                message={
+                    confirmDelete?.mode === 'bulk'
+                        ? `Naozaj chcete natrvalo odstrániť ${confirmDelete.count} produktov?`
+                        : `Naozaj chcete natrvalo odstrániť produkt "${confirmDelete?.mode === 'single' ? confirmDelete.product.name : ''}"?`
+                }
+                confirmLabel="Odstrániť"
+                isPending={deleteMutation.isPending || bulkDeleteMutation.isPending}
+                onConfirm={() => {
+                    if (!confirmDelete) return;
+                    if (confirmDelete.mode === 'single') {
+                        deleteMutation.mutate(confirmDelete.product.id, {
+                            onSuccess: () => { toast.success('Produkt odstránený.'); setConfirmDelete(null); },
+                            onError: () => toast.error('Chyba pri odstraňovaní produktu.')
+                        });
+                    } else {
+                        bulkDeleteMutation.mutate(Array.from(selectedIds));
+                        setConfirmDelete(null);
+                    }
+                }}
+                onCancel={() => setConfirmDelete(null)}
+            />
         </div>
     );
 }

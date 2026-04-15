@@ -1,17 +1,22 @@
-from rest_framework import generics, permissions, status
-from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
-from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, status
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from products.models import Product
+
 from .models import Order, ShippingRate
 from .serializers import (
+    AdminOrderInterventionDeleteSerializer,
+    AdminOrderInterventionUpdateSerializer,
+    AdminOrderStatusUpdateSerializer,
     OrderCreateSerializer,
     OrderSerializer,
-    AdminOrderStatusUpdateSerializer,
     ShippingRateSerializer,
     StockReceiptInputSerializer,
 )
+from .services.order_service import OrderService
 from .services.stock_receipt_service import StockReceiptService
 
 
@@ -114,3 +119,43 @@ class AdminOrderUpdateView(generics.UpdateAPIView):
         self.perform_update(serializer)
         output_serializer = OrderSerializer(instance=serializer.instance)
         return Response(output_serializer.data)
+
+
+class AdminOrderInterventionUpdateView(APIView):
+    """Admin endpoint to edit order with mandatory intervention reason."""
+
+    permission_classes = (IsAdminUser,)
+
+    def patch(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        serializer = AdminOrderInterventionUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = OrderService(user=request.user)
+        updated_order = service.admin_update_order(
+            order=order,
+            validated_data=serializer.validated_data,
+            changed_by=request.user,
+        )
+
+        return Response(OrderSerializer(updated_order).data, status=status.HTTP_200_OK)
+
+
+class AdminOrderInterventionDeleteView(APIView):
+    """Admin endpoint to delete order with mandatory intervention reason."""
+
+    permission_classes = (IsAdminUser,)
+
+    def delete(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        serializer = AdminOrderInterventionDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = OrderService(user=request.user)
+        service.admin_delete_order(
+            order=order,
+            reason=serializer.validated_data["reason"],
+            deleted_by=request.user,
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

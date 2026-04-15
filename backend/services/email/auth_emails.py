@@ -9,8 +9,9 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from users.models import CustomUser
+
 from .base import BaseEmailService
-from .templates import verification_email_html, password_reset_email_html
+from .templates import password_reset_email_html, verification_email_html
 
 
 class AuthEmailService(BaseEmailService):

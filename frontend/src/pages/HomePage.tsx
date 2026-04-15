@@ -2,7 +2,6 @@ import {
   BeakerIcon,
   AcademicCapIcon,
   ShoppingBagIcon,
-  ChevronDownIcon,
   ArrowRightIcon,
   PhoneIcon,
   EnvelopeIcon,
@@ -98,48 +97,40 @@ export default function HomePage() {
                 </span>
               </h1>
 
-              <p className="mt-6 text-base sm:text-lg text-slate-700 max-w-xl">
-                Jeden technik, jedno miesto pre vašu digitálnu implantológiu. Špičkové
-                individuálne práce, praktické školenia a&nbsp;e‑shop s prémiovými
-                komponentmi.
+              <p className="mt-6 text-base sm:text-lg text-slate-700 max-w-2xl leading-relaxed">
+                <span className="font-semibold text-cyan-700">Dynamic Abutment Solutions</span> – Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu. Komplexné riešenia od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM individuálne suprakonstrukcie.
               </p>
 
-              <p className="mt-3 text-sm text-cyan-800 max-w-xl">
-                Exkluzívny predajca riešení{' '}
-                <span className="font-semibold underline decoration-cyan-500/70 underline-offset-2">
-                  Dynamic Abutment Solutions
-                </span>{' '}
-                pre Slovensko
-                {' '}– líder v uhlových abutmentoch a digitálnych workflow
-                pre moderné zubné praxe
-                (<a
-                  href="https://www.dynamicabutmentstore.com/es"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-emerald-600 hover:text-emerald-500 font-semibold"
-                >
-                  oficiálne produkty
-                </a>
-                ).
+              <p className="mt-4 text-sm text-slate-600 max-w-2xl">
+                Ako exkluzívny predajca pre Slovensko kombinujem prédajcu komponentov s pracovným dentálnym laboratóriom. To znamená: každý produkt som skúšal sám, každý návrh je postavený na reálnej skúsenosti.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-4">
+              <div className="mt-8 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={() => scrollToSection('produkty')}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-lg shadow-cyan-500/30 hover:shadow-emerald-500/40 transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-cyan-50"
                 >
-                  Pozrieť produkty
+                  Produkty &amp; e‑shop
                   <ArrowRightIcon className="h-5 w-5" />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => scrollToSection('skolenia')}
+                  onClick={() => scrollToSection('onas')}
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-cyan-400/70 bg-white/80 px-5 py-2.5 text-sm sm:text-base font-medium text-cyan-800 hover:bg-cyan-50 hover:border-cyan-500 transition-all hover:-translate-y-0.5"
                 >
-                  Školenia &amp; spolupráca
-                  <ChevronDownIcon className="h-5 w-5" />
+                  O mne
+                  <ArrowRightIcon className="h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('kontakt')}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-400/70 bg-white/80 px-5 py-2.5 text-sm sm:text-base font-medium text-emerald-800 hover:bg-emerald-50 hover:border-emerald-500 transition-all hover:-translate-y-0.5"
+                >
+                  Kontakt
+                  <EnvelopeIcon className="h-5 w-5" />
                 </button>
               </div>
 

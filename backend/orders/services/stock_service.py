@@ -5,9 +5,11 @@ Handles all stock-related operations for order processing.
 """
 
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
+
 from django.db import transaction
 from rest_framework import serializers
+
 from products.models import Product
 
 logger = logging.getLogger(__name__)
@@ -163,3 +165,42 @@ class StockService:
                     product.name,
                     product.stock_quantity,
                 )
+
+    @staticmethod
+    def restore_order_stock(order) -> None:
+        """
+        Restore stock and batch lots consumed by an existing order.
+
+        Used for admin interventions when an order is edited or deleted.
+        """
+        from orders.models import BatchLot
+
+        if not transaction.get_connection().in_atomic_block:
+            with transaction.atomic():
+                StockService.restore_order_stock(order)
+                return
+
+        order_items = list(
+            order.items.select_related("product").prefetch_related(
+                "batch_allocations__batch_lot"
+            )
+        )
+
+        for order_item in order_items:
+            product = Product.objects.select_for_update().get(id=order_item.product_id)
+            product.stock_quantity += order_item.quantity
+            product.save(update_fields=["stock_quantity"])
+
+            for allocation in order_item.batch_allocations.all():
+                lot = BatchLot.objects.select_for_update().get(
+                    id=allocation.batch_lot_id
+                )
+                lot.quantity += allocation.quantity
+                lot.save(update_fields=["quantity"])
+
+            logger.info(
+                "Order stock restored: %s +%s (order #%s)",
+                product.name,
+                order_item.quantity,
+                order.order_number,
+            )

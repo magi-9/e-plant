@@ -7,15 +7,17 @@ Contains the core business logic for order processing.
 import logging
 import uuid
 from decimal import Decimal
-from typing import Dict, Any, Optional, List
-from django.db import transaction
-from django.contrib.auth import get_user_model
+from typing import Any, Dict, List, Optional
 
-from orders.models import Order, OrderItem, OrderItemBatch, BatchLot, ShippingRate
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
+from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
 from services.email import OrderEmailService
 from users.models import GlobalSettings
-from .stock_service import StockService
+
 from .pricing_service import PricingService
+from .stock_service import StockService
 
 logger = logging.getLogger(__name__)
 
@@ -257,4 +259,117 @@ class OrderService:
             # Log the error with full traceback but don't raise - order is already created
             logger.exception(
                 "Failed to send email notifications for order %s", order.order_number
+            )
+
+    def admin_update_order(
+        self,
+        order: Order,
+        validated_data: Dict[str, Any],
+        changed_by: Optional[User] = None,
+    ) -> Order:
+        """
+        Admin intervention edit of an existing order.
+
+        Restores old stock, re-reserves stock for the new item list,
+        recalculates totals, updates order fields, and emails customer.
+        """
+        reason = validated_data.pop("reason")
+        items_data = validated_data.pop("items")
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(pk=order.pk)
+
+            # Return all quantities currently consumed by this order.
+            self.stock_service.restore_order_stock(order)
+
+            # Remove current items and recreate from edited payload.
+            order.items.all().delete()
+            prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
+            self._create_order_items(order, prepared_items)
+
+            items_total = self.pricing_service.calculate_order_total(prepared_items)
+            country = validated_data.get("country") or order.country or "SK"
+            shipping_rate = ShippingRate.objects.filter(country=country).first()
+            if shipping_rate is not None:
+                shipping_cost = self.pricing_service.calculate_shipping(
+                    items_total, shipping_rate
+                )
+                shipping_carrier = shipping_rate.carrier
+            else:
+                shop = GlobalSettings.load()
+                shipping_cost = Decimal(str(shop.shipping_cost))
+                shipping_carrier = ""
+
+            for field, value in validated_data.items():
+                setattr(order, field, value)
+
+            order.shipping_cost = shipping_cost
+            order.shipping_carrier = shipping_carrier
+            order.total_price = items_total + shipping_cost
+            order.save()
+
+            transaction.on_commit(
+                lambda: self._send_admin_intervention_notification(order, reason)
+            )
+
+            logger.info(
+                "Admin updated order %s by user=%s reason=%s",
+                order.order_number,
+                getattr(changed_by, "id", None),
+                reason,
+            )
+
+            return order
+
+    def admin_delete_order(
+        self,
+        order: Order,
+        reason: str,
+        deleted_by: Optional[User] = None,
+    ) -> None:
+        """
+        Admin intervention delete of an existing order.
+
+        Restores stock, sends notification, then deletes the order.
+        """
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(pk=order.pk)
+
+            # Preserve minimal snapshot for on_commit notification.
+            order_id = order.id
+            order_number = order.order_number
+
+            self.stock_service.restore_order_stock(order)
+            order.delete()
+
+            transaction.on_commit(
+                lambda: self._send_admin_deleted_notification(order, reason)
+            )
+
+            logger.info(
+                "Admin deleted order %s(id=%s) by user=%s reason=%s",
+                order_number,
+                order_id,
+                getattr(deleted_by, "id", None),
+                reason,
+            )
+
+    def _send_admin_intervention_notification(self, order: Order, reason: str) -> None:
+        """Best-effort customer notification for admin order edits."""
+        try:
+            OrderEmailService(order).send_admin_intervention_email(reason)
+        except Exception:
+            logger.exception(
+                "Failed to send admin intervention email for order %s",
+                order.order_number,
+            )
+
+    def _send_admin_deleted_notification(self, order: Order, reason: str) -> None:
+        """Best-effort customer notification for admin order deletion."""
+        try:
+            OrderEmailService(order).send_admin_deleted_email(reason)
+        except Exception:
+            logger.exception(
+                "Failed to send admin deleted email for order %s",
+                order.order_number,
             )

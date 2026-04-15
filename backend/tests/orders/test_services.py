@@ -4,16 +4,16 @@ Unit tests for order services.
 Tests the business logic layer separated from serialization.
 """
 
-import pytest
 import threading
 from decimal import Decimal
-from django.db import transaction
-from django.db import close_old_connections
-from rest_framework.serializers import ValidationError
 from unittest.mock import patch
 
-from orders.services import OrderService, StockService, PricingService
+import pytest
+from django.db import close_old_connections, transaction
+from rest_framework.serializers import ValidationError
+
 from orders.models import Order, OrderItem
+from orders.services import OrderService, PricingService, StockService
 
 
 class TestStockService:

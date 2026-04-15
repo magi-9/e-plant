@@ -5,6 +5,11 @@ export interface OrderItem {
     quantity: number;
 }
 
+export interface AdminInterventionOrderItem {
+    product_id: number;
+    quantity: number;
+}
+
 export interface BatchAllocation {
     batch_number: string;
     quantity: number;
@@ -66,14 +71,24 @@ export interface Order {
     updated_at: string;
 }
 
+interface PaginatedOrdersResponse {
+    results: Order[];
+}
+
 export const createOrder = async (data: CreateOrderData): Promise<Order> => {
     const response = await client.post<Order>('/orders/', data);
     return response.data;
 };
 
 export const getMyOrders = async (): Promise<Order[]> => {
-    const response = await client.get<Order[]>('/orders/my/');
-    return response.data;
+    const response = await client.get<Order[] | PaginatedOrdersResponse>('/orders/my/');
+    const payload = response.data;
+
+    if (Array.isArray(payload)) {
+        return payload;
+    }
+
+    return payload.results || [];
 };
 
 export const getOrderDetail = async (id: string): Promise<Order> => {
@@ -107,6 +122,44 @@ export const receiveStock = async (data: StockReceiptData): Promise<StockReceipt
 export const updateOrderStatus = async (id: number, orderStatus: string): Promise<Order> => {
     const response = await client.patch<Order>(`/orders/admin/orders/${id}/`, { status: orderStatus });
     return response.data;
+};
+
+export interface AdminOrderInterventionUpdateData {
+    reason: string;
+    status: string;
+    notes: string;
+    customer_name: string;
+    email: string;
+    phone: string;
+    street: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    is_company: boolean;
+    company_name: string;
+    ico: string;
+    dic: string;
+    dic_dph: string;
+    is_vat_payer: boolean;
+    payment_method: 'bank_transfer' | 'card';
+    items: AdminInterventionOrderItem[];
+}
+
+export const adminInterventionUpdateOrder = async (
+    id: number,
+    data: AdminOrderInterventionUpdateData
+): Promise<Order> => {
+    const response = await client.patch<Order>(`/orders/admin/orders/${id}/intervention/`, data);
+    return response.data;
+};
+
+export const adminInterventionDeleteOrder = async (
+    id: number,
+    reason: string
+): Promise<void> => {
+    await client.delete(`/orders/admin/orders/${id}/intervention-delete/`, {
+        data: { reason }
+    });
 };
 
 

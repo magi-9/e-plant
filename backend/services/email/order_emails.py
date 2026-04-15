@@ -5,14 +5,15 @@ from typing import Optional
 
 from django.conf import settings
 
+from orders.invoice import generate_invoice_pdf
 from orders.models import Order
 from users.models import GlobalSettings
+
 from .base import BaseEmailService
 from .templates import (
     order_confirmation_customer_html,
     order_notification_warehouse_html,
 )
-from orders.invoice import generate_invoice_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -250,3 +251,47 @@ Stav: {self.order.get_status_display()}
 
 Poznámka zákazníka: {self.order.notes or "Žiadna"}
 """
+
+    def send_admin_intervention_email(self, reason: str) -> bool:
+        """Notify customer that admin changed the order."""
+        subject = f"Aktualizácia objednávky #{self.order.order_number}"
+        text_body = (
+            f"Dobrý deň {self.order.customer_name},\n\n"
+            f"Vaša objednávka #{self.order.order_number} bola upravená administrátorom.\n"
+            f"Aktuálny stav: {self.order.get_status_display()}\n"
+            f"Nová celková suma: {self.order.total_price} €\n\n"
+            f"Dôvod zásahu: {reason}\n\n"
+            "Ak máte otázky, kontaktujte nás odpoveďou na tento email.\n\n"
+            "Tím DentalShop\n"
+        )
+
+        return (
+            self.send_email(
+                subject=subject,
+                text_body=text_body,
+                to_email=self.order.email,
+                fail_silently=True,
+            )
+            > 0
+        )
+
+    def send_admin_deleted_email(self, reason: str) -> bool:
+        """Notify customer that admin deleted the order."""
+        subject = f"Objednávka #{self.order.order_number} bola zrušená"
+        text_body = (
+            f"Dobrý deň {self.order.customer_name},\n\n"
+            f"Vaša objednávka #{self.order.order_number} bola administrátorom zrušená a vymazaná zo systému.\n"
+            f"Dôvod zásahu: {reason}\n\n"
+            "Ak už prebehla platba, kontaktujte nás pre doriešenie refundácie.\n\n"
+            "Tím DentalShop\n"
+        )
+
+        return (
+            self.send_email(
+                subject=subject,
+                text_body=text_body,
+                to_email=self.order.email,
+                fail_silently=True,
+            )
+            > 0
+        )

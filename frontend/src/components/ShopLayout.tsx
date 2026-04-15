@@ -1,8 +1,11 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 
 export default function ShopLayout() {
+  const location = useLocation();
+  const isProductsPage = location.pathname.startsWith('/products');
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pt-16">
       <ScrollToTop />
@@ -12,7 +15,7 @@ export default function ShopLayout() {
         <Outlet />
       </main>
 
-      <footer className="bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 border-t border-cyan-500/20 mt-auto">
+      <footer className={`bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 border-t border-cyan-500/20 mt-auto text-slate-300 ${isProductsPage ? 'lg:ml-56' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 pb-8 border-b border-slate-800/70">
             <div className="flex items-center gap-3">
@@ -25,7 +28,8 @@ export default function ShopLayout() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-sm">
-              <p className="col-span-2 text-[10px] text-cyan-300/70 uppercase tracking-[0.15em] font-semibold mb-1">Právne informácie</p>
+              <p className="col-span-2 text-[10px] text-cyan-300/70 uppercase tracking-[0.15em] font-semibold mb-1">Informácie</p>
+              <Link to="/about" className="text-slate-300/80 hover:text-white transition-colors">O nás &amp; GDPR</Link>
               <Link to="/terms" className="text-slate-300/80 hover:text-white transition-colors">Obchodné podmienky</Link>
               <Link to="/privacy" className="text-slate-300/80 hover:text-white transition-colors">Ochrana osobných údajov</Link>
               <Link to="/complaints" className="text-slate-300/80 hover:text-white transition-colors">Reklamačný poriadok</Link>

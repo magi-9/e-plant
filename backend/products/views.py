@@ -1,18 +1,92 @@
 import csv
-from io import StringIO
+import re
 from decimal import Decimal, InvalidOperation
+from io import StringIO
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count
-from rest_framework import generics, permissions, filters, status, viewsets
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .models import Product, ProductGroup
-from .serializers import ProductSerializer, ProductGroupSerializer
+from .serializers import ProductGroupSerializer, ProductSerializer
 from .services import ProductService
+
+
+def _parse_categories(request):
+    # Handle both 'categories' and 'categories[]' (for array serialization compatibility)
+    raw_values = request.query_params.getlist("categories")
+    raw_values += request.query_params.getlist("categories[]")
+    categories = []
+    for raw in raw_values:
+        if not raw:
+            continue
+        for value in raw.split(","):
+            item = value.strip()
+            if item and item not in categories:
+                categories.append(item)
+    return categories
+
+
+def _apply_product_filters(queryset, request):
+    qs = queryset
+
+    group_id = request.query_params.get("group")
+    if group_id:
+        try:
+            qs = qs.filter(group_id=int(group_id))
+        except (ValueError, TypeError):
+            raise ValidationError({"group": "Must be a valid integer ID."})
+
+    search = request.query_params.get("search", "").strip()
+    if search:
+        qs = qs.filter(
+            models.Q(name__icontains=search)
+            | models.Q(description__icontains=search)
+            | models.Q(category__icontains=search)
+            | models.Q(parameters__all_categories__icontains=search)
+        )
+
+    categories = _parse_categories(request)
+    if categories:
+        category_filter = models.Q()
+        for category in categories:
+            escaped = re.escape(category)
+            boundary_pattern = rf"(^|;\\s*){escaped}(\\s*;|$)"
+            category_filter |= models.Q(category__iexact=category)
+            category_filter |= models.Q(parameters__all_categories__icontains=category)
+            category_filter |= models.Q(
+                parameters__all_categories__iregex=boundary_pattern
+            )
+        qs = qs.filter(category_filter)
+
+    visible_param = request.query_params.get("is_visible")
+    if visible_param == "true":
+        qs = qs.filter(is_visible=True)
+    elif visible_param == "false":
+        qs = qs.filter(is_visible=False)
+
+    stock_param = request.query_params.get("stock")
+    if stock_param == "in":
+        qs = qs.filter(stock_quantity__gt=0)
+    elif stock_param == "out":
+        qs = qs.filter(stock_quantity=0)
+
+    return qs
+
+
+def _is_admin_view(request):
+    """Return True when the request is explicitly flagged as an admin view by staff."""
+    return (
+        request.user
+        and request.user.is_staff
+        and request.query_params.get("admin_view") == "1"
+    )
 
 
 class ProductGroupListView(generics.ListAPIView):
@@ -38,25 +112,14 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
-    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["name", "price", "category", "stock_quantity"]
-    search_fields = ["name", "description", "category", "parameters__all_categories"]
 
     def get_queryset(self):
         qs = Product.objects.all()
-        if self.action in ["list", "retrieve"] and not (
-            self.request.user and self.request.user.is_staff
-        ):
+        if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
             qs = qs.filter(is_visible=True, is_active=True)
-
-        group_id = self.request.query_params.get("group")
-        if group_id:
-            try:
-                qs = qs.filter(group_id=int(group_id))
-            except (ValueError, TypeError):
-                raise ValidationError({"group": "Must be a valid integer ID."})
-
-        return qs
+        return _apply_product_filters(qs, self.request)
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -123,6 +186,21 @@ class AdminSeedView(APIView):
         return Response({"message": "\n".join(messages)}, status=status.HTTP_200_OK)
 
 
+class ProductCountView(APIView):
+    """Public endpoint to return DB-level distinct count of products for selected filters."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        qs = Product.objects.all()
+
+        if not _is_admin_view(request):
+            qs = qs.filter(is_visible=True, is_active=True)
+
+        qs = _apply_product_filters(qs, request)
+        return Response({"count": qs.distinct().count()}, status=status.HTTP_200_OK)
+
+
 class AdminBulkDeleteView(APIView):
     """Admin endpoint: delete multiple products by ID."""
 
@@ -164,6 +242,75 @@ class AdminBulkSetActiveView(APIView):
             is_active=bool(is_active)
         )
         return Response({"updated": updated_count}, status=status.HTTP_200_OK)
+
+
+class AdminBulkSetVisibleView(APIView):
+    """Admin endpoint: set is_visible on multiple products by ID."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        ids = request.data.get("ids", [])
+        is_visible = request.data.get("is_visible")
+        if not ids or not isinstance(ids, list):
+            return Response(
+                {"error": "ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if is_visible is None:
+            return Response(
+                {"error": "is_visible is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if isinstance(is_visible, str):
+            is_visible = is_visible.lower() in ("true", "1", "yes")
+        updated_count = Product.objects.filter(pk__in=ids).update(
+            is_visible=bool(is_visible)
+        )
+        return Response({"updated": updated_count}, status=status.HTTP_200_OK)
+
+
+class AdminProductIdsView(APIView):
+    """Admin endpoint: return all product IDs matching current filters (for bulk select-all)."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+        qs = Product.objects.all()
+        qs = _apply_product_filters(qs, request)
+        ids = list(qs.values_list("id", flat=True))
+        return Response({"ids": ids}, status=status.HTTP_200_OK)
+
+
+class AdminCategoriesView(APIView):
+    """Admin endpoint: return all unique product categories."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+
+        raw_cats = (
+            Product.objects.exclude(category="")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        params_cats = (
+            Product.objects.exclude(parameters__all_categories__isnull=True)
+            .exclude(parameters__all_categories="")
+            .values_list("parameters__all_categories", flat=True)
+        )
+
+        categories: set[str] = set()
+        for cat in raw_cats:
+            if cat:
+                categories.add(cat.strip())
+        for raw in params_cats:
+            if raw:
+                for part in raw.split(";"):
+                    part = part.strip()
+                    if part:
+                        categories.add(part)
+
+        return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
 
 class AdminProductImport(APIView):

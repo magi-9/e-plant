@@ -1,15 +1,21 @@
 from django.urls import path
+
 from .views import (
-    ProductViewSet,
-    ProductGroupListView,
-    AdminProductImport,
-    AdminSeedView,
     AdminBulkDeleteView,
     AdminBulkSetActiveView,
+    AdminBulkSetVisibleView,
+    AdminCategoriesView,
+    AdminProductIdsView,
+    AdminProductImport,
+    AdminSeedView,
+    ProductCountView,
+    ProductGroupListView,
+    ProductViewSet,
 )
 
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
+    path("count/", ProductCountView.as_view(), name="product_count"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
     path(
         "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"
@@ -40,5 +46,20 @@ urlpatterns = [
         "admin/bulk-set-active/",
         AdminBulkSetActiveView.as_view(),
         name="admin_product_bulk_set_active",
+    ),
+    path(
+        "admin/bulk-set-visible/",
+        AdminBulkSetVisibleView.as_view(),
+        name="admin_product_bulk_set_visible",
+    ),
+    path(
+        "admin/all-ids/",
+        AdminProductIdsView.as_view(),
+        name="admin_product_all_ids",
+    ),
+    path(
+        "admin/categories/",
+        AdminCategoriesView.as_view(),
+        name="admin_product_categories",
     ),
 ]
