@@ -148,6 +148,7 @@ export default function CheckoutPage() {
 
     const handleFinalSubmit = async () => {
         const normalizedPhone = formData.phone.replace(/[\s-]/g, '');
+        const normalizedPostalCode = formData.postal_code.replace(/[\s-]/g, '');
         const combinedStreet = `${formData.street_name} ${formData.street_number}`.trim();
 
         if (!PHONE_REGEX.test(normalizedPhone) || !POSTAL_CODE_REGEX.test(formData.postal_code.trim()) || !combinedStreet || !formData.street_number.trim()) {
