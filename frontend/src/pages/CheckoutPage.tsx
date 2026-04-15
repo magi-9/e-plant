@@ -395,11 +395,11 @@ export default function CheckoutPage() {
                                     id="phone"
                                     name="phone"
                                     required
-                                    pattern="^(\+[0-9]{12}|0[0-9]{9})$"
-                                    title="Zadajte telefón vo formáte +421XXXXXXXXX alebo 0XXXXXXXXX"
+                                    pattern="^(\+[0-9]\s?[0-9\s-]{8,14}|0[0-9\s-]{9,14})$"
+                                    title="Zadajte telefón vo formáte +421 900 123 456 alebo 0900123456"
                                     value={formData.phone}
                                     onChange={handleChange}
-                                    placeholder="+421900123456"
+                                    placeholder="+421 900 123 456"
                                     className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
                                 />
                             </div>

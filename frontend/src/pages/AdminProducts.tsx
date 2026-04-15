@@ -35,7 +35,7 @@ export default function AdminProducts() {
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '' });
 
     // Form states
-    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
+    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_active: true, is_visible: true });
     const [isUploadingCSV, setIsUploadingCSV] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');

@@ -177,7 +177,9 @@ export default function AdminOrders() {
 
     const updateDraft = (orderId: number, partial: Partial<InterventionDraft>) => {
         setDrafts((prev) => {
-            const current = prev[orderId] ?? createDraftFromOrder(ordersList.find((o) => o.id === orderId) as Order);
+            const foundOrder = ordersList.find((o) => o.id === orderId);
+            if (!foundOrder) return prev;
+            const current = prev[orderId] ?? createDraftFromOrder(foundOrder);
             return {
                 ...prev,
                 [orderId]: {
