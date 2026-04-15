@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { Helmet } from 'react-helmet-async';
 import { getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
-import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { isAdmin } from '../api/auth';
@@ -18,6 +19,7 @@ const getCategoryList = (product: Product): string[] => {
 };
 
 const PAGE_SIZE = 20;
+const SEO_SITE_URL = 'https://digitalabutment.ebringer.sk';
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -183,13 +185,73 @@ export default function ProductsPage() {
     }
 
     const visibleCount = databaseProductCount ?? filteredProducts.length;
+    const canonicalUrl = `${SEO_SITE_URL}${window.location.pathname}`;
+    const socialImageUrl = `${SEO_SITE_URL}/digitalabutment-logo.png`;
+
+    // Generate structured data for products - computed on each render
+    const schemaData = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'E-Plant | Dynamic Abutment Solutions Products',
+        description: 'Browse our complete catalog of Dynamic Abutment Solutions products including implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions for modern implantology.',
+        url: canonicalUrl,
+        image: socialImageUrl,
+        mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: filteredProducts.length,
+            itemListElement: filteredProducts.slice(0, 12).map((product, index) => ({
+                '@type': 'ListItem',
+                position: index + 1,
+                name: product.name,
+                description: product.category,
+                image: product.image || socialImageUrl,
+                offers: {
+                    '@type': 'Offer',
+                    price: product.price,
+                    priceCurrency: 'EUR',
+                    availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+                }
+            }))
+        }
+    };
 
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">
+            <Helmet>
+                <title>E-Plant | Dynamic Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
+                <meta name="description" content="Shop premium Dynamic Abutment Solutions products: TiBase scanning bodies, Multi-Unit abutments, custom CAD/CAM solutions, and more. Official distributor for Slovakia." />
+                <meta name="keywords" content="abutment, implant components, TiBase, Multi-Unit abutment, CAD/CAM, implantology, dental surgery" />
+                <meta name="robots" content="index, follow" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link rel="canonical" href={canonicalUrl} />
+                
+                {/* Open Graph - Social Media */}
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content="E-Plant | Dynamic Abutment Solutions Products" />
+                <meta property="og:description" content="Browse premium implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions." />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta property="og:image" content={socialImageUrl} />
+                <meta property="og:site_name" content="E-Plant" />
+                
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="E-Plant | Dynamic Abutment Solutions" />
+                <meta name="twitter:description" content="Premium implant components and solutions for modern implantology." />
+                <meta name="twitter:image" content={socialImageUrl} />
+                
+                {/* Structured Data */}
+                <script type="application/ld+json">
+                    {JSON.stringify(schemaData)}
+                </script>
+            </Helmet>
+            
             {/* Left Sidebar - Categories (Desktop only) */}
             <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
                 <div className="p-5">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-[0.08em]">Kategórie</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                        <TagIcon className="h-5 w-5 text-cyan-600" />
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em]">Kategórie</h3>
+                    </div>
                     <div className="space-y-1.5">
                         <button
                             onClick={() => {
@@ -286,7 +348,7 @@ export default function ProductsPage() {
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                         <input
                             type="text"
-                            placeholder="Hľadať produkt..."
+                            placeholder="🔍 Hľadať produkt..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
@@ -353,8 +415,11 @@ export default function ProductsPage() {
                 )}
 
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
-                    <span className="text-sm text-slate-600">{visibleCount} produktov</span>
+                    <div className="flex items-center gap-2">
+                        <SparklesIcon className="h-6 w-6 text-cyan-600" />
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
+                    </div>
+                    <span className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">{visibleCount} produktov</span>
                 </div>
 
                 {filteredProducts.length === 0 && !isFetching ? (
@@ -403,24 +468,42 @@ export default function ProductsPage() {
                                     <div className="p-4 flex-1 flex flex-col">
                                         <div className="mb-2 min-h-[5.5rem]">
                                             <div className="min-h-[5.5rem]">
-                                                <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem]">
-                                                    {product.name}
-                                                </h3>
+                                                <div className="flex items-start gap-2">
+                                                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
+                                                        {product.name}
+                                                    </h3>
+                                                    {product.stock_quantity > 0 && (
+                                                        <CheckCircleIcon className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" title="Skladom" />
+                                                    )}
+                                                </div>
                                                 {product.reference && (
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
-                                                <p className="mt-1 text-xs text-cyan-700 font-medium line-clamp-1">
-                                                    {getCategoryList(product).join(', ') || product.category}
-                                                </p>
+                                                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                    <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
+                                                    <p className="text-xs text-cyan-700 font-medium line-clamp-1">
+                                                        {getCategoryList(product).join(', ') || product.category}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
-                                                <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                                <div className="flex items-center gap-2">
+                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                    <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                                </div>
                                             ) : (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
+                                                    <SparklesIcon className="h-3 w-3" />
                                                     Členská cena
+                                                </span>
+                                            )}
+                                            {product.stock_quantity > 0 && product.stock_quantity <= 5 && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-yellow-50 text-yellow-800">
+                                                    <ExclamationTriangleIcon className="h-3 w-3" />
+                                                    Málo
                                                 </span>
                                             )}
                                         </div>
