@@ -1,10 +1,12 @@
-import pytest
-from rest_framework import status
-from products.models import Product
-from io import StringIO
-from django.core.files.uploadedfile import SimpleUploadedFile
 import csv
 from decimal import Decimal
+from io import StringIO
+
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework import status
+
+from products.models import Product
 
 
 @pytest.mark.django_db

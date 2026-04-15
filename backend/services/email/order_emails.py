@@ -5,14 +5,15 @@ from typing import Optional
 
 from django.conf import settings
 
+from orders.invoice import generate_invoice_pdf
 from orders.models import Order
 from users.models import GlobalSettings
+
 from .base import BaseEmailService
 from .templates import (
     order_confirmation_customer_html,
     order_notification_warehouse_html,
 )
-from orders.invoice import generate_invoice_pdf
 
 logger = logging.getLogger(__name__)
 

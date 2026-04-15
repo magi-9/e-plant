@@ -7,15 +7,17 @@ Contains the core business logic for order processing.
 import logging
 import uuid
 from decimal import Decimal
-from typing import Dict, Any, Optional, List
-from django.db import transaction
-from django.contrib.auth import get_user_model
+from typing import Any, Dict, List, Optional
 
-from orders.models import Order, OrderItem, OrderItemBatch, BatchLot, ShippingRate
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
+from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
 from services.email import OrderEmailService
 from users.models import GlobalSettings
-from .stock_service import StockService
+
 from .pricing_service import PricingService
+from .stock_service import StockService
 
 logger = logging.getLogger(__name__)
 

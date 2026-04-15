@@ -1,10 +1,12 @@
 
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
 import type { Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
+import toast from 'react-hot-toast';
 
 interface ProductDetailModalProps {
     open: boolean;
@@ -14,11 +16,19 @@ interface ProductDetailModalProps {
 }
 
 export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
+    const navigate = useNavigate();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
+    const [showActionButtons, setShowActionButtons] = useState(false);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
+
+    // Reset action buttons when modal opens/closes
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShowActionButtons(false);
+    }, [product?.id]); // Reset when different product is opened
 
     if (!product) return null;
 
@@ -49,20 +59,35 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         : [];
 
     const handleAddToCart = () => {
+        const currentQuantity = items.find(
+            item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
+        )?.quantity ?? 0;
+
+        if (effectiveStockQuantity <= 0) {
+            toast.error('Produkt nie je skladom.');
+            return;
+        }
+
+        if (currentQuantity >= effectiveStockQuantity) {
+            toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+            return;
+        }
+
         setIsAdding(true);
         addItem({
             productId: product.id,
             name: product.name,
             price: product.price!,
             image: product.image,
+            stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
             variantLabel: effectiveVariantLabel || undefined,
         });
 
-        // Simple animation feedback
+        // Show action buttons after adding
         setTimeout(() => {
             setIsAdding(false);
-            setOpen(false);
+            setShowActionButtons(true);
         }, 600);
     };
 
@@ -193,6 +218,34 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
 
+                                                            if (showActionButtons) {
+                                                                return (
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                navigate('/cart');
+                                                                                setOpen(false);
+                                                                                setShowActionButtons(false);
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-all sm:w-auto"
+                                                                        >
+                                                                            Prejsť do košíka
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                setShowActionButtons(false);
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 shadow-sm transition-all sm:w-auto"
+                                                                        >
+                                                                            Pokračovať v nákupe
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            }
+
                                                             if (cartItem) {
                                                                 return (
                                                                     <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-12 w-48 shadow-sm">
@@ -215,8 +268,13 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
+                                                                                if (cartItem.quantity >= effectiveStockQuantity) {
+                                                                                    toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+                                                                                    return;
+                                                                                }
                                                                                 updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
                                                                             }}
+                                                                            disabled={cartItem.quantity >= effectiveStockQuantity}
                                                                             className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
                                                                         >
                                                                             +

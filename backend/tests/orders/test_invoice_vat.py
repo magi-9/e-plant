@@ -1,7 +1,9 @@
 """Tests for VAT invoice rendering (Issue #94)."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
+
 from products.factories import ProductFactory
 from users.models import GlobalSettings
 

@@ -1,6 +1,7 @@
-from rest_framework import serializers
-from django.core.validators import FileExtensionValidator
 from django.core.files.images import get_image_dimensions
+from django.core.validators import FileExtensionValidator
+from rest_framework import serializers
+
 from .models import Product, ProductGroup
 
 

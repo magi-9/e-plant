@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import BatchLot, Order, OrderItem, ShippingRate, StockReceipt
 from .services.stock_receipt_service import StockReceiptService
 

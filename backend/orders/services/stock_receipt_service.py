@@ -3,6 +3,7 @@ Stock receipt service — handles incoming stock with batch lot tracking.
 """
 
 import logging
+
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 

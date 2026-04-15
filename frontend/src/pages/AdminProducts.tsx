@@ -153,7 +153,6 @@ export default function AdminProducts() {
         onError: () => toast.error('Chyba pri výbere všetkých produktov.'),
     });
 
-    const allCurrentPageSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.has(p.id));
     const someSelected = selectedIds.size > 0;
     const allPagesSelected = selectedIds.size === totalCount && totalCount > 0;
 

@@ -24,11 +24,11 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     HRFlowable,
     Image,
+    Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    Paragraph,
 )
 
 # ── Unicode font registration ─────────────────────────────────────────────────

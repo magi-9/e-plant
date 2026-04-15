@@ -1,28 +1,26 @@
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, permissions, status, views
-from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
-from django.contrib.auth import get_user_model
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
-from django.contrib.auth.tokens import default_token_generator
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
+from rest_framework.response import Response
 
 from services.email import AuthEmailService
-from .utils import (
-    check_and_record_rate_limit,
-    _translate_password_errors,
-)
-from .services import UserService
+
+from .models import GlobalSettings
 from .serializers import (
+    AdminUserUpdateSerializer,
+    GlobalSettingsSerializer,
     UserRegistrationSerializer,
     UserSerializer,
     UserUpdateSerializer,
-    GlobalSettingsSerializer,
-    AdminUserUpdateSerializer,
 )
-from .models import GlobalSettings
+from .services import UserService
+from .utils import _translate_password_errors, check_and_record_rate_limit
 
 User = get_user_model()
 

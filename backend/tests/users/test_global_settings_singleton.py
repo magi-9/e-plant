@@ -1,6 +1,7 @@
-from django.db import IntegrityError
 from types import SimpleNamespace
+
 import pytest
+from django.db import IntegrityError
 
 from users.models import GlobalSettings
 

@@ -1,4 +1,5 @@
 import logging
+
 from django.utils.deprecation import MiddlewareMixin
 
 logger = logging.getLogger("django.security.admin")

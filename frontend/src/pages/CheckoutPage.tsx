@@ -16,7 +16,7 @@ const POSTAL_CODE_REGEX = /^[0-9]{3}\s?[0-9]{2}$/;
 
 const splitStreet = (street: string) => {
     const value = (street || '').trim();
-    const match = value.match(/^(.*?)[\s,]+([0-9]+[A-Za-z\/]*)$/);
+    const match = value.match(/^(.*?)[\s,]+([0-9]+[A-Za-z/]*)$/);
     if (!match) {
         return { street_name: value, street_number: '' };
     }
@@ -119,8 +119,7 @@ export default function CheckoutPage() {
     const proceedToSummary = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        const normalizedPhone = formData.phone.replace(/[\s\-]/g, '');
-        const normalizedPostalCode = formData.postal_code.replace(/\s+/g, '');
+        const normalizedPhone = formData.phone.replace(/[\s-]/g, '');
 
         if (!PHONE_REGEX.test(normalizedPhone)) {
             setError('Telefón musí byť vo formáte +421XXXXXXXXX alebo 0XXXXXXXXX.');
@@ -148,8 +147,7 @@ export default function CheckoutPage() {
     };
 
     const handleFinalSubmit = async () => {
-        const normalizedPhone = formData.phone.replace(/[\s\-]/g, '');
-        const normalizedPostalCode = formData.postal_code.replace(/\s+/g, '');
+        const normalizedPhone = formData.phone.replace(/[\s-]/g, '');
         const combinedStreet = `${formData.street_name} ${formData.street_number}`.trim();
 
         if (!PHONE_REGEX.test(normalizedPhone) || !POSTAL_CODE_REGEX.test(formData.postal_code.trim()) || !combinedStreet || !formData.street_number.trim()) {

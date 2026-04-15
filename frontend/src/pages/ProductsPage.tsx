@@ -7,6 +7,7 @@ import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, In
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { isAdmin } from '../api/auth';
+import toast from 'react-hot-toast';
 
 const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
@@ -112,12 +113,27 @@ export default function ProductsPage() {
             return;
         }
 
+        if (product.stock_quantity <= 0) {
+            toast.error('Produkt nie je skladom.');
+            return;
+        }
+
+        const currentQuantity = items.find(
+            item => item.productId === product.id && !item.variantReference
+        )?.quantity ?? 0;
+
+        if (currentQuantity >= product.stock_quantity) {
+            toast.error(`Na sklade je iba ${product.stock_quantity} ks.`);
+            return;
+        }
+
         setAddingId(product.id);
         addItem({
             productId: product.id,
             name: product.name,
             price: product.price!,
-            image: product.image
+            image: product.image,
+            stockQuantity: product.stock_quantity,
         });
 
         setTimeout(() => {
@@ -438,8 +454,13 @@ export default function ProductsPage() {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
+                                                                    if (cartItem.quantity >= product.stock_quantity) {
+                                                                        toast.error(`Na sklade je iba ${product.stock_quantity} ks.`);
+                                                                        return;
+                                                                    }
                                                                     updateQuantity(product.id, cartItem.quantity + 1);
                                                                 }}
+                                                                disabled={cartItem.quantity >= product.stock_quantity}
                                                                 className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
                                                             >
                                                                 +
@@ -451,9 +472,12 @@ export default function ProductsPage() {
                                                 return (
                                                     <button
                                                         onClick={(e) => handleAddToCart(e, product)}
+                                                        disabled={addingId === product.id || product.stock_quantity <= 0}
                                                         className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
                                                             ? 'bg-emerald-500 scale-105'
-                                                            : 'bg-cyan-600 hover:bg-cyan-700'
+                                                            : product.stock_quantity <= 0
+                                                                ? 'bg-slate-400 cursor-not-allowed'
+                                                                : 'bg-cyan-600 hover:bg-cyan-700'
                                                             }`}
                                                     >
                                                         {addingId === product.id ? (
@@ -466,7 +490,7 @@ export default function ProductsPage() {
                                                         ) : (
                                                             <>
                                                                 <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                                Pridať do košíka
+                                                                {product.stock_quantity <= 0 ? 'Požiadať produkt' : 'Pridať do košíka'}
                                                             </>
                                                         )}
                                                     </button>

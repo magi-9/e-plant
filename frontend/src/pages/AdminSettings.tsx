@@ -56,7 +56,7 @@ export default function AdminSettings() {
 
     return (
         <div className="min-h-screen bg-slate-50 py-8">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AdminNav />
                 <h1 className="text-3xl font-bold text-slate-900 mb-8">Globálne nastavenia obchodu</h1>
 
@@ -114,18 +114,10 @@ export default function AdminSettings() {
                                 <>
                                     <div>
                                         <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Sklad a katalóg</h3>
-                                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="mt-4 grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Predvolený 'Low Stock Threshold'</label>
                                                 <input type="number" value={formData.low_stock_threshold} onChange={e => setFormData({ ...formData, low_stock_threshold: Number(e.target.value) })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Mena</label>
-                                                <select value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500">
-                                                    <option>EUR (€)</option>
-                                                    <option>CZK (Kč)</option>
-                                                    <option>USD ($)</option>
-                                                </select>
                                             </div>
                                         </div>
                                     </div>

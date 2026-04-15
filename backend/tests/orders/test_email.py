@@ -1,8 +1,9 @@
+from decimal import Decimal
+
 import pytest
+from django.core import mail
 from django.urls import reverse
 from rest_framework import status
-from django.core import mail
-from decimal import Decimal
 
 
 @pytest.mark.django_db(transaction=True)
@@ -121,7 +122,7 @@ def test_email_sent_regardless_of_payment_status(
         "customer_name": "Test User",
         "email": "test@example.com",
         "phone": "+421900123456",
-        "street": "Test Street",
+        "street": "Test Street 123",
         "city": "Test City",
         "postal_code": "123 45",
         "is_company": False,

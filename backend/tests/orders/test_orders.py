@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from decimal import Decimal
+
 from orders.models import Order, OrderItem
 
 
@@ -213,7 +215,9 @@ def test_create_order_invalid_product(api_client, user_factory):
 
 
 @pytest.mark.django_db
-def test_create_order_rejects_invalid_phone_format(api_client, user_factory, product_factory):
+def test_create_order_rejects_invalid_phone_format(
+    api_client, user_factory, product_factory
+):
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
@@ -239,7 +243,9 @@ def test_create_order_rejects_invalid_phone_format(api_client, user_factory, pro
 
 
 @pytest.mark.django_db
-def test_create_order_rejects_invalid_postal_code(api_client, user_factory, product_factory):
+def test_create_order_rejects_invalid_postal_code(
+    api_client, user_factory, product_factory
+):
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
@@ -265,7 +271,9 @@ def test_create_order_rejects_invalid_postal_code(api_client, user_factory, prod
 
 
 @pytest.mark.django_db
-def test_create_order_rejects_street_without_house_number(api_client, user_factory, product_factory):
+def test_create_order_rejects_street_without_house_number(
+    api_client, user_factory, product_factory
+):
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 

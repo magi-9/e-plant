@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count, Q
 from django.utils.translation import gettext_lazy as _
+
 from .models import Product, ProductGroup
 
 

@@ -1,15 +1,16 @@
 from django.urls import path
+
 from .views import (
-    ProductViewSet,
-    ProductGroupListView,
-    ProductCountView,
-    AdminProductImport,
-    AdminSeedView,
     AdminBulkDeleteView,
     AdminBulkSetActiveView,
     AdminBulkSetVisibleView,
-    AdminProductIdsView,
     AdminCategoriesView,
+    AdminProductIdsView,
+    AdminProductImport,
+    AdminSeedView,
+    ProductCountView,
+    ProductGroupListView,
+    ProductViewSet,
 )
 
 urlpatterns = [

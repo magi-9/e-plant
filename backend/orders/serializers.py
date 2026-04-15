@@ -2,6 +2,7 @@ import logging
 import re
 
 from rest_framework import serializers
+
 from .models import Order, OrderItem, OrderItemBatch, ShippingRate
 from .services import OrderService
 
@@ -91,7 +92,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 )
             return normalized
 
-        if not normalized.isdigit() or len(normalized) != 10 or not normalized.startswith("0"):
+        if (
+            not normalized.isdigit()
+            or len(normalized) != 10
+            or not normalized.startswith("0")
+        ):
             raise serializers.ValidationError(
                 "Telefón musí byť v tvare +421XXXXXXXXX alebo 0XXXXXXXXX."
             )
@@ -214,14 +219,14 @@ class AdminOrderInterventionUpdateSerializer(serializers.Serializer):
     def validate_reason(self, value):
         reason = (value or "").strip()
         if len(reason) < 8:
-            raise serializers.ValidationError(
-                "Dôvod zásahu musí mať aspoň 8 znakov."
-            )
+            raise serializers.ValidationError("Dôvod zásahu musí mať aspoň 8 znakov.")
         return reason
 
     def validate_items(self, value):
         if not value:
-            raise serializers.ValidationError("Objednávka musí obsahovať aspoň jednu položku.")
+            raise serializers.ValidationError(
+                "Objednávka musí obsahovať aspoň jednu položku."
+            )
         return value
 
     def validate_phone(self, value):
@@ -235,7 +240,11 @@ class AdminOrderInterventionUpdateSerializer(serializers.Serializer):
                 )
             return normalized
 
-        if not normalized.isdigit() or len(normalized) != 10 or not normalized.startswith("0"):
+        if (
+            not normalized.isdigit()
+            or len(normalized) != 10
+            or not normalized.startswith("0")
+        ):
             raise serializers.ValidationError(
                 "Telefón musí byť v tvare +421XXXXXXXXX alebo 0XXXXXXXXX."
             )
@@ -271,9 +280,7 @@ class AdminOrderInterventionDeleteSerializer(serializers.Serializer):
     def validate_reason(self, value):
         reason = (value or "").strip()
         if len(reason) < 8:
-            raise serializers.ValidationError(
-                "Dôvod zásahu musí mať aspoň 8 znakov."
-            )
+            raise serializers.ValidationError("Dôvod zásahu musí mať aspoň 8 znakov.")
         return reason
 
 

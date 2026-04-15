@@ -1,18 +1,20 @@
 import csv
 import re
-from io import StringIO
 from decimal import Decimal, InvalidOperation
+from io import StringIO
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count
-from rest_framework import generics, permissions, filters, status, viewsets
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from .models import Product, ProductGroup
-from .serializers import ProductSerializer, ProductGroupSerializer
+from .serializers import ProductGroupSerializer, ProductSerializer
 from .services import ProductService
 
 
@@ -284,7 +286,6 @@ class AdminCategoriesView(APIView):
     permission_classes = (permissions.IsAdminUser,)
 
     def get(self, request, *args, **kwargs):
-        from django.db.models.functions import Trim
 
         raw_cats = (
             Product.objects.exclude(category="")
@@ -308,9 +309,7 @@ class AdminCategoriesView(APIView):
                     if part:
                         categories.add(part)
 
-        return Response(
-            {"categories": sorted(categories)}, status=status.HTTP_200_OK
-        )
+        return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
 
 class AdminProductImport(APIView):

@@ -3,8 +3,9 @@ Tests for Product is_active / is_visible fields and API filtering (Issue #88).
 """
 
 import pytest
-from products.models import Product
+
 from products.factories import ProductFactory
+from products.models import Product
 
 
 @pytest.mark.django_db
@@ -32,8 +33,8 @@ class TestProductStorefrontVisibilityFilter:
 
     def test_api_hides_invisible_products_for_admin_without_admin_view(self):
         """Admin using the shop endpoint (no admin_view=1) sees only visible products."""
-        from rest_framework.test import APIClient
         from django.contrib.auth import get_user_model
+        from rest_framework.test import APIClient
 
         User = get_user_model()
         admin = User.objects.create_superuser(email="admin@test.com", password="pw")
@@ -50,8 +51,8 @@ class TestProductStorefrontVisibilityFilter:
 
     def test_api_shows_all_to_admin_with_admin_view(self):
         """Admin using admin_view=1 sees all products including hidden."""
-        from rest_framework.test import APIClient
         from django.contrib.auth import get_user_model
+        from rest_framework.test import APIClient
 
         User = get_user_model()
         admin = User.objects.create_superuser(email="admin2@test.com", password="pw")

@@ -1,9 +1,11 @@
-import pytest
 from decimal import Decimal
-from rest_framework.test import APIClient
+
+import pytest
 from pytest_factoryboy import register
-from tests.factories import UserFactory
+from rest_framework.test import APIClient
+
 from products.factories import ProductFactory
+from tests.factories import UserFactory
 
 register(UserFactory)
 register(ProductFactory)

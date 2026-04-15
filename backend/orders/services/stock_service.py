@@ -5,9 +5,11 @@ Handles all stock-related operations for order processing.
 """
 
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
+
 from django.db import transaction
 from rest_framework import serializers
+
 from products.models import Product
 
 logger = logging.getLogger(__name__)
@@ -190,7 +192,9 @@ class StockService:
             product.save(update_fields=["stock_quantity"])
 
             for allocation in order_item.batch_allocations.all():
-                lot = BatchLot.objects.select_for_update().get(id=allocation.batch_lot_id)
+                lot = BatchLot.objects.select_for_update().get(
+                    id=allocation.batch_lot_id
+                )
                 lot.quantity += allocation.quantity
                 lot.save(update_fields=["quantity"])
 

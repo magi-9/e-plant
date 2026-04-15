@@ -2,6 +2,7 @@
 
 import pytest
 from django.db import IntegrityError
+
 from products.factories import ProductFactory
 
 
@@ -48,9 +49,11 @@ class TestBatchLotModel:
         assert "Implant A" in str(lot)
 
     def test_ordered_by_received_at_asc(self):
-        from orders.models import BatchLot
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
+
+        from orders.models import BatchLot
 
         product = ProductFactory()
         now = timezone.now()
@@ -108,8 +111,9 @@ class TestStockReceiptService:
         assert StockReceipt.objects.filter(product=product).count() == 1
 
     def test_validates_quantity_positive(self):
-        from orders.services.stock_receipt_service import StockReceiptService
         from rest_framework.exceptions import ValidationError
+
+        from orders.services.stock_receipt_service import StockReceiptService
 
         product = ProductFactory()
         with pytest.raises(ValidationError):
@@ -118,8 +122,9 @@ class TestStockReceiptService:
             )
 
     def test_validates_batch_number_not_empty(self):
-        from orders.services.stock_receipt_service import StockReceiptService
         from rest_framework.exceptions import ValidationError
+
+        from orders.services.stock_receipt_service import StockReceiptService
 
         product = ProductFactory()
         with pytest.raises(ValidationError):

@@ -7,11 +7,12 @@ Tests for ProductImageField validation:
   - valid images accepted
 """
 
-import pytest
 from io import BytesIO
-from PIL import Image
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from PIL import Image
 
 
 def _make_image(width=200, height=200, fmt="JPEG", extension="jpg", extra_bytes=0):

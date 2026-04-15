@@ -1,8 +1,9 @@
+from decimal import Decimal
+
 import pytest
+from django.core import mail
 from django.urls import reverse
 from rest_framework import status
-from django.core import mail
-from decimal import Decimal
 
 
 @pytest.mark.django_db(transaction=True)
@@ -27,6 +28,9 @@ def test_low_stock_warning_in_warehouse_order_email(
         "customer_name": "Test User",
         "email": "test@example.com",
         "phone": "+421900123456",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 6},
@@ -72,6 +76,9 @@ def test_order_always_sends_exactly_two_emails(
         "customer_name": "Test User",
         "email": "test@example.com",
         "phone": "+421900123456",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
         "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 1},

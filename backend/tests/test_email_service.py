@@ -1,20 +1,16 @@
 """Comprehensive tests for email service layer."""
 
-import pytest
-from unittest.mock import patch
 import uuid
-from django.test import TestCase
-from django.test import override_settings
-from django.contrib.auth import get_user_model
+from unittest.mock import patch
 
-from services.email import (
-    OrderEmailService,
-    AuthEmailService,
-    NotificationEmailService,
-)
-from services.email.base import BaseEmailService
+import pytest
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+
 from orders.models import Order
 from products.models import Product
+from services.email import AuthEmailService, NotificationEmailService, OrderEmailService
+from services.email.base import BaseEmailService
 
 User = get_user_model()
 

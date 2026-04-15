@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import CustomUser, GlobalSettings, EmailRateLimit
+
+from .models import CustomUser, EmailRateLimit, GlobalSettings
 
 
 @admin.register(CustomUser)

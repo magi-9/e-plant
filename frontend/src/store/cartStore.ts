@@ -6,6 +6,7 @@ export interface CartItem {
     name: string;
     price: string;
     quantity: number;
+    stockQuantity?: number;
     image?: string | null;
     variantReference?: string;
     variantLabel?: string;
@@ -40,7 +41,11 @@ export const useCartStore = create<CartState>()(
                             items: state.items.map((i) =>
                                 i.productId === item.productId &&
                                 (i.variantReference || '') === (item.variantReference || '')
-                                    ? { ...i, quantity: i.quantity + 1 }
+                                    ? {
+                                        ...i,
+                                        quantity: i.quantity + 1,
+                                        stockQuantity: item.stockQuantity ?? i.stockQuantity,
+                                    }
                                     : i
                             ),
                         };
@@ -51,6 +56,15 @@ export const useCartStore = create<CartState>()(
                         };
                     }
                 });
+
+                window.dispatchEvent(
+                    new CustomEvent('cart:item-added', {
+                        detail: {
+                            productId: item.productId,
+                            name: item.name,
+                        },
+                    })
+                );
             },
 
             removeItem: (productId, variantReference) => {
@@ -71,6 +85,13 @@ export const useCartStore = create<CartState>()(
                     return;
                 }
 
+                const currentItem = get().items.find(
+                    (i) =>
+                        i.productId === productId &&
+                        (i.variantReference || '') === (variantReference || '')
+                );
+                const isIncrease = !!currentItem && quantity > currentItem.quantity;
+
                 set((state) => ({
                     items: state.items.map((i) =>
                         i.productId === productId &&
@@ -79,6 +100,16 @@ export const useCartStore = create<CartState>()(
                             : i
                     ),
                 }));
+
+                if (isIncrease) {
+                    window.dispatchEvent(
+                        new CustomEvent('cart:item-added', {
+                            detail: {
+                                productId,
+                            },
+                        })
+                    );
+                }
             },
 
             clearCart: () => {

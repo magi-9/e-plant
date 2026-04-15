@@ -1,7 +1,9 @@
 """Tests for Skonto early-payment discount block (Issue #95)."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
+
 from products.factories import ProductFactory
 from users.models import GlobalSettings
 
@@ -59,8 +61,9 @@ class TestSkontoInvoice:
         assert _skonto_amount(total) == Decimal("98.00")
 
     def test_skonto_date_is_3_days_after_invoice(self):
-        from orders.invoice import _skonto_date
         from datetime import date
+
+        from orders.invoice import _skonto_date
 
         invoice_date = date(2026, 1, 1)
         assert _skonto_date(invoice_date) == date(2026, 1, 4)
