@@ -11,6 +11,22 @@ import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
+const PHONE_REGEX = /^(\+[0-9]{12}|0[0-9]{9})$/;
+const POSTAL_CODE_REGEX = /^[0-9]{3}\s?[0-9]{2}$/;
+
+const splitStreet = (street: string) => {
+    const value = (street || '').trim();
+    const match = value.match(/^(.*?)[\s,]+([0-9]+[A-Za-z\/]*)$/);
+    if (!match) {
+        return { street_name: value, street_number: '' };
+    }
+
+    return {
+        street_name: (match[1] || '').trim(),
+        street_number: (match[2] || '').trim(),
+    };
+};
+
 export default function CheckoutPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -45,7 +61,9 @@ export default function CheckoutPage() {
         last_name: '',
         email: '',
         phone: '',
-        street: '',
+        street_name: '',
+        street_number: '',
+        address_line2: '',
         city: '',
         postal_code: '',
         is_company: false,
@@ -61,6 +79,7 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         if (userProfile && !formInitialized.current) {
+            const parsedStreet = splitStreet(userProfile.street || '');
             formInitialized.current = true;
             setFormData(prev => ({
                 ...prev,
@@ -68,7 +87,8 @@ export default function CheckoutPage() {
                 last_name: userProfile.last_name || '',
                 email: userProfile.email || '',
                 phone: userProfile.phone || '',
-                street: userProfile.street || '',
+                street_name: parsedStreet.street_name,
+                street_number: parsedStreet.street_number,
                 city: userProfile.city || '',
                 postal_code: userProfile.postal_code || '',
                 country: userProfile.country || 'SK',
@@ -98,6 +118,26 @@ export default function CheckoutPage() {
 
     const proceedToSummary = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        const normalizedPhone = formData.phone.replace(/[\s\-]/g, '');
+        const normalizedPostalCode = formData.postal_code.replace(/\s+/g, '');
+
+        if (!PHONE_REGEX.test(normalizedPhone)) {
+            setError('Telefón musí byť vo formáte +421XXXXXXXXX alebo 0XXXXXXXXX.');
+            return;
+        }
+
+        if (!POSTAL_CODE_REGEX.test(formData.postal_code.trim())) {
+            setError('PSČ musí mať formát 81101 alebo 811 01.');
+            return;
+        }
+
+        if (!formData.street_name.trim() || !formData.street_number.trim()) {
+            setError('Zadajte ulicu aj číslo domu samostatne.');
+            return;
+        }
+
+        setError(null);
         setStep(2);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -108,6 +148,15 @@ export default function CheckoutPage() {
     };
 
     const handleFinalSubmit = async () => {
+        const normalizedPhone = formData.phone.replace(/[\s\-]/g, '');
+        const normalizedPostalCode = formData.postal_code.replace(/\s+/g, '');
+        const combinedStreet = `${formData.street_name} ${formData.street_number}`.trim();
+
+        if (!PHONE_REGEX.test(normalizedPhone) || !POSTAL_CODE_REGEX.test(formData.postal_code.trim()) || !combinedStreet || !formData.street_number.trim()) {
+            setError('Skontrolujte telefón, PSČ a adresu (ulica + číslo).');
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -125,11 +174,12 @@ export default function CheckoutPage() {
             const orderData: CreateOrderData = {
                 customer_name: `${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email,
-                phone: formData.phone,
-                street: formData.street,
+                phone: normalizedPhone,
+                street: combinedStreet,
                 city: formData.city,
-                postal_code: formData.postal_code,
+                postal_code: normalizedPostalCode,
                 country: formData.country,
+                shipping_address: formData.address_line2.trim(),
                 is_company: formData.is_company,
                 company_name: formData.company_name,
                 ico: formData.ico,
@@ -151,10 +201,10 @@ export default function CheckoutPage() {
                     await client.patch('/auth/me/', {
                         first_name: formData.first_name,
                         last_name: formData.last_name,
-                        phone: formData.phone,
-                        street: formData.street,
+                        phone: normalizedPhone,
+                        street: combinedStreet,
                         city: formData.city,
-                        postal_code: formData.postal_code,
+                        postal_code: normalizedPostalCode,
                         is_company: formData.is_company,
                         company_name: formData.company_name,
                         ico: formData.ico,
@@ -346,27 +396,59 @@ export default function CheckoutPage() {
                                     id="phone"
                                     name="phone"
                                     required
-                                    pattern="^\+?[0-9\s]{9,15}$"
-                                    title="Zadajte platné telefónne číslo (napr. +421 900 123 456 alebo 0900123456)"
+                                    pattern="^(\+[0-9]{12}|0[0-9]{9})$"
+                                    title="Zadajte telefón vo formáte +421XXXXXXXXX alebo 0XXXXXXXXX"
                                     value={formData.phone}
                                     onChange={handleChange}
-                                    placeholder="+421 900 123 456"
+                                    placeholder="+421900123456"
                                     className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
                                 />
                             </div>
 
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="street_name" className="block text-sm font-medium text-slate-700">
+                                        Ulica *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="street_name"
+                                        name="street_name"
+                                        required
+                                        value={formData.street_name}
+                                        onChange={handleChange}
+                                        placeholder="Hlavná"
+                                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="street_number" className="block text-sm font-medium text-slate-700">
+                                        Číslo *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="street_number"
+                                        name="street_number"
+                                        required
+                                        value={formData.street_number}
+                                        onChange={handleChange}
+                                        placeholder="123"
+                                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
+                                    />
+                                </div>
+                            </div>
+
                             <div>
-                                <label htmlFor="street" className="block text-sm font-medium text-slate-700">
-                                    Ulica a číslo *
+                                <label htmlFor="address_line2" className="block text-sm font-medium text-slate-700">
+                                    Adresa 2 (nepovinné)
                                 </label>
                                 <input
                                     type="text"
-                                    id="street"
-                                    name="street"
-                                    required
-                                    value={formData.street}
+                                    id="address_line2"
+                                    name="address_line2"
+                                    value={formData.address_line2}
                                     onChange={handleChange}
-                                    placeholder="Hlavná 123"
+                                    placeholder="Poschodie, byt, budova..."
                                     className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
                                 />
                             </div>
@@ -396,8 +478,8 @@ export default function CheckoutPage() {
                                         id="postal_code"
                                         name="postal_code"
                                         required
-                                        pattern="^[0-9\s]{5,6}$"
-                                        title="Zadajte platné 5-miestne PSČ (napr. 811 01 alebo 81101)"
+                                        pattern="^[0-9]{3}\s?[0-9]{2}$"
+                                        title="Zadajte platné 5-miestne PSČ (napr. 81101 alebo 811 01)"
                                         value={formData.postal_code}
                                         onChange={handleChange}
                                         placeholder="811 01"
@@ -609,7 +691,8 @@ export default function CheckoutPage() {
                             <div>
                                 <span className="block text-slate-500 text-xs uppercase tracking-wider mb-1">Fakturačná a dodacia adresa</span>
                                 <p className="font-medium text-slate-900">{formData.first_name} {formData.last_name}</p>
-                                <p>{formData.street}</p>
+                                <p>{formData.street_name} {formData.street_number}</p>
+                                {formData.address_line2 && <p>{formData.address_line2}</p>}
                                 <p>{formData.postal_code} {formData.city}</p>
                                 <p>{formData.country === 'CZ' ? 'Česká republika' : 'Slovensko'}</p>
                             </div>

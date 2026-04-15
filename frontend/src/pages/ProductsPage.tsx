@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { getProducts, type Product, type ProductListParams } from '../api/products';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
 import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
@@ -60,6 +60,11 @@ export default function ProductsPage() {
             return undefined;
         },
         initialPageParam: 0,
+    });
+
+    const { data: databaseProductCount } = useQuery({
+        queryKey: ['products-count', searchQuery, selectedCategories],
+        queryFn: () => getProductCount({ search: searchQuery, categories: selectedCategories }),
     });
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
@@ -161,7 +166,7 @@ export default function ProductsPage() {
         });
     }
 
-    const visibleCount = filteredProducts.length;
+    const visibleCount = databaseProductCount ?? filteredProducts.length;
 
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">

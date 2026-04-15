@@ -210,3 +210,81 @@ def test_create_order_invalid_product(api_client, user_factory):
     assert response.data[0] == "Product with id 999999 does not exist."
     assert Order.objects.count() == 0
     assert OrderItem.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_invalid_phone_format(api_client, user_factory, product_factory):
+    user = user_factory()
+    product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "12345",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "items": [{"product_id": product.id, "quantity": 1}],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "phone" in response.data
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_invalid_postal_code(api_client, user_factory, product_factory):
+    user = user_factory()
+    product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+421900123456",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "8110",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "items": [{"product_id": product.id, "quantity": 1}],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "postal_code" in response.data
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_street_without_house_number(api_client, user_factory, product_factory):
+    user = user_factory()
+    product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+421900123456",
+        "street": "Hlavna",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "items": [{"product_id": product.id, "quantity": 1}],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "street" in response.data

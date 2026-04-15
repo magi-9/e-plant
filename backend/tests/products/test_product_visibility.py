@@ -71,3 +71,52 @@ class TestProductGroupFilter:
         names = [p["name"] for p in data.get("results", data)]
         assert "In Group" in names
         assert "Not In Group" not in names
+
+
+@pytest.mark.django_db
+class TestProductCountEndpoint:
+    def test_count_returns_visible_active_only_for_anonymous(self, client):
+        ProductFactory(name="Visible Active", is_visible=True, is_active=True)
+        ProductFactory(name="Visible Inactive", is_visible=True, is_active=False)
+        ProductFactory(name="Hidden Active", is_visible=False, is_active=True)
+
+        response = client.get("/api/products/count/")
+        assert response.status_code == 200
+        assert response.json()["count"] == 1
+
+    def test_count_filters_by_multiple_categories_with_union(self, client):
+        ProductFactory(
+            name="A only",
+            category="Fallback",
+            parameters={"all_categories": "Category A"},
+            is_visible=True,
+            is_active=True,
+        )
+        ProductFactory(
+            name="B only",
+            category="Fallback",
+            parameters={"all_categories": "Category B"},
+            is_visible=True,
+            is_active=True,
+        )
+        ProductFactory(
+            name="A and B",
+            category="Fallback",
+            parameters={"all_categories": "Category A; Category B"},
+            is_visible=True,
+            is_active=True,
+        )
+        ProductFactory(
+            name="Other",
+            category="Fallback",
+            parameters={"all_categories": "Category C"},
+            is_visible=True,
+            is_active=True,
+        )
+
+        response = client.get(
+            "/api/products/count/",
+            {"categories": ["Category A", "Category B"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["count"] == 3

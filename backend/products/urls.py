@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     ProductViewSet,
     ProductGroupListView,
+    ProductCountView,
     AdminProductImport,
     AdminSeedView,
     AdminBulkDeleteView,
@@ -10,6 +11,7 @@ from .views import (
 
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
+    path("count/", ProductCountView.as_view(), name="product_count"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
     path(
         "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"

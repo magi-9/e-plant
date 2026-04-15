@@ -36,6 +36,7 @@ export interface ProductListParams {
     search?: string;
     ordering?: string;
     group?: number;
+    categories?: string[];
     limit?: number;
     offset?: number;
 }
@@ -47,9 +48,26 @@ export interface PaginatedResponse<T> {
     results: T[];
 }
 
+interface ProductCountResponse {
+    count: number;
+}
+
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
     return response.data;
+};
+
+export const getProductCount = async (params?: ProductListParams): Promise<number> => {
+    const query = new URLSearchParams();
+
+    if (params?.search) query.set('search', params.search);
+    if (typeof params?.group === 'number') query.set('group', String(params.group));
+    (params?.categories || []).forEach((category) => query.append('categories', category));
+
+    const suffix = query.toString();
+    const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
+    const response = await client.get<ProductCountResponse>(endpoint);
+    return response.data.count;
 };
 
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {

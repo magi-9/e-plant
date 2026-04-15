@@ -1,4 +1,5 @@
 import csv
+import re
 from io import StringIO
 from decimal import Decimal, InvalidOperation
 from django.contrib.auth import get_user_model
@@ -13,6 +14,54 @@ from rest_framework.exceptions import ValidationError
 from .models import Product, ProductGroup
 from .serializers import ProductSerializer, ProductGroupSerializer
 from .services import ProductService
+
+
+def _parse_categories(request):
+    raw_values = request.query_params.getlist("categories")
+    categories = []
+    for raw in raw_values:
+        if not raw:
+            continue
+        for value in raw.split(","):
+            item = value.strip()
+            if item and item not in categories:
+                categories.append(item)
+    return categories
+
+
+def _apply_product_filters(queryset, request):
+    qs = queryset
+
+    group_id = request.query_params.get("group")
+    if group_id:
+        try:
+            qs = qs.filter(group_id=int(group_id))
+        except (ValueError, TypeError):
+            raise ValidationError({"group": "Must be a valid integer ID."})
+
+    search = request.query_params.get("search", "").strip()
+    if search:
+        qs = qs.filter(
+            models.Q(name__icontains=search)
+            | models.Q(description__icontains=search)
+            | models.Q(category__icontains=search)
+            | models.Q(parameters__all_categories__icontains=search)
+        )
+
+    categories = _parse_categories(request)
+    if categories:
+        category_filter = models.Q()
+        for category in categories:
+            escaped = re.escape(category)
+            boundary_pattern = rf"(^|;\\s*){escaped}(\\s*;|$)"
+            category_filter |= models.Q(category__iexact=category)
+            category_filter |= models.Q(parameters__all_categories__icontains=category)
+            category_filter |= models.Q(
+                parameters__all_categories__iregex=boundary_pattern
+            )
+        qs = qs.filter(category_filter)
+
+    return qs
 
 
 class ProductGroupListView(generics.ListAPIView):
@@ -48,15 +97,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             self.request.user and self.request.user.is_staff
         ):
             qs = qs.filter(is_visible=True, is_active=True)
-
-        group_id = self.request.query_params.get("group")
-        if group_id:
-            try:
-                qs = qs.filter(group_id=int(group_id))
-            except (ValueError, TypeError):
-                raise ValidationError({"group": "Must be a valid integer ID."})
-
-        return qs
+        return _apply_product_filters(qs, self.request)
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -121,6 +162,21 @@ class AdminSeedView(APIView):
             )
 
         return Response({"message": "\n".join(messages)}, status=status.HTTP_200_OK)
+
+
+class ProductCountView(APIView):
+    """Public endpoint to return DB-level distinct count of products for selected filters."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        qs = Product.objects.all()
+
+        if not (request.user and request.user.is_staff):
+            qs = qs.filter(is_visible=True, is_active=True)
+
+        qs = _apply_product_filters(qs, request)
+        return Response({"count": qs.distinct().count()}, status=status.HTTP_200_OK)
 
 
 class AdminBulkDeleteView(APIView):

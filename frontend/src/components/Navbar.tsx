@@ -1,15 +1,18 @@
+import { useState } from 'react';
 import logoUrl from '../assets/digitalabutment-logo.png';
 import {
     ShoppingCartIcon,
     ArrowRightOnRectangleIcon,
     ClipboardDocumentListIcon,
     ShieldCheckIcon,
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
+import ConfirmModal from './ConfirmModal';
 
 export default function Navbar() {
     const location = useLocation();
@@ -20,12 +23,14 @@ export default function Navbar() {
     const totalItems = useCartStore((state: CartState) => state.getTotalItems());
     const items = useCartStore((state: CartState) => state.items);
     const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-    const handleLogout = () => {
+    const confirmLogout = () => {
         queryClient.clear();
         useCartStore.getState().clearCart();
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        setShowLogoutConfirm(false);
         navigate('/login', { replace: true });
     };
 
@@ -35,6 +40,7 @@ export default function Navbar() {
             : location.pathname === href || location.pathname.startsWith(href + '/');
 
     return (
+        <>
         <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 shadow-lg border-b border-cyan-500/20">
             <div className="px-3 sm:px-4 lg:px-6">
                 <div className="flex h-16 items-center justify-between">
@@ -124,9 +130,20 @@ export default function Navbar() {
                             </Link>
                         )}
 
+                        {isLoggedIn && (
+                            <Link
+                                to="/profile"
+                                aria-label="Profil"
+                                title="Profil"
+                                className={`flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isActive('/profile') ? 'bg-cyan-600 text-white' : 'text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white'}`}
+                            >
+                                <UserCircleIcon className="h-6 w-6" />
+                            </Link>
+                        )}
+
                         {isLoggedIn ? (
                             <button
-                                onClick={handleLogout}
+                                onClick={() => setShowLogoutConfirm(true)}
                                 aria-label="Odhlásiť sa"
                                 title="Odhlásiť sa"
                                 className="flex items-center justify-center p-3 rounded-lg text-cyan-100 bg-transparent hover:bg-red-700/40 hover:text-red-100 transition-all duration-200"
@@ -147,5 +164,14 @@ export default function Navbar() {
                 </div>
             </div>
         </nav>
+        <ConfirmModal
+            open={showLogoutConfirm}
+            title="Odhlásenie"
+            message="Naozaj sa chcete odhlásiť?"
+            confirmLabel="Odhlásiť sa"
+            onConfirm={confirmLogout}
+            onCancel={() => setShowLogoutConfirm(false)}
+        />
+        </>
     );
 }
