@@ -61,7 +61,28 @@ def _apply_product_filters(queryset, request):
             )
         qs = qs.filter(category_filter)
 
+    visible_param = request.query_params.get("is_visible")
+    if visible_param == "true":
+        qs = qs.filter(is_visible=True)
+    elif visible_param == "false":
+        qs = qs.filter(is_visible=False)
+
+    stock_param = request.query_params.get("stock")
+    if stock_param == "in":
+        qs = qs.filter(stock_quantity__gt=0)
+    elif stock_param == "out":
+        qs = qs.filter(stock_quantity=0)
+
     return qs
+
+
+def _is_admin_view(request):
+    """Return True when the request is explicitly flagged as an admin view by staff."""
+    return (
+        request.user
+        and request.user.is_staff
+        and request.query_params.get("admin_view") == "1"
+    )
 
 
 class ProductGroupListView(generics.ListAPIView):
@@ -93,9 +114,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Product.objects.all()
-        if self.action in ["list", "retrieve"] and not (
-            self.request.user and self.request.user.is_staff
-        ):
+        if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
             qs = qs.filter(is_visible=True, is_active=True)
         return _apply_product_filters(qs, self.request)
 
@@ -172,7 +191,7 @@ class ProductCountView(APIView):
     def get(self, request, *args, **kwargs):
         qs = Product.objects.all()
 
-        if not (request.user and request.user.is_staff):
+        if not _is_admin_view(request):
             qs = qs.filter(is_visible=True, is_active=True)
 
         qs = _apply_product_filters(qs, request)
@@ -220,6 +239,78 @@ class AdminBulkSetActiveView(APIView):
             is_active=bool(is_active)
         )
         return Response({"updated": updated_count}, status=status.HTTP_200_OK)
+
+
+class AdminBulkSetVisibleView(APIView):
+    """Admin endpoint: set is_visible on multiple products by ID."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        ids = request.data.get("ids", [])
+        is_visible = request.data.get("is_visible")
+        if not ids or not isinstance(ids, list):
+            return Response(
+                {"error": "ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if is_visible is None:
+            return Response(
+                {"error": "is_visible is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if isinstance(is_visible, str):
+            is_visible = is_visible.lower() in ("true", "1", "yes")
+        updated_count = Product.objects.filter(pk__in=ids).update(
+            is_visible=bool(is_visible)
+        )
+        return Response({"updated": updated_count}, status=status.HTTP_200_OK)
+
+
+class AdminProductIdsView(APIView):
+    """Admin endpoint: return all product IDs matching current filters (for bulk select-all)."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+        qs = Product.objects.all()
+        qs = _apply_product_filters(qs, request)
+        ids = list(qs.values_list("id", flat=True))
+        return Response({"ids": ids}, status=status.HTTP_200_OK)
+
+
+class AdminCategoriesView(APIView):
+    """Admin endpoint: return all unique product categories."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+        from django.db.models.functions import Trim
+
+        raw_cats = (
+            Product.objects.exclude(category="")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        params_cats = (
+            Product.objects.exclude(parameters__all_categories__isnull=True)
+            .exclude(parameters__all_categories="")
+            .values_list("parameters__all_categories", flat=True)
+        )
+
+        categories: set[str] = set()
+        for cat in raw_cats:
+            if cat:
+                categories.add(cat.strip())
+        for raw in params_cats:
+            if raw:
+                for part in raw.split(";"):
+                    part = part.strip()
+                    if part:
+                        categories.add(part)
+
+        return Response(
+            {"categories": sorted(categories)}, status=status.HTTP_200_OK
+        )
 
 
 class AdminProductImport(APIView):

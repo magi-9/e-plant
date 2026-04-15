@@ -5,6 +5,8 @@ from .views import (
     MyOrdersView,
     AdminOrdersListView,
     AdminOrderUpdateView,
+    AdminOrderInterventionUpdateView,
+    AdminOrderInterventionDeleteView,
     AdminStockReceiptView,
 )
 
@@ -16,6 +18,16 @@ urlpatterns = [
         "admin/orders/<int:pk>/",
         AdminOrderUpdateView.as_view(),
         name="admin_order_update",
+    ),
+    path(
+        "admin/orders/<int:pk>/intervention/",
+        AdminOrderInterventionUpdateView.as_view(),
+        name="admin_order_intervention_update",
+    ),
+    path(
+        "admin/orders/<int:pk>/intervention-delete/",
+        AdminOrderInterventionDeleteView.as_view(),
+        name="admin_order_intervention_delete",
     ),
     path(
         "admin/stock-receipts/",

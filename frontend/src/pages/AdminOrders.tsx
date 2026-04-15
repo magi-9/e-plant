@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdminOrders, updateOrderStatus, type Order } from '../api/orders';
+import {
+    adminInterventionDeleteOrder,
+    adminInterventionUpdateOrder,
+    getAdminOrders,
+    updateOrderStatus,
+    type AdminOrderInterventionUpdateData,
+    type Order
+} from '../api/orders';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
@@ -29,10 +36,73 @@ const PAYMENT_LABELS: Record<string, string> = {
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+type DraftItem = {
+    product_id: number;
+    product_name: string;
+    quantity: number;
+};
+
+type InterventionDraft = {
+    reason: string;
+    status: string;
+    notes: string;
+    customer_name: string;
+    email: string;
+    phone: string;
+    street: string;
+    city: string;
+    postal_code: string;
+    country: string;
+    is_company: boolean;
+    company_name: string;
+    ico: string;
+    dic: string;
+    dic_dph: string;
+    is_vat_payer: boolean;
+    payment_method: 'bank_transfer' | 'card';
+    items: DraftItem[];
+};
+
+const createDraftFromOrder = (order: Order): InterventionDraft => ({
+    reason: '',
+    status: order.status,
+    notes: order.notes ?? '',
+    customer_name: order.customer_name,
+    email: order.email,
+    phone: order.phone,
+    street: order.street,
+    city: order.city,
+    postal_code: order.postal_code,
+    country: (order.country || 'SK').toUpperCase(),
+    is_company: order.is_company,
+    company_name: order.company_name ?? '',
+    ico: order.ico ?? '',
+    dic: order.dic ?? '',
+    dic_dph: order.dic_dph ?? '',
+    is_vat_payer: order.is_vat_payer,
+    payment_method: order.payment_method === 'card' ? 'card' : 'bank_transfer',
+    items: order.items.map((item) => ({
+        product_id: item.product,
+        product_name: item.product_name,
+        quantity: item.quantity,
+    })),
+});
+
+const runDoubleConfirmation = (orderNumber: string, action: 'upraviť' | 'vymazať'): boolean => {
+    const firstConfirm = window.confirm(`Naozaj chcete ${action} objednávku #${orderNumber}?`);
+    if (!firstConfirm) {
+        return false;
+    }
+
+    const typed = window.prompt(`Pre potvrdenie zadajte číslo objednávky: ${orderNumber}`);
+    return (typed || '').trim().toUpperCase() === orderNumber.toUpperCase();
+};
+
 export default function AdminOrders() {
     const queryClient = useQueryClient();
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [drafts, setDrafts] = useState<Record<number, InterventionDraft>>({});
 
     const { data: orders, isLoading, error } = useQuery({
         queryKey: ['adminOrders'],
@@ -46,6 +116,26 @@ export default function AdminOrders() {
             toast.success('Stav objednávky bol aktualizovaný.');
         },
         onError: () => toast.error('Chyba pri aktualizácii stavu.'),
+    });
+
+    const interventionUpdateMutation = useMutation({
+        mutationFn: ({ id, payload }: { id: number; payload: AdminOrderInterventionUpdateData }) =>
+            adminInterventionUpdateOrder(id, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            toast.success('Objednávka bola upravená. Sklad aj zákazník boli aktualizovaní.');
+        },
+        onError: () => toast.error('Zásah sa nepodaril. Skontrolujte údaje.'),
+    });
+
+    const interventionDeleteMutation = useMutation({
+        mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+            adminInterventionDeleteOrder(id, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            toast.success('Objednávka bola vymazaná. Sklad bol vrátený a zákazník informovaný.');
+        },
+        onError: () => toast.error('Vymazanie objednávky sa nepodarilo.'),
     });
 
     if (isLoading) {
@@ -80,6 +170,91 @@ export default function AdminOrders() {
         acc[o.status] = (acc[o.status] ?? 0) + 1;
         return acc;
     }, {} as Record<string, number>);
+
+    const getDraft = (order: Order): InterventionDraft => {
+        return drafts[order.id] ?? createDraftFromOrder(order);
+    };
+
+    const updateDraft = (orderId: number, partial: Partial<InterventionDraft>) => {
+        setDrafts((prev) => {
+            const current = prev[orderId] ?? createDraftFromOrder(ordersList.find((o) => o.id === orderId) as Order);
+            return {
+                ...prev,
+                [orderId]: {
+                    ...current,
+                    ...partial,
+                },
+            };
+        });
+    };
+
+    const updateDraftItemQty = (order: Order, productId: number, quantity: number) => {
+        const current = getDraft(order);
+        const safeQty = Number.isFinite(quantity) ? Math.max(1, quantity) : 1;
+        updateDraft(order.id, {
+            items: current.items.map((item) =>
+                item.product_id === productId ? { ...item, quantity: safeQty } : item
+            ),
+        });
+    };
+
+    const submitInterventionUpdate = (order: Order) => {
+        const draft = getDraft(order);
+        if (draft.reason.trim().length < 8) {
+            toast.error('Dôvod zásahu je povinný (min. 8 znakov).');
+            return;
+        }
+
+        if (!runDoubleConfirmation(order.order_number, 'upraviť')) {
+            toast.error('Dvojité potvrdenie neprebehlo, zmena sa nevykonala.');
+            return;
+        }
+
+        interventionUpdateMutation.mutate({
+            id: order.id,
+            payload: {
+                reason: draft.reason.trim(),
+                status: draft.status,
+                notes: draft.notes,
+                customer_name: draft.customer_name,
+                email: draft.email,
+                phone: draft.phone,
+                street: draft.street,
+                city: draft.city,
+                postal_code: draft.postal_code,
+                country: draft.country,
+                is_company: draft.is_company,
+                company_name: draft.company_name,
+                ico: draft.ico,
+                dic: draft.dic,
+                dic_dph: draft.dic_dph,
+                is_vat_payer: draft.is_vat_payer,
+                payment_method: draft.payment_method,
+                items: draft.items.map((item) => ({
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                })),
+            },
+        });
+    };
+
+    const submitInterventionDelete = (order: Order) => {
+        const draft = getDraft(order);
+        if (draft.reason.trim().length < 8) {
+            toast.error('Pred vymazaním zadajte dôvod zásahu (min. 8 znakov).');
+            return;
+        }
+
+        if (!runDoubleConfirmation(order.order_number, 'vymazať')) {
+            toast.error('Dvojité potvrdenie neprebehlo, objednávka ostala zachovaná.');
+            return;
+        }
+
+        interventionDeleteMutation.mutate({
+            id: order.id,
+            reason: draft.reason.trim(),
+        });
+    };
 
     return (
         <div className="min-h-screen bg-slate-50 py-8">
@@ -153,6 +328,10 @@ export default function AdminOrders() {
                                 {/* Expanded detail */}
                                 {expandedOrder === order.id && (
                                     <div className="border-t border-slate-100 bg-slate-50 px-5 py-5">
+                                        {(() => {
+                                            const draft = getDraft(order);
+                                            return (
+                                                <>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
                                             {/* Customer */}
                                             <div>
@@ -227,9 +406,19 @@ export default function AdminOrders() {
                                                                         </div>
                                                                     )}
                                                                 </td>
-                                                                <td className="px-4 py-2.5 text-center text-slate-600">{item.quantity}</td>
+                                                                <td className="px-4 py-2.5 text-center text-slate-600">
+                                                                    <input
+                                                                        type="number"
+                                                                        min={1}
+                                                                        value={draft.items.find((d) => d.product_id === item.product)?.quantity ?? item.quantity}
+                                                                        onChange={(e) => updateDraftItemQty(order, item.product, Number(e.target.value))}
+                                                                        className="w-20 rounded border border-slate-300 px-2 py-1 text-center"
+                                                                    />
+                                                                </td>
                                                                 <td className="px-4 py-2.5 text-right text-slate-600">{Number(item.price_snapshot).toFixed(2)} €</td>
-                                                                <td className="px-4 py-2.5 text-right font-semibold text-slate-900">{Number(item.subtotal).toFixed(2)} €</td>
+                                                                <td className="px-4 py-2.5 text-right font-semibold text-slate-900">
+                                                                    {(Number(item.price_snapshot) * (draft.items.find((d) => d.product_id === item.product)?.quantity ?? item.quantity)).toFixed(2)} €
+                                                                </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -248,6 +437,83 @@ export default function AdminOrders() {
                                                 <span className="font-semibold not-italic text-slate-700">Poznámka: </span>{order.notes}
                                             </p>
                                         )}
+
+                                        <div className="mt-4 bg-white border border-amber-200 rounded-xl p-4">
+                                            <p className="text-xs font-semibold tracking-wide text-amber-700 uppercase">Admin zásah do objednávky</p>
+                                            <p className="text-sm text-slate-600 mt-1 mb-3">
+                                                Pri zásahu je povinný dôvod. Uloženie aj vymazanie vyžaduje dvojité potvrdenie.
+                                            </p>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                <div>
+                                                    <label className="text-xs font-medium text-slate-600">Stav po zásahu</label>
+                                                    <select
+                                                        value={draft.status}
+                                                        onChange={(e) => updateDraft(order.id, { status: e.target.value })}
+                                                        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                                                    >
+                                                        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                                                            <option key={key} value={key}>{label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-medium text-slate-600">Spôsob platby</label>
+                                                    <select
+                                                        value={draft.payment_method}
+                                                        onChange={(e) => updateDraft(order.id, { payment_method: e.target.value as 'bank_transfer' | 'card' })}
+                                                        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                                                    >
+                                                        <option value="bank_transfer">Bankový prevod</option>
+                                                        <option value="card">Karta</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-xs font-medium text-slate-600">Poznámka pre zákazníka</label>
+                                                <textarea
+                                                    value={draft.notes}
+                                                    onChange={(e) => updateDraft(order.id, { notes: e.target.value })}
+                                                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                    rows={2}
+                                                />
+                                            </div>
+
+                                            <div className="mt-3">
+                                                <label className="text-xs font-medium text-slate-600">Povinný dôvod zásahu</label>
+                                                <textarea
+                                                    value={draft.reason}
+                                                    onChange={(e) => updateDraft(order.id, { reason: e.target.value })}
+                                                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                                    rows={3}
+                                                    placeholder="Uveďte dôvod zásahu (min. 8 znakov)"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => submitInterventionUpdate(order)}
+                                                    disabled={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
+                                                    className="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
+                                                >
+                                                    Uložiť zásah (2x potvrdenie)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => submitInterventionDelete(order)}
+                                                    disabled={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
+                                                    className="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                                                >
+                                                    Vymazať objednávku (2x potvrdenie)
+                                                </button>
+                                            </div>
+                                        </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                             </div>

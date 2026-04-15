@@ -39,6 +39,9 @@ export interface ProductListParams {
     categories?: string[];
     limit?: number;
     offset?: number;
+    is_visible?: boolean;
+    stock?: 'in' | 'out';
+    admin_view?: '1';
 }
 
 export interface PaginatedResponse<T> {
@@ -117,4 +120,19 @@ export const importProductsCsv = async (file: File): Promise<{ message: string, 
         },
     });
     return response.data;
+};
+
+export const bulkSetVisibleProducts = async (ids: number[], is_visible: boolean): Promise<{ updated: number }> => {
+    const response = await client.post('/products/admin/bulk-set-visible/', { ids, is_visible });
+    return response.data;
+};
+
+export const getAdminProductIds = async (params?: Omit<ProductListParams, 'limit' | 'offset'>): Promise<number[]> => {
+    const response = await client.get<{ ids: number[] }>('/products/admin/all-ids/', { params });
+    return response.data.ids;
+};
+
+export const getAdminCategories = async (): Promise<string[]> => {
+    const response = await client.get<{ categories: string[] }>('/products/admin/categories/');
+    return response.data.categories;
 };

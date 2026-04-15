@@ -7,6 +7,9 @@ from .views import (
     AdminSeedView,
     AdminBulkDeleteView,
     AdminBulkSetActiveView,
+    AdminBulkSetVisibleView,
+    AdminProductIdsView,
+    AdminCategoriesView,
 )
 
 urlpatterns = [
@@ -42,5 +45,20 @@ urlpatterns = [
         "admin/bulk-set-active/",
         AdminBulkSetActiveView.as_view(),
         name="admin_product_bulk_set_active",
+    ),
+    path(
+        "admin/bulk-set-visible/",
+        AdminBulkSetVisibleView.as_view(),
+        name="admin_product_bulk_set_visible",
+    ),
+    path(
+        "admin/all-ids/",
+        AdminProductIdsView.as_view(),
+        name="admin_product_all_ids",
+    ),
+    path(
+        "admin/categories/",
+        AdminCategoriesView.as_view(),
+        name="admin_product_categories",
     ),
 ]
