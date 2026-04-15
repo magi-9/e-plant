@@ -1,5 +1,5 @@
 
-import { Fragment, useMemo, useState, useEffect } from 'react';
+import { Fragment, useMemo, useState, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,8 @@ import type { Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import toast from 'react-hot-toast';
+
+const VISIBLE_CATEGORIES_COUNT = 6;
 
 interface ProductDetailModalProps {
     open: boolean;
@@ -20,15 +22,17 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);
-    const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters?.options]);
+    const prevProductIdRef = useRef<number | null | undefined>(product?.id);
+    const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
 
-    // Reset action buttons when modal opens/closes
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Reset UI states when product changes (using ref to avoid setState in effect)
+    if (prevProductIdRef.current !== product?.id) {
+        prevProductIdRef.current = product?.id;
+        setIsAdding(false);
         setShowActionButtons(false);
-    }, [product?.id]); // Reset when different product is opened
+    }
 
     if (!product) return null;
 
@@ -36,8 +40,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         .split(';')
         .map((value) => value.trim())
         .filter(Boolean);
-    const visibleCategories = categoryList.slice(0, 6);
-    const hiddenCategories = categoryList.slice(6);
+    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
+    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
 
     const defaultVariantRef = hasVariants ? variantOptions[0]?.reference || '' : '';
 
@@ -48,7 +52,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const effectiveVariantRef = selectedVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
-    const effectiveStockQuantity = selectedVariant?.stock_quantity ?? product.stock_quantity;
+    const effectiveStockQuantity = (selectedVariant?.stock_quantity ?? product.stock_quantity) ?? 0;
     const descriptionParts = product.description
         ? buildDescriptionParts(
             product.description,
@@ -88,7 +92,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         setTimeout(() => {
             setIsAdding(false);
             setShowActionButtons(true);
-        }, 600);
+        }, 300);
     };
 
     return (
