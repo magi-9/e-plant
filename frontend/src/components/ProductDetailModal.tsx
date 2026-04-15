@@ -1,5 +1,5 @@
 
-import { Fragment, useMemo, useState, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
@@ -22,17 +22,17 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);
-    const prevProductIdRef = useRef<number | null | undefined>(product?.id);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
 
-    // Reset UI states when product changes (using ref to avoid setState in effect)
-    if (prevProductIdRef.current !== product?.id) {
-        prevProductIdRef.current = product?.id;
+    // Reset UI states when product changes (intentional state reset on product id change)
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsAdding(false);
         setShowActionButtons(false);
-    }
+        setSelectedVariantRef('');
+    }, [product?.id]);
 
     if (!product) return null;
 

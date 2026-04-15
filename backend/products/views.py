@@ -19,7 +19,9 @@ from .services import ProductService
 
 
 def _parse_categories(request):
+    # Handle both 'categories' and 'categories[]' (for array serialization compatibility)
     raw_values = request.query_params.getlist("categories")
+    raw_values += request.query_params.getlist("categories[]")
     categories = []
     for raw in raw_values:
         if not raw:
@@ -110,9 +112,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
-    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["name", "price", "category", "stock_quantity"]
-    search_fields = ["name", "description", "category", "parameters__all_categories"]
 
     def get_queryset(self):
         qs = Product.objects.all()

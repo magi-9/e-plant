@@ -38,8 +38,10 @@ export default function ProductsPage() {
     const buildParams = useCallback((offset: number): ProductListParams => {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
         if (searchQuery) params.search = searchQuery;
+        if (selectedCategories.length > 0) params.categories = selectedCategories;
+        if (priceSortOrder !== 'none') params.ordering = priceSortOrder === 'asc' ? 'price' : '-price';
         return params;
-    }, [searchQuery]);
+    }, [searchQuery, selectedCategories, priceSortOrder]);
 
     const {
         data,
@@ -50,7 +52,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', searchQuery],
+        queryKey: ['products', searchQuery, selectedCategories, priceSortOrder],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -64,7 +66,7 @@ export default function ProductsPage() {
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', searchQuery, selectedCategories],
+        queryKey: ['products-count', searchQuery, selectedCategories, priceSortOrder],
         queryFn: () => getProductCount({ search: searchQuery, categories: selectedCategories }),
     });
 

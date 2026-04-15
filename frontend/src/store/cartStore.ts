@@ -57,14 +57,16 @@ export const useCartStore = create<CartState>()(
                     }
                 });
 
-                window.dispatchEvent(
-                    new CustomEvent('cart:item-added', {
-                        detail: {
-                            productId: item.productId,
-                            name: item.name,
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                                new CustomEvent('cart:item-added', {
+                                detail: {
+                                    productId: item.productId,
+                                    name: item.name,
                         },
                     })
-                );
+                    );
+                }
             },
 
             removeItem: (productId, variantReference) => {
@@ -101,7 +103,7 @@ export const useCartStore = create<CartState>()(
                     ),
                 }));
 
-                if (isIncrease) {
+                if (isIncrease && typeof window !== 'undefined') {
                     window.dispatchEvent(
                         new CustomEvent('cart:item-added', {
                             detail: {
