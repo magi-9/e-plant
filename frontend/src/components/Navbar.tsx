@@ -6,6 +6,7 @@ import {
     ClipboardDocumentListIcon,
     ShieldCheckIcon,
     UserCircleIcon,
+    InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -84,6 +85,14 @@ export default function Navbar() {
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Link
+                            to="/about"
+                            aria-label="O nás"
+                            title="O nás a GDPR informácie"
+                            className={`flex items-center justify-center p-3 rounded-lg transition-all ${isActive('/about') ? 'bg-cyan-600 text-white' : 'text-cyan-100 hover:bg-slate-700/50 hover:text-white'}`}
+                        >
+                            <InformationCircleIcon className="h-6 w-6" />
+                        </Link>
                         {!userIsAdmin && (
                             <div className="relative group/cart">
                                 <Link
