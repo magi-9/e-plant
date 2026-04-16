@@ -105,7 +105,7 @@ class ProductGroupListView(generics.ListAPIView):
         return ProductGroup.objects.annotate(
             product_count=Count(
                 "products",
-                filter=models.Q(products__is_visible=True),
+                filter=models.Q(products__is_visible=True, products__is_active=True),
             )
         ).order_by("name")
 
@@ -551,6 +551,14 @@ class ProductInquiryView(APIView):
         if len(message) > 2000:
             return Response(
                 {"error": "Message is too long (max 2000 characters)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "product_id must be a valid integer."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

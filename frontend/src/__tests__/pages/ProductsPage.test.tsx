@@ -9,7 +9,7 @@ describe('ProductsPage - Scrolling and Animation Features', () => {
     });
 
     describe('Search Debounce', () => {
-        it('should debounce search input with 300ms delay', () => {
+        it('should debounce search input with 400ms delay', () => {
             vi.useFakeTimers();
             const timerFn = vi.fn();
             let timeoutId: ReturnType<typeof setTimeout>;
@@ -19,7 +19,7 @@ describe('ProductsPage - Scrolling and Animation Features', () => {
                 clearTimeout(timeoutId);
                 timeoutId = setTimeout(() => {
                     timerFn(value);
-                }, 300);
+                }, 400);
             };
 
             // Type quickly
@@ -32,7 +32,7 @@ describe('ProductsPage - Scrolling and Animation Features', () => {
             expect(timerFn).not.toHaveBeenCalled();
 
             // Fast-forward time
-            vi.advanceTimersByTime(300);
+            vi.advanceTimersByTime(400);
 
             // Now it should have fired with the final value
             expect(timerFn).toHaveBeenCalledWith('test');
@@ -45,6 +45,15 @@ describe('ProductsPage - Scrolling and Animation Features', () => {
     describe('Scroll to Top FAB Animation', () => {
         it('should show FAB when scrollY > 400px', () => {
             let showScrollTop = false;
+            const originalScrollYDescriptor = Object.getOwnPropertyDescriptor(window, 'scrollY');
+
+            const setScrollY = (value: number) => {
+                Object.defineProperty(window, 'scrollY', {
+                    value,
+                    writable: true,
+                    configurable: true,
+                });
+            };
 
             // Simulate scroll handler logic
             const onScroll = () => {
@@ -52,17 +61,21 @@ describe('ProductsPage - Scrolling and Animation Features', () => {
             };
 
             // Test scroll position logic
-            window.scrollY = 300;
+            setScrollY(300);
             onScroll();
             expect(showScrollTop).toBe(false);
 
-            window.scrollY = 500;
+            setScrollY(500);
             onScroll();
             expect(showScrollTop).toBe(true);
 
-            window.scrollY = 100;
+            setScrollY(100);
             onScroll();
             expect(showScrollTop).toBe(false);
+
+            if (originalScrollYDescriptor) {
+                Object.defineProperty(window, 'scrollY', originalScrollYDescriptor);
+            }
         });
 
         it('should use passive scroll listener', () => {

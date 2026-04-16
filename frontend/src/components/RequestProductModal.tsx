@@ -85,6 +85,11 @@ export default function RequestProductModal({
             return;
         }
 
+        if (message.length > 2000) {
+            toast.error('Správa je príliš dlhá (max 2000 znakov).');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const result = await sendProductInquiry(productId, message);
@@ -135,6 +140,7 @@ export default function RequestProductModal({
                     <h2 className="text-xl font-bold text-slate-900">Požiadať o produkt</h2>
                     <button
                         onClick={handleClose}
+                        aria-label="Zavrieť"
                         className="text-slate-400 hover:text-slate-600 transition"
                     >
                         <XMarkIcon className="h-6 w-6" />
@@ -179,6 +185,7 @@ export default function RequestProductModal({
                                 setMessage(e.target.value);
                                 setIsDefaultMessage(false);
                             }}
+                            maxLength={2000}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
                             rows={7}
                         />

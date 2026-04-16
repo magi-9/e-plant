@@ -47,6 +47,29 @@ def test_product_inquiry_requires_valid_product():
 
 
 @pytest.mark.django_db
+def test_product_inquiry_rejects_non_numeric_product_id():
+    """Non-numeric product_id should fail with 400, not 500."""
+    user = CustomUser.objects.create_user(
+        email="test@example.com",
+        password="testpass123",
+        first_name="Test",
+        last_name="User",
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/products/inquiry/",
+        {
+            "product_id": "abc",
+            "message": "This is a test message with enough characters",
+        },
+        format="json",
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
 def test_product_inquiry_requires_minimum_message_length():
     """Product inquiry with message < 10 chars should fail."""
     product = Product.objects.create(

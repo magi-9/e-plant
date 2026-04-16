@@ -20,11 +20,12 @@ const getCategoryList = (product: Product): string[] => {
 };
 
 const PAGE_SIZE = 20;
-const SEO_SITE_URL = 'https://digitalabutment.ebringer.sk';
+const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const filtersRef = useRef<HTMLDivElement>(null);
+    const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     
@@ -561,6 +562,18 @@ export default function ProductsPage() {
                                                 }
 
                                                 if (product.stock_quantity <= 0) {
+                                                    if (!isLoggedIn) {
+                                                        return (
+                                                            <Link
+                                                                to="/login"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
+                                                            >
+                                                                Prihláste sa
+                                                            </Link>
+                                                        );
+                                                    }
+
                                                     return (
                                                         <button
                                                             onClick={(e) => {
