@@ -61,12 +61,22 @@ class StockReceiptService:
                 and locked_product.parameters.get("type") == "wildcard_group"
             ):
                 options = locked_product.parameters.get("options", [])
+                matched_variant = False
                 for opt in options:
                     if opt.get("reference") == variant_reference:
                         opt["stock_quantity"] = (
                             opt.get("stock_quantity") or 0
                         ) + quantity
+                        matched_variant = True
                         break
+
+                if not matched_variant:
+                    raise ValidationError(
+                        {
+                            "variant_reference": "Variant reference is invalid for this product."
+                        }
+                    )
+
                 locked_product.parameters = {
                     **locked_product.parameters,
                     "options": options,

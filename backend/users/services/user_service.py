@@ -8,11 +8,17 @@ User = get_user_model()
 class UserService:
     @staticmethod
     def register_user(
-        *, email, password, is_active=False, send_verification_email=True
+        *,
+        email,
+        password,
+        title="",
+        is_active=False,
+        send_verification_email=True,
     ):
         user = User.objects.create_user(
             email=email,
             password=password,
+            title=title,
             is_active=is_active,
         )
 

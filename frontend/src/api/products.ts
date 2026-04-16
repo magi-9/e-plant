@@ -84,10 +84,9 @@ export const deleteProduct = async (id: number): Promise<void> => {
     await client.delete(`/products/admin/${id}/delete/`);
 };
 
-export const sendProductInquiry = async (productId: number, productName: string, message: string): Promise<{ success: boolean; message: string }> => {
+export const sendProductInquiry = async (productId: number, message: string): Promise<{ success: boolean; message: string }> => {
     const response = await client.post('/products/inquiry/', {
         product_id: productId,
-        product_name: productName,
         message,
     });
     return response.data;

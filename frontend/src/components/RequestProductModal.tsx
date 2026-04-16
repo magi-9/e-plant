@@ -87,8 +87,7 @@ export default function RequestProductModal({
 
         setIsSubmitting(true);
         try {
-            const productLabel = productReference ? `${productName} (${productReference})` : productName;
-            const result = await sendProductInquiry(productId, productLabel, message);
+            const result = await sendProductInquiry(productId, message);
             if (result.success) {
                 toast.success('Dotaz bol úspešne odoslaný na sklad.');
                 handleClose();

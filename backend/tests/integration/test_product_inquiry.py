@@ -16,7 +16,6 @@ def test_product_inquiry_requires_authentication():
         "/api/products/inquiry/",
         {
             "product_id": 1,
-            "product_name": "Test Product",
             "message": "This is a test message",
         },
         format="json",
@@ -40,7 +39,6 @@ def test_product_inquiry_requires_valid_product():
         "/api/products/inquiry/",
         {
             "product_id": 999,  # Non-existent product
-            "product_name": "Test Product",
             "message": "This is a test message with enough characters",
         },
         format="json",
@@ -70,7 +68,6 @@ def test_product_inquiry_requires_minimum_message_length():
         "/api/products/inquiry/",
         {
             "product_id": product.id,
-            "product_name": product.name,
             "message": "short",  # Only 5 chars
         },
         format="json",
@@ -106,7 +103,6 @@ def test_product_inquiry_success():
         "/api/products/inquiry/",
         {
             "product_id": product.id,
-            "product_name": product.name,
             "message": "I am very interested in this product and would like to know when it will be back in stock",
         },
         format="json",
@@ -139,7 +135,6 @@ def test_product_inquiry_respects_message_limit():
         "/api/products/inquiry/",
         {
             "product_id": product.id,
-            "product_name": product.name,
             "message": long_message,
         },
         format="json",

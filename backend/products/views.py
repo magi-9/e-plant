@@ -113,7 +113,7 @@ class ProductGroupListView(generics.ListAPIView):
 class ProductViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Product CRUD operations.
-    - List/Retrieve: AllowAny (public) — returns only is_visible=True and is_active=True products
+    - List/Retrieve: AllowAny (public) — returns only is_visible=True products
     - Create/Update/Delete: IsAdminUser (admin only) — returns all products
     """
 
@@ -527,7 +527,6 @@ class ProductInquiryView(APIView):
         Request body:
         {
             "product_id": int,
-            "product_name": str,
             "message": str
         }
 
@@ -535,12 +534,11 @@ class ProductInquiryView(APIView):
             {"success": bool, "message": str}
         """
         product_id = request.data.get("product_id")
-        product_name = request.data.get("product_name", "").strip()
         message = request.data.get("message", "").strip()
 
-        if not product_id or not product_name or not message:
+        if not product_id or not message:
             return Response(
-                {"error": "product_id, product_name, and message are required."},
+                {"error": "product_id and message are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -556,13 +554,17 @@ class ProductInquiryView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Verify product exists
+        # Verify product exists and use canonical public identifier only.
         try:
-            Product.objects.get(id=product_id)
+            product = Product.objects.only("id", "reference").get(id=product_id)
         except Product.DoesNotExist:
             return Response(
                 {"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND
             )
+
+        product_label = (
+            product.reference.strip() if product.reference else f"ID:{product.id}"
+        )
 
         # Get customer name from profile
         customer_name = (
@@ -573,7 +575,7 @@ class ProductInquiryView(APIView):
         # Send email
         service = ProductInquiryEmailService()
         success = service.send_product_inquiry(
-            product_name=product_name,
+            product_name=product_label,
             customer_name=customer_name,
             customer_email=customer_email,
             message=message,
