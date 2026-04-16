@@ -91,6 +91,7 @@ class AdminStockReceiptView(APIView):
             quantity=data["quantity"],
             received_by=request.user,
             notes=data.get("notes", ""),
+            variant_reference=data.get("variant_reference", ""),
         )
         product.refresh_from_db()
         return Response(

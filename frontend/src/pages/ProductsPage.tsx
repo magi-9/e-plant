@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
+import { Helmet } from 'react-helmet-async';
 import { getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
+import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import toast from 'react-hot-toast';
 
@@ -18,10 +20,12 @@ const getCategoryList = (product: Product): string[] => {
 };
 
 const PAGE_SIZE = 20;
+const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const filtersRef = useRef<HTMLDivElement>(null);
+    const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     
@@ -29,17 +33,26 @@ export default function ProductsPage() {
     const [openModal, setOpenModal] = useState(false);
     const [addingId, setAddingId] = useState<number | null>(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [productToRequest, setProductToRequest] = useState<Product | null>(null);
+    const [openRequestModal, setOpenRequestModal] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
+
+    // Debounce search to avoid re-fetching on every keystroke
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // Build query params with filters
     const buildParams = useCallback((offset: number): ProductListParams => {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
-        if (searchQuery) params.search = searchQuery;
+        if (debouncedSearch) params.search = debouncedSearch;
         return params;
-    }, [searchQuery]);
+    }, [debouncedSearch]);
 
     const {
         data,
@@ -50,7 +63,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', searchQuery],
+        queryKey: ['products', debouncedSearch],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -61,11 +74,13 @@ export default function ProductsPage() {
             return undefined;
         },
         initialPageParam: 0,
+        placeholderData: keepPreviousData,
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', searchQuery, selectedCategories],
-        queryFn: () => getProductCount({ search: searchQuery, categories: selectedCategories }),
+        queryKey: ['products-count', debouncedSearch, selectedCategories],
+        queryFn: () => getProductCount({ search: debouncedSearch, categories: selectedCategories }),
+        placeholderData: keepPreviousData,
     });
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
@@ -141,7 +156,8 @@ export default function ProductsPage() {
         }, 600);
     };
 
-    if (isLoading) return (
+    // Only show full-page spinner on very first load (no data yet, not a search refetch)
+    if (isLoading && !data) return (
         <div className="flex justify-center items-center min-h-screen bg-slate-50">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
         </div>
@@ -183,13 +199,73 @@ export default function ProductsPage() {
     }
 
     const visibleCount = databaseProductCount ?? filteredProducts.length;
+    const canonicalUrl = `${SEO_SITE_URL}${window.location.pathname}`;
+    const socialImageUrl = `${SEO_SITE_URL}/digitalabutment-logo.png`;
+
+    // Generate structured data for products - computed on each render
+    const schemaData = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'Digital Abutment Solutions Products',
+        description: 'Browse our complete catalog of Dynamic Abutment Solutions products including implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions for modern implantology.',
+        url: canonicalUrl,
+        image: socialImageUrl,
+        mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: filteredProducts.length,
+            itemListElement: filteredProducts.slice(0, 12).map((product, index) => ({
+                '@type': 'ListItem',
+                position: index + 1,
+                name: product.name,
+                description: product.category,
+                image: product.image || socialImageUrl,
+                offers: {
+                    '@type': 'Offer',
+                    price: product.price,
+                    priceCurrency: 'EUR',
+                    availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+                }
+            }))
+        }
+    };
 
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">
+            <Helmet>
+                <title>Digital Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
+                <meta name="description" content="Shop premium Dynamic Abutment Solutions products: TiBase scanning bodies, Multi-Unit abutments, custom CAD/CAM solutions, and more. Official distributor for Slovakia." />
+                <meta name="keywords" content="abutment, implant components, TiBase, Multi-Unit abutment, CAD/CAM, implantology, dental surgery" />
+                <meta name="robots" content="index, follow" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link rel="canonical" href={canonicalUrl} />
+                
+                {/* Open Graph - Social Media */}
+                <meta property="og:type" content="website" />
+                <meta property="og:title" content="Digital Abutment Solutions Products" />
+                <meta property="og:description" content="Browse premium implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions." />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta property="og:image" content={socialImageUrl} />
+                <meta property="og:site_name" content="Digital Abutment Solutions" />
+                
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="Digital Abutment Solutions" />
+                <meta name="twitter:description" content="Premium implant components and solutions for modern implantology." />
+                <meta name="twitter:image" content={socialImageUrl} />
+                
+                {/* Structured Data */}
+                <script type="application/ld+json">
+                    {JSON.stringify(schemaData)}
+                </script>
+            </Helmet>
+            
             {/* Left Sidebar - Categories (Desktop only) */}
             <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
                 <div className="p-5">
-                    <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-[0.08em]">Kategórie</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                        <TagIcon className="h-5 w-5 text-cyan-600" />
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em]">Kategórie</h3>
+                    </div>
                     <div className="space-y-1.5">
                         <button
                             onClick={() => {
@@ -286,7 +362,7 @@ export default function ProductsPage() {
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                         <input
                             type="text"
-                            placeholder="Hľadať produkt..."
+                            placeholder="🔍 Hľadať produkt..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
@@ -301,15 +377,6 @@ export default function ProductsPage() {
                             </button>
                         )}
                     </div>
-                    {/* Info Button */}
-                    <Link
-                        to="/about"
-                        className="flex items-center justify-center p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:text-cyan-600 hover:border-cyan-300 hover:bg-cyan-50 transition-all"
-                        title="O nás a GDPR informácie"
-                        aria-label="O nás"
-                    >
-                        <InformationCircleIcon className="h-5 w-5" />
-                    </Link>
                     {/* Sort */}
                     <button
                         onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
@@ -353,8 +420,11 @@ export default function ProductsPage() {
                 )}
 
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
-                    <span className="text-sm text-slate-600">{visibleCount} produktov</span>
+                    <div className="flex items-center gap-2">
+                        <SparklesIcon className="h-6 w-6 text-cyan-600" />
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
+                    </div>
+                    <span className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">{visibleCount} produktov</span>
                 </div>
 
                 {filteredProducts.length === 0 && !isFetching ? (
@@ -373,7 +443,7 @@ export default function ProductsPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                        <div className={`grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
                                 <div
                                     key={product.id}
@@ -403,24 +473,46 @@ export default function ProductsPage() {
                                     <div className="p-4 flex-1 flex flex-col">
                                         <div className="mb-2 min-h-[5.5rem]">
                                             <div className="min-h-[5.5rem]">
-                                                <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem]">
-                                                    {product.name}
-                                                </h3>
+                                                <div className="flex items-start gap-2">
+                                                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
+                                                        {product.name}
+                                                    </h3>
+                                                    {product.stock_quantity >= 5 ? (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" title="Skladom (5+ ks)" />
+                                                    ) : product.stock_quantity >= 1 ? (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" title="Posledné kusy (1–4 ks)" />
+                                                    ) : (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" title="Vypredané" />
+                                                    )}
+                                                </div>
                                                 {product.reference && (
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
-                                                <p className="mt-1 text-xs text-cyan-700 font-medium line-clamp-1">
-                                                    {getCategoryList(product).join(', ') || product.category}
-                                                </p>
+                                                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                    <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
+                                                    <p className="text-xs text-cyan-700 font-medium line-clamp-1">
+                                                        {getCategoryList(product).join(', ') || product.category}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
-                                                <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                                <div className="flex items-center gap-2">
+                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                    <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                                </div>
                                             ) : (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
+                                                    <SparklesIcon className="h-3 w-3" />
                                                     Členská cena
+                                                </span>
+                                            )}
+                                            {product.stock_quantity > 0 && product.stock_quantity <= 5 && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-yellow-50 text-yellow-800">
+                                                    <ExclamationTriangleIcon className="h-3 w-3" />
+                                                    Málo
                                                 </span>
                                             )}
                                         </div>
@@ -469,15 +561,40 @@ export default function ProductsPage() {
                                                     );
                                                 }
 
+                                                if (product.stock_quantity <= 0) {
+                                                    if (!isLoggedIn) {
+                                                        return (
+                                                            <Link
+                                                                to="/login"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
+                                                            >
+                                                                Prihláste sa
+                                                            </Link>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setProductToRequest(product);
+                                                                setOpenRequestModal(true);
+                                                            }}
+                                                            className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-500 hover:bg-slate-600 focus:outline-none transition-all duration-300 h-10"
+                                                        >
+                                                            Požiadať produkt
+                                                        </button>
+                                                    );
+                                                }
+
                                                 return (
                                                     <button
                                                         onClick={(e) => handleAddToCart(e, product)}
-                                                        disabled={addingId === product.id || product.stock_quantity <= 0}
+                                                        disabled={addingId === product.id}
                                                         className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
                                                             ? 'bg-emerald-500 scale-105'
-                                                            : product.stock_quantity <= 0
-                                                                ? 'bg-slate-400 cursor-not-allowed'
-                                                                : 'bg-cyan-600 hover:bg-cyan-700'
+                                                            : 'bg-cyan-600 hover:bg-cyan-700'
                                                             }`}
                                                     >
                                                         {addingId === product.id ? (
@@ -490,7 +607,7 @@ export default function ProductsPage() {
                                                         ) : (
                                                             <>
                                                                 <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                                {product.stock_quantity <= 0 ? 'Požiadať produkt' : 'Pridať do košíka'}
+                                                                Pridať do košíka
                                                             </>
                                                         )}
                                                     </button>
@@ -533,6 +650,14 @@ export default function ProductsPage() {
                 open={openModal}
                 setOpen={setOpenModal}
                 product={selectedProduct}
+            />
+
+            <RequestProductModal
+                open={openRequestModal}
+                onClose={() => setOpenRequestModal(false)}
+                productId={productToRequest?.id || 0}
+                productName={productToRequest?.name || ''}
+                productReference={productToRequest?.reference || ''}
             />
 
             {/* Scroll to top FAB */}

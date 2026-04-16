@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import ShopLayout from './components/ShopLayout';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
@@ -30,9 +31,10 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Toaster position="top-right" />
-        <Routes>
+      <HelmetProvider>
+        <BrowserRouter>
+          <Toaster position="top-right" />
+          <Routes>
           {/* Representative page — no navbar, no footer */}
           <Route path="/" element={<HomePage />} />
 
@@ -62,6 +64,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </HelmetProvider>
     </QueryClientProvider>
   );
 }

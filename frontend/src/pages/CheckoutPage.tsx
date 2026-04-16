@@ -57,6 +57,7 @@ export default function CheckoutPage() {
     const [step, setStep] = useState<1 | 2>(1);
     const formInitialized = useRef(false);
     const [formData, setFormData] = useState({
+        title: '',
         first_name: '',
         last_name: '',
         email: '',
@@ -83,6 +84,7 @@ export default function CheckoutPage() {
             formInitialized.current = true;
             setFormData(prev => ({
                 ...prev,
+                title: userProfile.title || '',
                 first_name: userProfile.first_name || '',
                 last_name: userProfile.last_name || '',
                 email: userProfile.email || '',
@@ -171,7 +173,7 @@ export default function CheckoutPage() {
                 .join('\n\n');
 
             const orderData: CreateOrderData = {
-                customer_name: `${formData.first_name} ${formData.last_name}`.trim(),
+                customer_name: `${formData.title} ${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email,
                 phone: normalizedPhone,
                 street: combinedStreet,
@@ -198,6 +200,7 @@ export default function CheckoutPage() {
             if (saveToProfile && isLoggedIn) {
                 try {
                     await client.patch('/auth/me/', {
+                        title: formData.title,
                         first_name: formData.first_name,
                         last_name: formData.last_name,
                         phone: normalizedPhone,
@@ -344,7 +347,19 @@ export default function CheckoutPage() {
                         )}
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titul</label>
+                                    <input
+                                        type="text"
+                                        id="title"
+                                        name="title"
+                                        value={formData.title}
+                                        onChange={handleChange}
+                                        placeholder="napr. MUDr., Ing., Bc."
+                                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
+                                    />
+                                </div>
                                 <div>
                                     <label htmlFor="first_name" className="block text-sm font-medium text-slate-700">Meno *</label>
                                     <input

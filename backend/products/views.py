@@ -13,6 +13,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from services.email import ProductInquiryEmailService
+
 from .models import Product, ProductGroup
 from .serializers import ProductGroupSerializer, ProductSerializer
 from .services import ProductService
@@ -50,6 +52,10 @@ def _apply_product_filters(queryset, request):
             | models.Q(description__icontains=search)
             | models.Q(category__icontains=search)
             | models.Q(parameters__all_categories__icontains=search)
+            | models.Q(reference__icontains=search)
+            | models.Q(
+                parameters__options__icontains=search
+            )  # catches variant reference numbers
         )
 
     categories = _parse_categories(request)
@@ -506,4 +512,90 @@ class AdminProductImport(APIView):
             return Response(
                 {"error": f"Error processing file: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ProductInquiryView(APIView):
+    """Public endpoint to send product inquiry emails."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Send a product inquiry email to warehouse.
+
+        Request body:
+        {
+            "product_id": int,
+            "message": str
+        }
+
+        Returns:
+            {"success": bool, "message": str}
+        """
+        product_id = request.data.get("product_id")
+        message = request.data.get("message", "").strip()
+
+        if not product_id or not message:
+            return Response(
+                {"error": "product_id and message are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(message) < 10:
+            return Response(
+                {"error": "Message must be at least 10 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(message) > 2000:
+            return Response(
+                {"error": "Message is too long (max 2000 characters)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "product_id must be a valid integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify product exists and use canonical public identifier only.
+        try:
+            product = Product.objects.only("id", "reference").get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        product_label = (
+            product.reference.strip() if product.reference else f"ID:{product.id}"
+        )
+
+        # Get customer name from profile
+        customer_name = (
+            request.user.get_full_name() or request.user.username or request.user.email
+        )
+        customer_email = request.user.email
+
+        # Send email
+        service = ProductInquiryEmailService()
+        success = service.send_product_inquiry(
+            product_name=product_label,
+            customer_name=customer_name,
+            customer_email=customer_email,
+            message=message,
+        )
+
+        if success:
+            return Response(
+                {"success": True, "message": "Dotaz bol úspešne odoslaný."},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {"error": "Došlo k chybe pri odoslaní dotazu."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProducts, createProduct, updateProduct, deleteProduct, importProductsCsv, bulkDeleteProducts, bulkSetVisibleProducts, getAdminProductIds, getAdminCategories } from '../api/products';
 import { receiveStock } from '../api/orders';
 import { PencilIcon, TrashIcon, PlusIcon, ArrowUpTrayIcon, ArchiveBoxArrowDownIcon } from '@heroicons/react/24/outline';
-import type { Product } from '../api/products';
+import type { Product, ProductListParams } from '../api/products';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -32,7 +32,7 @@ export default function AdminProducts() {
     const [viewModalOpen, setViewModalOpen] = useState(false);
 
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
-    const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '' });
+    const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
 
     // Form states
     const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_active: true, is_visible: true });
@@ -57,24 +57,24 @@ export default function AdminProducts() {
     }, [debouncedSearch, sortBy, categoryFilter, visibleFilter, stockFilter]);
 
     const invalidateProductQueries = () => {
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        queryClient.invalidateQueries({ queryKey: ['products-admin'] });
+        queryClient.invalidateQueries({ queryKey: ['products'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
     };
 
-    const buildAdminParams = (page: number) => ({
+    const adminQueryParams = useMemo<ProductListParams>(() => ({
         search: debouncedSearch,
         ordering: sortBy,
         limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
+        offset: currentPage * PAGE_SIZE,
         admin_view: '1' as const,
         ...(categoryFilter !== 'all' ? { categories: [categoryFilter] } : {}),
         ...(visibleFilter === 'visible' ? { is_visible: true } : visibleFilter === 'hidden' ? { is_visible: false } : {}),
         ...(stockFilter !== 'all' ? { stock: stockFilter as 'in' | 'out' } : {}),
-    });
+    }), [debouncedSearch, sortBy, currentPage, categoryFilter, visibleFilter, stockFilter]);
 
-    const { data: paginatedData, isLoading } = useQuery({
-        queryKey: ['products-admin', debouncedSearch, sortBy, currentPage, categoryFilter, visibleFilter, stockFilter],
-        queryFn: () => getProducts(buildAdminParams(currentPage)),
+    const { data: paginatedData, isLoading, isFetching } = useQuery({
+        queryKey: ['products-admin', adminQueryParams],
+        queryFn: () => getProducts(adminQueryParams),
     });
 
     const { data: adminCategories } = useQuery({
@@ -85,17 +85,10 @@ export default function AdminProducts() {
 
     const products = useMemo(() => paginatedData?.results || [], [paginatedData]);
     const totalCount = paginatedData?.count || 0;
-    const totalPages = totalCount > 0 ? Math.ceil(totalCount / PAGE_SIZE) : 0;
-
-    useEffect(() => {
-        if (totalPages > 0 && currentPage >= totalPages) {
-            setCurrentPage(totalPages - 1);
-        }
-    }, [currentPage, totalPages]);
 
     const categories = adminCategories || [];
 
-    const filteredProducts = products;
+    const displayedCount = products.length;
 
     const receiveStockMutation = useMutation({
         mutationFn: receiveStock,
@@ -103,7 +96,7 @@ export default function AdminProducts() {
             invalidateProductQueries();
             toast.success(result.message);
             setReceiptProduct(null);
-            setReceiptForm({ batch_number: '', quantity: 1, notes: '' });
+            setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
         },
         onError: () => toast.error('Chyba pri naskladňovaní.'),
     });
@@ -153,8 +146,23 @@ export default function AdminProducts() {
         onError: () => toast.error('Chyba pri výbere všetkých produktov.'),
     });
 
+    const totalPages = totalCount > 0 ? Math.ceil(totalCount / PAGE_SIZE) : 0;
+
+    useEffect(() => {
+        if (totalPages > 0 && currentPage >= totalPages) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [totalPages, currentPage]);
+
+    const goToPreviousPage = () => setCurrentPage((p) => Math.max(0, p - 1));
+    const goToNextPage = () => setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
+
+    const displayPage = currentPage + 1;
+    const canGoPrevious = currentPage > 0;
+    const canGoNext = currentPage < totalPages - 1;
+
     const someSelected = selectedIds.size > 0;
-    const allPagesSelected = selectedIds.size === totalCount && totalCount > 0;
+    const allPagesSelected = someSelected && selectedIds.size === totalCount;
 
     const toggleSelectAll = () => {
         if (someSelected) {
@@ -247,20 +255,6 @@ export default function AdminProducts() {
         }
     };
 
-    const goToPreviousPage = () => {
-        setCurrentPage((page) => Math.max(0, page - 1));
-        setSelectedIds(new Set());
-    };
-
-    const goToNextPage = () => {
-        setCurrentPage((page) => Math.min(Math.max(totalPages - 1, 0), page + 1));
-        setSelectedIds(new Set());
-    };
-
-    const displayPage = totalPages === 0 ? 0 : currentPage + 1;
-    const canGoPrevious = currentPage > 0;
-    const canGoNext = totalPages > 0 && currentPage < totalPages - 1;
-
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -282,11 +276,7 @@ export default function AdminProducts() {
                     </div>
                 </div>
 
-                {isLoading ? (
-                    <div className="text-center p-8 text-gray-500">Sťahujem katalóg...</div>
-                ) : (
-                    <>
-                        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
                                 <div className="xl:col-span-2">
                                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Vyhľadávanie</label>
@@ -294,7 +284,7 @@ export default function AdminProducts() {
                                         type="search"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Názov, popis, kategória"
+                                        placeholder="Názov, ref. číslo, kategória..."
                                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </div>
@@ -342,7 +332,10 @@ export default function AdminProducts() {
                             </div>
                             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                                 <div className="text-sm text-gray-600">
-                                    Nájdených <span className="font-semibold text-gray-900">{totalCount}</span> produktov
+                                    Zobrazené <span className="font-semibold text-gray-900">{displayedCount}</span>
+                                    {' '}z{' '}
+                                    <span className="font-semibold text-gray-900">{totalCount}</span> produktov
+                                    {isFetching && <span className="ml-2 text-xs text-blue-600">Aktualizujem...</span>}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sklad</label>
@@ -370,39 +363,43 @@ export default function AdminProducts() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3">
-                                <div className="text-sm text-gray-600">
-                                    Stránka <span className="font-semibold text-gray-900">{displayPage}</span> z <span className="font-semibold text-gray-900">{totalPages}</span>
-                                    <span className="ml-2 text-gray-400">({totalCount} produktov)</span>
+                            {totalPages > 1 && (
+                                <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
+                                    <p className="text-sm text-gray-600">
+                                        Strana <span className="font-semibold">{displayPage}</span> z <span className="font-semibold">{totalPages}</span>
+                                        <span className="ml-2 text-gray-400">({totalCount} produktov)</span>
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={goToPreviousPage}
+                                            disabled={!canGoPrevious || isFetching}
+                                            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            ← Predchádzajúca
+                                        </button>
+                                        <button
+                                            onClick={goToNextPage}
+                                            disabled={!canGoNext || isFetching}
+                                            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                        >
+                                            Ďalšia →
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={goToPreviousPage}
-                                        disabled={!canGoPrevious || isLoading}
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        Predchádzajúca
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={goToNextPage}
-                                        disabled={!canGoNext || isLoading}
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        Ďalšia
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                            )}
+                </div>
 
+                {isLoading && !paginatedData ? (
+                    <div className="bg-white shadow overflow-auto sm:rounded-lg">
+                        <div className="p-8 text-center text-gray-500 animate-pulse">Načítavam produkty...</div>
+                    </div>
+                ) : (
+                    <>
                         {selectedIds.size > 0 && (
                             <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
                                 <span className="text-sm font-semibold text-blue-800">
                                     Vybrané: {selectedIds.size}
-                                    {allPagesSelected && totalCount > PAGE_SIZE && (
-                                        <span className="ml-1 font-normal text-blue-600">(všetky)</span>
-                                    )}
+                                    {allPagesSelected && <span className="ml-1 font-normal text-blue-600">(všetky)</span>}
                                 </span>
                                 <button
                                     onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: true })}
@@ -434,7 +431,7 @@ export default function AdminProducts() {
                             </div>
                         )}
 
-                        <div className="bg-white shadow overflow-auto sm:rounded-lg">
+                        <div className={`bg-white shadow overflow-auto sm:rounded-lg transition-opacity duration-150 ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -449,8 +446,9 @@ export default function AdminProducts() {
                                             className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer disabled:cursor-wait"
                                         />
                                     </th>
-                                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obrázok</th>
+                                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obr.</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produkt</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. číslo</th>
                                     <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategória</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cena</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sklad</th>
@@ -459,7 +457,7 @@ export default function AdminProducts() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredProducts.map((product) => (
+                                {products.map((product) => (
                                     <tr key={product.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.has(product.id) ? 'bg-blue-50' : ''}`}>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <input
@@ -479,7 +477,7 @@ export default function AdminProducts() {
                                                 {product.image ? (
                                                     <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover hover:ring-2 hover:ring-blue-400 transition" />
                                                 ) : (
-                                                    <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border hover:bg-gray-300 transition">Žiadny</div>
+                                                    <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border hover:bg-gray-300 transition">—</div>
                                                 )}
                                             </button>
                                         </td>
@@ -491,8 +489,10 @@ export default function AdminProducts() {
                                                 title="Zobraziť detail"
                                             >
                                                 <div className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
-                                                <div className="text-xs text-gray-500 max-w-[180px] truncate md:max-w-xs" title={product.description}>{product.description}</div>
                                             </button>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className="text-xs font-mono text-gray-800 select-all">{product.reference || '—'}</span>
                                         </td>
                                         <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 max-w-xs">
                                             <span className="line-clamp-2" title={getCategoryList(product).join(', ')}>
@@ -511,7 +511,14 @@ export default function AdminProducts() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                            <button onClick={() => { setReceiptProduct(product); setReceiptForm({ batch_number: '', quantity: 1, notes: '' }); }} className="text-emerald-600 hover:text-emerald-900 mr-3" title="Naskladniť">
+                                            <button
+                                                onClick={() => {
+                                                    setReceiptProduct(product);
+                                                    setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
+                                                }}
+                                                className="text-emerald-600 hover:text-emerald-900 mr-3"
+                                                title="Naskladniť"
+                                            >
                                                 <ArchiveBoxArrowDownIcon className="h-5 w-5" />
                                             </button>
                                             <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-900 mr-3">
@@ -523,9 +530,9 @@ export default function AdminProducts() {
                                         </td>
                                     </tr>
                                 ))}
-                                {filteredProducts.length === 0 && (
+                                {products.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
                                             Nenašli sa žiadne produkty pre zadané filtre.
                                         </td>
                                     </tr>
@@ -533,6 +540,31 @@ export default function AdminProducts() {
                             </tbody>
                         </table>
                         </div>
+
+                        {totalPages > 1 && (
+                            <div className="mt-4 flex items-center justify-between">
+                                <p className="text-sm text-gray-600">
+                                    Strana <span className="font-semibold">{displayPage}</span> z <span className="font-semibold">{totalPages}</span>
+                                    <span className="ml-2 text-gray-400">({totalCount} produktov)</span>
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={goToPreviousPage}
+                                        disabled={!canGoPrevious || isFetching}
+                                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        ← Predchádzajúca
+                                    </button>
+                                    <button
+                                        onClick={goToNextPage}
+                                        disabled={!canGoNext || isFetching}
+                                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        Ďalšia →
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -619,11 +651,49 @@ export default function AdminProducts() {
                     <div className="flex items-center justify-center min-h-screen px-4">
                         <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setReceiptProduct(null)}></div>
                         <div className="relative bg-white rounded-lg shadow-xl w-full sm:max-w-md z-20">
-                            <form onSubmit={(e) => { e.preventDefault(); receiveStockMutation.mutate({ product_id: receiptProduct.id, ...receiptForm }); }}>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const isWildcard = receiptProduct.parameters?.type === 'wildcard_group';
+                                if (isWildcard && !receiptForm.variant_reference) {
+                                    toast.error('Vyberte konkrétny variant produktu.');
+                                    return;
+                                }
+                                receiveStockMutation.mutate({
+                                    product_id: receiptProduct.id,
+                                    batch_number: receiptForm.batch_number,
+                                    quantity: receiptForm.quantity,
+                                    notes: receiptForm.notes,
+                                    ...(receiptForm.variant_reference ? { variant_reference: receiptForm.variant_reference } : {}),
+                                });
+                            }}>
                                 <div className="px-6 py-5">
                                     <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">Naskladniť tovar</h3>
                                     <p className="text-sm text-gray-700 mb-4 font-medium">{receiptProduct.name}</p>
                                     <div className="space-y-4">
+                                        {receiptProduct.parameters?.type === 'wildcard_group' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Variant (ref. číslo)</label>
+                                                {receiptForm.variant_reference ? (
+                                                    <div className="mt-1 px-3 py-2 border rounded bg-slate-50 text-sm font-mono text-gray-800">
+                                                        {receiptForm.variant_reference}
+                                                    </div>
+                                                ) : (
+                                                    <select
+                                                        required
+                                                        value={receiptForm.variant_reference}
+                                                        onChange={(e) => setReceiptForm({ ...receiptForm, variant_reference: e.target.value })}
+                                                        className="mt-1 w-full px-3 py-2 border rounded focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                                                    >
+                                                        <option value="">— Vyberte variant —</option>
+                                                        {(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => (
+                                                            <option key={opt.reference} value={opt.reference}>
+                                                                {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Číslo šarže *</label>
                                             <input

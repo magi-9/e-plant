@@ -5,9 +5,17 @@ from .models import CustomUser, EmailRateLimit, GlobalSettings
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ("email", "is_active", "is_staff", "date_joined")
+    list_display = (
+        "email",
+        "title",
+        "first_name",
+        "last_name",
+        "is_active",
+        "is_staff",
+        "date_joined",
+    )
     list_filter = ("is_active", "is_staff")
-    search_fields = ("email",)
+    search_fields = ("email", "title", "first_name", "last_name")
 
 
 @admin.register(GlobalSettings)

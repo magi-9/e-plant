@@ -11,10 +11,11 @@ User = get_user_model()
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    title = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = User
-        fields = ("id", "email", "password")
+        fields = ("id", "email", "password", "title")
 
     def validate_password(self, value):
         """Validate password using Django's validators."""
@@ -33,6 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "email",
+            "title",
             "first_name",
             "last_name",
             "phone",
@@ -53,6 +55,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
+            "title",
             "first_name",
             "last_name",
             "phone",
@@ -71,6 +74,7 @@ class AdminUserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "email",
+            "title",
             "first_name",
             "last_name",
             "phone",

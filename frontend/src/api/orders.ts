@@ -106,6 +106,7 @@ export interface StockReceiptData {
     batch_number: string;
     quantity: number;
     notes?: string;
+    variant_reference?: string;
 }
 
 export interface StockReceiptResult {

@@ -21,17 +21,21 @@ class StockReceiptService:
         quantity: int,
         received_by=None,
         notes: str = "",
+        variant_reference: str = "",
     ) -> StockReceipt:
         """
         Record incoming stock for a product batch.
 
         - Creates BatchLot if it doesn't exist, or increments its quantity.
         - Increments product.stock_quantity.
+        - For wildcard_group products with a variant_reference, also increments
+          the matching variant's stock_quantity inside parameters.options.
         - Creates an immutable StockReceipt audit record.
 
         Returns the created StockReceipt.
         """
         batch_number = batch_number.strip() if batch_number else ""
+        variant_reference = variant_reference.strip() if variant_reference else ""
         if not batch_number:
             raise ValidationError("Batch number must not be empty.")
         if quantity <= 0:
@@ -49,7 +53,37 @@ class StockReceiptService:
             lot.save(update_fields=["quantity"])
 
             locked_product.stock_quantity += quantity
-            locked_product.save(update_fields=["stock_quantity"])
+
+            # Update variant-level stock inside parameters.options when applicable
+            if (
+                variant_reference
+                and isinstance(locked_product.parameters, dict)
+                and locked_product.parameters.get("type") == "wildcard_group"
+            ):
+                options = locked_product.parameters.get("options", [])
+                matched_variant = False
+                for opt in options:
+                    if opt.get("reference") == variant_reference:
+                        opt["stock_quantity"] = (
+                            opt.get("stock_quantity") or 0
+                        ) + quantity
+                        matched_variant = True
+                        break
+
+                if not matched_variant:
+                    raise ValidationError(
+                        {
+                            "variant_reference": "Variant reference is invalid for this product."
+                        }
+                    )
+
+                locked_product.parameters = {
+                    **locked_product.parameters,
+                    "options": options,
+                }
+                locked_product.save(update_fields=["stock_quantity", "parameters"])
+            else:
+                locked_product.save(update_fields=["stock_quantity"])
 
             receipt = StockReceipt.objects.create(
                 product=locked_product,

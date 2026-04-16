@@ -29,7 +29,7 @@ export default function AdminUsers() {
     const admins = usersList.filter(u => u.is_staff);
     const clients = usersList.filter(u => !u.is_staff);
 
-    const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-users'], exact: false });
 
     const createMutation = useMutation({
         mutationFn: createAdminUser,

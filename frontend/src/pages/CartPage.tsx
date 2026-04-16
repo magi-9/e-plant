@@ -117,7 +117,7 @@ export default function CartPage() {
         }
 
         toast.error('Nie je toľko skladom. Objednajte menej alebo nám napíšte správu.');
-        const profileName = `${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim();
+        const profileName = `${userProfile?.title || ''} ${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim();
         const fallbackName = contactFullName || profileName;
         setContactFullName(fallbackName);
         setContactMessage(buildContactMessage(fallbackName));

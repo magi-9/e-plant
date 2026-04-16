@@ -76,7 +76,6 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = (
         "category",
         "group",
-        "is_active",
         "is_visible",
         "low_stock_alert_sent",
     )

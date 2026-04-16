@@ -29,6 +29,7 @@ def _perform_user_registration(serializer):
     serializer.instance = UserService.register_user(
         email=serializer.validated_data["email"],
         password=serializer.validated_data["password"],
+        title=serializer.validated_data.get("title", ""),
         is_active=False,
         send_verification_email=True,
     )

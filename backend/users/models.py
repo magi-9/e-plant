@@ -49,6 +49,7 @@ class CustomUser(AbstractUser, AddressModel):
 
     objects = CustomUserManager()
 
+    title = models.CharField(max_length=50, blank=True, default="")
     phone = models.CharField(max_length=20, blank=True)
     is_company = models.BooleanField(default=False)
     company_name = models.CharField(max_length=255, blank=True)
