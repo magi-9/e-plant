@@ -21,6 +21,7 @@ function Requirement({ met, label }: { met: boolean; label: string }) {
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
+        title: '',
         email: '',
         password: '',
         confirmPassword: ''
@@ -39,7 +40,8 @@ export default function RegisterPage() {
     const mutation = useMutation({
         mutationFn: () => register({
             email: formData.email,
-            password: formData.password
+            password: formData.password,
+            title: formData.title,
         }),
         onSuccess: () => {
             setRegistrationSuccess(true);
@@ -109,6 +111,21 @@ export default function RegisterPage() {
                         )}
 
                         {/* Email */}
+                        <div>
+                            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                                Titul
+                            </label>
+                            <input
+                                id="title"
+                                name="title"
+                                type="text"
+                                value={formData.title}
+                                onChange={handleChange}
+                                placeholder="napr. MUDr., Ing., Bc."
+                                className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                            />
+                        </div>
+
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                                 Emailová adresa <span className="text-red-500">*</span>

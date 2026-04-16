@@ -13,6 +13,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 export interface RegisterData {
     email: string;
     password: string;
+    title?: string;
 }
 
 export const register = async (userData: RegisterData) => {
@@ -40,8 +41,25 @@ export const confirmPasswordReset = async (uid: string, token: string, newPasswo
     return response.data;
 };
 
-export const getMe = async () => {
-    const response = await client.get('/auth/me/');
+export interface MeResponse {
+    id: number;
+    email: string;
+    title?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    postal_code?: string;
+    country?: string;
+    is_company?: boolean;
+    company_name?: string;
+    ico?: string;
+    dic?: string;
+}
+
+export const getMe = async (): Promise<MeResponse> => {
+    const response = await client.get<MeResponse>('/auth/me/');
     return response.data;
 }
 export const deleteMe = async () => {

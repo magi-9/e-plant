@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Custom CSS can go here */
 body {
   font-family: 'Inter', sans-serif;
