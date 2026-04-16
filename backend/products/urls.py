@@ -10,12 +10,14 @@ from .views import (
     AdminSeedView,
     ProductCountView,
     ProductGroupListView,
+    ProductInquiryView,
     ProductViewSet,
 )
 
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
     path("count/", ProductCountView.as_view(), name="product_count"),
+    path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
     path(
         "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"

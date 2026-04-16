@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
-import { ShoppingCartIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, InformationCircleIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon } from '@heroicons/react/24/solid';
+import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
+import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import toast from 'react-hot-toast';
 
@@ -31,17 +32,26 @@ export default function ProductsPage() {
     const [openModal, setOpenModal] = useState(false);
     const [addingId, setAddingId] = useState<number | null>(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [productToRequest, setProductToRequest] = useState<Product | null>(null);
+    const [openRequestModal, setOpenRequestModal] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
+
+    // Debounce search to avoid re-fetching on every keystroke
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // Build query params with filters
     const buildParams = useCallback((offset: number): ProductListParams => {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
-        if (searchQuery) params.search = searchQuery;
+        if (debouncedSearch) params.search = debouncedSearch;
         return params;
-    }, [searchQuery]);
+    }, [debouncedSearch]);
 
     const {
         data,
@@ -52,7 +62,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', searchQuery],
+        queryKey: ['products', debouncedSearch],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -63,11 +73,13 @@ export default function ProductsPage() {
             return undefined;
         },
         initialPageParam: 0,
+        placeholderData: keepPreviousData,
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', searchQuery, selectedCategories],
-        queryFn: () => getProductCount({ search: searchQuery, categories: selectedCategories }),
+        queryKey: ['products-count', debouncedSearch, selectedCategories],
+        queryFn: () => getProductCount({ search: debouncedSearch, categories: selectedCategories }),
+        placeholderData: keepPreviousData,
     });
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
@@ -143,7 +155,8 @@ export default function ProductsPage() {
         }, 600);
     };
 
-    if (isLoading) return (
+    // Only show full-page spinner on very first load (no data yet, not a search refetch)
+    if (isLoading && !data) return (
         <div className="flex justify-center items-center min-h-screen bg-slate-50">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
         </div>
@@ -363,15 +376,6 @@ export default function ProductsPage() {
                             </button>
                         )}
                     </div>
-                    {/* Info Button */}
-                    <Link
-                        to="/about"
-                        className="flex items-center justify-center p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:text-cyan-600 hover:border-cyan-300 hover:bg-cyan-50 transition-all"
-                        title="O nás a GDPR informácie"
-                        aria-label="O nás"
-                    >
-                        <InformationCircleIcon className="h-5 w-5" />
-                    </Link>
                     {/* Sort */}
                     <button
                         onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
@@ -438,7 +442,7 @@ export default function ProductsPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+                        <div className={`grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
                                 <div
                                     key={product.id}
@@ -472,8 +476,12 @@ export default function ProductsPage() {
                                                     <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
-                                                    {product.stock_quantity > 0 && (
-                                                        <CheckCircleIcon className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" title="Skladom" />
+                                                    {product.stock_quantity >= 5 ? (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" title="Skladom (5+ ks)" />
+                                                    ) : product.stock_quantity >= 1 ? (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" title="Posledné kusy (1–4 ks)" />
+                                                    ) : (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" title="Vypredané" />
                                                     )}
                                                 </div>
                                                 {product.reference && (
@@ -552,15 +560,28 @@ export default function ProductsPage() {
                                                     );
                                                 }
 
+                                                if (product.stock_quantity <= 0) {
+                                                    return (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setProductToRequest(product);
+                                                                setOpenRequestModal(true);
+                                                            }}
+                                                            className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-500 hover:bg-slate-600 focus:outline-none transition-all duration-300 h-10"
+                                                        >
+                                                            Požiadať produkt
+                                                        </button>
+                                                    );
+                                                }
+
                                                 return (
                                                     <button
                                                         onClick={(e) => handleAddToCart(e, product)}
-                                                        disabled={addingId === product.id || product.stock_quantity <= 0}
+                                                        disabled={addingId === product.id}
                                                         className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
                                                             ? 'bg-emerald-500 scale-105'
-                                                            : product.stock_quantity <= 0
-                                                                ? 'bg-slate-400 cursor-not-allowed'
-                                                                : 'bg-cyan-600 hover:bg-cyan-700'
+                                                            : 'bg-cyan-600 hover:bg-cyan-700'
                                                             }`}
                                                     >
                                                         {addingId === product.id ? (
@@ -573,7 +594,7 @@ export default function ProductsPage() {
                                                         ) : (
                                                             <>
                                                                 <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                                {product.stock_quantity <= 0 ? 'Požiadať produkt' : 'Pridať do košíka'}
+                                                                Pridať do košíka
                                                             </>
                                                         )}
                                                     </button>
@@ -616,6 +637,14 @@ export default function ProductsPage() {
                 open={openModal}
                 setOpen={setOpenModal}
                 product={selectedProduct}
+            />
+
+            <RequestProductModal
+                open={openRequestModal}
+                onClose={() => setOpenRequestModal(false)}
+                productId={productToRequest?.id || 0}
+                productName={productToRequest?.name || ''}
+                productReference={productToRequest?.reference || ''}
             />
 
             {/* Scroll to top FAB */}

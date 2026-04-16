@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     cacheDir: env.VITE_CACHE_DIR || resolve(process.cwd(), '.vite-cache'),
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.{ts,tsx}'],
     },
     resolve: {
       // Deduplicate React to prevent multiple-instance errors (e.g. from stale service-worker caches)

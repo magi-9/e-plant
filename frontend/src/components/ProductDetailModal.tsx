@@ -1,11 +1,12 @@
 
 import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import type { Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
+import RequestProductModal from './RequestProductModal';
 import toast from 'react-hot-toast';
 
 const VISIBLE_CATEGORIES_COUNT = 6;
@@ -22,16 +23,23 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);
+    const [openRequestModal, setOpenRequestModal] = useState(false);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
 
-    // Reset UI states when product changes (intentional state reset on product id change)
+    // Reset UI states when product changes; auto-select first in-stock variant
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsAdding(false);
         setShowActionButtons(false);
-        setSelectedVariantRef('');
+        if (product?.parameters?.type === 'wildcard_group') {
+            const options = product.parameters?.options || [];
+            const firstInStock = options.find((v) => (v.stock_quantity ?? 0) > 0);
+            setSelectedVariantRef(firstInStock?.reference || options[0]?.reference || '');
+        } else {
+            setSelectedVariantRef('');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product?.id]);
 
     if (!product) return null;
@@ -52,7 +60,16 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const effectiveVariantRef = selectedVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
-    const effectiveStockQuantity = (selectedVariant?.stock_quantity ?? product.stock_quantity) ?? 0;
+    // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
+    // (handles products stocked before per-variant tracking was available)
+    const effectiveStockQuantity = (() => {
+        if (!hasVariants) return product.stock_quantity ?? 0;
+        const variantStock = selectedVariant?.stock_quantity;
+        if (variantStock != null && variantStock > 0) return variantStock;
+        const allVariantsEmpty = variantOptions.every((v) => (v.stock_quantity ?? 0) === 0);
+        if (allVariantsEmpty && (product.stock_quantity ?? 0) > 0) return product.stock_quantity ?? 0;
+        return variantStock ?? 0;
+    })();
     const descriptionParts = product.description
         ? buildDescriptionParts(
             product.description,
@@ -96,7 +113,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     };
 
     return (
-        <Transition.Root show={open} as={Fragment}>
+        <>
+            <Transition.Root show={open} as={Fragment}>
             <Dialog as="div" className="relative z-50" onClose={setOpen}>
                 <Transition.Child
                     as={Fragment}
@@ -173,12 +191,15 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     {effectiveProductCode && (
                                                         <p className="text-sm text-gray-500 font-medium mb-2 break-words">{effectiveProductCode}</p>
                                                     )}
-                                                    <p className="text-sm text-slate-600 font-medium mb-4 break-words">
-                                                        {visibleCategories.join(', ') || product.category}
-                                                        {hiddenCategories.length > 0 && (
-                                                            <span className="text-slate-400"> {`+${hiddenCategories.length} ďalších`}</span>
-                                                        )}
-                                                    </p>
+                                                    <div className="flex items-start gap-1.5 mb-4 flex-wrap">
+                                                        <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
+                                                        <p className="text-sm text-cyan-700 font-medium break-words">
+                                                            {visibleCategories.join(', ') || product.category}
+                                                            {hiddenCategories.length > 0 && (
+                                                                <span className="text-slate-400"> {`+${hiddenCategories.length} ďalších`}</span>
+                                                            )}
+                                                        </p>
+                                                    </div>
                                                     {hasVariants && (
                                                         <div className="mb-5">
                                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -189,20 +210,32 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 onChange={(e) => setSelectedVariantRef(e.target.value)}
                                                                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
                                                             >
-                                                                {variantOptions.map((option) => (
-                                                                    <option key={option.reference} value={option.reference}>
-                                                                        {option.label || `${option.name} (${option.reference})`}
-                                                                    </option>
-                                                                ))}
+                                                                {variantOptions.map((option) => {
+                                                                    const qty = option.stock_quantity ?? null;
+                                                                    const stockLabel = qty === null ? '' : qty > 0 ? ` · ${qty} ks` : ' · vypredané';
+                                                                    return (
+                                                                        <option key={option.reference} value={option.reference}>
+                                                                            {`${option.label || `${option.name} (${option.reference})`}${stockLabel}`}
+                                                                        </option>
+                                                                    );
+                                                                })}
                                                             </select>
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center justify-between gap-3 mb-4">
-                                                        <div className="text-sm text-gray-500">
-                                                            Skladom: <span className={effectiveStockQuantity > 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
-                                                                {effectiveStockQuantity > 0 ? `${effectiveStockQuantity} ks` : 'Vypredané'}
-                                                            </span>
-                                                        </div>
+                                                    {/* Stock quantity */}
+                                                    <div className="flex items-center gap-2 mt-3">
+                                                        {effectiveStockQuantity >= 5 ? (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                        ) : effectiveStockQuantity >= 1 ? (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0" />
+                                                        ) : (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                                                        )}
+                                                        <span className="text-sm text-slate-600">
+                                                            {effectiveStockQuantity > 0
+                                                                ? `${effectiveStockQuantity} ks skladom`
+                                                                : 'Vypredané'}
+                                                        </span>
                                                     </div>
                                                 </div>
 
@@ -210,9 +243,13 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             {product.price ? (
-                                                                <p className="text-3xl font-bold text-gray-900">{product.price} €</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                                                                    <p className="text-3xl font-bold text-cyan-700">{product.price} €</p>
+                                                                </div>
                                                             ) : (
-                                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
+                                                                    <SparklesIcon className="h-3.5 w-3.5" />
                                                                     Členská cena
                                                                 </span>
                                                             )}
@@ -252,7 +289,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
 
                                                             if (cartItem) {
                                                                 return (
-                                                                    <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md p-1 h-12 w-48 shadow-sm">
+                                                                    <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 w-48 shadow-sm">
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
@@ -262,12 +299,12 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                                     removeItem(product.id, effectiveVariantRef || undefined);
                                                                                 }
                                                                             }}
-                                                                            className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
+                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
                                                                         >
                                                                             -
                                                                         </button>
-                                                                        <span className="font-bold text-blue-900 border-x border-blue-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                                            {cartItem.quantity} <span className="text-xs font-normal text-blue-500 ml-1">v košíku</span>
+                                                                        <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                            {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
                                                                         </span>
                                                                         <button
                                                                             onClick={(e) => {
@@ -279,7 +316,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                                 updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
                                                                             }}
                                                                             disabled={cartItem.quantity >= effectiveStockQuantity}
-                                                                            className="w-12 h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 rounded-md transition font-bold text-lg"
+                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
                                                                         >
                                                                             +
                                                                         </button>
@@ -287,14 +324,26 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 );
                                                             }
 
+                                                            if (effectiveStockQuantity <= 0) {
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setOpenRequestModal(true)}
+                                                                        className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-slate-500 hover:bg-slate-600 transition-all duration-300"
+                                                                    >
+                                                                        Požiadať produkt
+                                                                    </button>
+                                                                );
+                                                            }
+
                                                             return (
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleAddToCart}
-                                                                    disabled={isAdding || effectiveStockQuantity <= 0}
+                                                                    disabled={isAdding}
                                                                     className={`inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto transition-all duration-300 ${isAdding
-                                                                        ? 'bg-green-500 scale-105'
-                                                                        : 'bg-blue-600 hover:bg-blue-500'} ${(isAdding || effectiveStockQuantity <= 0) ? 'cursor-not-allowed opacity-60 hover:bg-blue-600' : ''
+                                                                        ? 'bg-emerald-500 scale-105 cursor-not-allowed opacity-60'
+                                                                        : 'bg-cyan-600 hover:bg-cyan-700'
                                                                         }`}
                                                                 >
                                                                     {isAdding ? (
@@ -352,5 +401,15 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                 </div>
             </Dialog>
         </Transition.Root>
+
+        <RequestProductModal
+            open={openRequestModal}
+            onClose={() => setOpenRequestModal(false)}
+            onSuccess={() => { setOpenRequestModal(false); }}
+            productId={product?.id || 0}
+            productName={product?.name || ''}
+            productReference={effectiveProductCode}
+        />
+        </>
     )
 }

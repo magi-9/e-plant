@@ -289,3 +289,6 @@ class StockReceiptInputSerializer(serializers.Serializer):
     batch_number = serializers.CharField(max_length=100)
     quantity = serializers.IntegerField(min_value=1)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
+    variant_reference = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
