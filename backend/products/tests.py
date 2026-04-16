@@ -6,8 +6,17 @@ from products.models import Product
 
 
 @pytest.mark.django_db
-def test_public_product_list_uses_is_visible_only_filter():
-    visible_inactive = Product.objects.create(
+def test_public_product_list_uses_visible_and_active_filter():
+    visible_active = Product.objects.create(
+        name="Visible Active",
+        description="",
+        category="A",
+        price="10.00",
+        stock_quantity=1,
+        is_visible=True,
+        is_active=True,
+    )
+    Product.objects.create(
         name="Visible Inactive",
         description="",
         category="A",
@@ -30,11 +39,20 @@ def test_public_product_list_uses_is_visible_only_filter():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
-    assert response.data["results"][0]["id"] == visible_inactive.id
+    assert response.data["results"][0]["id"] == visible_active.id
 
 
 @pytest.mark.django_db
-def test_public_product_count_uses_is_visible_only_filter():
+def test_public_product_count_uses_visible_and_active_filter():
+    Product.objects.create(
+        name="Visible Active Count",
+        description="",
+        category="A",
+        price="10.00",
+        stock_quantity=1,
+        is_visible=True,
+        is_active=True,
+    )
     Product.objects.create(
         name="Visible Inactive Count",
         description="",

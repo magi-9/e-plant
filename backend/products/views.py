@@ -113,7 +113,7 @@ class ProductGroupListView(generics.ListAPIView):
 class ProductViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Product CRUD operations.
-    - List/Retrieve: AllowAny (public) — returns only is_visible=True products
+    - List/Retrieve: AllowAny (public) — returns only is_visible=True and is_active=True products
     - Create/Update/Delete: IsAdminUser (admin only) — returns all products
     """
 
@@ -124,7 +124,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Product.objects.all()
         if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
-            qs = qs.filter(is_visible=True)
+            qs = qs.filter(is_visible=True, is_active=True)
         return _apply_product_filters(qs, self.request)
 
     def get_permissions(self):
@@ -201,7 +201,7 @@ class ProductCountView(APIView):
         qs = Product.objects.all()
 
         if not _is_admin_view(request):
-            qs = qs.filter(is_visible=True)
+            qs = qs.filter(is_visible=True, is_active=True)
 
         qs = _apply_product_filters(qs, request)
         return Response({"count": qs.distinct().count()}, status=status.HTTP_200_OK)
