@@ -851,8 +851,6 @@ class Command(BaseCommand):
                     existing.price = price
                     if prod["category"]:
                         existing.category = prod["category"]
-                    if "is_active" in prod:
-                        existing.is_active = prod["is_active"]
                     if "is_visible" in prod:
                         existing.is_visible = prod["is_visible"]
                     if image_relative:
@@ -874,7 +872,6 @@ class Command(BaseCommand):
                     "price": price,
                     "stock_quantity": 0,
                     "image": image_relative or "",
-                    "is_active": prod.get("is_active", True),
                     "is_visible": prod.get("is_visible", True),
                 }
                 if "parameters" in prod:
@@ -921,7 +918,6 @@ class Command(BaseCommand):
                     "category",
                     "image",
                     "description",
-                    "is_active",
                     "is_visible",
                     "group",
                 ]
@@ -934,7 +930,6 @@ class Command(BaseCommand):
                 )
             if hidden_refs_to_hide and not replace_all:
                 Product.objects.filter(reference__in=hidden_refs_to_hide).update(
-                    is_active=False,
                     is_visible=False,
                 )
 

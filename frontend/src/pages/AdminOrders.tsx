@@ -112,7 +112,7 @@ export default function AdminOrders() {
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: number; status: string }) => updateOrderStatus(id, status),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'], exact: false });
             toast.success('Stav objednávky bol aktualizovaný.');
         },
         onError: () => toast.error('Chyba pri aktualizácii stavu.'),
@@ -122,7 +122,7 @@ export default function AdminOrders() {
         mutationFn: ({ id, payload }: { id: number; payload: AdminOrderInterventionUpdateData }) =>
             adminInterventionUpdateOrder(id, payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'], exact: false });
             toast.success('Objednávka bola upravená. Sklad aj zákazník boli aktualizovaní.');
         },
         onError: () => toast.error('Zásah sa nepodaril. Skontrolujte údaje.'),
@@ -132,7 +132,7 @@ export default function AdminOrders() {
         mutationFn: ({ id, reason }: { id: number; reason: string }) =>
             adminInterventionDeleteOrder(id, reason),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+            queryClient.invalidateQueries({ queryKey: ['adminOrders'], exact: false });
             toast.success('Objednávka bola vymazaná. Sklad bol vrátený a zákazník informovaný.');
         },
         onError: () => toast.error('Vymazanie objednávky sa nepodarilo.'),
