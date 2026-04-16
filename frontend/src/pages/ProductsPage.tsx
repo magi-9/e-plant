@@ -205,7 +205,7 @@ export default function ProductsPage() {
     const schemaData = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
-        name: 'E-Plant | Dynamic Abutment Solutions Products',
+        name: 'Digital Abutment Solutions Products',
         description: 'Browse our complete catalog of Dynamic Abutment Solutions products including implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions for modern implantology.',
         url: canonicalUrl,
         image: socialImageUrl,
@@ -231,7 +231,7 @@ export default function ProductsPage() {
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">
             <Helmet>
-                <title>E-Plant | Dynamic Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
+                <title>Digital Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
                 <meta name="description" content="Shop premium Dynamic Abutment Solutions products: TiBase scanning bodies, Multi-Unit abutments, custom CAD/CAM solutions, and more. Official distributor for Slovakia." />
                 <meta name="keywords" content="abutment, implant components, TiBase, Multi-Unit abutment, CAD/CAM, implantology, dental surgery" />
                 <meta name="robots" content="index, follow" />
@@ -240,15 +240,15 @@ export default function ProductsPage() {
                 
                 {/* Open Graph - Social Media */}
                 <meta property="og:type" content="website" />
-                <meta property="og:title" content="E-Plant | Dynamic Abutment Solutions Products" />
+                <meta property="og:title" content="Digital Abutment Solutions Products" />
                 <meta property="og:description" content="Browse premium implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions." />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta property="og:image" content={socialImageUrl} />
-                <meta property="og:site_name" content="E-Plant" />
+                <meta property="og:site_name" content="Digital Abutment Solutions" />
                 
                 {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
-                <meta name="twitter:title" content="E-Plant | Dynamic Abutment Solutions" />
+                <meta name="twitter:title" content="Digital Abutment Solutions" />
                 <meta name="twitter:description" content="Premium implant components and solutions for modern implantology." />
                 <meta name="twitter:image" content={socialImageUrl} />
                 
