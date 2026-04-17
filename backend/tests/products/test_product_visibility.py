@@ -1,5 +1,5 @@
 """
-Tests for Product is_active / is_visible fields and API filtering (Issue #88).
+Tests for Product is_visible field and API filtering (Issue #88).
 """
 
 import pytest
@@ -10,10 +10,6 @@ from products.models import Product
 
 @pytest.mark.django_db
 class TestProductVisibilityDefaults:
-    def test_product_is_active_default_true(self):
-        p = Product.objects.create(name="P", category="T", price=1)
-        assert p.is_active is True
-
     def test_product_is_visible_default_true(self):
         p = Product.objects.create(name="P", category="T", price=1)
         assert p.is_visible is True
@@ -77,14 +73,6 @@ class TestProductStorefrontVisibilityFilter:
         names = [p["name"] for p in data.get("results", data)]
         assert "Hidden" not in names
 
-    def test_api_hides_inactive_products_for_anonymous(self, client):
-        ProductFactory(name="Active", is_active=True, is_visible=True)
-        ProductFactory(name="Inactive", is_active=False, is_visible=True)
-        response = client.get("/api/products/")
-        data = response.json()
-        names = [p["name"] for p in data.get("results", data)]
-        assert "Inactive" not in names
-
 
 @pytest.mark.django_db
 class TestProductGroupFilter:
@@ -105,10 +93,9 @@ class TestProductGroupFilter:
 
 @pytest.mark.django_db
 class TestProductCountEndpoint:
-    def test_count_returns_visible_active_only_for_anonymous(self, client):
-        ProductFactory(name="Visible Active", is_visible=True, is_active=True)
-        ProductFactory(name="Visible Inactive", is_visible=True, is_active=False)
-        ProductFactory(name="Hidden Active", is_visible=False, is_active=True)
+    def test_count_returns_visible_only_for_anonymous(self, client):
+        ProductFactory(name="Visible", is_visible=True)
+        ProductFactory(name="Hidden", is_visible=False)
 
         response = client.get("/api/products/count/")
         assert response.status_code == 200
@@ -120,28 +107,24 @@ class TestProductCountEndpoint:
             category="Fallback",
             parameters={"all_categories": "Category A"},
             is_visible=True,
-            is_active=True,
         )
         ProductFactory(
             name="B only",
             category="Fallback",
             parameters={"all_categories": "Category B"},
             is_visible=True,
-            is_active=True,
         )
         ProductFactory(
             name="A and B",
             category="Fallback",
             parameters={"all_categories": "Category A; Category B"},
             is_visible=True,
-            is_active=True,
         )
         ProductFactory(
             name="Other",
             category="Fallback",
             parameters={"all_categories": "Category C"},
             is_visible=True,
-            is_active=True,
         )
 
         response = client.get(

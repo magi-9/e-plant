@@ -105,7 +105,7 @@ class ProductGroupListView(generics.ListAPIView):
         return ProductGroup.objects.annotate(
             product_count=Count(
                 "products",
-                filter=models.Q(products__is_visible=True, products__is_active=True),
+                filter=models.Q(products__is_visible=True),
             )
         ).order_by("name")
 
@@ -113,7 +113,7 @@ class ProductGroupListView(generics.ListAPIView):
 class ProductViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Product CRUD operations.
-    - List/Retrieve: AllowAny (public) — returns only is_visible=True and is_active=True products
+    - List/Retrieve: AllowAny (public) — returns only is_visible=True products
     - Create/Update/Delete: IsAdminUser (admin only) — returns all products
     """
 
@@ -124,7 +124,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Product.objects.all()
         if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
-            qs = qs.filter(is_visible=True, is_active=True)
+            qs = qs.filter(is_visible=True)
         return _apply_product_filters(qs, self.request)
 
     def get_permissions(self):
@@ -201,7 +201,7 @@ class ProductCountView(APIView):
         qs = Product.objects.all()
 
         if not _is_admin_view(request):
-            qs = qs.filter(is_visible=True, is_active=True)
+            qs = qs.filter(is_visible=True)
 
         qs = _apply_product_filters(qs, request)
         return Response({"count": qs.distinct().count()}, status=status.HTTP_200_OK)
@@ -223,31 +223,6 @@ class AdminBulkDeleteView(APIView):
         deleted_count = qs.count()
         qs.delete()
         return Response({"deleted": deleted_count}, status=status.HTTP_200_OK)
-
-
-class AdminBulkSetActiveView(APIView):
-    """Admin endpoint: set is_active on multiple products by ID."""
-
-    permission_classes = (permissions.IsAdminUser,)
-
-    def post(self, request, *args, **kwargs):
-        ids = request.data.get("ids", [])
-        is_active = request.data.get("is_active")
-        if not ids or not isinstance(ids, list):
-            return Response(
-                {"error": "ids must be a non-empty list."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if is_active is None:
-            return Response(
-                {"error": "is_active is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        if isinstance(is_active, str):
-            is_active = is_active.lower() in ("true", "1", "yes")
-        updated_count = Product.objects.filter(pk__in=ids).update(
-            is_active=bool(is_active)
-        )
-        return Response({"updated": updated_count}, status=status.HTTP_200_OK)
 
 
 class AdminBulkSetVisibleView(APIView):

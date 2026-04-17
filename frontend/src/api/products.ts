@@ -10,7 +10,6 @@ export interface Product {
     price: string | null;
     stock_quantity: number;
     image: string | null;
-    is_active: boolean;
     is_visible: boolean;
     group_name?: string | null;
     parameters?: {
@@ -114,10 +113,6 @@ export const bulkDeleteProducts = async (ids: number[]): Promise<{ deleted: numb
     return response.data;
 };
 
-export const bulkSetActiveProducts = async (ids: number[], is_active: boolean): Promise<{ updated: number }> => {
-    const response = await client.post('/products/admin/bulk-set-active/', { ids, is_active });
-    return response.data;
-};
 
 export const importProductsCsv = async (file: File): Promise<{ message: string, error?: string }> => {
     const formData = new FormData();

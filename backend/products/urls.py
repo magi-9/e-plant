@@ -2,7 +2,6 @@ from django.urls import path
 
 from .views import (
     AdminBulkDeleteView,
-    AdminBulkSetActiveView,
     AdminBulkSetVisibleView,
     AdminCategoriesView,
     AdminProductIdsView,
@@ -43,11 +42,6 @@ urlpatterns = [
         "admin/bulk-delete/",
         AdminBulkDeleteView.as_view(),
         name="admin_product_bulk_delete",
-    ),
-    path(
-        "admin/bulk-set-active/",
-        AdminBulkSetActiveView.as_view(),
-        name="admin_product_bulk_set_active",
     ),
     path(
         "admin/bulk-set-visible/",

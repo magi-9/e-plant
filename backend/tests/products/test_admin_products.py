@@ -123,38 +123,6 @@ def test_bulk_delete_requires_ids(api_client, user_factory):
 
 
 @pytest.mark.django_db
-def test_bulk_set_active(api_client, user_factory, product_factory):
-    user = user_factory(is_staff=True, is_superuser=True)
-    api_client.force_authenticate(user=user)
-
-    p1 = product_factory(name="Active1", price=10.00, is_active=True)
-    p2 = product_factory(name="Active2", price=20.00, is_active=True)
-
-    url = reverse("admin_product_bulk_set_active")
-    response = api_client.post(
-        url, {"ids": [p1.id, p2.id], "is_active": False}, format="json"
-    )
-
-    assert response.status_code == 200
-    assert response.data["updated"] == 2
-    p1.refresh_from_db()
-    p2.refresh_from_db()
-    assert not p1.is_active
-    assert not p2.is_active
-
-
-@pytest.mark.django_db
-def test_bulk_set_active_requires_is_active(api_client, user_factory, product_factory):
-    user = user_factory(is_staff=True, is_superuser=True)
-    api_client.force_authenticate(user=user)
-
-    p1 = product_factory(name="Active1", price=10.00)
-    url = reverse("admin_product_bulk_set_active")
-    response = api_client.post(url, {"ids": [p1.id]}, format="json")
-    assert response.status_code == 400
-
-
-@pytest.mark.django_db
 def test_bulk_delete_anonymous(api_client, product_factory):
     p1 = product_factory(name="Bulk1", price=10.00)
     url = reverse("admin_product_bulk_delete")
