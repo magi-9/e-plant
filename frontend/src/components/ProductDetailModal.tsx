@@ -109,7 +109,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const effectivePrice = activeVariant?.price ?? product.price;
     const effectiveVariantRef = activeVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product.reference || '';
-    const effectiveVariantLabel = activeVariant?.label || selectedVariant?.label || '';
+    const effectiveVariantLabel = selectedVariant?.label || '';
 
     const categoryList = effectiveAllCategories
         .split(';')
