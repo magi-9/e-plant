@@ -7,6 +7,7 @@ from .views import (
     AdminProductIdsView,
     AdminProductImport,
     AdminSeedView,
+    ProductCategoriesView,
     ProductCountView,
     ProductGroupListView,
     ProductInquiryView,
@@ -15,6 +16,7 @@ from .views import (
 
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
+    path("categories/", ProductCategoriesView.as_view(), name="product_categories"),
     path("count/", ProductCountView.as_view(), name="product_count"),
     path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),

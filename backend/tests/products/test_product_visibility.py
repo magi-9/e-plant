@@ -133,3 +133,124 @@ class TestProductCountEndpoint:
         )
         assert response.status_code == 200
         assert response.json()["count"] == 3
+
+
+@pytest.mark.django_db
+class TestStorefrontSimilarityGrouping:
+    def test_list_collapses_products_with_same_name_price_category_and_image(self, client):
+        shared_image = "products/shared.jpg"
+        ProductFactory(
+            name="DAS Multi-Unit straight",
+            category="MEDENTIS",
+            price=125,
+            image=shared_image,
+            reference="42.303.125.01-2",
+            stock_quantity=2,
+        )
+        ProductFactory(
+            name="DAS Multi-Unit straight",
+            category="MEDENTIS",
+            price=125,
+            image=shared_image,
+            reference="42.303.125.02-2",
+            stock_quantity=4,
+        )
+
+        response = client.get("/api/products/")
+        assert response.status_code == 200
+        data = response.json()
+        results = data.get("results", data)
+
+        assert len(results) == 1
+        product = results[0]
+        assert product["parameters"]["type"] == "wildcard_group"
+        assert len(product["parameters"]["options"]) == 2
+
+    def test_count_matches_similarity_collapsed_cards(self, client):
+        shared_image = "products/shared.jpg"
+        ProductFactory(
+            name="Grouped",
+            category="A",
+            price=10,
+            image=shared_image,
+            reference="10.000.000.01-1",
+        )
+        ProductFactory(
+            name="Grouped",
+            category="A",
+            price=10,
+            image=shared_image,
+            reference="10.000.000.02-1",
+        )
+        ProductFactory(
+            name="Standalone",
+            category="B",
+            price=20,
+            image="products/other.jpg",
+            reference="20.000.000.01-1",
+        )
+
+        response = client.get("/api/products/count/")
+        assert response.status_code == 200
+        assert response.json()["count"] == 2
+
+    def test_grouping_ignores_name_variant_token_and_image(self, client):
+        ProductFactory(
+            name="DAS Multi-Unit straight G1 Comp.0169 30N·cm",
+            category="ALPHABIO",
+            price=48,
+            image="products/42302169012.png",
+            reference="42.302.169.01-2",
+        )
+        ProductFactory(
+            name="DAS Multi-Unit straight G2 Comp.0169 30N·cm",
+            category="ALPHABIO",
+            price=48,
+            image="products/42302169022.jpg",
+            reference="42.302.169.02-2",
+        )
+
+        response = client.get("/api/products/")
+        assert response.status_code == 200
+        data = response.json()
+        results = data.get("results", data)
+
+        assert len(results) == 1
+        collapsed = results[0]
+        assert collapsed["parameters"]["type"] == "wildcard_group"
+        assert len(collapsed["parameters"]["options"]) == 2
+
+        count_response = client.get("/api/products/count/")
+        assert count_response.status_code == 200
+        assert count_response.json()["count"] == 1
+
+
+@pytest.mark.django_db
+class TestProductCategoriesEndpoint:
+    def test_categories_returns_all_visible_categories(self, client):
+        ProductFactory(
+            name="A",
+            category="Fallback",
+            parameters={"all_categories": "Category A; Category B"},
+            is_visible=True,
+        )
+        ProductFactory(
+            name="B",
+            category="Category C",
+            parameters={},
+            is_visible=True,
+        )
+        ProductFactory(
+            name="Hidden",
+            category="Category Hidden",
+            parameters={"all_categories": "Category Hidden"},
+            is_visible=False,
+        )
+
+        response = client.get("/api/products/categories/")
+        assert response.status_code == 200
+        categories = response.json()["categories"]
+        assert "Category A" in categories
+        assert "Category B" in categories
+        assert "Category C" in categories
+        assert "Category Hidden" not in categories

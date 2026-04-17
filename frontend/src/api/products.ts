@@ -20,9 +20,15 @@ export interface Product {
         all_categories?: string;
         parameter_code?: string;
         options?: Array<{
+            id?: number;
             reference: string;
             reference_num?: string;
             name: string;
+            description?: string;
+            category?: string;
+            all_categories?: string;
+            price?: string | null;
+            image?: string | null;
             parameter_code?: string;
             option_tokens?: string;
             label?: string;
@@ -54,6 +60,10 @@ interface ProductCountResponse {
     count: number;
 }
 
+interface ProductCategoriesResponse {
+    categories: string[];
+}
+
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
     return response.data;
@@ -70,6 +80,11 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
     const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
     const response = await client.get<ProductCountResponse>(endpoint);
     return response.data.count;
+};
+
+export const getProductCategories = async (): Promise<string[]> => {
+    const response = await client.get<ProductCategoriesResponse>('/products/categories/');
+    return response.data.categories;
 };
 
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {

@@ -265,7 +265,7 @@ def _build_price_lookup(retail_prices_path):
             except InvalidOperation:
                 continue
             if re.search(r"[xXyY]", ref):
-                patterns.append((ref_to_regex(ref), price, section))
+                patterns.append((ref_to_regex(ref), price, section, ref))
             else:
                 exact[normalize_ref(ref)] = (price, section)
     return exact, patterns
@@ -276,17 +276,19 @@ def _lookup_price(ref, reference_num, exact, patterns):
     Try to match a price for the given reference/reference_num.
     Tries exact match first (on reference_num, then formatted reference),
     then wildcard pattern match.
-    Returns (price, section) or (None, '').
+    Returns (price, section, matched_wildcard_ref) where matched_wildcard_ref
+    is the raw wildcard string (e.g. "54.315.xxx.21-2") or None for exact matches.
     """
     candidates = [normalize_ref(reference_num), normalize_ref(ref)]
     for key in candidates:
         if key and key in exact:
-            return exact[key]
-    for regex, price, section in patterns:
+            price, section = exact[key]
+            return price, section, None
+    for regex, price, section, raw_ref in patterns:
         for key in candidates:
             if key and regex.match(key):
-                return price, section
-    return None, ""
+                return price, section, raw_ref
+    return None, "", None
 
 
 def load_flat_products(merged_csv_path, retail_prices_path=None):
@@ -343,7 +345,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     price = None
 
             if price is None and (exact_prices or wildcard_prices):
-                matched_price, matched_section = _lookup_price(
+                matched_price, matched_section, _ = _lookup_price(
                     ref, reference_num, exact_prices, wildcard_prices
                 )
                 if matched_price is not None:
@@ -352,6 +354,14 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                         category = matched_section
 
             is_visible = bool(name and category and price is not None)
+
+            params = {
+                "type": "single",
+                "reference_num": reference_num,
+                "parameter_code": row.get("ref_segment_4", "").strip(),
+                "option_tokens": row.get("options", "").strip(),
+                "compatibility_code": row.get("compatibility_code", "").strip(),
+            }
 
             products.append(
                 {
@@ -362,13 +372,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     "price": price if price is not None else Decimal("0.00"),
                     "description": description,
                     "is_visible": is_visible,
-                    "parameters": {
-                        "type": "single",
-                        "reference_num": reference_num,
-                        "parameter_code": row.get("ref_segment_4", "").strip(),
-                        "option_tokens": row.get("options", "").strip(),
-                        "compatibility_code": row.get("compatibility_code", "").strip(),
-                    },
+                    "parameters": params,
                 }
             )
 
@@ -861,6 +865,36 @@ class Command(BaseCommand):
             help="Import from data/new/product_retail_2025_master.csv",
         )
 
+    def _ensure_product_groups(self, retail_prices_path):
+        """Create/update ProductGroup records for narrow wildcard families.
+
+        Only patterns with exactly one wildcard segment (e.g. 54.315.xxx.21-2)
+        are treated as true product families. Broader price-level wildcards
+        (two or more wildcard segments) are skipped.
+        Clears all existing ProductGroups first so stale entries are removed.
+        """
+        ProductGroup.objects.all().delete()
+        with open(retail_prices_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ref = row.get("reference", "").strip()
+                if not ref or not re.search(r"[xXyY]", ref):
+                    continue
+                segments = ref.split(".")
+                if sum(1 for s in segments if re.search(r"[xXyY]", s)) != 1:
+                    continue
+                prefix_parts = []
+                for seg in segments:
+                    if re.search(r"[xXyY]", seg):
+                        break
+                    prefix_parts.append(seg)
+                prefix = ".".join(prefix_parts)
+                if not prefix:
+                    continue  # skip patterns where first segment itself is wildcard
+                name = row.get("name", "").strip() or prefix
+                ProductGroup.objects.update_or_create(
+                    prefix=prefix, defaults={"name": name}
+                )
+
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         do_update = options["update"]
@@ -975,6 +1009,10 @@ class Command(BaseCommand):
                         f"  [{p.reference or 'no-ref':25s}] {p.name[:55]:55s} €{p.price}"
                     )
             return
+
+        # Ensure ProductGroup records exist for narrow wildcard families.
+        if not use_master and os.path.exists(RETAIL_PRICES_CSV):
+            self._ensure_product_groups(RETAIL_PRICES_CSV)
 
         # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
         # Pre-fetch all groups once to avoid N+1 queries.

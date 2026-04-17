@@ -1,5 +1,6 @@
 import csv
 import re
+from copy import copy
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 
@@ -95,6 +96,91 @@ def _is_admin_view(request):
     )
 
 
+def _normalized_storefront_name(name: str) -> str:
+    """Normalize product name for storefront grouping.
+
+    Removes common variant markers (e.g. G1, G1.5, G2) so nearby variants
+    can collapse into one card.
+    """
+    raw = (name or "").strip()
+    without_variant = re.sub(r"\bG\d+(?:[\.,]\d+)?\b", "", raw, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", without_variant).strip().casefold()
+
+
+def _collapse_product_groups(products):
+    """
+    Collapse products that share the same storefront key into one group card,
+    preserving the order of first appearance.
+
+    Grouping key is: (name_without_variant, price, category).
+    This keeps DB rows flat (1 ref = 1 row) while showing one storefront card
+    for visually equivalent variants.
+    """
+    groups = {}
+
+    def storefront_group_key(product):
+        return (
+            _normalized_storefront_name(product.name or ""),
+            str(product.price) if product.price is not None else "",
+            (product.category or "").strip().casefold(),
+        )
+
+    for p in products:
+        key = storefront_group_key(p)
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(p)
+
+    result = []
+    seen = set()
+
+    for p in products:
+        key = storefront_group_key(p)
+        members = groups[key]
+        if len(members) < 2:
+            result.append(p)
+            continue
+
+        if key in seen:
+            continue
+
+        rep = copy(members[0])
+        options = []
+        for m in members:
+            option_label = (
+                f"{m.reference} - {m.name}"
+                if m.reference and m.name
+                else m.reference or m.name or (m.parameters or {}).get("label", "")
+            )
+            options.append(
+                {
+                    "id": m.id,
+                    "reference": m.reference,
+                    "name": m.name,
+                    "description": m.description,
+                    "category": m.category,
+                    "all_categories": (m.parameters or {}).get("all_categories", ""),
+                    "price": str(m.price) if m.price is not None else None,
+                    "image": m.image.url if getattr(m, "image", None) else "",
+                    "stock_quantity": m.stock_quantity,
+                    "label": option_label,
+                    "parameter_code": (m.parameters or {}).get("parameter_code", ""),
+                    "option_tokens": (m.parameters or {}).get("option_tokens", ""),
+                }
+            )
+
+        rep.parameters = {
+            "type": "wildcard_group",
+            "wildcard_reference": rep.reference or "",
+            "options": options,
+            "option_fields": ["reference", "parameter_code", "name"],
+        }
+        result.append(rep)
+        seen.add(key)
+
+    return result
+
+
 class ProductGroupListView(generics.ListAPIView):
     """Public read-only list of product groups."""
 
@@ -122,7 +208,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name", "price", "category", "stock_quantity"]
 
     def get_queryset(self):
-        qs = Product.objects.all()
+        qs = Product.objects.select_related("group").all()
         if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
             qs = qs.filter(is_visible=True)
         return _apply_product_filters(qs, self.request)
@@ -135,6 +221,22 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
 
     def list(self, request, *args, **kwargs):
+        if not _is_admin_view(request):
+            queryset = self.filter_queryset(self.get_queryset())
+            collapsed = _collapse_product_groups(list(queryset))
+            page = self.paginate_queryset(collapsed)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                data = ProductService.apply_price_visibility(
+                    {"results": list(serializer.data)}, request.user
+                )
+                return self.get_paginated_response(data["results"])
+            serializer = self.get_serializer(collapsed, many=True)
+            data = list(serializer.data)
+            return Response(
+                ProductService.apply_price_visibility(data, request.user)
+            )
+
         response = super().list(request, *args, **kwargs)
         response.data = ProductService.apply_price_visibility(
             response.data, request.user
@@ -204,7 +306,21 @@ class ProductCountView(APIView):
             qs = qs.filter(is_visible=True)
 
         qs = _apply_product_filters(qs, request)
-        return Response({"count": qs.distinct().count()}, status=status.HTTP_200_OK)
+
+        if not _is_admin_view(request):
+            grouping_keys = {
+                (
+                    _normalized_storefront_name(name),
+                    str(price) if price is not None else "",
+                    (category or "").strip().casefold(),
+                )
+                for name, price, category in qs.values_list("name", "price", "category")
+            }
+            count = len(grouping_keys)
+        else:
+            count = qs.distinct().count()
+
+        return Response({"count": count}, status=status.HTTP_200_OK)
 
 
 class AdminBulkDeleteView(APIView):
@@ -276,6 +392,37 @@ class AdminCategoriesView(APIView):
         )
         params_cats = (
             Product.objects.exclude(parameters__all_categories__isnull=True)
+            .exclude(parameters__all_categories="")
+            .values_list("parameters__all_categories", flat=True)
+        )
+
+        categories: set[str] = set()
+        for cat in raw_cats:
+            if cat:
+                categories.add(cat.strip())
+        for raw in params_cats:
+            if raw:
+                for part in raw.split(";"):
+                    part = part.strip()
+                    if part:
+                        categories.add(part)
+
+        return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
+
+
+class ProductCategoriesView(APIView):
+    """Public endpoint: return all unique categories for visible storefront products."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        qs = Product.objects.all()
+        if not _is_admin_view(request):
+            qs = qs.filter(is_visible=True)
+
+        raw_cats = qs.exclude(category="").values_list("category", flat=True).distinct()
+        params_cats = (
+            qs.exclude(parameters__all_categories__isnull=True)
             .exclude(parameters__all_categories="")
             .values_list("parameters__all_categories", flat=True)
         )

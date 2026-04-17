@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
+import { getProductCategories, getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
 import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
@@ -21,6 +21,22 @@ const getCategoryList = (product: Product): string[] => {
 
 const PAGE_SIZE = 20;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+
+const getVariantWord = (count: number): string => {
+    const lastTwoDigits = count % 100;
+    const lastDigit = count % 10;
+
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+        return 'variantov';
+    }
+    if (lastDigit === 1) {
+        return 'variant';
+    }
+    if (lastDigit >= 2 && lastDigit <= 4) {
+        return 'varianty';
+    }
+    return 'variantov';
+};
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -51,8 +67,9 @@ export default function ProductsPage() {
     const buildParams = useCallback((offset: number): ProductListParams => {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
         if (debouncedSearch) params.search = debouncedSearch;
+        if (selectedCategories.length > 0) params.categories = selectedCategories;
         return params;
-    }, [debouncedSearch]);
+    }, [debouncedSearch, selectedCategories]);
 
     const {
         data,
@@ -63,7 +80,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', debouncedSearch],
+        queryKey: ['products', debouncedSearch, selectedCategories],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -81,6 +98,12 @@ export default function ProductsPage() {
         queryKey: ['products-count', debouncedSearch, selectedCategories],
         queryFn: () => getProductCount({ search: debouncedSearch, categories: selectedCategories }),
         placeholderData: keepPreviousData,
+    });
+
+    const { data: allCategories = [] } = useQuery({
+        queryKey: ['products-categories'],
+        queryFn: getProductCategories,
+        staleTime: 5 * 60 * 1000,
     });
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
@@ -172,22 +195,12 @@ export default function ProductsPage() {
     // Collect all products from all pages
     const allProducts = data?.pages.flatMap(page => page.results) || [];
 
-    // Extract all unique categories from current products
-    const categories = Array.from(
-        new Set(allProducts.flatMap((product: Product) => getCategoryList(product)))
-    );
+    // Categories are fetched separately for all visible products, not only loaded pages.
+    const categories = allCategories.length > 0
+        ? allCategories
+        : Array.from(new Set(allProducts.flatMap((product: Product) => getCategoryList(product))));
 
-    // Apply filters to all loaded products
-    const filteredProducts = allProducts.filter((product: Product) => {
-        // Category filter
-        if (
-            selectedCategories.length > 0
-            && !getCategoryList(product).some((category) => selectedCategories.includes(category))
-        ) {
-            return false;
-        }
-        return true;
-    });
+    const filteredProducts = [...allProducts];
 
     // Apply price sort
     if (priceSortOrder !== 'none') {
@@ -477,15 +490,27 @@ export default function ProductsPage() {
                                                     <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
-                                                    {product.stock_quantity >= 5 ? (
-                                                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" title="Skladom (5+ ks)" />
-                                                    ) : product.stock_quantity >= 1 ? (
-                                                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" title="Posledné kusy (1–4 ks)" />
-                                                    ) : (
-                                                        <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" title="Vypredané" />
-                                                    )}
+                                                    {(() => {
+                                                        const effectiveStock = product.parameters?.type === 'wildcard_group'
+                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
+                                                            : product.stock_quantity;
+                                                        return effectiveStock >= 5 ? (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" title="Skladom (5+ ks)" />
+                                                        ) : effectiveStock >= 1 ? (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" title="Posledné kusy (1–4 ks)" />
+                                                        ) : (
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" title="Vypredané" />
+                                                        );
+                                                    })()}
                                                 </div>
-                                                {product.reference && (
+                                                {product.parameters?.type === 'wildcard_group' ? (
+                                                    <p className="mt-0.5 text-[11px] text-cyan-600 font-semibold truncate">
+                                                        {(() => {
+                                                            const count = (product.parameters.options || []).length;
+                                                            return `${count} ${getVariantWord(count)}`;
+                                                        })()}
+                                                    </p>
+                                                ) : product.reference && (
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
                                                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
