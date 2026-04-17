@@ -233,9 +233,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 return self.get_paginated_response(data["results"])
             serializer = self.get_serializer(collapsed, many=True)
             data = list(serializer.data)
-            return Response(
-                ProductService.apply_price_visibility(data, request.user)
-            )
+            return Response(ProductService.apply_price_visibility(data, request.user))
 
         response = super().list(request, *args, **kwargs)
         response.data = ProductService.apply_price_visibility(

@@ -929,7 +929,9 @@ class Command(BaseCommand):
             products = load_master_products(MASTER_IMPORT_CSV)
             self.stdout.write(f"  {len(products)} products from master CSV")
         else:
-            self.stdout.write("Loading all products from merged CSV (flat, 1 ref = 1 product)...")
+            self.stdout.write(
+                "Loading all products from merged CSV (flat, 1 ref = 1 product)..."
+            )
             products = load_flat_products(MERGED_IMPORT_CSV, RETAIL_PRICES_CSV)
             visible_count = sum(1 for p in products if p["is_visible"])
             self.stdout.write(
@@ -1041,8 +1043,13 @@ class Command(BaseCommand):
                 Product.objects.bulk_create(to_create, batch_size=200)
             if to_update:
                 update_fields = [
-                    "price", "category", "image", "description",
-                    "is_visible", "group", "parameters",
+                    "price",
+                    "category",
+                    "image",
+                    "description",
+                    "is_visible",
+                    "group",
+                    "parameters",
                 ]
                 Product.objects.bulk_update(to_update, update_fields, batch_size=200)
 

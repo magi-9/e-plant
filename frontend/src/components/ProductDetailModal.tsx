@@ -66,9 +66,12 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     useEffect(() => {
         let cancelled = false;
 
+        // Clear the previously hydrated variant immediately so the modal does not
+        // briefly render stale image/name/price while the next variant is loading.
+        setHydratedVariant(null);
+
         const loadVariant = async () => {
             if (!hasVariants || !selectedVariantId) {
-                setHydratedVariant(null);
                 return;
             }
 

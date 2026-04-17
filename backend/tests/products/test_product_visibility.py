@@ -137,7 +137,9 @@ class TestProductCountEndpoint:
 
 @pytest.mark.django_db
 class TestStorefrontSimilarityGrouping:
-    def test_list_collapses_products_with_same_name_price_category_and_image(self, client):
+    def test_list_collapses_products_with_same_name_price_category_and_image(
+        self, client
+    ):
         shared_image = "products/shared.jpg"
         ProductFactory(
             name="DAS Multi-Unit straight",
