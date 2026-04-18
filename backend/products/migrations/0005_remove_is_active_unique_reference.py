@@ -1,34 +1,39 @@
 """
 Migration: remove is_active field, add unique constraint on reference.
 
-Includes a data cleanup step (clean start): deletes all product-related
-inventory data before applying the unique constraint so the migration
-succeeds on any existing database state.
+Validates existing product references before applying the unique
+constraint so the migration fails safely instead of deleting data.
 """
 
 from django.db import migrations, models
+from django.db.models import Count
 
 
-def _delete_product_data(apps, schema_editor):
-    """Delete all product-linked data respecting PROTECT constraints."""
-    OrderItemBatch = apps.get_model("orders", "OrderItemBatch")
-    StockReceipt = apps.get_model("orders", "StockReceipt")
-    BatchLot = apps.get_model("orders", "BatchLot")
-    OrderItem = apps.get_model("orders", "OrderItem")
+def _ensure_unique_references(apps, schema_editor):
+    """Abort migration if duplicate non-null references exist."""
     Product = apps.get_model("products", "Product")
 
-    OrderItemBatch.objects.all().delete()
-    StockReceipt.objects.all().delete()
-    BatchLot.objects.all().delete()
-    OrderItem.objects.all().delete()
-    Product.objects.all().delete()
+    duplicates = list(
+        Product.objects.exclude(reference__isnull=True)
+        .exclude(reference="")
+        .values("reference")
+        .annotate(reference_count=Count("id"))
+        .filter(reference_count__gt=1)
+        .order_by("reference")
+    )
+    if duplicates:
+        duplicate_values = ", ".join(
+            repr(item["reference"]) for item in duplicates[:10]
+        )
+        raise RuntimeError(
+            "Cannot apply unique constraint on products.Product.reference "
+            "because duplicate non-null references already exist: "
+            f"{duplicate_values}. "
+            "Clean up duplicate references explicitly before running this migration."
+        )
 
 
 class Migration(migrations.Migration):
-    # Non-atomic: data cleanup and schema changes must run in separate transactions
-    # to avoid PostgreSQL "pending trigger events" error when altering a table
-    # immediately after deleting FK-constrained rows.
-    atomic = False
 
     dependencies = [
         ("products", "0004_product_parameters_json"),
@@ -36,7 +41,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(_delete_product_data, migrations.RunPython.noop),
+        migrations.RunPython(_ensure_unique_references, migrations.RunPython.noop),
         migrations.RemoveField(
             model_name="product",
             name="is_active",

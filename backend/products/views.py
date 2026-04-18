@@ -147,15 +147,16 @@ def _collapse_product_groups(products):
         rep = copy(members[0])
         options = []
         for m in members:
+            option_reference = m.reference or str(m.id)
             option_label = (
-                f"{m.reference} - {m.name}"
-                if m.reference and m.name
-                else m.reference or m.name or (m.parameters or {}).get("label", "")
+                f"{option_reference} - {m.name}"
+                if option_reference and m.name
+                else option_reference or m.name or (m.parameters or {}).get("label", "")
             )
             options.append(
                 {
                     "id": m.id,
-                    "reference": m.reference,
+                    "reference": option_reference,
                     "name": m.name,
                     "description": m.description,
                     "category": m.category,

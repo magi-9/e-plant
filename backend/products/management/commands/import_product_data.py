@@ -300,7 +300,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
     - Duplicate references: first occurrence wins.
     - Price fallback: if no price in merged CSV, look up via retail_prices_path
       (exact match on reference_num/reference, then wildcard pattern match).
-    - is_visible = True only when name, category, and price > 0 are all present.
+    - is_visible = True only when name, category, and a valid price are all present.
     - Missing name falls back to the reference string.
     - Missing category falls back to 'Uncategorized'.
     - Missing price is stored as 0.00 with is_visible = False.
@@ -1012,8 +1012,9 @@ class Command(BaseCommand):
                     )
             return
 
-        # Ensure ProductGroup records exist for narrow wildcard families.
-        if not use_master and os.path.exists(RETAIL_PRICES_CSV):
+        # Group rebuild recreates ProductGroup rows. Run it only for a full replace
+        # import to avoid nulling groups on skipped products during partial runs.
+        if replace_all and not use_master and os.path.exists(RETAIL_PRICES_CSV):
             self._ensure_product_groups(RETAIL_PRICES_CSV)
 
         # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
