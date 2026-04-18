@@ -15,7 +15,6 @@ def _ensure_unique_references(apps, schema_editor):
 
     duplicates = list(
         Product.objects.exclude(reference__isnull=True)
-        .exclude(reference="")
         .values("reference")
         .annotate(reference_count=Count("id"))
         .filter(reference_count__gt=1)

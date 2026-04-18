@@ -942,7 +942,12 @@ class Command(BaseCommand):
         existing_refs = (
             {}
             if replace_all
-            else {p.reference: p for p in Product.objects.exclude(reference="")}
+            else {
+                p.reference: p
+                for p in Product.objects.exclude(reference__isnull=True).exclude(
+                    reference=""
+                )
+            }
         )
 
         stats = {"created": 0, "updated": 0, "skipped": 0, "images": 0}
