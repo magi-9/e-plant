@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import type { Product } from '../api/products';
+import { getProduct, type Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
@@ -24,9 +24,13 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);
     const [openRequestModal, setOpenRequestModal] = useState(false);
+    const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
+    const selectedVariantId = hasVariants
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || variantOptions[0]?.id || null
+        : null;
 
     // Reset UI states when product changes; auto-select first in-stock variant
     useEffect(() => {
@@ -34,22 +38,24 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         setShowActionButtons(false);
         if (product?.parameters?.type === 'wildcard_group') {
             const options = product.parameters?.options || [];
+            const firstInStockWithImage = options.find(
+                (v) => (v.stock_quantity ?? 0) > 0 && !!v.image
+            );
+            const firstWithImage = options.find((v) => !!v.image);
             const firstInStock = options.find((v) => (v.stock_quantity ?? 0) > 0);
-            setSelectedVariantRef(firstInStock?.reference || options[0]?.reference || '');
+            setSelectedVariantRef(
+                firstInStockWithImage?.reference
+                || firstWithImage?.reference
+                || firstInStock?.reference
+                || options[0]?.reference
+                || ''
+            );
         } else {
             setSelectedVariantRef('');
         }
+        setHydratedVariant(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product?.id]);
-
-    if (!product) return null;
-
-    const categoryList = (product.all_categories || product.parameters?.all_categories || product.category || '')
-        .split(';')
-        .map((value) => value.trim())
-        .filter(Boolean);
-    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
-    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
 
     const defaultVariantRef = hasVariants ? variantOptions[0]?.reference || '' : '';
 
@@ -57,22 +63,73 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || variantOptions[0]
         : null;
 
-    const effectiveVariantRef = selectedVariant?.reference || '';
+    useEffect(() => {
+        let cancelled = false;
+
+        // Clear the previously hydrated variant immediately so the modal does not
+        // briefly render stale image/name/price while the next variant is loading.
+        setHydratedVariant(null);
+
+        const loadVariant = async () => {
+            if (!hasVariants || !selectedVariantId) {
+                return;
+            }
+
+            try {
+                const fullVariant = await getProduct(selectedVariantId);
+                if (!cancelled) {
+                    setHydratedVariant(fullVariant);
+                }
+            } catch {
+                if (!cancelled) {
+                    setHydratedVariant(null);
+                }
+            }
+        };
+
+        void loadVariant();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [hasVariants, selectedVariantId]);
+
+    if (!product) return null;
+
+    const activeVariant = hydratedVariant || selectedVariant;
+
+    const variantImageFallback =
+        variantOptions.find((opt) => !!opt.image)?.image || product.image;
+
+    const effectiveName = activeVariant?.name || product.name;
+    const effectiveDescription = activeVariant?.description || product.description;
+    const effectiveCategory = activeVariant?.category || product.category;
+    const effectiveAllCategories = activeVariant?.all_categories || product.all_categories || product.parameters?.all_categories || effectiveCategory || '';
+    const effectiveImage = activeVariant?.image || variantImageFallback || product.image;
+    const effectivePrice = activeVariant?.price ?? product.price;
+    const effectiveVariantRef = activeVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
+
+    const categoryList = effectiveAllCategories
+        .split(';')
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
+    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
     const effectiveStockQuantity = (() => {
         if (!hasVariants) return product.stock_quantity ?? 0;
-        const variantStock = selectedVariant?.stock_quantity;
+        const variantStock = activeVariant?.stock_quantity;
         if (variantStock != null && variantStock > 0) return variantStock;
         const allVariantsEmpty = variantOptions.every((v) => (v.stock_quantity ?? 0) === 0);
         if (allVariantsEmpty && (product.stock_quantity ?? 0) > 0) return product.stock_quantity ?? 0;
         return variantStock ?? 0;
     })();
-    const descriptionParts = product.description
+    const descriptionParts = effectiveDescription
         ? buildDescriptionParts(
-            product.description,
+            effectiveDescription,
             hasVariants,
             selectedVariant,
             effectiveProductCode
@@ -97,9 +154,9 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         setIsAdding(true);
         addItem({
             productId: product.id,
-            name: product.name,
-            price: product.price!,
-            image: product.image,
+            name: effectiveName,
+            price: effectivePrice!,
+            image: effectiveImage,
             stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
             variantLabel: effectiveVariantLabel || undefined,
@@ -167,10 +224,10 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 min-w-0">
                                             {/* Image Section */}
                                             <div className="relative aspect-square w-full rounded-lg bg-gray-100 overflow-hidden">
-                                                {product.image ? (
+                                                {effectiveImage ? (
                                                     <img
-                                                        src={product.image}
-                                                        alt={product.name}
+                                                        src={effectiveImage}
+                                                        alt={effectiveName}
                                                         className="h-full w-full object-cover object-center"
                                                     />
                                                 ) : (
@@ -186,7 +243,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                             <div className="flex flex-col h-full min-w-0">
                                                 <div className="min-w-0">
                                                     <Dialog.Title as="h3" className="text-2xl font-bold leading-tight text-gray-900 mb-1 break-words">
-                                                        {product.name}
+                                                        {effectiveName}
                                                     </Dialog.Title>
                                                     {effectiveProductCode && (
                                                         <p className="text-sm text-gray-500 font-medium mb-2 break-words">{effectiveProductCode}</p>
@@ -194,7 +251,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     <div className="flex items-start gap-1.5 mb-4 flex-wrap">
                                                         <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
                                                         <p className="text-sm text-cyan-700 font-medium break-words">
-                                                            {visibleCategories.join(', ') || product.category}
+                                                            {visibleCategories.join(', ') || effectiveCategory}
                                                             {hiddenCategories.length > 0 && (
                                                                 <span className="text-slate-400"> {`+${hiddenCategories.length} ďalších`}</span>
                                                             )}
@@ -213,9 +270,12 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 {variantOptions.map((option) => {
                                                                     const qty = option.stock_quantity ?? null;
                                                                     const stockLabel = qty === null ? '' : qty > 0 ? ` · ${qty} ks` : ' · vypredané';
+                                                                    const displayLabel = option.reference && option.name
+                                                                        ? `${option.reference} – ${option.name}`
+                                                                        : option.reference || option.name || option.label || '';
                                                                     return (
                                                                         <option key={option.reference} value={option.reference}>
-                                                                            {`${option.label || `${option.name} (${option.reference})`}${stockLabel}`}
+                                                                            {`${displayLabel}${stockLabel}`}
                                                                         </option>
                                                                     );
                                                                 })}
@@ -242,10 +302,10 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                 <div className="mt-auto pt-4 border-t border-gray-100">
                                                     <div className="flex items-center justify-between">
                                                         <div>
-                                                            {product.price ? (
+                                                            {effectivePrice ? (
                                                                 <div className="flex items-center gap-2">
                                                                     <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                                                                    <p className="text-3xl font-bold text-cyan-700">{product.price} €</p>
+                                                                    <p className="text-3xl font-bold text-cyan-700">{effectivePrice} €</p>
                                                                 </div>
                                                             ) : (
                                                                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
@@ -254,7 +314,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {product.price && (() => {
+                                                        {effectivePrice && (() => {
                                                             const cartItem = items.find(
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
@@ -407,7 +467,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             onClose={() => setOpenRequestModal(false)}
             onSuccess={() => { setOpenRequestModal(false); }}
             productId={product?.id || 0}
-            productName={product?.name || ''}
+            productName={effectiveName || ''}
             productReference={effectiveProductCode}
         />
         </>

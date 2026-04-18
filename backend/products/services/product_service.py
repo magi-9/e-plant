@@ -8,21 +8,19 @@ class ProductService:
         if cls.should_show_price(user):
             return data
 
-        # Handle paginated response (dict with "results" key)
-        if isinstance(data, dict) and "results" in data:
-            for item in data.get("results", []):
-                item["price"] = None
-            return data
+        def _scrub_prices(value):
+            if isinstance(value, dict):
+                for key, nested in value.items():
+                    if key == "price":
+                        value[key] = None
+                    else:
+                        _scrub_prices(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    _scrub_prices(nested)
 
-        # Handle list response
-        if isinstance(data, list):
-            for item in data:
-                item["price"] = None
-            return data
-
-        # Handle single item response
-        if isinstance(data, dict):
-            data["price"] = None
+        _scrub_prices(data)
+        if isinstance(data, (dict, list)):
             return data
 
         return data

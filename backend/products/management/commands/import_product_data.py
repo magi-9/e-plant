@@ -3,13 +3,20 @@ Management command to import product data from CSV files.
 
 Prerequisites:
   1. Run: python data/convert_to_csv.py   (converts Excel → CSV)
-  2. Run: python manage.py migrate        (applies reference field migration)
+  2. Run: python manage.py migrate        (applies migrations)
 
 Usage:
-  python manage.py import_product_data            # import 107 priced products (default)
-  python manage.py import_product_data --update   # update existing products
-  python manage.py import_product_data --dry-run  # preview without saving
-  python manage.py import_product_data --variants # import all 1885 SKU variants instead
+  python manage.py import_product_data                        # flat import, all rows with ref
+  python manage.py import_product_data --update               # update existing products
+  python manage.py import_product_data --dry-run              # preview without saving
+  python manage.py import_product_data --replace-all          # clean start, reimport everything
+  python manage.py import_product_data --master               # import from master CSV (data/new/)
+
+Rules:
+  - Every row with a reference is imported (1 ref = 1 product = 1 row).
+  - Products missing name, category, or price are stored with is_visible=False.
+  - Products with complete data are stored with is_visible=True.
+  - is_active is not used anywhere.
 """
 
 import csv
@@ -233,6 +240,142 @@ def load_variant_products(products_csv_path, retail_prices_path):
                     "description": "",
                 }
             )
+    return products
+
+
+def _build_price_lookup(retail_prices_path):
+    """
+    Build exact and wildcard price lookup dicts from retail_prices.csv.
+
+    Returns:
+        exact   — {normalize_ref(ref): (price, section)}
+        patterns — [(compiled_regex, price, section), ...]
+    """
+    exact = {}
+    patterns = []
+    with open(retail_prices_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            ref = row.get("reference", "").strip()
+            price_str = row.get("price_eur", "").strip()
+            section = row.get("section", "").strip()
+            if not ref or not price_str:
+                continue
+            try:
+                price = Decimal(price_str)
+            except InvalidOperation:
+                continue
+            if re.search(r"[xXyY]", ref):
+                patterns.append((ref_to_regex(ref), price, section, ref))
+            else:
+                exact[normalize_ref(ref)] = (price, section)
+    return exact, patterns
+
+
+def _lookup_price(ref, reference_num, exact, patterns):
+    """
+    Try to match a price for the given reference/reference_num.
+    Tries exact match first (on reference_num, then formatted reference),
+    then wildcard pattern match.
+    Returns (price, section, matched_wildcard_ref) where matched_wildcard_ref
+    is the raw wildcard string (e.g. "54.315.xxx.21-2") or None for exact matches.
+    """
+    candidates = [normalize_ref(reference_num), normalize_ref(ref)]
+    for key in candidates:
+        if key and key in exact:
+            price, section = exact[key]
+            return price, section, None
+    for regex, price, section, raw_ref in patterns:
+        for key in candidates:
+            if key and regex.match(key):
+                return price, section, raw_ref
+    return None, "", None
+
+
+def load_flat_products(merged_csv_path, retail_prices_path=None):
+    """
+    Load all products from merged CSV as flat 1:1 rows — no wildcard grouping.
+
+    Rules:
+    - Every row with a reference is imported (even if name/category/price missing).
+    - Duplicate references: first occurrence wins.
+    - Price fallback: if no price in merged CSV, look up via retail_prices_path
+      (exact match on reference_num/reference, then wildcard pattern match).
+    - is_visible = True only when name, category, and a valid price are all present.
+    - Missing name falls back to the reference string.
+    - Missing category falls back to 'Uncategorized'.
+    - Missing price is stored as 0.00 with is_visible = False.
+
+    Returns list of dicts ready for bulk_create.
+    """
+    # Build retail price lookup once if path provided
+    exact_prices, wildcard_prices = {}, []
+    if retail_prices_path and os.path.exists(retail_prices_path):
+        exact_prices, wildcard_prices = _build_price_lookup(retail_prices_path)
+
+    seen_refs = set()
+    products = []
+
+    with open(merged_csv_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            ref = row.get("reference", "").strip()
+            if not ref:
+                continue
+            if ref in seen_refs:
+                continue
+            seen_refs.add(ref)
+
+            name = row.get("name", "").strip()
+            category = (
+                row.get("primary_system_category", "").strip()
+                or row.get("category", "").strip()
+            )
+            description = (
+                row.get("generated_description", "").strip()
+                or row.get("description", "").strip()
+            )
+            reference_num = row.get("reference_num", "").strip()
+
+            # Price: use merged CSV value first; fall back to retail price lookup
+            price_str = row.get("price", "").strip()
+            price = None
+            if price_str:
+                try:
+                    price = Decimal(price_str)
+                except InvalidOperation:
+                    price = None
+
+            if price is None and (exact_prices or wildcard_prices):
+                matched_price, matched_section, _ = _lookup_price(
+                    ref, reference_num, exact_prices, wildcard_prices
+                )
+                if matched_price is not None:
+                    price = matched_price
+                    if not category:
+                        category = matched_section
+
+            is_visible = bool(name and category and price is not None)
+
+            params = {
+                "type": "single",
+                "reference_num": reference_num,
+                "parameter_code": row.get("ref_segment_4", "").strip(),
+                "option_tokens": row.get("options", "").strip(),
+                "compatibility_code": row.get("compatibility_code", "").strip(),
+            }
+
+            products.append(
+                {
+                    "name": name or ref,
+                    "reference": ref,
+                    "reference_num": reference_num,
+                    "category": category or "Uncategorized",
+                    "price": price if price is not None else Decimal("0.00"),
+                    "description": description,
+                    "is_visible": is_visible,
+                    "parameters": params,
+                }
+            )
+
     return products
 
 
@@ -712,16 +855,6 @@ class Command(BaseCommand):
             help="Update existing products matched by reference",
         )
         parser.add_argument(
-            "--variants",
-            action="store_true",
-            help="Import all 1885 SKU variants instead of the 107 priced products",
-        )
-        parser.add_argument(
-            "--merged",
-            action="store_true",
-            help="Import from data/csv/import_all_merged.csv (one merged source)",
-        )
-        parser.add_argument(
             "--replace-all",
             action="store_true",
             help="Delete existing products before import",
@@ -732,25 +865,48 @@ class Command(BaseCommand):
             help="Import from data/new/product_retail_2025_master.csv",
         )
 
+    def _ensure_product_groups(self, retail_prices_path):
+        """Create/update ProductGroup records for narrow wildcard families.
+
+        Only patterns with exactly one wildcard segment (e.g. 54.315.xxx.21-2)
+        are treated as true product families. Broader price-level wildcards
+        (two or more wildcard segments) are skipped.
+        Clears all existing ProductGroups first so stale entries are removed.
+        """
+        ProductGroup.objects.all().delete()
+        with open(retail_prices_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ref = row.get("reference", "").strip()
+                if not ref or not re.search(r"[xXyY]", ref):
+                    continue
+                segments = ref.split(".")
+                if sum(1 for s in segments if re.search(r"[xXyY]", s)) != 1:
+                    continue
+                prefix_parts = []
+                for seg in segments:
+                    if re.search(r"[xXyY]", seg):
+                        break
+                    prefix_parts.append(seg)
+                prefix = ".".join(prefix_parts)
+                if not prefix:
+                    continue  # skip patterns where first segment itself is wildcard
+                name = row.get("name", "").strip() or prefix
+                ProductGroup.objects.update_or_create(
+                    prefix=prefix, defaults={"name": name}
+                )
+
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         do_update = options["update"]
-        use_variants = options["variants"]
-        use_merged = options["merged"]
         replace_all = options["replace_all"]
         use_master = options["master"]
 
         required_files = []
         if use_master:
             required_files.append((MASTER_IMPORT_CSV, "product_retail_2025_master.csv"))
-        elif use_merged:
-            required_files.append((MERGED_IMPORT_CSV, "import_all_merged.csv"))
-            required_files.append((PRODUCTS_CSV, "products.csv"))
-            required_files.append((RETAIL_PRICES_CSV, "retail_prices.csv"))
         else:
+            required_files.append((MERGED_IMPORT_CSV, "import_all_merged.csv"))
             required_files.append((RETAIL_PRICES_CSV, "retail_prices.csv"))
-            if use_variants:
-                required_files.append((PRODUCTS_CSV, "products.csv"))
 
         for path, label in required_files:
             if not os.path.exists(path):
@@ -772,66 +928,35 @@ class Command(BaseCommand):
             self.stdout.write("Loading products from final master CSV...")
             products = load_master_products(MASTER_IMPORT_CSV)
             self.stdout.write(f"  {len(products)} products from master CSV")
-        elif use_merged:
-            self.stdout.write("Loading products from merged CSV...")
-            products = load_merged_products(MERGED_IMPORT_CSV)
-            self.stdout.write(f"  {len(products)} products with price")
-        elif use_variants:
-            self.stdout.write("Loading 1885 SKU variants...")
-            products = load_variant_products(PRODUCTS_CSV, RETAIL_PRICES_CSV)
-            priced = sum(1 for p in products if p["price"] is not None)
-            self.stdout.write(
-                f"  {len(products)} variants, {priced} with matched retail price"
-            )
         else:
-            self.stdout.write("Loading 107 retail products...")
-            products = load_retail_products(RETAIL_PRICES_CSV)
-            self.stdout.write(f"  {len(products)} products")
+            self.stdout.write(
+                "Loading all products from merged CSV (flat, 1 ref = 1 product)..."
+            )
+            products = load_flat_products(MERGED_IMPORT_CSV, RETAIL_PRICES_CSV)
+            visible_count = sum(1 for p in products if p["is_visible"])
+            self.stdout.write(
+                f"  {len(products)} products ({visible_count} visible, "
+                f"{len(products) - visible_count} hidden due to incomplete data)"
+            )
 
         existing_refs = (
             {}
             if replace_all
-            else {p.reference: p for p in Product.objects.exclude(reference="")}
-        )
-        existing_names = (
-            {}
-            if replace_all
-            else {p.name: p for p in Product.objects.filter(reference="")}
+            else {
+                p.reference: p
+                for p in Product.objects.exclude(reference__isnull=True).exclude(
+                    reference=""
+                )
+            }
         )
 
-        stats = {"created": 0, "updated": 0, "skipped": 0, "no_price": 0, "images": 0}
+        stats = {"created": 0, "updated": 0, "skipped": 0, "images": 0}
         to_create = []
         to_update = []
-        hidden_refs_to_hide = set()
 
         for prod in products:
-            price = prod["price"]
-            if price is None:
-                stats["no_price"] += 1
-                continue
-
-            hidden_refs_to_hide.update(prod.get("hidden_refs", []))
-
-            if prod.get("parameters", {}).get("type") == "wildcard_group":
-                options = prod["parameters"].get("options", [])
-                enriched_options = []
-                for option in options:
-                    option_copy = dict(option)
-                    existing_option_product = existing_refs.get(
-                        option_copy.get("reference", "")
-                    )
-                    option_copy["stock_quantity"] = (
-                        existing_option_product.stock_quantity
-                        if existing_option_product is not None
-                        else 0
-                    )
-                    enriched_options.append(option_copy)
-                prod["parameters"]["options"] = enriched_options
-
             ref = prod["reference"]
-            ref_for_image = (
-                prod.get("reference_num") or ref
-            )  # variants/merged use numeric, retail uses formatted
+            ref_for_image = prod.get("reference_num") or ref
 
             # Find image
             image_key = find_image_for_ref(ref_for_image, image_index)
@@ -841,24 +966,18 @@ class Command(BaseCommand):
                 if image_relative and not dry_run:
                     stats["images"] += 1
 
-            # Match existing product
-            existing = existing_refs.get(ref) or (
-                existing_names.get(prod["name"]) if not ref else None
-            )
+            existing = existing_refs.get(ref)
 
             if existing:
                 if do_update:
-                    existing.price = price
-                    if prod["category"]:
-                        existing.category = prod["category"]
-                    if "is_visible" in prod:
-                        existing.is_visible = prod["is_visible"]
+                    existing.price = prod["price"]
+                    existing.category = prod["category"]
+                    existing.is_visible = prod["is_visible"]
+                    existing.description = prod.get("description", "")
                     if image_relative:
                         existing.image = image_relative
-                    existing.description = prod.get("description", "")
-                    existing_params = prod.get("parameters")
-                    if hasattr(existing, "parameters") and existing_params is not None:
-                        existing.parameters = existing_params
+                    if prod.get("parameters") is not None:
+                        existing.parameters = prod["parameters"]
                     to_update.append(existing)
                     stats["updated"] += 1
                 else:
@@ -869,7 +988,7 @@ class Command(BaseCommand):
                     "reference": ref,
                     "description": prod.get("description", ""),
                     "category": prod["category"],
-                    "price": price,
+                    "price": prod["price"],
                     "stock_quantity": 0,
                     "image": image_relative or "",
                     "is_visible": prod.get("is_visible", True),
@@ -885,7 +1004,6 @@ class Command(BaseCommand):
             f"  To create:  {stats['created']}\n"
             f"  To update:  {stats['updated']}\n"
             f"  Skipped (already exist, use --update): {stats['skipped']}\n"
-            f"  No price (variants only):              {stats['no_price']}\n"
             f"  Images found: {stats['images']}\n"
         )
 
@@ -899,6 +1017,11 @@ class Command(BaseCommand):
                     )
             return
 
+        # Group rebuild recreates ProductGroup rows. Run it only for a full replace
+        # import to avoid nulling groups on skipped products during partial runs.
+        if replace_all and not use_master and os.path.exists(RETAIL_PRICES_CSV):
+            self._ensure_product_groups(RETAIL_PRICES_CSV)
+
         # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
         # Pre-fetch all groups once to avoid N+1 queries.
         all_groups = list(ProductGroup.objects.only("id", "prefix"))
@@ -909,6 +1032,18 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             if replace_all:
+                # Delete in PROTECT-safe order before wiping products.
+                from orders.models import (
+                    BatchLot,
+                    OrderItem,
+                    OrderItemBatch,
+                    StockReceipt,
+                )
+
+                OrderItemBatch.objects.all().delete()
+                StockReceipt.objects.all().delete()
+                BatchLot.objects.all().delete()
+                OrderItem.objects.all().delete()
                 Product.objects.all().delete()
             if to_create:
                 Product.objects.bulk_create(to_create, batch_size=200)
@@ -920,18 +1055,9 @@ class Command(BaseCommand):
                     "description",
                     "is_visible",
                     "group",
+                    "parameters",
                 ]
-                if hasattr(Product, "parameters"):
-                    update_fields.append("parameters")
-                Product.objects.bulk_update(
-                    to_update,
-                    update_fields,
-                    batch_size=200,
-                )
-            if hidden_refs_to_hide and not replace_all:
-                Product.objects.filter(reference__in=hidden_refs_to_hide).update(
-                    is_visible=False,
-                )
+                Product.objects.bulk_update(to_update, update_fields, batch_size=200)
 
         self.stdout.write(
             self.style.SUCCESS(

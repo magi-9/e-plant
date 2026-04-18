@@ -7,7 +7,7 @@ from .models import Product, ProductGroup
 
 class ProductInline(admin.TabularInline):
     model = Product
-    fields = ("name", "reference", "price", "stock_quantity", "is_active", "is_visible")
+    fields = ("name", "reference", "price", "stock_quantity", "is_visible")
     extra = 0
     show_change_link = True
 
@@ -23,27 +23,13 @@ class ProductGroupAdmin(admin.ModelAdmin):
             super()
             .get_queryset(request)
             .annotate(
-                _product_count=Count("products", filter=Q(products__is_active=True))
+                _product_count=Count("products", filter=Q(products__is_visible=True))
             )
         )
 
     @admin.display(description="Products", ordering="_product_count")
     def product_count(self, obj):
         return obj._product_count
-
-
-def _make_active(modeladmin, request, queryset):
-    queryset.update(is_active=True)
-
-
-_make_active.short_description = _("Mark selected as active")
-
-
-def _make_inactive(modeladmin, request, queryset):
-    queryset.update(is_active=False)
-
-
-_make_inactive.short_description = _("Mark selected as inactive")
 
 
 def _make_visible(modeladmin, request, queryset):
@@ -70,7 +56,6 @@ class ProductAdmin(admin.ModelAdmin):
         "stock_quantity",
         "low_stock_threshold",
         "low_stock_alert_sent",
-        "is_active",
         "is_visible",
     )
     list_filter = (
@@ -80,6 +65,6 @@ class ProductAdmin(admin.ModelAdmin):
         "low_stock_alert_sent",
     )
     search_fields = ("name", "description", "reference")
-    list_editable = ("is_active", "is_visible")
+    list_editable = ("is_visible",)
     ordering = ("name",)
-    actions = [_make_active, _make_inactive, _make_visible, _make_invisible]
+    actions = [_make_visible, _make_invisible]

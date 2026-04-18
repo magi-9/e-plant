@@ -65,6 +65,10 @@ echo "========================================"
 
 run_step "eslint" docker compose exec -T frontend npm run lint
 
+mkdir -p frontend/.tmp
+
+run_step "frontend build" docker compose exec -T frontend npm run build
+
 run_step "black (format check)" docker compose exec -T backend black . --check
 
 run_step "flake8" docker compose exec -T backend flake8 . --max-line-length=120

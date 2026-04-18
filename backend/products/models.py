@@ -15,7 +15,7 @@ class ProductGroup(models.Model):
 
 class Product(models.Model):
     name = models.CharField(max_length=255)
-    reference = models.CharField(max_length=100, blank=True, db_index=True)
+    reference = models.CharField(max_length=100, blank=True, null=True, unique=True)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -30,7 +30,6 @@ class Product(models.Model):
         blank=True,
         related_name="products",
     )
-    is_active = models.BooleanField(default=True)
     is_visible = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict, blank=True)
 

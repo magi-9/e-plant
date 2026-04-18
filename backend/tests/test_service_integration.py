@@ -90,3 +90,30 @@ class TestServiceIntegrationPoints:
         result = ProductService.apply_price_visibility(payload, user)
 
         assert result["price"] == Decimal("39.90")
+
+    def test_product_service_hides_nested_option_prices_for_anonymous_user(self):
+        class AnonymousUser:
+            is_authenticated = False
+
+        payload = {
+            "results": [
+                {
+                    "id": 1,
+                    "name": "Grouped",
+                    "price": Decimal("39.90"),
+                    "parameters": {
+                        "type": "wildcard_group",
+                        "options": [
+                            {"reference": "A", "price": Decimal("39.90")},
+                            {"reference": "B", "price": Decimal("49.90")},
+                        ],
+                    },
+                }
+            ]
+        }
+
+        result = ProductService.apply_price_visibility(payload, AnonymousUser())
+
+        assert result["results"][0]["price"] is None
+        assert result["results"][0]["parameters"]["options"][0]["price"] is None
+        assert result["results"][0]["parameters"]["options"][1]["price"] is None

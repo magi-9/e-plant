@@ -6,70 +6,48 @@ from products.models import Product
 
 
 @pytest.mark.django_db
-def test_public_product_list_uses_visible_and_active_filter():
-    visible_active = Product.objects.create(
-        name="Visible Active",
+def test_public_product_list_uses_visible_filter():
+    visible = Product.objects.create(
+        name="Visible",
         description="",
         category="A",
         price="10.00",
         stock_quantity=1,
         is_visible=True,
-        is_active=True,
     )
     Product.objects.create(
-        name="Visible Inactive",
-        description="",
-        category="A",
-        price="10.00",
-        stock_quantity=1,
-        is_visible=True,
-        is_active=False,
-    )
-    Product.objects.create(
-        name="Hidden Active",
+        name="Hidden",
         description="",
         category="A",
         price="10.00",
         stock_quantity=1,
         is_visible=False,
-        is_active=True,
     )
 
     response = APIClient().get("/api/products/")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
-    assert response.data["results"][0]["id"] == visible_active.id
+    assert response.data["results"][0]["id"] == visible.id
 
 
 @pytest.mark.django_db
-def test_public_product_count_uses_visible_and_active_filter():
+def test_public_product_count_uses_visible_filter():
     Product.objects.create(
-        name="Visible Active Count",
+        name="Visible Count",
         description="",
         category="A",
         price="10.00",
         stock_quantity=1,
         is_visible=True,
-        is_active=True,
     )
     Product.objects.create(
-        name="Visible Inactive Count",
-        description="",
-        category="A",
-        price="10.00",
-        stock_quantity=1,
-        is_visible=True,
-        is_active=False,
-    )
-    Product.objects.create(
-        name="Hidden Active Count",
+        name="Hidden Count",
         description="",
         category="A",
         price="10.00",
         stock_quantity=1,
         is_visible=False,
-        is_active=True,
     )
 
     response = APIClient().get("/api/products/count/")

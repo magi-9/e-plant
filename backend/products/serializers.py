@@ -80,7 +80,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "image",
             "group",
             "group_name",
-            "is_active",
             "is_visible",
             "all_categories",
             "parameters",
