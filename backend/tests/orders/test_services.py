@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 from django.db import close_old_connections, transaction
+from django.db.utils import IntegrityError
 from django.utils import timezone
 from rest_framework.serializers import ValidationError
 
@@ -482,6 +483,68 @@ class TestOrderService:
         order_number = service._generate_order_number()
 
         assert re.fullmatch(rf"{timezone.now().year}X\d{{4}}", order_number)
+
+    @pytest.mark.django_db
+    def test_generate_order_number_handles_malformed_suffix(self):
+        """Malformed historic suffix should not crash generation."""
+        year = timezone.now().year
+        Order.objects.create(
+            customer_name="Legacy",
+            email="legacy@example.com",
+            phone="+421900123123",
+            street="Legacy 1",
+            city="Bratislava",
+            postal_code="81101",
+            is_company=False,
+            payment_method="card",
+            status="new",
+            total_price=Decimal("1.00"),
+            order_number=f"{year}XABCD",
+        )
+
+        service = OrderService(user=None)
+        order_number = service._generate_order_number()
+
+        assert order_number == f"{year}X0001"
+
+    @pytest.mark.django_db
+    def test_create_order_retries_when_order_number_collides(
+        self, user_factory, product_factory, zero_shipping
+    ):
+        """Order creation retries on unique order_number collision and succeeds."""
+        user = user_factory()
+        product = product_factory(price=Decimal("25.00"), stock_quantity=5)
+        order_data = {
+            "customer_name": "Retry User",
+            "email": "retry@example.com",
+            "phone": "+421900777777",
+            "street": "Retry 1",
+            "city": "Bratislava",
+            "postal_code": "81101",
+            "is_company": False,
+            "payment_method": "card",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        }
+
+        service = OrderService(user=user)
+        original_create_order_instance = service._create_order_instance
+        call_counter = {"count": 0}
+
+        def flaky_create_order_instance(*args, **kwargs):
+            call_counter["count"] += 1
+            if call_counter["count"] == 1:
+                raise IntegrityError(
+                    "duplicate key value violates unique constraint order_order_number_key"
+                )
+            return original_create_order_instance(*args, **kwargs)
+
+        with patch.object(
+            service, "_create_order_instance", side_effect=flaky_create_order_instance
+        ):
+            order = service.create_order(order_data)
+
+        assert order.id is not None
+        assert call_counter["count"] == 2
 
     def test_determine_initial_status_bank_transfer(self):
         """Test status determination for bank transfer."""
