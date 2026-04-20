@@ -7,6 +7,7 @@ separated from serialization concerns.
 
 from .order_service import OrderService
 from .pricing_service import PricingService
+from .stock_issue_service import StockIssueService
 from .stock_receipt_service import StockReceiptService
 from .stock_service import StockService
 
@@ -15,4 +16,5 @@ __all__ = [
     "StockService",
     "PricingService",
     "StockReceiptService",
+    "StockIssueService",
 ]

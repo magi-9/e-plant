@@ -292,3 +292,12 @@ class StockReceiptInputSerializer(serializers.Serializer):
     variant_reference = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
+
+
+class StockIssueInputSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+    variant_reference = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )

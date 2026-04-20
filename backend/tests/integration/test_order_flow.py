@@ -1,7 +1,9 @@
 from decimal import Decimal
+import re
 
 import pytest
 from django.core import mail
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework import status
 
@@ -38,7 +40,9 @@ def test_complete_order_creation_flow(
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["status"] == "awaiting_payment"
     assert response.data["total_price"] == "249.80"
-    assert len(response.data["order_number"]) == 8
+    assert re.fullmatch(
+        rf"{timezone.now().year}X\d{{4}}", response.data["order_number"]
+    )
 
     order = Order.objects.get(order_number=response.data["order_number"])
     assert order.user == user

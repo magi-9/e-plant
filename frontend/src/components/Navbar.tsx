@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import logoUrl from '../assets/digitalabutment-logo.png';
 import {
     ShoppingCartIcon,
+    ArrowLeftOnRectangleIcon,
     ArrowRightOnRectangleIcon,
     ShieldCheckIcon,
     UserCircleIcon,
@@ -229,7 +230,7 @@ export default function Navbar() {
                                 title="Prihlásiť sa"
                                 className="flex items-center justify-center p-3 rounded-lg text-cyan-100 bg-transparent hover:bg-slate-700/50 hover:text-white transition-all duration-200"
                             >
-                                <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                                <ArrowLeftOnRectangleIcon className="h-6 w-6" />
                             </Link>
                         )}
                     </div>

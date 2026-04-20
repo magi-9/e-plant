@@ -5,12 +5,12 @@ Contains the core business logic for order processing.
 """
 
 import logging
-import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
 from services.email import OrderEmailService
@@ -20,6 +20,8 @@ from .pricing_service import PricingService
 from .stock_service import StockService
 
 logger = logging.getLogger(__name__)
+
+MAX_ORDER_NUMBER_RETRIES = 5
 
 User = get_user_model()
 
@@ -96,23 +98,45 @@ class OrderService:
 
             total_price = items_total + shipping_cost
 
-            # Generate unique order number
-            order_number = self._generate_order_number()
-
             # Determine order status based on payment method
             status = self._determine_initial_status(
                 validated_data.get("payment_method", "bank_transfer")
             )
 
-            # Create the order instance
-            order = self._create_order_instance(
-                validated_data=validated_data,
-                order_number=order_number,
-                total_price=total_price,
-                status=status,
-                shipping_cost=shipping_cost,
-                shipping_carrier=shipping_carrier,
-            )
+            order = None
+            for attempt in range(1, MAX_ORDER_NUMBER_RETRIES + 1):
+                order_number = self._generate_order_number()
+                try:
+                    # Savepoint lets us retry after a unique collision without
+                    # breaking the surrounding transaction.
+                    with transaction.atomic():
+                        order = self._create_order_instance(
+                            validated_data=validated_data,
+                            order_number=order_number,
+                            total_price=total_price,
+                            status=status,
+                            shipping_cost=shipping_cost,
+                            shipping_carrier=shipping_carrier,
+                        )
+                    break
+                except IntegrityError as exc:
+                    if not self._is_order_number_collision(exc):
+                        raise
+                    if attempt == MAX_ORDER_NUMBER_RETRIES:
+                        raise RuntimeError(
+                            "Could not allocate a unique order number after retries."
+                        ) from exc
+                    logger.warning(
+                        "Order number collision detected for %s (attempt %s/%s), retrying.",
+                        order_number,
+                        attempt,
+                        MAX_ORDER_NUMBER_RETRIES,
+                    )
+
+            if order is None:
+                raise RuntimeError(
+                    "Order creation failed before order instance was created."
+                )
 
             # Create order items
             self._create_order_items(order, prepared_items)
@@ -131,17 +155,43 @@ class OrderService:
 
     def _generate_order_number(self) -> str:
         """
-        Generate a unique order number using UUID.
+        Generate a unique order number in format YYYYX0001.
 
-        Uses UUID4 for cryptographic randomness to prevent order enumeration.
-        Format: 8-character hex string (32 possible values per character)
+        Sequence resets every year and uses fixed 4-digit padding.
 
         Returns:
-            8-character cryptographically secure order number
+            Order number in format YYYYXNNNN
         """
-        # Use first 8 chars of UUID4 converted to hex
-        # This gives us 16^8 (~4.3 billion) possible values (much better than sequential)
-        return str(uuid.uuid4()).replace("-", "")[:8].upper()
+        year = timezone.now().year
+        prefix = f"{year}X"
+
+        last_order_number = (
+            Order.objects.filter(order_number__startswith=prefix)
+            .order_by("-order_number")
+            .values_list("order_number", flat=True)
+            .first()
+        )
+
+        if not last_order_number:
+            sequence = 1
+        else:
+            suffix = last_order_number[len(prefix) :]
+            if suffix.isdigit():
+                sequence = int(suffix) + 1
+            else:
+                logger.warning(
+                    "Unexpected order number format '%s' for prefix '%s'. Restarting yearly sequence from 0001.",
+                    last_order_number,
+                    prefix,
+                )
+                sequence = 1
+
+        return f"{prefix}{sequence:04d}"
+
+    @staticmethod
+    def _is_order_number_collision(exc: IntegrityError) -> bool:
+        message = str(exc).lower()
+        return "order_number" in message and "unique" in message
 
     def _determine_initial_status(self, payment_method: str) -> str:
         """

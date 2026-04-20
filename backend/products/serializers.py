@@ -2,7 +2,7 @@ from django.core.files.images import get_image_dimensions
 from django.core.validators import FileExtensionValidator
 from rest_framework import serializers
 
-from .models import Product, ProductGroup
+from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
 
 
 class ProductImageField(serializers.ImageField):
@@ -54,9 +54,38 @@ class ProductGroupSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "prefix", "description", "product_count")
 
 
+class WildcardGroupSerializer(serializers.ModelSerializer):
+    product_count = serializers.IntegerField(read_only=True, default=0)
+
+    class Meta:
+        model = WildcardGroup
+        fields = (
+            "id",
+            "name",
+            "is_enabled",
+            "is_auto_generated",
+            "norm_key",
+            "product_count",
+            "created_at",
+        )
+        read_only_fields = ("is_auto_generated", "norm_key", "created_at")
+
+
+class GroupingSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupingSettings
+        fields = ("wildcard_grouping_enabled",)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(
         source="group.name", read_only=True, default=None
+    )
+    wildcard_group_id = serializers.IntegerField(
+        source="wildcard_group.id", read_only=True, default=None
+    )
+    wildcard_group_name = serializers.CharField(
+        source="wildcard_group.name", read_only=True, default=None
     )
     all_categories = serializers.SerializerMethodField()
     image = ProductImageField(required=False, allow_null=True)
@@ -80,6 +109,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "image",
             "group",
             "group_name",
+            "wildcard_group_id",
+            "wildcard_group_name",
             "is_visible",
             "all_categories",
             "parameters",
