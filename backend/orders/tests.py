@@ -77,3 +77,21 @@ def test_issue_stock_rejects_when_variant_has_not_enough_stock():
             quantity=3,
             variant_reference="REF-1",
         )
+
+
+@pytest.mark.django_db
+def test_issue_stock_rejects_when_no_batch_lots_exist():
+    product = Product.objects.create(
+        name="No Batch Product",
+        description="",
+        category="A",
+        price="10.00",
+        stock_quantity=4,
+        is_visible=True,
+    )
+
+    with pytest.raises(ValidationError):
+        StockIssueService.issue_stock(product=product, quantity=1)
+
+    product.refresh_from_db()
+    assert product.stock_quantity == 4

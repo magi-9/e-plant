@@ -12,14 +12,13 @@ Rules
 
 from django.db import transaction
 
+from ..grouping import storefront_group_key
 from ..models import Product, WildcardGroup
 
 
 def _build_norm_key(product) -> str:
     """Return the pipe-delimited normalisation key stored on WildcardGroup.norm_key."""
-    from ..views import _storefront_group_key
-
-    return "|".join(_storefront_group_key(product))
+    return "|".join(storefront_group_key(product))
 
 
 def sync_wildcard_groups() -> dict:

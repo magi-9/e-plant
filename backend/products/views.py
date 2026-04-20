@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from services.email import ProductInquiryEmailService
 
+from .grouping import normalized_storefront_name, storefront_group_key
 from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
 from .serializers import (
     GroupingSettingsSerializer,
@@ -102,25 +103,6 @@ def _is_admin_view(request):
     )
 
 
-def _normalized_storefront_name(name: str) -> str:
-    """Normalize product name for storefront grouping.
-
-    Removes common variant markers (e.g. G1, G1.5, G2) so nearby variants
-    can collapse into one card.
-    """
-    raw = (name or "").strip()
-    without_variant = re.sub(r"\bG\d+(?:[\.,]\d+)?\b", "", raw, flags=re.IGNORECASE)
-    return re.sub(r"\s+", " ", without_variant).strip().casefold()
-
-
-def _storefront_group_key(product):
-    return (
-        _normalized_storefront_name(product.name or ""),
-        str(product.price) if product.price is not None else "",
-        (product.category or "").strip().casefold(),
-    )
-
-
 def _option_entry(m):
     option_reference = m.reference or str(m.id)
     option_label = (
@@ -194,7 +176,7 @@ def _collapse_products(products, wildcard_enabled=True):
         wid = p.wildcard_group_id
         if wid and wid in active_wc_ids:
             continue
-        key = _storefront_group_key(p)
+        key = storefront_group_key(p)
         fallback_members.setdefault(key, []).append(p)
 
     # ── Build result preserving order of first appearance ─────────────────────
@@ -220,7 +202,7 @@ def _collapse_products(products, wildcard_enabled=True):
             # Single-member group → fall through to phase 2
 
         # Phase 2: in-memory fallback
-        key = _storefront_group_key(p)
+        key = storefront_group_key(p)
         members = fallback_members.get(key, [])
         if len(members) >= 2:
             if key in seen_fb:
@@ -389,7 +371,7 @@ class ProductCountView(APIView):
                     else:
                         key = (
                             "wc_mem",
-                            _normalized_storefront_name(name),
+                            normalized_storefront_name(name),
                             str(price) if price is not None else "",
                             (category or "").strip().casefold(),
                         )

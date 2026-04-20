@@ -103,7 +103,13 @@ class StockIssueService:
         )
 
         if not lots:
-            return
+            raise ValidationError(
+                {
+                    "quantity": (
+                        "Batch stock is inconsistent: no batch lots are available to decrease."
+                    )
+                }
+            )
 
         remaining = quantity
         for lot in lots:
