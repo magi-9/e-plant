@@ -171,17 +171,22 @@ def _collapse_products(products, wildcard_enabled=True):
         return list(products)
 
     # ── Phase 1: Persistent WildcardGroup ────────────────────────────────────
-    active_wc_ids: set[int] = set(
+    enabled_wc_ids: set[int] = set(
         WildcardGroup.objects.filter(is_enabled=True).values_list("id", flat=True)
     )
     wc_members: dict[int, list] = {}
     wc_names: dict[int, str] = {}
     for p in products:
         wid = p.wildcard_group_id
-        if wid and wid in active_wc_ids:
+        if wid and wid in enabled_wc_ids:
             wc_members.setdefault(wid, []).append(p)
             if wid not in wc_names:
                 wc_names[wid] = p.wildcard_group.name if p.wildcard_group else ""
+
+    # Treat as active only groups that have >=2 members in the currently filtered list.
+    active_wc_ids: set[int] = {
+        wid for wid, members in wc_members.items() if len(members) >= 2
+    }
 
     # ── Phase 2: In-memory fallback ───────────────────────────────────────────
     fallback_members: dict[tuple, list] = {}
@@ -365,10 +370,14 @@ class ProductCountView(APIView):
             else:
                 # Persistent wildcard groups with ≥2 visible members
                 active_wc_ids: set[int] = set(
-                    WildcardGroup.objects.filter(is_enabled=True)
-                    .annotate(_cnt=Count("products"))
+                    qs.filter(
+                        wildcard_group__is_enabled=True,
+                        wildcard_group_id__isnull=False,
+                    )
+                    .values("wildcard_group_id")
+                    .annotate(_cnt=Count("id"))
                     .filter(_cnt__gte=2)
-                    .values_list("id", flat=True)
+                    .values_list("wildcard_group_id", flat=True)
                 )
 
                 seen: set = set()
