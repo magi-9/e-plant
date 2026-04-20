@@ -6,10 +6,14 @@ import {
     ClipboardDocumentListIcon,
     Cog6ToothIcon,
     ShieldCheckIcon,
+    ArchiveBoxIcon,
+    RectangleGroupIcon,
 } from '@heroicons/react/24/outline';
 
 const NAV_ITEMS = [
     { href: '/admin/products', label: 'Produkty', icon: CubeIcon },
+    { href: '/admin/inventory', label: 'Sklad', icon: ArchiveBoxIcon },
+    { href: '/admin/grouping', label: 'Grouping', icon: RectangleGroupIcon },
     { href: '/admin/orders', label: 'Objednávky', icon: ClipboardDocumentListIcon },
     { href: '/admin/users', label: 'Používatelia', icon: UsersIcon },
     { href: '/admin/settings', label: 'Nastavenia', icon: Cog6ToothIcon },

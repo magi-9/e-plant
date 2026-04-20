@@ -7,6 +7,8 @@ import {
     Cog6ToothIcon,
     ShieldCheckIcon,
     ExclamationTriangleIcon,
+    ArchiveBoxIcon,
+    RectangleGroupIcon,
 } from '@heroicons/react/24/outline';
 import { getProducts } from '../api/products';
 import { getAdminOrders, type Order } from '../api/orders';
@@ -40,6 +42,20 @@ const menuItems = [
         icon: Cog6ToothIcon,
         href: '/admin/settings',
         color: 'bg-slate-500',
+    },
+    {
+        name: 'Sklad',
+        description: 'Príjem tovaru a prehľad skladových zásob',
+        icon: ArchiveBoxIcon,
+        href: '/admin/inventory',
+        color: 'bg-orange-500',
+    },
+    {
+        name: 'Grupovanie',
+        description: 'Wildcard skupiny produktov pre storefront',
+        icon: RectangleGroupIcon,
+        href: '/admin/grouping',
+        color: 'bg-indigo-500',
     },
 ];
 

@@ -14,6 +14,8 @@ import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminSettings from './pages/AdminSettings';
+import AdminGrouping from './pages/AdminGrouping';
+import AdminInventory from './pages/AdminInventory';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -56,6 +58,8 @@ function App() {
             <Route path="/reset-password/:uid/:token" element={<ResetPasswordPage />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/grouping" element={<AdminGrouping />} />
+            <Route path="/admin/inventory" element={<AdminInventory />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/complaints" element={<ComplaintsPage />} />
