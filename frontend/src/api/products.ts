@@ -37,6 +37,20 @@ export interface Product {
     };
 }
 
+export interface WildcardGroup {
+    id: number;
+    name: string;
+    is_enabled: boolean;
+    is_auto_generated: boolean;
+    norm_key: string;
+    product_count: number;
+    created_at: string;
+}
+
+export interface GroupingSettings {
+    wildcard_grouping_enabled: boolean;
+}
+
 export interface ProductListParams {
     search?: string;
     ordering?: string;
@@ -153,4 +167,46 @@ export const getAdminProductIds = async (params?: Omit<ProductListParams, 'limit
 export const getAdminCategories = async (): Promise<string[]> => {
     const response = await client.get<{ categories: string[] }>('/products/admin/categories/');
     return response.data.categories;
+};
+
+// Grouping settings
+export const getGroupingSettings = async (): Promise<GroupingSettings> => {
+    const response = await client.get<GroupingSettings>('/products/admin/grouping-settings/');
+    return response.data;
+};
+
+export const updateGroupingSettings = async (data: Partial<GroupingSettings>): Promise<GroupingSettings> => {
+    const response = await client.patch<GroupingSettings>('/products/admin/grouping-settings/', data);
+    return response.data;
+};
+
+// Wildcard groups
+export const getWildcardGroups = async (): Promise<WildcardGroup[]> => {
+    const response = await client.get<WildcardGroup[]>('/products/admin/wildcard-groups/');
+    return response.data;
+};
+
+export const updateWildcardGroup = async (id: number, data: Partial<Pick<WildcardGroup, 'name' | 'is_enabled'>>): Promise<WildcardGroup> => {
+    const response = await client.patch<WildcardGroup>(`/products/admin/wildcard-groups/${id}/`, data);
+    return response.data;
+};
+
+export const syncWildcardGroups = async (): Promise<{ created: number; updated: number; deleted: number }> => {
+    const response = await client.post<{ created: number; updated: number; deleted: number }>('/products/admin/wildcard-groups/sync/');
+    return response.data;
+};
+
+export const getWildcardGroupProducts = async (groupId: number): Promise<Product[]> => {
+    const response = await client.get<Product[]>(`/products/admin/wildcard-groups/${groupId}/products/`);
+    return response.data;
+};
+
+export const addProductsToWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {
+    const response = await client.post(`/products/admin/wildcard-groups/${groupId}/add-products/`, { product_ids: productIds });
+    return response.data;
+};
+
+export const removeProductsFromWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {
+    const response = await client.post(`/products/admin/wildcard-groups/${groupId}/remove-products/`, { product_ids: productIds });
+    return response.data;
 };
