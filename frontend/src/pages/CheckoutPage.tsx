@@ -41,6 +41,7 @@ export default function CheckoutPage() {
     const [orderNumber, setOrderNumber] = useState<string>('');
     const [orderTotal, setOrderTotal] = useState<number>(0);
     const [saveToProfile, setSaveToProfile] = useState(false);
+    const [agreementsAccepted, setAgreementsAccepted] = useState(false);
     const isLoggedIn = !!localStorage.getItem('access_token');
 
     const { data: userProfile } = useQuery({
@@ -149,6 +150,11 @@ export default function CheckoutPage() {
     };
 
     const handleFinalSubmit = async () => {
+        if (!agreementsAccepted) {
+            setError('Pre dokončenie objednávky musíte súhlasiť so všeobecnými podmienkami a GDPR.');
+            return;
+        }
+
         const normalizedPhone = formData.phone.replace(/[\s-]/g, '');
         const normalizedPostalCode = formData.postal_code.replace(/[\s-]/g, '');
         const combinedStreet = `${formData.street_name} ${formData.street_number}`.trim();
@@ -746,6 +752,32 @@ export default function CheckoutPage() {
                                 <p className="text-sm text-red-600">{error}</p>
                             </div>
                         )}
+
+                        <div className="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4">
+                            <label htmlFor="agreementsAccepted" className="flex items-start gap-3 text-sm text-slate-700">
+                                <input
+                                    id="agreementsAccepted"
+                                    type="checkbox"
+                                    checked={agreementsAccepted}
+                                    onChange={(e) => setAgreementsAccepted(e.target.checked)}
+                                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                                />
+                                <span>
+                                    Súhlasím so
+                                    {' '}
+                                    <a href="/terms" target="_blank" rel="noreferrer" className="font-medium text-cyan-700 hover:text-cyan-800 underline">
+                                        všeobecnými podmienkami
+                                    </a>
+                                    {' '}
+                                    a
+                                    {' '}
+                                    <a href="/privacy" target="_blank" rel="noreferrer" className="font-medium text-cyan-700 hover:text-cyan-800 underline">
+                                        GDPR / ochranou osobných údajov
+                                    </a>
+                                    .
+                                </span>
+                            </label>
+                        </div>
 
                         <div className="flex gap-4">
                             <button

@@ -20,6 +20,7 @@ interface ProductDetailModalProps {
 
 export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
     const navigate = useNavigate();
+    const isLoggedIn = !!localStorage.getItem('access_token');
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);
@@ -270,7 +271,13 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                             >
                                                                 {variantOptions.map((option) => {
                                                                     const qty = option.stock_quantity ?? null;
-                                                                    const stockLabel = qty === null ? '' : qty > 0 ? ` · ${qty} ks` : ' · vypredané';
+                                                                    const stockLabel = !isLoggedIn
+                                                                        ? ''
+                                                                        : qty === null
+                                                                            ? ''
+                                                                            : qty > 0
+                                                                                ? ` · ${qty} ks`
+                                                                                : ' · vypredané';
                                                                     const displayLabel = option.reference && option.name
                                                                         ? `${option.reference} – ${option.name}`
                                                                         : option.reference || option.name || option.label || '';
@@ -283,21 +290,22 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                             </select>
                                                         </div>
                                                     )}
-                                                    {/* Stock quantity */}
-                                                    <div className="flex items-center gap-2 mt-3">
-                                                        {effectiveStockQuantity >= 5 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                                                        ) : effectiveStockQuantity >= 1 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0" />
-                                                        ) : (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
-                                                        )}
-                                                        <span className="text-sm text-slate-600">
-                                                            {effectiveStockQuantity > 0
-                                                                ? `${effectiveStockQuantity} ks skladom`
-                                                                : 'Vypredané'}
-                                                        </span>
-                                                    </div>
+                                                    {isLoggedIn && (
+                                                        <div className="flex items-center gap-2 mt-3">
+                                                            {effectiveStockQuantity >= 5 ? (
+                                                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                            ) : effectiveStockQuantity >= 1 ? (
+                                                                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0" />
+                                                            ) : (
+                                                                <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                                                            )}
+                                                            <span className="text-sm text-slate-600">
+                                                                {effectiveStockQuantity > 0
+                                                                    ? `${effectiveStockQuantity} ks skladom`
+                                                                    : 'Vypredané'}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="mt-auto pt-4 border-t border-gray-100">

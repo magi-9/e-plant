@@ -60,9 +60,14 @@ const menuItems = [
 ];
 
 export default function AdminDashboard() {
-    const { data: productsData } = useQuery({
-        queryKey: ['products', { limit: 1, offset: 0 }],
-        queryFn: () => getProducts({ limit: 1, offset: 0 }),
+    const { data: allProductsData } = useQuery({
+        queryKey: ['admin-products-count', { admin_view: '1', limit: 1, offset: 0 }],
+        queryFn: () => getProducts({ admin_view: '1', limit: 1, offset: 0 }),
+    });
+
+    const { data: visibleProductsData } = useQuery({
+        queryKey: ['admin-products-count', { admin_view: '1', is_visible: true, limit: 1, offset: 0 }],
+        queryFn: () => getProducts({ admin_view: '1', is_visible: true, limit: 1, offset: 0 }),
     });
 
     const { data: orders } = useQuery({
@@ -94,7 +99,8 @@ export default function AdminDashboard() {
             ? usersData.results
             : [];
 
-    const totalProducts = productsData?.count ?? '—';
+    const totalProducts = allProductsData?.count ?? '—';
+    const visibleProducts = visibleProductsData?.count ?? '—';
     const totalUsers = users === undefined ? '—' : usersList.length;
     const pendingOrders = orders === undefined
         ? '—'
@@ -103,11 +109,19 @@ export default function AdminDashboard() {
 
     const stats = [
         {
-            label: 'Celkom produktov',
+            label: 'Produkty (všetky)',
             value: totalProducts,
             icon: CubeIcon,
             iconColor: 'text-cyan-500',
             bg: 'bg-cyan-50',
+            href: '/admin/products',
+        },
+        {
+            label: 'Produkty (viditeľné)',
+            value: visibleProducts,
+            icon: CubeIcon,
+            iconColor: 'text-sky-500',
+            bg: 'bg-sky-50',
             href: '/admin/products',
         },
         {
@@ -151,7 +165,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-8">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 mb-8">
                     {stats.map((stat) => (
                         <Link
                             key={stat.label}
