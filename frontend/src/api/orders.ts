@@ -120,6 +120,24 @@ export const receiveStock = async (data: StockReceiptData): Promise<StockReceipt
     return response.data;
 };
 
+export interface StockIssueData {
+    product_id: number;
+    quantity: number;
+    notes?: string;
+    variant_reference?: string;
+}
+
+export interface StockIssueResult {
+    message: string;
+    product_id: number;
+    new_stock_quantity: number;
+}
+
+export const issueStock = async (data: StockIssueData): Promise<StockIssueResult> => {
+    const response = await client.post<StockIssueResult>('/orders/admin/stock-issues/', data);
+    return response.data;
+};
+
 export const updateOrderStatus = async (id: number, orderStatus: string): Promise<Order> => {
     const response = await client.patch<Order>(`/orders/admin/orders/${id}/`, { status: orderStatus });
     return response.data;

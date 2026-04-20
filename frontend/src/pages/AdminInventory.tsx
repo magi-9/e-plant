@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProducts, getAdminCategories } from '../api/products';
-import { receiveStock } from '../api/orders';
+import { issueStock, receiveStock } from '../api/orders';
 import type { Product, ProductListParams } from '../api/products';
-import { ArchiveBoxArrowDownIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxArrowDownIcon, ArchiveBoxXMarkIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 
@@ -19,6 +19,8 @@ export default function AdminInventory() {
 
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
+    const [issueProduct, setIssueProduct] = useState<Product | null>(null);
+    const [issueForm, setIssueForm] = useState({ quantity: 1, notes: '', variant_reference: '' });
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
@@ -68,9 +70,26 @@ export default function AdminInventory() {
         onError: () => toast.error('Chyba pri naskladňovaní.'),
     });
 
+    const issueStockMutation = useMutation({
+        mutationFn: issueStock,
+        onSuccess: (result) => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-products'], exact: false });
+            queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
+            toast.success(result.message);
+            setIssueProduct(null);
+            setIssueForm({ quantity: 1, notes: '', variant_reference: '' });
+        },
+        onError: () => toast.error('Chyba pri vyskladnení.'),
+    });
+
     const openReceipt = (product: Product) => {
         setReceiptProduct(product);
         setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
+    };
+
+    const openIssue = (product: Product) => {
+        setIssueProduct(product);
+        setIssueForm({ quantity: 1, notes: '', variant_reference: '' });
     };
 
     const stockLabel = (qty: number) =>
@@ -178,13 +197,22 @@ export default function AdminInventory() {
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3 text-right">
-                                                <button
-                                                    onClick={() => openReceipt(product)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
-                                                >
-                                                    <ArchiveBoxArrowDownIcon className="h-4 w-4" />
-                                                    Naskladniť
-                                                </button>
+                                                <div className="inline-flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => openIssue(product)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+                                                    >
+                                                        <ArchiveBoxXMarkIcon className="h-4 w-4" />
+                                                        Vyskladniť
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openReceipt(product)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                                                    >
+                                                        <ArchiveBoxArrowDownIcon className="h-4 w-4" />
+                                                        Naskladniť
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -320,6 +348,94 @@ export default function AdminInventory() {
                                     className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-60"
                                 >
                                     {receiveStockMutation.isPending ? 'Ukladám...' : 'Naskladniť'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Stock issue dialog ── */}
+            {issueProduct && (
+                <div className="fixed inset-0 z-30 flex items-center justify-center px-4">
+                    <div className="fixed inset-0 bg-black/40" onClick={() => setIssueProduct(null)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const isWildcard = issueProduct.parameters?.type === 'wildcard_group';
+                                if (isWildcard && !issueForm.variant_reference) {
+                                    toast.error('Vyberte variant produktu.');
+                                    return;
+                                }
+                                issueStockMutation.mutate({
+                                    product_id: issueProduct.id,
+                                    quantity: issueForm.quantity,
+                                    notes: issueForm.notes,
+                                    ...(issueForm.variant_reference ? { variant_reference: issueForm.variant_reference } : {}),
+                                });
+                            }}
+                        >
+                            <div className="px-6 py-5 border-b border-slate-200">
+                                <h3 className="text-lg font-bold text-slate-900">Vyskladniť tovar</h3>
+                                <p className="text-sm text-slate-600 mt-1 font-medium">{issueProduct.name}</p>
+                            </div>
+
+                            <div className="px-6 py-5 space-y-4">
+                                {issueProduct.parameters?.type === 'wildcard_group' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Variant (ref. číslo)</label>
+                                        <select
+                                            required
+                                            value={issueForm.variant_reference}
+                                            onChange={(e) => setIssueForm({ ...issueForm, variant_reference: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                                        >
+                                            <option value="">— Vyberte variant —</option>
+                                            {(issueProduct.parameters.options ?? []).map((opt) => (
+                                                <option key={opt.reference} value={opt.reference}>
+                                                    {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Počet kusov *</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min={1}
+                                        value={issueForm.quantity}
+                                        onChange={(e) => setIssueForm({ ...issueForm, quantity: parseInt(e.target.value) || 1 })}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Poznámka (nepovinné)</label>
+                                    <textarea
+                                        value={issueForm.notes}
+                                        onChange={(e) => setIssueForm({ ...issueForm, notes: e.target.value })}
+                                        rows={2}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="px-6 py-4 bg-slate-50 rounded-b-2xl flex justify-end gap-3 border-t border-slate-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIssueProduct(null)}
+                                    className="px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100"
+                                >
+                                    Zrušiť
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={issueStockMutation.isPending}
+                                    className="px-4 py-2 text-sm bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-60"
+                                >
+                                    {issueStockMutation.isPending ? 'Ukladám...' : 'Vyskladniť'}
                                 </button>
                             </div>
                         </form>

@@ -14,8 +14,10 @@ from .serializers import (
     OrderCreateSerializer,
     OrderSerializer,
     ShippingRateSerializer,
+    StockIssueInputSerializer,
     StockReceiptInputSerializer,
 )
+from .services.stock_issue_service import StockIssueService
 from .services.order_service import OrderService
 from .services.stock_receipt_service import StockReceiptService
 
@@ -101,6 +103,35 @@ class AdminStockReceiptView(APIView):
                 "new_stock_quantity": product.stock_quantity,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+class AdminStockIssueView(APIView):
+    """Admin endpoint to record outbound/manual stock decrease."""
+
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request):
+        serializer = StockIssueInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        product = get_object_or_404(Product, pk=data["product_id"])
+        updated_product = StockIssueService.issue_stock(
+            product=product,
+            quantity=data["quantity"],
+            issued_by=request.user,
+            notes=data.get("notes", ""),
+            variant_reference=data.get("variant_reference", ""),
+        )
+
+        return Response(
+            {
+                "message": f"Vyskladnených {data['quantity']} ks.",
+                "product_id": updated_product.pk,
+                "new_stock_quantity": updated_product.stock_quantity,
+            },
+            status=status.HTTP_200_OK,
         )
 
 
