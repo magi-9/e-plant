@@ -26,7 +26,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const [openRequestModal, setOpenRequestModal] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
-    const hasVariants = (product?.parameters?.type === 'wildcard_group') && variantOptions.length > 0;
+    const isGroupType = product?.parameters?.type === 'wildcard_group';
+    const hasVariants = isGroupType && variantOptions.length > 0;
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || variantOptions[0]?.id || null
@@ -36,8 +37,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     useEffect(() => {
         setIsAdding(false);
         setShowActionButtons(false);
-        if (product?.parameters?.type === 'wildcard_group') {
-            const options = product.parameters?.options || [];
+        if (isGroupType) {
+            const options = product?.parameters?.options || [];
             const firstInStockWithImage = options.find(
                 (v) => (v.stock_quantity ?? 0) > 0 && !!v.image
             );

@@ -490,16 +490,16 @@ export default function ProductsPage() {
                                                     <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
-                                                    {(() => {
+                                                    {isLoggedIn && (() => {
                                                         const effectiveStock = product.parameters?.type === 'wildcard_group'
                                                             ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
                                                             : product.stock_quantity;
                                                         return effectiveStock >= 5 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5" title="Skladom (5+ ks)" />
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5 cursor-default" title="Na sklade" />
                                                         ) : effectiveStock >= 1 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" title="Posledné kusy (1–4 ks)" />
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5 cursor-default" title="Posledné kusy" />
                                                         ) : (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5" title="Vypredané" />
+                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5 cursor-default" title="Nie je na sklade" />
                                                         );
                                                     })()}
                                                 </div>
