@@ -16,9 +16,15 @@ from rest_framework.views import APIView
 
 from services.email import ProductInquiryEmailService
 
-from .models import Product, ProductGroup
-from .serializers import ProductGroupSerializer, ProductSerializer
+from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
+from .serializers import (
+    GroupingSettingsSerializer,
+    ProductGroupSerializer,
+    ProductSerializer,
+    WildcardGroupSerializer,
+)
 from .services import ProductService
+from .services.wildcard_sync import sync_wildcard_groups
 
 
 def _parse_categories(request):
@@ -107,77 +113,118 @@ def _normalized_storefront_name(name: str) -> str:
     return re.sub(r"\s+", " ", without_variant).strip().casefold()
 
 
-def _collapse_product_groups(products):
+def _storefront_group_key(product):
+    return (
+        _normalized_storefront_name(product.name or ""),
+        str(product.price) if product.price is not None else "",
+        (product.category or "").strip().casefold(),
+    )
+
+
+def _option_entry(m):
+    option_reference = m.reference or str(m.id)
+    option_label = (
+        f"{option_reference} - {m.name}"
+        if option_reference and m.name
+        else option_reference or m.name or (m.parameters or {}).get("label", "")
+    )
+    return {
+        "id": m.id,
+        "reference": option_reference,
+        "name": m.name,
+        "description": m.description,
+        "category": m.category,
+        "all_categories": (m.parameters or {}).get("all_categories", ""),
+        "price": str(m.price) if m.price is not None else None,
+        "image": m.image.url if getattr(m, "image", None) and m.image else "",
+        "stock_quantity": m.stock_quantity,
+        "label": option_label,
+        "parameter_code": (m.parameters or {}).get("parameter_code", ""),
+        "option_tokens": (m.parameters or {}).get("option_tokens", ""),
+    }
+
+
+def _make_wildcard_group_card(members, group_name: str):
+    """Return a virtual product representing a wildcard group card."""
+    rep = copy(members[0])
+    rep.parameters = {
+        "type": "wildcard_group",
+        "wildcard_reference": rep.reference or "",
+        "options": [_option_entry(m) for m in members],
+        "option_fields": ["reference", "parameter_code", "name"],
+    }
+    # Use the stored group name (may differ from any individual product name)
+    rep.name = group_name
+    return rep
+
+
+def _collapse_products(products, wildcard_enabled=True):
+    """Storefront collapse — wildcard grouping only.
+
+    When wildcard_enabled is False every product is returned as-is.
+    When True:
+      1. Persistent WildcardGroup (is_enabled=True, ≥2 members) → DB-backed card
+      2. In-memory fallback — products without a DB group that share the same
+         (normalized_name, price, category) key collapse into one card
     """
-    Collapse products that share the same storefront key into one group card,
-    preserving the order of first appearance.
+    if not wildcard_enabled:
+        return list(products)
 
-    Grouping key is: (name_without_variant, price, category).
-    This keeps DB rows flat (1 ref = 1 row) while showing one storefront card
-    for visually equivalent variants.
-    """
-    groups = {}
-
-    def storefront_group_key(product):
-        return (
-            _normalized_storefront_name(product.name or ""),
-            str(product.price) if product.price is not None else "",
-            (product.category or "").strip().casefold(),
-        )
-
+    # ── Phase 1: Persistent WildcardGroup ────────────────────────────────────
+    active_wc_ids: set[int] = set(
+        WildcardGroup.objects.filter(is_enabled=True).values_list("id", flat=True)
+    )
+    wc_members: dict[int, list] = {}
+    wc_names: dict[int, str] = {}
     for p in products:
-        key = storefront_group_key(p)
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(p)
+        wid = p.wildcard_group_id
+        if wid and wid in active_wc_ids:
+            wc_members.setdefault(wid, []).append(p)
+            if wid not in wc_names:
+                wc_names[wid] = p.wildcard_group.name if p.wildcard_group else ""
 
+    # ── Phase 2: In-memory fallback ───────────────────────────────────────────
+    fallback_members: dict[tuple, list] = {}
+    for p in products:
+        wid = p.wildcard_group_id
+        if wid and wid in active_wc_ids:
+            continue
+        key = _storefront_group_key(p)
+        fallback_members.setdefault(key, []).append(p)
+
+    # ── Build result preserving order of first appearance ─────────────────────
     result = []
-    seen = set()
+    seen_wc: set[int] = set()
+    seen_fb: set[tuple] = set()
 
     for p in products:
-        key = storefront_group_key(p)
-        members = groups[key]
-        if len(members) < 2:
-            result.append(p)
+        # Phase 1: DB wildcard group with ≥2 members
+        wid = p.wildcard_group_id
+        if wid and wid in active_wc_ids:
+            if wid in seen_wc:
+                continue
+            members = wc_members.get(wid, [])
+            if len(members) >= 2:
+                result.append(
+                    _make_wildcard_group_card(
+                        members, wc_names.get(wid, members[0].name)
+                    )
+                )
+                seen_wc.add(wid)
+                continue
+            # Single-member group → fall through to phase 2
+
+        # Phase 2: in-memory fallback
+        key = _storefront_group_key(p)
+        members = fallback_members.get(key, [])
+        if len(members) >= 2:
+            if key in seen_fb:
+                continue
+            result.append(_make_wildcard_group_card(members, members[0].name))
+            seen_fb.add(key)
             continue
 
-        if key in seen:
-            continue
-
-        rep = copy(members[0])
-        options = []
-        for m in members:
-            option_reference = m.reference or str(m.id)
-            option_label = (
-                f"{option_reference} - {m.name}"
-                if option_reference and m.name
-                else option_reference or m.name or (m.parameters or {}).get("label", "")
-            )
-            options.append(
-                {
-                    "id": m.id,
-                    "reference": option_reference,
-                    "name": m.name,
-                    "description": m.description,
-                    "category": m.category,
-                    "all_categories": (m.parameters or {}).get("all_categories", ""),
-                    "price": str(m.price) if m.price is not None else None,
-                    "image": m.image.url if getattr(m, "image", None) else "",
-                    "stock_quantity": m.stock_quantity,
-                    "label": option_label,
-                    "parameter_code": (m.parameters or {}).get("parameter_code", ""),
-                    "option_tokens": (m.parameters or {}).get("option_tokens", ""),
-                }
-            )
-
-        rep.parameters = {
-            "type": "wildcard_group",
-            "wildcard_reference": rep.reference or "",
-            "options": options,
-            "option_fields": ["reference", "parameter_code", "name"],
-        }
-        result.append(rep)
-        seen.add(key)
+        result.append(p)
 
     return result
 
@@ -209,7 +256,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name", "price", "category", "stock_quantity"]
 
     def get_queryset(self):
-        qs = Product.objects.select_related("group").all()
+        qs = Product.objects.select_related("group", "wildcard_group").all()
         if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
             qs = qs.filter(is_visible=True)
         return _apply_product_filters(qs, self.request)
@@ -224,7 +271,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         if not _is_admin_view(request):
             queryset = self.filter_queryset(self.get_queryset())
-            collapsed = _collapse_product_groups(list(queryset))
+            settings = GroupingSettings.get()
+            collapsed = _collapse_products(
+                list(queryset),
+                wildcard_enabled=settings.wildcard_grouping_enabled,
+            )
             page = self.paginate_queryset(collapsed)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
@@ -307,19 +358,163 @@ class ProductCountView(APIView):
         qs = _apply_product_filters(qs, request)
 
         if not _is_admin_view(request):
-            grouping_keys = {
-                (
-                    _normalized_storefront_name(name),
-                    str(price) if price is not None else "",
-                    (category or "").strip().casefold(),
+            settings = GroupingSettings.get()
+
+            if not settings.wildcard_grouping_enabled:
+                count = qs.count()
+            else:
+                # Persistent wildcard groups with ≥2 visible members
+                active_wc_ids: set[int] = set(
+                    WildcardGroup.objects.filter(is_enabled=True)
+                    .annotate(_cnt=Count("products"))
+                    .filter(_cnt__gte=2)
+                    .values_list("id", flat=True)
                 )
-                for name, price, category in qs.values_list("name", "price", "category")
-            }
-            count = len(grouping_keys)
+
+                seen: set = set()
+                for name, price, category, wc_gid in qs.values_list(
+                    "name", "price", "category", "wildcard_group_id"
+                ):
+                    if wc_gid and wc_gid in active_wc_ids:
+                        key = ("wc_db", wc_gid)
+                    else:
+                        key = (
+                            "wc_mem",
+                            _normalized_storefront_name(name),
+                            str(price) if price is not None else "",
+                            (category or "").strip().casefold(),
+                        )
+                    seen.add(key)
+                count = len(seen)
         else:
             count = qs.distinct().count()
 
         return Response({"count": count}, status=status.HTTP_200_OK)
+
+
+class AdminWildcardGroupListView(generics.ListAPIView):
+    """Admin: list all WildcardGroups (no create – groups are generated by sync)."""
+
+    permission_classes = (permissions.IsAdminUser,)
+    serializer_class = WildcardGroupSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return WildcardGroup.objects.annotate(product_count=Count("products")).order_by(
+            "name"
+        )
+
+
+class AdminWildcardGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Admin: retrieve, update name/is_enabled, or delete a WildcardGroup."""
+
+    permission_classes = (permissions.IsAdminUser,)
+    serializer_class = WildcardGroupSerializer
+
+    def get_queryset(self):
+        return WildcardGroup.objects.annotate(product_count=Count("products"))
+
+
+class AdminWildcardGroupProductsView(APIView):
+    """Admin: list products in a WildcardGroup."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, pk, *args, **kwargs):
+        try:
+            group = WildcardGroup.objects.get(pk=pk)
+        except WildcardGroup.DoesNotExist:
+            return Response(
+                {"error": "Group not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        products = Product.objects.filter(wildcard_group=group).order_by("name")
+        serializer = ProductSerializer(
+            products, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
+
+class AdminWildcardGroupAddProductsView(APIView):
+    """Admin: assign products to a WildcardGroup (promotes it to manually-managed)."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            group = WildcardGroup.objects.get(pk=pk)
+        except WildcardGroup.DoesNotExist:
+            return Response(
+                {"error": "Group not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        product_ids = request.data.get("product_ids", [])
+        if not isinstance(product_ids, list):
+            return Response(
+                {"error": "product_ids must be a list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        updated = Product.objects.filter(pk__in=product_ids).update(
+            wildcard_group=group
+        )
+        # Promote to manually managed so sync won't overwrite
+        if updated:
+            group.is_auto_generated = False
+            group.save(update_fields=["is_auto_generated"])
+        return Response({"updated": updated}, status=status.HTTP_200_OK)
+
+
+class AdminWildcardGroupRemoveProductsView(APIView):
+    """Admin: remove products from a WildcardGroup (promotes it to manually-managed)."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, pk, *args, **kwargs):
+        product_ids = request.data.get("product_ids", [])
+        if not isinstance(product_ids, list):
+            return Response(
+                {"error": "product_ids must be a list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        updated = Product.objects.filter(
+            pk__in=product_ids, wildcard_group_id=pk
+        ).update(wildcard_group=None)
+        if updated:
+            try:
+                group = WildcardGroup.objects.get(pk=pk)
+                group.is_auto_generated = False
+                group.save(update_fields=["is_auto_generated"])
+            except WildcardGroup.DoesNotExist:
+                pass
+        return Response({"updated": updated}, status=status.HTTP_200_OK)
+
+
+class AdminWildcardGroupSyncView(APIView):
+    """Admin: regenerate auto-generated WildcardGroups from current normalisation logic."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def post(self, request, *args, **kwargs):
+        result = sync_wildcard_groups()
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class AdminGroupingSettingsView(APIView):
+    """Admin: get or update grouping settings."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+        settings = GroupingSettings.get()
+        serializer = GroupingSettingsSerializer(settings)
+        return Response(serializer.data)
+
+    def patch(self, request, *args, **kwargs):
+        settings = GroupingSettings.get()
+        serializer = GroupingSettingsSerializer(
+            settings, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class AdminBulkDeleteView(APIView):

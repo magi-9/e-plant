@@ -4,9 +4,16 @@ from .views import (
     AdminBulkDeleteView,
     AdminBulkSetVisibleView,
     AdminCategoriesView,
+    AdminGroupingSettingsView,
     AdminProductIdsView,
     AdminProductImport,
     AdminSeedView,
+    AdminWildcardGroupAddProductsView,
+    AdminWildcardGroupDetailView,
+    AdminWildcardGroupListView,
+    AdminWildcardGroupProductsView,
+    AdminWildcardGroupRemoveProductsView,
+    AdminWildcardGroupSyncView,
     ProductCategoriesView,
     ProductCountView,
     ProductGroupListView,
@@ -59,5 +66,42 @@ urlpatterns = [
         "admin/categories/",
         AdminCategoriesView.as_view(),
         name="admin_product_categories",
+    ),
+    # Grouping settings
+    path(
+        "admin/grouping-settings/",
+        AdminGroupingSettingsView.as_view(),
+        name="admin_grouping_settings",
+    ),
+    # Wildcard groups
+    path(
+        "admin/wildcard-groups/",
+        AdminWildcardGroupListView.as_view(),
+        name="admin_wildcard_group_list",
+    ),
+    path(
+        "admin/wildcard-groups/sync/",
+        AdminWildcardGroupSyncView.as_view(),
+        name="admin_wildcard_group_sync",
+    ),
+    path(
+        "admin/wildcard-groups/<int:pk>/",
+        AdminWildcardGroupDetailView.as_view(),
+        name="admin_wildcard_group_detail",
+    ),
+    path(
+        "admin/wildcard-groups/<int:pk>/products/",
+        AdminWildcardGroupProductsView.as_view(),
+        name="admin_wildcard_group_products",
+    ),
+    path(
+        "admin/wildcard-groups/<int:pk>/add-products/",
+        AdminWildcardGroupAddProductsView.as_view(),
+        name="admin_wildcard_group_add_products",
+    ),
+    path(
+        "admin/wildcard-groups/<int:pk>/remove-products/",
+        AdminWildcardGroupRemoveProductsView.as_view(),
+        name="admin_wildcard_group_remove_products",
     ),
 ]

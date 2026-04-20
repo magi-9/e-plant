@@ -13,6 +13,47 @@ class ProductGroup(models.Model):
         return f"{self.name} ({self.prefix})"
 
 
+class WildcardGroup(models.Model):
+    """Persistent wildcard group – mirrors the in-memory collapse logic but is DB-backed.
+
+    Auto-generated groups (is_auto_generated=True) are created and maintained by the
+    sync endpoint.  Admin can rename them or toggle is_enabled freely; those changes
+    survive re-sync.  When an admin manually adds/removes products the group is
+    promoted to is_auto_generated=False so the sync will no longer overwrite its
+    product list.
+
+    norm_key stores the (normalized_name|price|category) key used by the sync to
+    match an auto-generated group to its calculated bucket.
+    """
+
+    name = models.CharField(max_length=255)
+    is_enabled = models.BooleanField(default=True)
+    is_auto_generated = models.BooleanField(default=True)
+    norm_key = models.CharField(max_length=500, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Wildcard Group"
+
+    def __str__(self):
+        return self.name
+
+
+class GroupingSettings(models.Model):
+    """Singleton that controls which grouping modes are active on the storefront."""
+
+    wildcard_grouping_enabled = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Grouping Settings"
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class Product(models.Model):
     name = models.CharField(max_length=255)
     reference = models.CharField(max_length=100, blank=True, null=True, unique=True)
@@ -25,6 +66,13 @@ class Product(models.Model):
     image = models.ImageField(upload_to="products/", blank=True, null=True)
     group = models.ForeignKey(
         ProductGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="products",
+    )
+    wildcard_group = models.ForeignKey(
+        WildcardGroup,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
