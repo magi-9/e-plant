@@ -6,10 +6,12 @@ Tests the business logic layer separated from serialization.
 
 import threading
 from decimal import Decimal
+import re
 from unittest.mock import patch
 
 import pytest
 from django.db import close_old_connections, transaction
+from django.utils import timezone
 from rest_framework.serializers import ValidationError
 
 from orders.models import Order, OrderItem
@@ -298,7 +300,7 @@ class TestOrderService:
         assert order.email == "john@example.com"
         assert order.total_price == Decimal("250.00")  # (100 * 2) + (50 * 1)
         assert order.status == "awaiting_payment"  # bank_transfer status
-        assert len(order.order_number) == 8
+        assert re.fullmatch(rf"{timezone.now().year}X\d{{4}}", order.order_number)
 
         # Verify order items were created
         assert order.items.count() == 2
@@ -472,16 +474,14 @@ class TestOrderService:
         product.refresh_from_db()
         assert product.stock_quantity == 5
 
+    @pytest.mark.django_db
     def test_generate_order_number_format(self):
         """Test order number generation format."""
         service = OrderService(user=None)
 
         order_number = service._generate_order_number()
 
-        # Should be 8 characters, uppercase alphanumeric
-        assert len(order_number) == 8
-        assert order_number == order_number.upper()
-        assert order_number.isalnum()
+        assert re.fullmatch(rf"{timezone.now().year}X\d{{4}}", order_number)
 
     def test_determine_initial_status_bank_transfer(self):
         """Test status determination for bank transfer."""

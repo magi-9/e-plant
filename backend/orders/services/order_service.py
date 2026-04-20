@@ -5,12 +5,12 @@ Contains the core business logic for order processing.
 """
 
 import logging
-import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 
 from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
 from services.email import OrderEmailService
@@ -131,17 +131,29 @@ class OrderService:
 
     def _generate_order_number(self) -> str:
         """
-        Generate a unique order number using UUID.
+        Generate a unique order number in format YYYYX0001.
 
-        Uses UUID4 for cryptographic randomness to prevent order enumeration.
-        Format: 8-character hex string (32 possible values per character)
+        Sequence resets every year and uses fixed 4-digit padding.
 
         Returns:
-            8-character cryptographically secure order number
+            Order number in format YYYYXNNNN
         """
-        # Use first 8 chars of UUID4 converted to hex
-        # This gives us 16^8 (~4.3 billion) possible values (much better than sequential)
-        return str(uuid.uuid4()).replace("-", "")[:8].upper()
+        year = timezone.now().year
+        prefix = f"{year}X"
+
+        last_order_number = (
+            Order.objects.filter(order_number__startswith=prefix)
+            .order_by("-order_number")
+            .values_list("order_number", flat=True)
+            .first()
+        )
+
+        if not last_order_number:
+            sequence = 1
+        else:
+            sequence = int(last_order_number[-4:]) + 1
+
+        return f"{prefix}{sequence:04d}"
 
     def _determine_initial_status(self, payment_method: str) -> str:
         """
