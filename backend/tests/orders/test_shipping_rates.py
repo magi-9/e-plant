@@ -151,6 +151,35 @@ class TestShippingIntegration:
         assert order.total_price == Decimal("60.00")
         assert order.shipping_cost == Decimal("0.00")
 
+    def test_pickup_shipping_is_always_free(self):
+        from orders.services.order_service import OrderService
+
+        product = ProductFactory(stock_quantity=10, price=Decimal("30.00"))
+        service = OrderService()
+        order = service.create_order(
+            {
+                "customer_name": "Test",
+                "email": "t@t.com",
+                "phone": "000",
+                "street": "",
+                "city": "",
+                "postal_code": "",
+                "is_company": False,
+                "company_name": "",
+                "ico": "",
+                "dic": "",
+                "dic_dph": "",
+                "payment_method": "card",
+                "notes": "",
+                "country": "SK",
+                "shipping_method": "pickup",
+                "items": [{"product_id": product.pk, "quantity": 1}],
+            }
+        )
+        assert order.shipping_cost == Decimal("0.00")
+        assert order.shipping_carrier == "Osobný odber"
+        assert order.total_price == Decimal(str(product.price))
+
     def test_no_shipping_rate_falls_back_to_global_settings(self):
         from orders.services.order_service import OrderService
         from users.models import GlobalSettings

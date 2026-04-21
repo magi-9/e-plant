@@ -47,16 +47,14 @@ class ProductInquiryEmailService(BaseEmailService):
             product_name, customer_name, customer_email, message
         )
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=warehouse_email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=warehouse_email,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     @staticmethod
     def _build_inquiry_html(

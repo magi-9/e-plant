@@ -30,10 +30,10 @@ class AuthEmailService(BaseEmailService):
     @staticmethod
     def _get_frontend_url() -> str:
         """Get the frontend base URL from environment, then settings, then default."""
-        return (
-            os.environ.get("FRONTEND_URL")
-            or getattr(settings, "FRONTEND_URL", "http://localhost:5001")
-        ).rstrip("/")
+        frontend_url = os.environ.get("FRONTEND_URL") or getattr(
+            settings, "FRONTEND_URL", "http://localhost:5001"
+        )
+        return frontend_url.rstrip("/")
 
     def send_verification_email(self, user: CustomUser) -> bool:
         """
@@ -61,16 +61,14 @@ class AuthEmailService(BaseEmailService):
         )
         html_body = verification_email_html(verify_url, company_name)
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=user.email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=user.email,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     def send_password_reset_email(self, user: CustomUser) -> bool:
         """
@@ -100,13 +98,11 @@ class AuthEmailService(BaseEmailService):
         )
         html_body = password_reset_email_html(reset_url, company_name)
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=user.email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=user.email,
+            fail_silently=True,
         )
+        return sent_count > 0

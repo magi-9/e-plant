@@ -85,17 +85,15 @@ class OrderEmailService(BaseEmailService):
             filename = f"faktura_{self.order.order_number}.pdf"
             attachments.append((filename, pdf_bytes, "application/pdf"))
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=self.order.email,
-                attachments=attachments,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=self.order.email,
+            attachments=attachments,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     def _send_warehouse_notification(self, shop, pdf_bytes: Optional[bytes]) -> bool:
         """
@@ -131,17 +129,15 @@ class OrderEmailService(BaseEmailService):
             filename = f"faktura_{self.order.order_number}.pdf"
             attachments.append((filename, pdf_bytes, "application/pdf"))
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=warehouse_email,
-                attachments=attachments,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=warehouse_email,
+            attachments=attachments,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     def _build_customer_email_text(self, shop, status_label: str) -> str:
         """Build plain text version of customer confirmation email."""
@@ -284,15 +280,13 @@ Poznámka zákazníka: {self.order.notes or "Žiadna"}
             f"Tím {get_company_name()}\n"
         )
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                to_email=self.order.email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            to_email=self.order.email,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     def send_admin_deleted_email(self, reason: str) -> bool:
         """Notify customer that admin deleted the order."""
@@ -305,12 +299,10 @@ Poznámka zákazníka: {self.order.notes or "Žiadna"}
             f"Tím {get_company_name()}\n"
         )
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                to_email=self.order.email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            to_email=self.order.email,
+            fail_silently=True,
         )
+        return sent_count > 0

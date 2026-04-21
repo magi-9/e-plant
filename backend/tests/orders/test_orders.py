@@ -296,3 +296,64 @@ def test_create_order_rejects_street_without_house_number(
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "street" in response.data
+
+
+@pytest.mark.django_db
+def test_order_with_pickup_shipping_method(api_client, user_factory, product_factory):
+    """Pickup orders have zero shipping cost and no address required"""
+    user = user_factory()
+    product = product_factory(price=Decimal("50.00"), stock_quantity=5)
+
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+421900123456",
+        "street": "",
+        "city": "",
+        "postal_code": "",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "shipping_method": "pickup",
+        "items": [{"product_id": product.id, "quantity": 1}],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_201_CREATED
+    order = Order.objects.first()
+    assert order.shipping_method == "pickup"
+    assert order.shipping_cost == Decimal("0.00")
+    assert order.total_price == Decimal("50.00")
+
+
+@pytest.mark.django_db
+def test_order_default_shipping_method_is_courier(
+    api_client, user_factory, product_factory, zero_shipping
+):
+    """Orders without shipping_method default to courier"""
+    user = user_factory()
+    product = product_factory(price=Decimal("50.00"), stock_quantity=5)
+
+    api_client.force_authenticate(user=user)
+
+    order_data = {
+        "customer_name": "John Doe",
+        "email": "john@example.com",
+        "phone": "+421900123456",
+        "street": "Test Street 123",
+        "city": "Bratislava",
+        "postal_code": "811 01",
+        "is_company": False,
+        "payment_method": "bank_transfer",
+        "items": [{"product_id": product.id, "quantity": 1}],
+    }
+
+    url = reverse("order_create")
+    response = api_client.post(url, order_data, format="json")
+
+    assert response.status_code == status.HTTP_201_CREATED
+    order = Order.objects.first()
+    assert order.shipping_method == "courier"

@@ -86,3 +86,30 @@ class TestVATRates:
         from orders.invoice import VAT_RATES
 
         assert VAT_RATES["CZ"] == Decimal("0.21")
+
+
+@pytest.mark.django_db
+class TestShippingLineInInvoice:
+    def test_courier_shipping_line_in_invoice(self):
+        from orders.invoice import generate_invoice_pdf
+
+        order = _make_order()
+        order.shipping_cost = Decimal("5.00")
+        order.shipping_method = "courier"
+        order.save()
+        shop = GlobalSettings.load()
+        pdf = generate_invoice_pdf(order, shop)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 100
+
+    def test_pickup_shipping_zero_in_invoice(self):
+        from orders.invoice import generate_invoice_pdf
+
+        order = _make_order()
+        order.shipping_cost = Decimal("0.00")
+        order.shipping_method = "pickup"
+        order.save()
+        shop = GlobalSettings.load()
+        pdf = generate_invoice_pdf(order, shop)
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 100

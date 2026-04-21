@@ -55,11 +55,14 @@ class StockReceiptService:
             locked_product.stock_quantity += quantity
 
             # Update variant-level stock inside parameters.options when applicable
-            if (
-                variant_reference
-                and isinstance(locked_product.parameters, dict)
-                and locked_product.parameters.get("type") == "wildcard_group"
-            ):
+            is_wildcard_variant = all(
+                [
+                    variant_reference,
+                    isinstance(locked_product.parameters, dict),
+                    locked_product.parameters.get("type") == "wildcard_group",
+                ]
+            )
+            if is_wildcard_variant:
                 options = locked_product.parameters.get("options", [])
                 matched_variant = False
                 for opt in options:

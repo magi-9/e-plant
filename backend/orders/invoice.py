@@ -483,6 +483,12 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     items_qs = order.items.prefetch_related("batch_allocations__batch_lot").all()
     has_batches = any(item.batch_allocations.all() for item in items_qs)
 
+    shipping_method = getattr(order, "shipping_method", "courier") or "courier"
+    shipping_label = (
+        "Doprava (osobný odber)" if shipping_method == "pickup" else "Doprava (kuriér)"
+    )
+    shipping_cost = Decimal(str(order.shipping_cost or "0"))
+
     if has_batches:
         COL_W = [68 * mm, 22 * mm, 18 * mm, 32 * mm, 30 * mm]
         rows = [
@@ -510,6 +516,15 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
                     Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
                 ]
             )
+        rows.append(
+            [
+                Paragraph(esc(shipping_label), s_normal),
+                Paragraph("—", s_normal),
+                Paragraph("1", s_td_r),
+                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+            ]
+        )
     else:
         COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
         rows = [
@@ -529,6 +544,14 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
                     Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
                 ]
             )
+        rows.append(
+            [
+                Paragraph(esc(shipping_label), s_normal),
+                Paragraph("1", s_td_r),
+                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+            ]
+        )
 
     n_last_item = len(rows) - 1  # 0-based index of last item row
 

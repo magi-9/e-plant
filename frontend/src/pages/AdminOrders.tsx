@@ -11,6 +11,7 @@ import {
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
+import ConfirmModal from '../components/ConfirmModal';
 
 const STATUS_LABELS: Record<string, string> = {
     new: 'Nová',
@@ -88,14 +89,10 @@ const createDraftFromOrder = (order: Order): InterventionDraft => ({
     })),
 });
 
-const runDoubleConfirmation = (orderNumber: string, action: 'upraviť' | 'vymazať'): boolean => {
-    const firstConfirm = window.confirm(`Naozaj chcete ${action} objednávku #${orderNumber}?`);
-    if (!firstConfirm) {
-        return false;
-    }
-
-    const typed = window.prompt(`Pre potvrdenie zadajte číslo objednávky: ${orderNumber}`);
-    return (typed || '').trim().toUpperCase() === orderNumber.toUpperCase();
+type PendingAction = {
+    type: 'update' | 'delete';
+    order: Order;
+    step: 1 | 2;
 };
 
 export default function AdminOrders() {
@@ -103,6 +100,7 @@ export default function AdminOrders() {
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [drafts, setDrafts] = useState<Record<number, InterventionDraft>>({});
+    const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
     const { data: orders, isLoading, error } = useQuery({
         queryKey: ['adminOrders'],
@@ -206,38 +204,7 @@ export default function AdminOrders() {
             toast.error('Dôvod zásahu je povinný (min. 8 znakov).');
             return;
         }
-
-        if (!runDoubleConfirmation(order.order_number, 'upraviť')) {
-            toast.error('Dvojité potvrdenie neprebehlo, zmena sa nevykonala.');
-            return;
-        }
-
-        interventionUpdateMutation.mutate({
-            id: order.id,
-            payload: {
-                reason: draft.reason.trim(),
-                status: draft.status,
-                notes: draft.notes,
-                customer_name: draft.customer_name,
-                email: draft.email,
-                phone: draft.phone,
-                street: draft.street,
-                city: draft.city,
-                postal_code: draft.postal_code,
-                country: draft.country,
-                is_company: draft.is_company,
-                company_name: draft.company_name,
-                ico: draft.ico,
-                dic: draft.dic,
-                dic_dph: draft.dic_dph,
-                is_vat_payer: draft.is_vat_payer,
-                payment_method: draft.payment_method,
-                items: draft.items.map((item) => ({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                })),
-            },
-        });
+        setPendingAction({ type: 'update', order, step: 1 });
     };
 
     const submitInterventionDelete = (order: Order) => {
@@ -246,19 +213,54 @@ export default function AdminOrders() {
             toast.error('Pred vymazaním zadajte dôvod zásahu (min. 8 znakov).');
             return;
         }
+        setPendingAction({ type: 'delete', order, step: 1 });
+    };
 
-        if (!runDoubleConfirmation(order.order_number, 'vymazať')) {
-            toast.error('Dvojité potvrdenie neprebehlo, objednávka ostala zachovaná.');
-            return;
+    const handleModalStep1Confirm = () => {
+        if (!pendingAction) return;
+        setPendingAction({ ...pendingAction, step: 2 });
+    };
+
+    const handleModalStep2Confirm = () => {
+        if (!pendingAction) return;
+        const { type, order } = pendingAction;
+        const draft = getDraft(order);
+        setPendingAction(null);
+
+        if (type === 'update') {
+            interventionUpdateMutation.mutate({
+                id: order.id,
+                payload: {
+                    reason: draft.reason.trim(),
+                    status: draft.status,
+                    notes: draft.notes,
+                    customer_name: draft.customer_name,
+                    email: draft.email,
+                    phone: draft.phone,
+                    street: draft.street,
+                    city: draft.city,
+                    postal_code: draft.postal_code,
+                    country: draft.country,
+                    is_company: draft.is_company,
+                    company_name: draft.company_name,
+                    ico: draft.ico,
+                    dic: draft.dic,
+                    dic_dph: draft.dic_dph,
+                    is_vat_payer: draft.is_vat_payer,
+                    payment_method: draft.payment_method,
+                    items: draft.items.map((item) => ({
+                        product_id: item.product_id,
+                        quantity: item.quantity,
+                    })),
+                },
+            });
+        } else {
+            interventionDeleteMutation.mutate({ id: order.id, reason: draft.reason.trim() });
         }
-
-        interventionDeleteMutation.mutate({
-            id: order.id,
-            reason: draft.reason.trim(),
-        });
     };
 
     return (
+        <>
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <AdminNav />
@@ -501,7 +503,7 @@ export default function AdminOrders() {
                                                     disabled={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
                                                     className="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
                                                 >
-                                                    Uložiť zásah (2x potvrdenie)
+                                                    Uložiť zásah
                                                 </button>
                                                 <button
                                                     type="button"
@@ -509,7 +511,7 @@ export default function AdminOrders() {
                                                     disabled={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
                                                     className="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                                                 >
-                                                    Vymazať objednávku (2x potvrdenie)
+                                                    Vymazať objednávku
                                                 </button>
                                             </div>
                                         </div>
@@ -524,5 +526,30 @@ export default function AdminOrders() {
                 )}
             </div>
         </div>
+
+        {pendingAction && pendingAction.step === 1 && (
+            <ConfirmModal
+                open
+                title={pendingAction.type === 'update' ? 'Upraviť objednávku?' : 'Vymazať objednávku?'}
+                message={`Naozaj chcete ${pendingAction.type === 'update' ? 'upraviť' : 'vymazať'} objednávku #${pendingAction.order.order_number}? Táto akcia ovplyvní sklad aj zákazníka.`}
+                confirmLabel={pendingAction.type === 'update' ? 'Áno, pokračovať' : 'Áno, pokračovať'}
+                onConfirm={handleModalStep1Confirm}
+                onCancel={() => setPendingAction(null)}
+            />
+        )}
+
+        {pendingAction && pendingAction.step === 2 && (
+            <ConfirmModal
+                open
+                title="Potvrďte zadaním čísla objednávky"
+                message={`Pre ${pendingAction.type === 'update' ? 'uloženie zásahu' : 'vymazanie'} zadajte číslo objednávky.`}
+                confirmLabel={pendingAction.type === 'update' ? 'Uložiť zásah' : 'Vymazať objednávku'}
+                requireTyped={pendingAction.order.order_number}
+                onConfirm={handleModalStep2Confirm}
+                onCancel={() => setPendingAction(null)}
+                isPending={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
+            />
+        )}
+        </>
     );
 }

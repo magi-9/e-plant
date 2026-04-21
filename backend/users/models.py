@@ -119,6 +119,13 @@ class GlobalSettings(models.Model):
     bank_name = models.CharField(max_length=100, blank=True, default="")
     bank_swift = models.CharField(max_length=20, blank=True, default="")
 
+    # VAT rate (percentage, e.g. 23 for 23%)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=23.00)
+
+    # Shipping / pickup settings
+    pickup_address = models.CharField(max_length=500, blank=True, default="")
+    opening_hours = models.CharField(max_length=500, blank=True, default="")
+
     class Meta:
         verbose_name = "Global Settings"
         verbose_name_plural = "Global Settings"

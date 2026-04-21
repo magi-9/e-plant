@@ -55,16 +55,15 @@ def _apply_product_filters(queryset, request):
 
     search = request.query_params.get("search", "").strip()
     if search:
-        qs = qs.filter(
-            models.Q(name__icontains=search)
-            | models.Q(description__icontains=search)
-            | models.Q(category__icontains=search)
-            | models.Q(parameters__all_categories__icontains=search)
-            | models.Q(reference__icontains=search)
-            | models.Q(
-                parameters__options__icontains=search
-            )  # catches variant reference numbers
-        )
+        search_filter = models.Q(name__icontains=search)
+        search_filter |= models.Q(description__icontains=search)
+        search_filter |= models.Q(category__icontains=search)
+        search_filter |= models.Q(parameters__all_categories__icontains=search)
+        search_filter |= models.Q(reference__icontains=search)
+        search_filter |= models.Q(
+            parameters__options__icontains=search
+        )  # catches variant reference numbers
+        qs = qs.filter(search_filter)
 
     categories = _parse_categories(request)
     if categories:
@@ -96,7 +95,7 @@ def _apply_product_filters(queryset, request):
 
 def _is_admin_view(request):
     """Return True when the request is explicitly flagged as an admin view by staff."""
-    return (
+    return bool(
         request.user
         and request.user.is_staff
         and request.query_params.get("admin_view") == "1"

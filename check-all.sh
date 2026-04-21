@@ -71,7 +71,7 @@ run_step "frontend build" docker compose exec -T frontend npm run build
 
 run_step "black (format check)" docker compose exec -T backend black . --check
 
-run_step "flake8" docker compose exec -T backend flake8 . --max-line-length=120 --select=E,F,W,C,9
+run_step "flake8" docker compose exec -T backend flake8 . --max-line-length=120
 
 run_pytest
 

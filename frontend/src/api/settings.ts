@@ -5,6 +5,9 @@ export interface GlobalSettings {
     low_stock_threshold: number;
     currency: string;
     shipping_cost: string;
+    vat_rate: string;
+    pickup_address: string;
+    opening_hours: string;
     // Company / seller info (printed on invoices)
     company_name: string;
     company_ico: string;

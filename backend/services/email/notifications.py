@@ -49,16 +49,14 @@ class NotificationEmailService(BaseEmailService):
             get_company_name(),
         )
 
-        return (
-            self.send_email(
-                subject=subject,
-                text_body=text_body,
-                html_body=html_body,
-                to_email=to_email,
-                fail_silently=True,
-            )
-            > 0
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=to_email,
+            fail_silently=True,
         )
+        return sent_count > 0
 
     @staticmethod
     def _low_stock_alert_html(

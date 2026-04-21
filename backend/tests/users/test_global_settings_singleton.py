@@ -38,3 +38,29 @@ def test_get_settings_handles_integrityerror_race(monkeypatch):
     settings = GlobalSettings.objects.get_settings()
 
     assert settings.pk == 1
+
+
+@pytest.mark.django_db
+def test_global_settings_new_fields_defaults():
+    from decimal import Decimal
+
+    settings = GlobalSettings.load()
+    assert settings.vat_rate == Decimal("23.00")
+    assert settings.pickup_address == ""
+    assert settings.opening_hours == ""
+
+
+@pytest.mark.django_db
+def test_global_settings_new_fields_persist():
+    from decimal import Decimal
+
+    settings = GlobalSettings.load()
+    settings.vat_rate = Decimal("20.00")
+    settings.pickup_address = "Hlavná 1, 811 01 Bratislava"
+    settings.opening_hours = "Po–Pi 8:00–17:00"
+    settings.save()
+
+    reloaded = GlobalSettings.load()
+    assert reloaded.vat_rate == Decimal("20.00")
+    assert reloaded.pickup_address == "Hlavná 1, 811 01 Bratislava"
+    assert reloaded.opening_hours == "Po–Pi 8:00–17:00"
