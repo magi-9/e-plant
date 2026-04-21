@@ -15,10 +15,11 @@ from io import BytesIO
 from xml.sax.saxutils import escape as esc
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
@@ -65,8 +66,13 @@ _FONT, _FONT_BOLD = _register_fonts()
 
 # ── Style helper ─────────────────────────────────────────────────────────────
 _GRAY = colors.HexColor("#6B7280")
-_BLUE = colors.HexColor("#2563EB")
+_BLUE = colors.HexColor("#0E7490")
+_BLUE_SOFT = colors.HexColor("#ECFEFF")
+_BLUE_MID = colors.HexColor("#0891B2")
 _LIGHT = colors.HexColor("#F3F4F6")
+_BORDER = colors.HexColor("#CFFAFE")
+_ROW_ALT = colors.HexColor("#F8FAFC")
+_ROW_LINE = colors.HexColor("#E5E7EB")
 
 
 def _s(name, bold=False, size=9, color=None, align=TA_LEFT, **kw):
@@ -86,6 +92,56 @@ _PAYMENT_SK = {
     "bank_transfer": "Bankový prevod",
     "card": "Platobná karta",
 }
+
+
+def _project_root_path():
+    """Return project root both for local checkout and dockerized backend."""
+    here = os.path.abspath(__file__)
+    backend_dir = os.path.dirname(os.path.dirname(here))
+    if os.path.basename(backend_dir) == "backend":
+        return os.path.dirname(backend_dir)
+    return backend_dir
+
+
+def _resolve_logo_path(shop_settings):
+    """Resolve invoice logo path from known project locations or settings field."""
+    logo = getattr(shop_settings, "logo", None)
+    if logo:
+        logo_path = getattr(logo, "path", "") or str(logo)
+        if logo_path and os.path.exists(logo_path):
+            return logo_path
+
+    root = _project_root_path()
+    candidates = [
+        os.path.join(root, "assets", "invoice-logo.png"),
+        os.path.join(root, "source", "logo_small.png"),
+        os.path.join(root, "frontend", "public", "digitalabutment-logo.png"),
+        os.path.join(root, "frontend", "src", "assets", "digitalabutment-logo.png"),
+        os.path.join(root, "backend", "assets", "invoice-logo.png"),
+        os.path.join(root, "backend", "media", "digitalabutment-logo.png"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def _logo_image(shop_settings, max_width_mm=44, max_height_mm=16):
+    """Return proportionally sized logo image for ReportLab, or None."""
+    logo_path = _resolve_logo_path(shop_settings)
+    if not logo_path:
+        return None
+    try:
+        img_reader = ImageReader(logo_path)
+        img_w, img_h = img_reader.getSize()
+        if not img_w or not img_h:
+            return None
+        max_w = max_width_mm * mm
+        max_h = max_height_mm * mm
+        scale = min(max_w / float(img_w), max_h / float(img_h))
+        return Image(logo_path, width=img_w * scale, height=img_h * scale)
+    except Exception:
+        return None
 
 
 # ── SEPA EPC QR code ─────────────────────────────────────────────────────────
@@ -231,10 +287,12 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     s_normal = _s("normal")
     s_bold = _s("bold", bold=True)
     s_label = _s("label", size=8, color=_GRAY)
+    s_label_center = _s("label_center", size=8, color=_GRAY, align=TA_CENTER)
     s_r = _s("r", align=TA_RIGHT)
     s_r_small = _s("r_small", size=8, align=TA_RIGHT)
     s_r_bold = _s("r_bold", bold=True, align=TA_RIGHT)
     s_title = _s("title", bold=True, size=22, color=_BLUE)
+    s_subtitle = _s("subtitle", bold=True, size=10, color=_BLUE_MID)
     s_th = _s("th", bold=True, size=9, color=colors.white)
     s_th_r = _s("th_r", bold=True, size=9, color=colors.white, align=TA_RIGHT)
     s_td_r = _s("td_r", align=TA_RIGHT)
@@ -243,8 +301,14 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     seller_name = shop_settings.company_name or "E-Plant"
     story = []
 
-    # ── HEADER: seller (left) + invoice meta (right) ─────────────────────
-    seller_cell = [Paragraph(esc(seller_name), _s("sn", bold=True, size=14))]
+    # ── HEADER: logo + seller (left) + invoice meta (right) ──────────────
+    seller_cell = []
+    logo_img = _logo_image(shop_settings)
+    if logo_img:
+        seller_cell.append(logo_img)
+        seller_cell.append(Spacer(1, 2 * mm))
+
+    seller_cell.append(Paragraph(esc(seller_name), _s("sn", bold=True, size=14)))
     if shop_settings.company_street:
         seller_cell.append(Paragraph(esc(shop_settings.company_street), s_normal))
     city_line = " ".join(
@@ -276,26 +340,38 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             Paragraph(f"DIČ: {esc(shop_settings.company_dic)}", s_normal)
         )
 
+    created_date = order.created_at.strftime("%d.%m.%Y")
     meta_cell = [
         Paragraph("FAKTÚRA", s_title),
+        Paragraph("Daňový doklad", s_subtitle),
         Spacer(1, 3 * mm),
         Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", s_r),
-        Paragraph(f"Dátum: {order.created_at.strftime('%d.%m.%Y')}", s_r_small),
+        Paragraph(f"Dátum vystavenia: {created_date}", s_r_small),
+        Paragraph(f"Dátum dodania: {created_date}", s_r_small),
     ]
 
-    story.append(
-        Table(
-            [[seller_cell, meta_cell]],
-            colWidths=[100 * mm, 70 * mm],
-            style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]),
-        )
+    header_table = Table(
+        [[seller_cell, meta_cell]],
+        colWidths=[104 * mm, 66 * mm],
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+                ("BOX", (0, 0), (-1, -1), 0.8, _BORDER),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        ),
     )
+    story.append(header_table)
     story.append(Spacer(1, 5 * mm))
-    story.append(HRFlowable(width="100%", thickness=2, color=_BLUE))
+    story.append(HRFlowable(width="100%", thickness=2.2, color=_BLUE))
     story.append(Spacer(1, 6 * mm))
 
     # ── BUYER (left) + PAYMENT (right, optional QR far right) ─────────────
-    buyer_cell = [Paragraph("Odberateľ", s_label), Spacer(1, 1 * mm)]
+    buyer_cell = [Paragraph("ODBERATEĽ", s_subtitle), Spacer(1, 1 * mm)]
     if order.is_company and order.company_name:
         buyer_cell.append(Paragraph(esc(order.company_name), s_bold))
         buyer_cell.append(Paragraph(esc(order.customer_name), s_normal))
@@ -313,13 +389,15 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             buyer_cell.append(Paragraph(f"DIČ: {esc(order.dic)}", s_normal))
         if order.dic_dph:
             buyer_cell.append(Paragraph(f"IČ DPH: {esc(order.dic_dph)}", s_normal))
-    buyer_cell.append(Paragraph(f"Email: {esc(order.email)}", s_normal))
-    buyer_cell.append(Paragraph(f"Tel.: {esc(order.phone)}", s_normal))
+    if order.email:
+        buyer_cell.append(Paragraph(f"Email: {esc(order.email)}", s_normal))
+    if order.phone:
+        buyer_cell.append(Paragraph(f"Tel.: {esc(order.phone)}", s_normal))
 
     payment_label = _PAYMENT_SK.get(
         order.payment_method, order.get_payment_method_display()
     )
-    pay_cell = [Paragraph("Spôsob úhrady", s_label), Spacer(1, 1 * mm)]
+    pay_cell = [Paragraph("PLATOBNÉ ÚDAJE", s_subtitle), Spacer(1, 1 * mm)]
     pay_cell.append(Paragraph(esc(payment_label), s_bold))
     if order.payment_method == "bank_transfer":
         if shop_settings.iban:
@@ -359,14 +437,22 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     tbl_style = TableStyle(
         [
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("BACKGROUND", (0, 0), (1, 0), _BLUE_SOFT),
+            ("BOX", (0, 0), (-1, -1), 0.8, _BORDER),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
         ]
     )
 
     if sepa_qr and bysquare_qr:
-        sepa_cell = [Paragraph("SEPA QR", s_label), Spacer(1, 1 * mm), sepa_qr]
-        bys_cell = [Paragraph("Pay by Square", s_label), Spacer(1, 1 * mm), bysquare_qr]
+        sepa_cell = [Paragraph("SEPA QR", s_label_center), Spacer(1, 1 * mm), sepa_qr]
+        bys_cell = [
+            Paragraph("Pay by Square", s_label_center),
+            Spacer(1, 1 * mm),
+            bysquare_qr,
+        ]
         billing_tbl = Table(
             [[buyer_cell, pay_cell, sepa_cell, bys_cell]],
             colWidths=[65 * mm, 38 * mm, 30 * mm, 37 * mm],
@@ -375,7 +461,7 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     elif sepa_qr or bysquare_qr:
         active_qr = sepa_qr or bysquare_qr
         label = "SEPA QR" if sepa_qr else "Pay by Square"
-        qr_cell = [Paragraph(label, s_label), Spacer(1, 1 * mm), active_qr]
+        qr_cell = [Paragraph(label, s_label_center), Spacer(1, 1 * mm), active_qr]
         billing_tbl = Table(
             [[buyer_cell, pay_cell, qr_cell]],
             colWidths=[80 * mm, 48 * mm, 42 * mm],
@@ -391,6 +477,9 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     story.append(Spacer(1, 8 * mm))
 
     # ── ITEMS TABLE ───────────────────────────────────────────────────────
+    story.append(Paragraph("OBJEDNANÉ PRODUKTY", s_subtitle))
+    story.append(Spacer(1, 2 * mm))
+
     items_qs = order.items.prefetch_related("batch_allocations__batch_lot").all()
     has_batches = any(item.batch_allocations.all() for item in items_qs)
 
@@ -441,105 +530,86 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
                 ]
             )
 
-    n_last_item = len(rows) - 1  # 0-based index of last item row (before total)
-    # For VAT payers the VAT breakdown block below shows "Celkom s DPH" — show
-    # only a subtotal label here to avoid a duplicate total.
-    is_vat_payer = getattr(order, "is_vat_payer", False)
-    total_label = "Medzisúčet:" if is_vat_payer else "Celkom:"
-    rows.append(
-        [
-            "",
-            "",
-            Paragraph(total_label, s_r_bold),
-            Paragraph(f"{order.total_price:.2f} €", s_total_r),
-        ]
-    )
+    n_last_item = len(rows) - 1  # 0-based index of last item row
 
     items_tbl = Table(rows, colWidths=COL_W, repeatRows=1)
     items_tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), _BLUE),
-                ("ROWBACKGROUNDS", (0, 1), (-1, n_last_item), [colors.white, _LIGHT]),
-                ("GRID", (0, 0), (-1, n_last_item), 0.4, colors.HexColor("#E5E7EB")),
-                ("LINEABOVE", (0, -1), (-1, -1), 1.5, _BLUE),
+                ("BACKGROUND", (0, 0), (-1, 0), _BLUE_MID),
+                ("ROWBACKGROUNDS", (0, 1), (-1, n_last_item), [colors.white, _ROW_ALT]),
+                ("BOX", (0, 0), (-1, n_last_item), 0.8, _BORDER),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.9, _BLUE),
+                ("LINEBELOW", (0, 1), (-1, n_last_item), 0.35, _ROW_LINE),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
             ]
         )
     )
     story.append(items_tbl)
     story.append(Spacer(1, 4 * mm))
 
-    # ── VAT BREAKDOWN (only for VAT payers) ──────────────────────────────
-    if getattr(order, "is_vat_payer", False):
-        country = getattr(order, "country", "SK") or "SK"
-        vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
-        base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
-        vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
-        vat_pct = int(vat_rate * 100)
+    # ── TOTALS SUMMARY (with VAT and optional skonto) ─────────────────────
+    country = getattr(order, "country", "SK") or "SK"
+    vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
+    base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
+    vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
+    vat_pct = int(vat_rate * 100)
 
-        vat_rows = [
-            [
-                "",
-                "",
-                Paragraph("Základ dane:", s_r),
-                Paragraph(f"{base:.2f} €", s_td_r),
-            ],
-            [
-                "",
-                "",
-                Paragraph(f"DPH {vat_pct}%:", s_r),
-                Paragraph(f"{vat_amount:.2f} €", s_td_r),
-            ],
-            [
-                "",
-                "",
-                Paragraph("Celkom s DPH:", s_r_bold),
-                Paragraph(f"{order.total_price:.2f} €", s_total_r),
-            ],
-        ]
-        vat_tbl = Table(vat_rows, colWidths=COL_W)
-        vat_tbl.setStyle(
-            TableStyle(
-                [
-                    ("LINEABOVE", (0, 0), (-1, 0), 0.5, _GRAY),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ]
-            )
-        )
-        story.append(vat_tbl)
-        story.append(Spacer(1, 2 * mm))
+    totals_rows = [
+        [
+            Paragraph("Spolu:", s_r_bold),
+            Paragraph(f"{order.total_price:.2f} €", s_r_bold),
+        ],
+        [Paragraph("Základ dane:", s_r), Paragraph(f"{base:.2f} €", s_td_r)],
+        [
+            Paragraph(f"DPH {vat_pct}%:", s_r),
+            Paragraph(f"{vat_amount:.2f} €", s_td_r),
+        ],
+        [
+            Paragraph("Celkom s DPH:", s_r_bold),
+            Paragraph(f"{order.total_price:.2f} €", s_total_r),
+        ],
+    ]
 
-    # ── SKONTO BLOCK (only for bank_transfer orders) ──────────────────────
+    # Add skonto as a dedicated summary row directly under the final total.
     if order.payment_method == "bank_transfer":
         invoice_date = order.created_at.date()
         sk_date = _skonto_date(invoice_date)
         sk_amount = _skonto_amount(order.total_price)
-        skonto_style = ParagraphStyle(
-            "skonto",
-            fontName=_FONT,
-            fontSize=8.5,
-            textColor=_BLUE,
-            leading=12,
-            backColor=colors.HexColor("#EFF6FF"),
-            borderPad=6,
+        skonto_label = (
+            f"Pri úhrade do {sk_date.strftime('%d.%m.%Y')}: "
+            "(-2% skonto za včasnú platbu)"
         )
-        story.append(
-            Paragraph(
-                f"Pri úhrade do <b>{sk_date.strftime('%d.%m.%Y')}</b>: "
-                f"<b>{sk_amount:.2f} €</b> (-2% skonto za včasnú platbu)",
-                skonto_style,
-            )
+        totals_rows.append(
+            [
+                Paragraph(skonto_label, _s("skonto_row", size=8.5, color=_BLUE)),
+                Paragraph(
+                    f"{sk_amount:.2f} €",
+                    _s("skonto_val", bold=True, size=9.5, color=_BLUE, align=TA_RIGHT),
+                ),
+            ]
         )
-        story.append(Spacer(1, 4 * mm))
+
+    totals_tbl = Table(totals_rows, colWidths=[124 * mm, 46 * mm])
+    totals_tbl.setStyle(
+        TableStyle(
+            [
+                ("LINEABOVE", (0, 0), (-1, 0), 1.2, _BLUE),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    story.append(totals_tbl)
+    story.append(Spacer(1, 4 * mm))
 
     # ── NOTES ─────────────────────────────────────────────────────────────
     if order.notes:

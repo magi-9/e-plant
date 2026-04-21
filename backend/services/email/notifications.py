@@ -5,6 +5,7 @@ from typing import Optional
 from django.utils.html import escape
 
 from .base import BaseEmailService
+from .branding import get_company_name
 
 
 class NotificationEmailService(BaseEmailService):
@@ -41,7 +42,12 @@ class NotificationEmailService(BaseEmailService):
             f"Minimálny limit: {threshold} ks\n\n"
             "Prosím, doobjednajte produkt."
         )
-        html_body = self._low_stock_alert_html(product_name, current_stock, threshold)
+        html_body = self._low_stock_alert_html(
+            product_name,
+            current_stock,
+            threshold,
+            get_company_name(),
+        )
 
         return (
             self.send_email(
@@ -56,10 +62,14 @@ class NotificationEmailService(BaseEmailService):
 
     @staticmethod
     def _low_stock_alert_html(
-        product_name: str, current_stock: int, threshold: int
+        product_name: str,
+        current_stock: int,
+        threshold: int,
+        company_name: str,
     ) -> str:
         """Build HTML version of low stock alert email."""
         product_name_escaped = escape(product_name)
+        company_name_escaped = escape((company_name or "").strip() or "E-Plant")
         return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -97,7 +107,7 @@ class NotificationEmailService(BaseEmailService):
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">DentalShop &middot; Notifikácia skladu</p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">{company_name_escaped} &middot; Notifikácia skladu</p>
           </td>
         </tr>
       </table>

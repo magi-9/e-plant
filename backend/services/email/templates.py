@@ -3,9 +3,15 @@
 from django.utils.html import escape
 
 
-def verification_email_html(verify_url: str) -> str:
+def _safe_company_name(company_name: str) -> str:
+    cleaned = (company_name or "").strip() or "E-Plant"
+    return escape(cleaned)
+
+
+def verification_email_html(verify_url: str, company_name: str = "E-Plant") -> str:
     """HTML template for email verification email."""
     verify_url_escaped = escape(verify_url)
+    company_name_escaped = _safe_company_name(company_name)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -19,14 +25,14 @@ def verification_email_html(verify_url: str) -> str:
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">DentalShop</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
           </td>
         </tr>
         <tr>
           <td style="padding:36px 40px;text-align:center;">
             <h2 style="margin:0 0 12px;font-size:20px;color:#1e293b;">Overenie e-mailovej adresy</h2>
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px;">
-              Ďakujeme za Vašu registráciu na <strong>DentalShop</strong>!<br>
+              Ďakujeme za Vašu registráciu na <strong>{company_name_escaped}</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
             <a href="{verify_url_escaped}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
@@ -43,7 +49,7 @@ def verification_email_html(verify_url: str) -> str:
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím DentalShop</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name_escaped}</strong></p>
           </td>
         </tr>
       </table>
@@ -53,9 +59,10 @@ def verification_email_html(verify_url: str) -> str:
 </html>"""
 
 
-def password_reset_email_html(reset_url: str) -> str:
+def password_reset_email_html(reset_url: str, company_name: str = "E-Plant") -> str:
     """HTML template for password reset email."""
     reset_url_escaped = escape(reset_url)
+    company_name_escaped = _safe_company_name(company_name)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -69,7 +76,7 @@ def password_reset_email_html(reset_url: str) -> str:
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">DentalShop</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
           </td>
         </tr>
         <tr>
@@ -102,7 +109,7 @@ def password_reset_email_html(reset_url: str) -> str:
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím DentalShop</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name_escaped}</strong></p>
           </td>
         </tr>
       </table>
@@ -112,8 +119,9 @@ def password_reset_email_html(reset_url: str) -> str:
 </html>"""
 
 
-def order_confirmation_customer_html(order, shop) -> str:
+def order_confirmation_customer_html(order, shop, status_label: str) -> str:
     """Build HTML version of customer order confirmation email."""
+    company_name_escaped = _safe_company_name(getattr(shop, "company_name", ""))
     # Build item rows
     row_parts = []
     for i, item in enumerate(
@@ -206,14 +214,14 @@ def order_confirmation_customer_html(order, shop) -> str:
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">DentalShop</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
             <p style="color:#bfdbfe;margin:8px 0 0;font-size:14px;">Potvrdenie objednávky</p>
           </td>
         </tr>
         <tr>
           <td style="padding:32px 40px;">
             <p style="font-size:16px;color:#1e293b;margin:0 0 6px;">Dobrý deň, <strong>{escape(order.customer_name)}</strong>,</p>
-            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">Ďakujeme za Vašu objednávku v DentalShop! Nižšie nájdete jej kompletný prehľad. Faktúra vo formáte PDF je priložená k tomuto e-mailu.</p>
+            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">Ďakujeme za Vašu objednávku v {company_name_escaped}! Nižšie nájdete jej kompletný prehľad. Faktúra vo formáte PDF je priložená k tomuto e-mailu.</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 6px 6px 0;margin-bottom:28px;">
               <tr>
                 <td style="padding:14px 18px;">
@@ -221,7 +229,7 @@ def order_confirmation_customer_html(order, shop) -> str:
                   <strong style="font-size:22px;color:#1e40af;letter-spacing:1px;"># {escape(order.order_number)}</strong>
                 </td>
                 <td style="padding:14px 18px;text-align:right;vertical-align:middle;">
-                  <span style="background:#dbeafe;color:#1d4ed8;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;">{order.get_status_display()}</span>
+                  <span style="background:#dbeafe;color:#1d4ed8;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;">{escape(status_label)}</span>
                 </td>
               </tr>
             </table>
@@ -273,7 +281,7 @@ def order_confirmation_customer_html(order, shop) -> str:
         <tr>
           <td style="background:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
             <p style="margin:0 0 4px;font-size:13px;color:#94a3b8;">V prípade otázok nás neváhajte kontaktovať.</p>
-            <p style="margin:0;font-size:13px;color:#64748b;font-weight:600;">Tím DentalShop</p>
+            <p style="margin:0;font-size:13px;color:#64748b;font-weight:600;">Tím {company_name_escaped}</p>
           </td>
         </tr>
       </table>
@@ -283,8 +291,11 @@ def order_confirmation_customer_html(order, shop) -> str:
 </html>"""
 
 
-def order_notification_warehouse_html(order) -> str:
+def order_notification_warehouse_html(
+    order, company_name: str, status_label: str
+) -> str:
     """Build HTML version of warehouse order notification email."""
+    company_name_escaped = _safe_company_name(company_name)
     row_parts = []
     for i, item in enumerate(
         order.items.select_related("product")
@@ -367,7 +378,7 @@ def order_notification_warehouse_html(order) -> str:
           <td style="background:#0f172a;padding:24px 40px;">
             <table width="100%" cellpadding="0" cellspacing="0"><tr>
               <td>
-                <p style="margin:0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">DentalShop &middot; Sklad</p>
+                <p style="margin:0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">{company_name_escaped} &middot; Sklad</p>
                 <h1 style="color:#ffffff;margin:4px 0 0;font-size:22px;font-weight:700;">Nová objednávka</h1>
               </td>
               <td style="text-align:right;vertical-align:middle;">
@@ -414,7 +425,7 @@ def order_notification_warehouse_html(order) -> str:
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
                       <strong style="color:#1e293b;">{order.get_payment_method_display()}</strong><br>
-                      <span style="color:#64748b;">{order.get_status_display()}</span><br>
+                      <span style="color:#64748b;">{escape(status_label)}</span><br>
                       <strong style="font-size:16px;color:#1d4ed8;">{order.total_price}&nbsp;&euro;</strong>
                     </td></tr>
                   </table>
@@ -439,7 +450,7 @@ def order_notification_warehouse_html(order) -> str:
         </tr>
         <tr>
           <td style="background:#0f172a;padding:16px 40px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#475569;">DentalShop &middot; Interná notifikácia</p>
+            <p style="margin:0;font-size:12px;color:#475569;">{company_name_escaped} &middot; Interná notifikácia</p>
           </td>
         </tr>
       </table>

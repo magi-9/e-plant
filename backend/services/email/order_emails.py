@@ -10,6 +10,7 @@ from orders.models import Order
 from users.models import GlobalSettings
 
 from .base import BaseEmailService
+from .branding import get_company_name, get_order_status_label
 from .templates import (
     order_confirmation_customer_html,
     order_notification_warehouse_html,
@@ -73,8 +74,11 @@ class OrderEmailService(BaseEmailService):
             True if email was sent successfully
         """
         subject = f"Potvrdenie objednávky #{self.order.order_number}"
-        text_body = self._build_customer_email_text(shop)
-        html_body = order_confirmation_customer_html(self.order, shop)
+        status_label = get_order_status_label(
+            self.order.status, self.order.get_status_display()
+        )
+        text_body = self._build_customer_email_text(shop, status_label)
+        html_body = order_confirmation_customer_html(self.order, shop, status_label)
 
         attachments = []
         if pdf_bytes:
@@ -109,8 +113,18 @@ class OrderEmailService(BaseEmailService):
         )
 
         subject = f"Nová objednávka #{self.order.order_number}"
-        text_body = self._build_warehouse_email_text()
-        html_body = order_notification_warehouse_html(self.order)
+        company_name = (
+            getattr(shop, "company_name", "") or ""
+        ).strip() or get_company_name()
+        status_label = get_order_status_label(
+            self.order.status, self.order.get_status_display()
+        )
+        text_body = self._build_warehouse_email_text(company_name, status_label)
+        html_body = order_notification_warehouse_html(
+            self.order,
+            company_name,
+            status_label,
+        )
 
         attachments = []
         if pdf_bytes:
@@ -129,8 +143,11 @@ class OrderEmailService(BaseEmailService):
             > 0
         )
 
-    def _build_customer_email_text(self, shop) -> str:
+    def _build_customer_email_text(self, shop, status_label: str) -> str:
         """Build plain text version of customer confirmation email."""
+        company_name = (
+            getattr(shop, "company_name", "") or ""
+        ).strip() or get_company_name()
         item_lines = []
         for item in self.order.items.select_related("product").prefetch_related(
             "batch_allocations__batch_lot"
@@ -172,10 +189,10 @@ DIČ: {self.order.dic}{dic_dph_line}
 
         return f"""Dobrý deň {self.order.customer_name},
 
-Ďakujeme za Vašu objednávku v DentalShop!
+    Ďakujeme za Vašu objednávku v {company_name}!
 
 ČÍSLO OBJEDNÁVKY: {self.order.order_number}
-Stav: {self.order.get_status_display()}
+    Stav: {status_label}
 
 OBJEDNANÉ PRODUKTY:
 {items_text}
@@ -194,10 +211,10 @@ Poznámka: {self.order.notes or "Žiadna"}
 V prípade otázok nás neváhajte kontaktovať.
 
 S pozdravom,
-Tím DentalShop
+Tím {company_name}
 """
 
-    def _build_warehouse_email_text(self) -> str:
+    def _build_warehouse_email_text(self, company_name: str, status_label: str) -> str:
         """Build plain text version of warehouse notification email."""
         item_lines = []
         for item in self.order.items.select_related("product").prefetch_related(
@@ -247,9 +264,11 @@ PRODUKTY NA VYSKLADNENIE:
 
 Celková suma: {self.order.total_price}€
 Platba: {self.order.get_payment_method_display()}
-Stav: {self.order.get_status_display()}
+Stav: {status_label}
 
 Poznámka zákazníka: {self.order.notes or "Žiadna"}
+
+{company_name} - Interná notifikácia
 """
 
     def send_admin_intervention_email(self, reason: str) -> bool:
@@ -258,11 +277,11 @@ Poznámka zákazníka: {self.order.notes or "Žiadna"}
         text_body = (
             f"Dobrý deň {self.order.customer_name},\n\n"
             f"Vaša objednávka #{self.order.order_number} bola upravená administrátorom.\n"
-            f"Aktuálny stav: {self.order.get_status_display()}\n"
+            f"Aktuálny stav: {get_order_status_label(self.order.status, self.order.get_status_display())}\n"
             f"Nová celková suma: {self.order.total_price} €\n\n"
             f"Dôvod zásahu: {reason}\n\n"
             "Ak máte otázky, kontaktujte nás odpoveďou na tento email.\n\n"
-            "Tím DentalShop\n"
+            f"Tím {get_company_name()}\n"
         )
 
         return (
@@ -283,7 +302,7 @@ Poznámka zákazníka: {self.order.notes or "Žiadna"}
             f"Vaša objednávka #{self.order.order_number} bola administrátorom zrušená a vymazaná zo systému.\n"
             f"Dôvod zásahu: {reason}\n\n"
             "Ak už prebehla platba, kontaktujte nás pre doriešenie refundácie.\n\n"
-            "Tím DentalShop\n"
+            f"Tím {get_company_name()}\n"
         )
 
         return (

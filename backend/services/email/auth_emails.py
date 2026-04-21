@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode
 from users.models import CustomUser
 
 from .base import BaseEmailService
+from .branding import get_company_name
 from .templates import password_reset_email_html, verification_email_html
 
 
@@ -47,17 +48,18 @@ class AuthEmailService(BaseEmailService):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
         verify_url = f"{self._get_frontend_url()}/verify-email/{uid}/{token}/"
+        company_name = get_company_name()
 
-        subject = "Overenie e-mailovej adresy - DentalShop"
+        subject = f"Overenie e-mailovej adresy - {company_name}"
         text_body = (
             "Dobrý deň,\n\n"
-            "Ďakujeme za vašu registráciu na DentalShop.\n"
+            f"Ďakujeme za vašu registráciu na {company_name}.\n"
             "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
             f"{verify_url}\n\n"
             "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
-            "S pozdravom,\nDentalShop Tím"
+            f"S pozdravom,\n{company_name} Tím"
         )
-        html_body = verification_email_html(verify_url)
+        html_body = verification_email_html(verify_url, company_name)
 
         return (
             self.send_email(
@@ -83,19 +85,20 @@ class AuthEmailService(BaseEmailService):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
         reset_url = f"{self._get_frontend_url()}/reset-password/{uid}/{token}/"
+        company_name = get_company_name()
 
-        subject = "Obnovenie hesla - DentalShop"
+        subject = f"Obnovenie hesla - {company_name}"
         text_body = (
             "Dobrý deň,\n\n"
-            "Dostali sme žiadosť o obnovenie hesla pre váš účet na DentalShop.\n"
+            f"Dostali sme žiadosť o obnovenie hesla pre váš účet na {company_name}.\n"
             "Pre nastavenie nového hesla kliknite na nasledujúci odkaz:\n\n"
             f"{reset_url}\n\n"
             "Odkaz je platný 30 minút.\n\n"
             "Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — "
             "vaše heslo zostane nezmenené.\n\n"
-            "S pozdravom,\nDentalShop Tím"
+            f"S pozdravom,\n{company_name} Tím"
         )
-        html_body = password_reset_email_html(reset_url)
+        html_body = password_reset_email_html(reset_url, company_name)
 
         return (
             self.send_email(
