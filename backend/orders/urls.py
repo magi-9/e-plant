@@ -4,6 +4,7 @@ from .views import (
     AdminOrderInterventionDeleteView,
     AdminOrderInterventionUpdateView,
     AdminOrdersListView,
+    AdminStatsView,
     AdminStockIssueView,
     AdminOrderUpdateView,
     AdminStockReceiptView,
@@ -40,6 +41,11 @@ urlpatterns = [
         "admin/stock-issues/",
         AdminStockIssueView.as_view(),
         name="admin_stock_issue",
+    ),
+    path(
+        "admin/stats/",
+        AdminStatsView.as_view(),
+        name="admin_stats",
     ),
     path("<str:order_number>/", OrderDetailView.as_view(), name="order_detail"),
 ]

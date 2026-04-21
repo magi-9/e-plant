@@ -44,3 +44,24 @@ export const getPaymentSettings = async (): Promise<PaymentSettings> => {
     const { iban, bank_name, bank_swift } = response.data;
     return { iban, bank_name, bank_swift };
 };
+
+export interface TopProduct {
+    product_id: number;
+    name: string;
+    total_qty: number;
+    total_revenue: number;
+}
+
+export interface OrderStats {
+    period_days: number;
+    total_orders: number;
+    paid_orders: number;
+    unpaid_orders: number;
+    avg_basket: number;
+    top_products: TopProduct[];
+}
+
+export const getOrderStats = async (days: 7 | 30 | 90 = 30): Promise<OrderStats> => {
+    const response = await client.get<OrderStats>(`/orders/admin/stats/?days=${days}`);
+    return response.data;
+};

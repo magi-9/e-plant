@@ -7,7 +7,7 @@ from io import StringIO
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db import models, transaction
-from django.db.models import Count
+from django.db.models import Count, Sum
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -139,6 +139,54 @@ def _make_wildcard_group_card(members, group_name: str):
     return rep
 
 
+def _apply_default_ordering(products, user, top_n=5):
+    """Sort products by relevance when no search/filter is active.
+
+    Buckets: 1=user top in-stock, 2=global top in-stock, 3=in-stock, 4=out-of-stock.
+    Within buckets 1 and 2, items are ranked by order frequency.
+    """
+    from orders.models import OrderItem
+
+    product_ids = [p.id for p in products]
+    if not product_ids:
+        return products
+
+    # Global top product IDs ranked by total quantity sold
+    global_counts = (
+        OrderItem.objects.filter(product_id__in=product_ids)
+        .values("product_id")
+        .annotate(total=Sum("quantity"))
+        .order_by("-total")[:top_n]
+    )
+    global_rank = {row["product_id"]: i for i, row in enumerate(global_counts)}
+
+    # User top product IDs (only when authenticated)
+    user_rank: dict = {}
+    if user and user.is_authenticated:
+        user_counts = (
+            OrderItem.objects.filter(
+                product_id__in=product_ids,
+                order__user=user,
+            )
+            .values("product_id")
+            .annotate(total=Sum("quantity"))
+            .order_by("-total")[:top_n]
+        )
+        user_rank = {row["product_id"]: i for i, row in enumerate(user_counts)}
+
+    def _sort_key(p):
+        in_stock = p.stock_quantity > 0
+        if in_stock and p.id in user_rank:
+            return (1, user_rank[p.id])
+        if in_stock and p.id in global_rank:
+            return (2, global_rank[p.id])
+        if in_stock:
+            return (3, 0)
+        return (4, 0)
+
+    return sorted(products, key=_sort_key)
+
+
 def _collapse_products(products, wildcard_enabled=True):
     """Storefront collapse — wildcard grouping only.
 
@@ -258,8 +306,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not _is_admin_view(request):
             queryset = self.filter_queryset(self.get_queryset())
             settings = GroupingSettings.get()
+            product_list = list(queryset)
+            has_filters = bool(
+                request.query_params.get("search")
+                or request.query_params.get("group")
+                or _parse_categories(request)
+            )
+            if not has_filters:
+                product_list = _apply_default_ordering(product_list, request.user)
             collapsed = _collapse_products(
-                list(queryset),
+                product_list,
                 wildcard_enabled=settings.wildcard_grouping_enabled,
             )
             page = self.paginate_queryset(collapsed)

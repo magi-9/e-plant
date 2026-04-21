@@ -1,4 +1,8 @@
+from datetime import timedelta
+
+from django.db.models import Avg, Sum
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -6,7 +10,7 @@ from rest_framework.views import APIView
 
 from products.models import Product
 
-from .models import Order, ShippingRate
+from .models import Order, OrderItem, ShippingRate
 from .serializers import (
     AdminOrderInterventionDeleteSerializer,
     AdminOrderInterventionUpdateSerializer,
@@ -191,3 +195,52 @@ class AdminOrderInterventionDeleteView(APIView):
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminStatsView(APIView):
+    """Admin endpoint returning order statistics for a given period."""
+
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request):
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (ValueError, TypeError):
+            days = 30
+        if days not in (7, 30, 90):
+            days = 30
+
+        since = timezone.now() - timedelta(days=days)
+        orders = Order.objects.filter(created_at__gte=since)
+
+        total_orders = orders.count()
+        paid_orders = orders.filter(status__in=["paid", "shipped"]).count()
+        unpaid_orders = total_orders - paid_orders
+
+        avg_basket = orders.aggregate(avg=Avg("total_price"))["avg"] or 0
+
+        top_products = (
+            OrderItem.objects.filter(order__created_at__gte=since)
+            .values("product_id", "product__name")
+            .annotate(total_qty=Sum("quantity"), total_revenue=Sum("price_snapshot"))
+            .order_by("-total_qty")[:10]
+        )
+
+        return Response(
+            {
+                "period_days": days,
+                "total_orders": total_orders,
+                "paid_orders": paid_orders,
+                "unpaid_orders": unpaid_orders,
+                "avg_basket": round(float(avg_basket), 2),
+                "top_products": [
+                    {
+                        "product_id": row["product_id"],
+                        "name": row["product__name"],
+                        "total_qty": row["total_qty"],
+                        "total_revenue": round(float(row["total_revenue"] or 0), 2),
+                    }
+                    for row in top_products
+                ],
+            }
+        )
