@@ -22,6 +22,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - /home/tom/eplant-data:/app/data
     expose:
       - "8000"
     depends_on:
