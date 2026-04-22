@@ -1,9 +1,11 @@
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 
 from orders.models import Order
+from orders.services import StockService
 
 
 class Command(BaseCommand):
@@ -49,5 +51,16 @@ class Command(BaseCommand):
             self.stdout.write(f"[dry-run] {count} order(s) would be cancelled.")
             return
 
-        updated = expired.update(status="cancelled")
+        updated = 0
+        for order in expired.iterator():
+            with transaction.atomic():
+                locked = (
+                    Order.objects.select_for_update()
+                    .prefetch_related("items__batch_allocations")
+                    .get(pk=order.pk)
+                )
+                StockService.restore_order_stock(locked)
+                locked.status = "cancelled"
+                locked.save(update_fields=["status", "updated_at"])
+            updated += 1
         self.stdout.write(self.style.SUCCESS(f"Cancelled {updated} expired order(s)."))

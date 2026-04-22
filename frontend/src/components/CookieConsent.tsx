@@ -8,7 +8,7 @@ export default function CookieConsent() {
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        if (!localStorage.getItem(STORAGE_KEY)) {
+        if (localStorage.getItem(STORAGE_KEY) !== 'accepted') {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setVisible(true);
         }

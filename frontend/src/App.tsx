@@ -51,6 +51,14 @@ function initSentryIfConsented() {
   sentryInitialized = true;
 }
 
+function disableSentryIfInitialized() {
+  if (!sentryInitialized) {
+    return;
+  }
+  void Sentry.close(2000);
+  sentryInitialized = false;
+}
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -60,6 +68,8 @@ function App() {
       const customEvent = event as CustomEvent<string>;
       if (customEvent.detail === 'accepted') {
         initSentryIfConsented();
+      } else if (customEvent.detail === 'declined') {
+        disableSentryIfInitialized();
       }
     };
     window.addEventListener(CONSENT_EVENT, onConsentChange);

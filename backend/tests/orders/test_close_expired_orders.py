@@ -90,3 +90,45 @@ def test_custom_hours_threshold(product_factory):
     call_command("close_expired_orders", "--hours=4", stdout=StringIO())
     order.refresh_from_db()
     assert order.status == "cancelled"
+
+
+@pytest.mark.django_db
+def test_cancelling_expired_order_restores_stock(product_factory):
+    from orders.services.order_service import OrderService
+
+    product = product_factory(stock_quantity=5, price=Decimal("10.00"))
+    service = OrderService()
+    order = service.create_order(
+        {
+            "customer_name": "Test",
+            "email": "t@t.com",
+            "phone": "+421000000000",
+            "street": "A",
+            "city": "B",
+            "postal_code": "811 01",
+            "country": "SK",
+            "is_company": False,
+            "company_name": "",
+            "ico": "",
+            "dic": "",
+            "dic_dph": "",
+            "payment_method": "bank_transfer",
+            "shipping_method": "pickup",
+            "notes": "",
+            "items": [{"product_id": product.pk, "quantity": 2}],
+        }
+    )
+
+    Order.objects.filter(pk=order.pk).update(
+        created_at=timezone.now() - timedelta(hours=25)
+    )
+
+    product.refresh_from_db()
+    assert product.stock_quantity == 3
+
+    call_command("close_expired_orders", stdout=StringIO())
+
+    order.refresh_from_db()
+    product.refresh_from_db()
+    assert order.status == "cancelled"
+    assert product.stock_quantity == 5

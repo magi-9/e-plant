@@ -214,19 +214,26 @@ export default function CheckoutPage() {
 
             if (saveToProfile && isLoggedIn) {
                 try {
-                    await client.patch('/auth/me/', {
+                    const profilePatchPayload = {
                         title: formData.title,
                         first_name: formData.first_name,
                         last_name: formData.last_name,
                         phone: normalizedPhone,
-                        street: combinedStreet,
-                        city: formData.city,
-                        postal_code: normalizedPostalCode,
                         is_company: formData.is_company,
                         company_name: formData.company_name,
                         ico: formData.ico,
                         dic: formData.dic,
-                    });
+                        ...(
+                            isPickup
+                                ? {}
+                                : {
+                                    street: combinedStreet,
+                                    city: formData.city,
+                                    postal_code: normalizedPostalCode,
+                                }
+                        ),
+                    };
+                    await client.patch('/auth/me/', profilePatchPayload);
                     queryClient.invalidateQueries({ queryKey: ['me'] });
                     toast.success('Údaje boli uložené do profilu.');
                 } catch {
@@ -235,7 +242,7 @@ export default function CheckoutPage() {
             }
 
             setOrderNumber(order.order_number);
-            setOrderTotal(getTotalPrice());
+            setOrderTotal(Number(order.total_price));
             setOrderSuccess(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
             clearCart();

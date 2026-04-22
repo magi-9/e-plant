@@ -147,9 +147,12 @@ def _apply_default_ordering(products, user, top_n=5):
     """
     from orders.models import OrderItem
 
+    max_in_filter_ids = 1000
     in_stock_ids = [p.id for p in products if p.stock_quantity > 0]
     if not in_stock_ids:
         return products
+    if len(in_stock_ids) > max_in_filter_ids:
+        return sorted(products, key=lambda p: (0 if p.stock_quantity > 0 else 1, 0))
 
     # Global top product IDs ranked by total quantity sold
     global_counts = (

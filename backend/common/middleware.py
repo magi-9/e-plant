@@ -13,7 +13,14 @@ class RequestContextMiddleware(MiddlewareMixin):
     def process_request(self, request):
         request_id = str(uuid.uuid4())
         request.request_id = request_id
-        sentry_sdk.set_tag("request_id", request_id)
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag("request_id", request_id)
+
+    def process_response(self, request, response):
+        request_id = getattr(request, "request_id", None)
+        if request_id:
+            response["X-Request-ID"] = request_id
+        return response
 
 
 class AdminAuditMiddleware(MiddlewareMixin):

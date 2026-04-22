@@ -26,10 +26,10 @@ const STATUS_COLORS: Record<string, string> = {
     cancelled: 'bg-red-100 text-red-800',
 };
 
-const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+const AUTO_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getStatusLabel(order: Order): string {
-    const isOld = Date.now() - new Date(order.created_at).getTime() > THREE_DAYS_MS;
+    const isOld = Date.now() - new Date(order.created_at).getTime() > AUTO_CANCEL_WINDOW_MS;
     if (isOld && order.status === 'cancelled' && order.payment_method === 'bank_transfer') {
         return 'Platba nevybavená';
     }
@@ -37,7 +37,7 @@ function getStatusLabel(order: Order): string {
 }
 
 function getStatusColor(order: Order): string {
-    const isOld = Date.now() - new Date(order.created_at).getTime() > THREE_DAYS_MS;
+    const isOld = Date.now() - new Date(order.created_at).getTime() > AUTO_CANCEL_WINDOW_MS;
     if (isOld && order.status === 'cancelled' && order.payment_method === 'bank_transfer') {
         return 'bg-gray-100 text-gray-600';
     }
