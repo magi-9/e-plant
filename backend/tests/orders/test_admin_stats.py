@@ -62,8 +62,8 @@ def test_stats_returns_counts(api_client, user_factory, product_factory):
     assert data["paid_orders"] == 1
     assert data["unpaid_orders"] == 1
     assert len(data["top_products"]) == 1
-    assert data["top_products"][0]["total_qty"] == 3
-    assert data["top_products"][0]["total_revenue"] == 60.0
+    assert data["top_products"][0]["total_qty"] == 2
+    assert data["top_products"][0]["total_revenue"] == 40.0
 
 
 @pytest.mark.django_db

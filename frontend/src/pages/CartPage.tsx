@@ -7,6 +7,7 @@ import { isAdmin } from '../api/auth';
 import { getMe } from '../api/auth';
 import { getProduct } from '../api/products';
 import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
 import toast from 'react-hot-toast';
 
 const getItemsLabel = (count: number): string => {
@@ -36,6 +37,7 @@ export default function CartPage() {
         queryKey: ['global-settings'],
         queryFn: getGlobalSettings,
     });
+    const company = getCompanyProfile(globalSettings);
 
     const uniqueProductIds = useMemo(
         () => Array.from(new Set(items.map((item) => item.productId))),
@@ -131,7 +133,7 @@ export default function CartPage() {
     };
 
     const handleStockInquiry = () => {
-        const recipient = globalSettings?.warehouse_email || 'warehouse@ebringer.sk';
+        const recipient = company.warehouseEmail;
         const subject = encodeURIComponent('Záujem o nedostupný produkt z košíka');
         const body = encodeURIComponent(contactMessage);
         window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;

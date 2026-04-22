@@ -582,32 +582,41 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     story.append(Spacer(1, 4 * mm))
 
     # ── TOTALS SUMMARY (with VAT and optional skonto) ─────────────────────
-    country = getattr(order, "country", "SK") or "SK"
-    vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
-    settings_vat_rate = getattr(shop_settings, "vat_rate", None)
-    if settings_vat_rate is not None and country == "SK":
-        vat_rate = Decimal(str(settings_vat_rate))
-        if vat_rate > 1:
-            vat_rate = vat_rate / Decimal("100")
-    base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
-    vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
-    vat_pct = int(vat_rate * 100)
-
     totals_rows = [
         [
             Paragraph("Spolu:", s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_r_bold),
         ],
-        [Paragraph("Základ dane:", s_r), Paragraph(f"{base:.2f} €", s_td_r)],
         [
-            Paragraph(f"DPH {vat_pct}%:", s_r),
-            Paragraph(f"{vat_amount:.2f} €", s_td_r),
-        ],
-        [
-            Paragraph("Celkom s DPH:", s_r_bold),
+            Paragraph("Celkom:", s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ],
     ]
+
+    if getattr(order, "is_vat_payer", False):
+        country = getattr(order, "country", "SK") or "SK"
+        vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
+        settings_vat_rate = getattr(shop_settings, "vat_rate", None)
+        if settings_vat_rate is not None and country == "SK":
+            vat_rate = Decimal(str(settings_vat_rate))
+            if vat_rate > 1:
+                vat_rate = vat_rate / Decimal("100")
+        base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
+        vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
+        vat_pct = int(vat_rate * 100)
+        totals_rows.extend(
+            [
+                [Paragraph("Základ dane:", s_r), Paragraph(f"{base:.2f} €", s_td_r)],
+                [
+                    Paragraph(f"DPH {vat_pct}%:", s_r),
+                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
+                ],
+                [
+                    Paragraph("Celkom s DPH:", s_r_bold),
+                    Paragraph(f"{order.total_price:.2f} €", s_total_r),
+                ],
+            ]
+        )
 
     # Add skonto as a dedicated summary row directly under the final total.
     if order.payment_method == "bank_transfer":

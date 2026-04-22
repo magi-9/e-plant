@@ -59,6 +59,14 @@ class Command(BaseCommand):
                     .prefetch_related("items__batch_allocations")
                     .get(pk=order.pk)
                 )
+                # Re-check state under lock to avoid restoring stock for orders
+                # that changed status/payment method after initial queryset evaluation.
+                if (
+                    locked.status != "awaiting_payment"
+                    or locked.payment_method != "bank_transfer"
+                    or locked.created_at >= cutoff
+                ):
+                    continue
                 StockService.restore_order_stock(locked)
                 locked.status = "cancelled"
                 locked.save(update_fields=["status", "updated_at"])

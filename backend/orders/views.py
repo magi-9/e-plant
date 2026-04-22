@@ -214,13 +214,17 @@ class AdminStatsView(APIView):
         orders = Order.objects.filter(created_at__gte=since)
 
         total_orders = orders.count()
-        paid_orders = orders.filter(status__in=["paid", "shipped"]).count()
+        paid_orders_qs = orders.filter(status__in=["paid", "shipped"])
+        paid_orders = paid_orders_qs.count()
         unpaid_orders = total_orders - paid_orders
 
-        avg_basket = orders.aggregate(avg=Avg("total_price"))["avg"] or 0
+        avg_basket = paid_orders_qs.aggregate(avg=Avg("total_price"))["avg"] or 0
 
         top_products = (
-            OrderItem.objects.filter(order__created_at__gte=since)
+            OrderItem.objects.filter(
+                order__created_at__gte=since,
+                order__status__in=["paid", "shipped"],
+            )
             .values("product_id", "product__name")
             .annotate(
                 total_qty=Sum("quantity"),

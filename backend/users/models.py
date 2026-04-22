@@ -7,6 +7,8 @@ from common.models import AddressModel
 from django.conf import settings
 
 _old_warehouse_email = "warehouse@ebringer.sk"
+_old_company_email = "martin.ebringer@swanmail.sk"
+
 
 DEFAULT_COMPANY_PROFILE = {
     "warehouse_email": f"warehouse@{settings.EMAIL_DOMAIN}",
@@ -19,13 +21,16 @@ DEFAULT_COMPANY_PROFILE = {
     "company_postal_code": "84107",
     "company_state": "Slovensko",
     "company_phone": "+421 903 428 948",
-    "company_email": "martin.ebringer@swanmail.sk",
+    "company_email": (
+        f"{getattr(settings, 'CONTACT_EMAIL_LOCAL_PART', 'martin')}"
+        f"@{settings.EMAIL_DOMAIN}"
+    ),
     "iban": "SK78 1100 0000 0029 4107 6639",
     "bank_name": "Tatra banka, a.s.",
     "bank_swift": "TATRSKBX",
 }
 
-DEFAULT_SENDER_EMAIL = "noreply@ebringer.sk"
+DEFAULT_SENDER_EMAIL = f"noreply@{settings.EMAIL_DOMAIN}"
 
 
 class CustomUserManager(BaseUserManager):
@@ -128,6 +133,10 @@ class GlobalSettingsManager(models.Manager):
                 if obj.warehouse_email == _old_warehouse_email:
                     obj.warehouse_email = DEFAULT_COMPANY_PROFILE["warehouse_email"]
                     fields_to_update.append("warehouse_email")
+
+                if obj.company_email == _old_company_email:
+                    obj.company_email = DEFAULT_COMPANY_PROFILE["company_email"]
+                    fields_to_update.append("company_email")
 
                 if fields_to_update:
                     obj.save(update_fields=fields_to_update)

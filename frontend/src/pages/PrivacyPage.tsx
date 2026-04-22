@@ -1,4 +1,14 @@
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
+
 export default function PrivacyPage() {
+    const { data: globalSettings } = useQuery({
+        queryKey: ['global-settings'],
+        queryFn: getGlobalSettings,
+    });
+    const company = getCompanyProfile(globalSettings);
+
     return (
         <div className="bg-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
@@ -56,7 +66,7 @@ export default function PrivacyPage() {
 
                     <h2>7. Kontakt na uplatnenie práv</h2>
                     <p>
-                        So žiadosťami týkajúcimi sa osobných údajov nás môžete kontaktovať na e-maile: <strong>[DOPLNIŤ: oou@domena.sk alebo email@domena.sk]</strong>
+                        So žiadosťami týkajúcimi sa osobných údajov nás môžete kontaktovať na e-maile: <strong>{company.companyEmail}</strong>
                     </p>
                 </div>
             </div>

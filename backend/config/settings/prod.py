@@ -2,6 +2,7 @@ import os
 
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
+from .base import EMAIL_DOMAIN
 from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
 DEBUG = False
@@ -94,8 +95,8 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         RuntimeWarning,
     )
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ebringer.sk")
-WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "warehouse@ebringer.sk")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"noreply@{EMAIL_DOMAIN}")
+WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", f"warehouse@{EMAIL_DOMAIN}")
 
 LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
 LOGGING = {

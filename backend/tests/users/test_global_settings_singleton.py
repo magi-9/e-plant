@@ -89,3 +89,29 @@ def test_global_settings_autoseeds_company_profile_when_blank():
 
     for field_name, expected_value in DEFAULT_COMPANY_PROFILE.items():
         assert getattr(loaded, field_name) == expected_value
+
+
+@pytest.mark.django_db
+def test_global_settings_migrates_legacy_company_email():
+    settings = GlobalSettings.objects.create(
+        pk=1,
+        warehouse_email=DEFAULT_COMPANY_PROFILE["warehouse_email"],
+        company_name=DEFAULT_COMPANY_PROFILE["company_name"],
+        company_ico=DEFAULT_COMPANY_PROFILE["company_ico"],
+        company_dic=DEFAULT_COMPANY_PROFILE["company_dic"],
+        company_vat_id=DEFAULT_COMPANY_PROFILE["company_vat_id"],
+        company_street=DEFAULT_COMPANY_PROFILE["company_street"],
+        company_city=DEFAULT_COMPANY_PROFILE["company_city"],
+        company_postal_code=DEFAULT_COMPANY_PROFILE["company_postal_code"],
+        company_state=DEFAULT_COMPANY_PROFILE["company_state"],
+        company_phone=DEFAULT_COMPANY_PROFILE["company_phone"],
+        company_email="martin.ebringer@swanmail.sk",
+        iban=DEFAULT_COMPANY_PROFILE["iban"],
+        bank_name=DEFAULT_COMPANY_PROFILE["bank_name"],
+        bank_swift=DEFAULT_COMPANY_PROFILE["bank_swift"],
+    )
+
+    loaded = GlobalSettings.load()
+
+    assert loaded.pk == settings.pk
+    assert loaded.company_email == DEFAULT_COMPANY_PROFILE["company_email"]

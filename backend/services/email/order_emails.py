@@ -185,10 +185,10 @@ DIČ: {self.order.dic}{dic_dph_line}
 
         return f"""Dobrý deň {self.order.customer_name},
 
-    Ďakujeme za Vašu objednávku v {company_name}!
+Ďakujeme za Vašu objednávku v {company_name}!
 
 ČÍSLO OBJEDNÁVKY: {self.order.order_number}
-    Stav: {status_label}
+Stav: {status_label}
 
 OBJEDNANÉ PRODUKTY:
 {items_text}

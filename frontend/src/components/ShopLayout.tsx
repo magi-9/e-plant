@@ -1,10 +1,18 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 
 export default function ShopLayout() {
   const location = useLocation();
   const isProductsPage = location.pathname.startsWith('/products');
+  const { data: globalSettings } = useQuery({
+    queryKey: ['global-settings'],
+    queryFn: getGlobalSettings,
+  });
+  const company = getCompanyProfile(globalSettings);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pt-16">
@@ -23,8 +31,8 @@ export default function ShopLayout() {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
               </svg>
               <div>
-                <p className="text-lg font-bold text-white tracking-wide">DentalTech Lab &amp; Academy</p>
-                <p className="text-xs text-cyan-300/80 mt-0.5">Dentálne implantáty, školenia &amp; e‑shop</p>
+                <p className="text-lg font-bold text-white tracking-wide">{company.companyName}</p>
+                <p className="text-xs text-cyan-300/80 mt-0.5">{company.companyEmail}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-sm">
@@ -37,7 +45,7 @@ export default function ShopLayout() {
             </div>
           </div>
           <div className="pt-6 text-center text-xs text-slate-400/80">
-            © {new Date().getFullYear()} DentalTech Lab &amp; Academy &mdash; Dentálne riešenia, školenia a e‑shop. Všetky práva vyhradené.
+            © {new Date().getFullYear()} {company.companyName} &mdash; Všetky práva vyhradené.
           </div>
         </div>
       </footer>

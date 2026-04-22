@@ -6,31 +6,32 @@ import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 
 export default function AdminSettings() {
+    const fallbackEmailDomain = import.meta.env.VITE_EMAIL_DOMAIN || 'example.com';
     const queryClient = useQueryClient();
     const { data: currentSettings, isLoading } = useQuery({ queryKey: ['global-settings'], queryFn: getGlobalSettings });
     const [activeSection, setActiveSection] = useState<'notifications' | 'inventory' | 'company'>('notifications');
 
     const [formData, setFormData] = useState<GlobalSettings>({
-        warehouse_email: 'warehouse@ebringer.sk',
+        warehouse_email: `warehouse@${fallbackEmailDomain}`,
         low_stock_threshold: 5,
         currency: 'EUR (€)',
         shipping_cost: '5.00',
         vat_rate: '23.00',
         pickup_address: '',
         opening_hours: '',
-        company_name: 'Martin Ebringer s.r.o.',
-        company_ico: '52595684',
-        company_dic: '2121087859',
-        company_vat_id: 'SK2121087859',
-        company_street: 'Charkovská 13',
-        company_city: 'Bratislava',
-        company_postal_code: '84107',
+        company_name: '',
+        company_ico: '',
+        company_dic: '',
+        company_vat_id: '',
+        company_street: '',
+        company_city: '',
+        company_postal_code: '',
         company_state: 'Slovensko',
-        company_phone: '+421 903 428 948',
-        company_email: 'martin.ebringer@swanmail.sk',
-        iban: 'SK78 1100 0000 0029 4107 6639',
-        bank_name: 'Tatra banka, a.s.',
-        bank_swift: 'TATRSKBX',
+        company_phone: '',
+        company_email: `martin@${fallbackEmailDomain}`,
+        iban: '',
+        bank_name: '',
+        bank_swift: '',
     });
 
     useEffect(() => {
