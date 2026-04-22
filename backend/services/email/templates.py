@@ -2,13 +2,17 @@
 
 from django.utils.html import escape
 
+from users.models import DEFAULT_COMPANY_PROFILE
+
 
 def _safe_company_name(company_name: str) -> str:
-    cleaned = (company_name or "").strip() or "E-Plant"
+    cleaned = (company_name or "").strip() or DEFAULT_COMPANY_PROFILE["company_name"]
     return escape(cleaned)
 
 
-def verification_email_html(verify_url: str, company_name: str = "E-Plant") -> str:
+def verification_email_html(
+    verify_url: str, company_name: str = DEFAULT_COMPANY_PROFILE["company_name"]
+) -> str:
     """HTML template for email verification email."""
     verify_url_escaped = escape(verify_url)
     company_name_escaped = _safe_company_name(company_name)
@@ -59,7 +63,9 @@ def verification_email_html(verify_url: str, company_name: str = "E-Plant") -> s
 </html>"""
 
 
-def password_reset_email_html(reset_url: str, company_name: str = "E-Plant") -> str:
+def password_reset_email_html(
+    reset_url: str, company_name: str = DEFAULT_COMPANY_PROFILE["company_name"]
+) -> str:
     """HTML template for password reset email."""
     reset_url_escaped = escape(reset_url)
     company_name_escaped = _safe_company_name(company_name)

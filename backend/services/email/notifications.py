@@ -4,6 +4,8 @@ from typing import Optional
 
 from django.utils.html import escape
 
+from users.models import DEFAULT_COMPANY_PROFILE
+
 from .base import BaseEmailService
 from .branding import get_company_name
 
@@ -67,7 +69,9 @@ class NotificationEmailService(BaseEmailService):
     ) -> str:
         """Build HTML version of low stock alert email."""
         product_name_escaped = escape(product_name)
-        company_name_escaped = escape((company_name or "").strip() or "E-Plant")
+        company_name_escaped = escape(
+            (company_name or "").strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+        )
         return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>

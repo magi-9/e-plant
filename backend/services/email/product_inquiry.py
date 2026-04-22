@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from django.utils.html import escape
 
-from users.models import GlobalSettings
+from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 
 from .base import BaseEmailService
 
@@ -36,7 +36,7 @@ class ProductInquiryEmailService(BaseEmailService):
         """
         shop = GlobalSettings.objects.get_settings()
         warehouse_email = shop.warehouse_email or getattr(
-            settings, "WAREHOUSE_EMAIL", "warehouse@dentalshop.sk"
+            settings, "WAREHOUSE_EMAIL", DEFAULT_COMPANY_PROFILE["warehouse_email"]
         )
 
         subject = f"Dotaz na produkt: {product_name}"

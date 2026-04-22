@@ -7,7 +7,7 @@ from django.conf import settings
 
 from orders.invoice import generate_invoice_pdf
 from orders.models import Order
-from users.models import GlobalSettings
+from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 
 from .base import BaseEmailService
 from .branding import get_company_name, get_order_status_label
@@ -107,7 +107,7 @@ class OrderEmailService(BaseEmailService):
             True if email was sent successfully
         """
         warehouse_email = shop.warehouse_email or getattr(
-            settings, "WAREHOUSE_EMAIL", "warehouse@dentalshop.sk"
+            settings, "WAREHOUSE_EMAIL", DEFAULT_COMPANY_PROFILE["warehouse_email"]
         )
 
         subject = f"Nová objednávka #{self.order.order_number}"

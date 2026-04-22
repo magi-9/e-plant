@@ -1,9 +1,9 @@
 """Shared branding and presentation helpers for email content."""
 
-from users.models import GlobalSettings
+from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 
 
-def get_company_name(default: str = "E-Plant") -> str:
+def get_company_name(default: str = DEFAULT_COMPANY_PROFILE["company_name"]) -> str:
     """Return seller/company name from GlobalSettings with safe fallback."""
     try:
         shop = GlobalSettings.objects.get_settings()

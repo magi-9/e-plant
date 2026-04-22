@@ -94,8 +94,8 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         RuntimeWarning,
     )
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk")
-WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "warehouse@dentalshop.sk")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@ebringer.sk")
+WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "warehouse@ebringer.sk")
 
 LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
 LOGGING = {

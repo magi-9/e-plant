@@ -6,6 +6,8 @@ from typing import Optional
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
+from users.models import DEFAULT_SENDER_EMAIL
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +22,7 @@ class BaseEmailService:
             from_email: The sender's email address. Defaults to DEFAULT_FROM_EMAIL.
         """
         self.from_email = from_email or getattr(
-            settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"
+            settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL
         )
 
     def send_email(

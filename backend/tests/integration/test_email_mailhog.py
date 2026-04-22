@@ -7,6 +7,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 import pytest
+from django.conf import settings
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
@@ -189,4 +190,4 @@ def test_order_creation_delivers_customer_and_warehouse_emails_to_mailhog(
         recipient for message in messages for recipient in _extract_recipients(message)
     }
     assert any(customer_email in recipient for recipient in all_recipients)
-    assert any("warehouse@dentalshop.sk" in recipient for recipient in all_recipients)
+    assert any(settings.WAREHOUSE_EMAIL in recipient for recipient in all_recipients)

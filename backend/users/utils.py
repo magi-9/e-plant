@@ -22,7 +22,12 @@ from django.utils.encoding import force_bytes
 from django.utils.html import escape
 from django.utils.http import urlsafe_base64_encode
 
-from .models import EmailRateLimit, GlobalSettings
+from .models import (
+    DEFAULT_COMPANY_PROFILE,
+    DEFAULT_SENDER_EMAIL,
+    EmailRateLimit,
+    GlobalSettings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +121,8 @@ def _translate_password_errors(exc) -> str:
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
     company_name = escape(
-        (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+        (GlobalSettings.load().company_name or "").strip()
+        or DEFAULT_COMPANY_PROFILE["company_name"]
     )
     safe_verify_url = escape(verify_url)
     return f"""<!DOCTYPE html>
@@ -169,7 +175,8 @@ def _verification_email_html(verify_url: str) -> str:
 def _password_reset_email_html(reset_url: str) -> str:
     """HTML template for password reset email."""
     company_name = escape(
-        (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+        (GlobalSettings.load().company_name or "").strip()
+        or DEFAULT_COMPANY_PROFILE["company_name"]
     )
     safe_reset_url = escape(reset_url)
     return f"""<!DOCTYPE html>
@@ -234,7 +241,9 @@ def send_verification_email(user) -> None:
     token = default_token_generator.make_token(user)
     verify_url = f"{_frontend_url()}/verify-email/{uid}/{token}/"
 
-    company_name = (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    company_name = (
+        GlobalSettings.load().company_name or ""
+    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
     subject = f"Overenie e-mailovej adresy - {company_name}"
     message = (
         "Dobrý deň,\n\n"
@@ -249,7 +258,7 @@ def send_verification_email(user) -> None:
         send_mail(
             subject,
             message,
-            getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
+            getattr(settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL),
             [user.email],
             fail_silently=False,
             html_message=_verification_email_html(verify_url),
@@ -264,7 +273,9 @@ def send_password_reset_email(user) -> None:
     token = default_token_generator.make_token(user)
     reset_url = f"{_frontend_url()}/reset-password/{uid}/{token}/"
 
-    company_name = (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    company_name = (
+        GlobalSettings.load().company_name or ""
+    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
     subject = f"Obnovenie hesla - {company_name}"
     message = (
         "Dobrý deň,\n\n"
@@ -281,7 +292,7 @@ def send_password_reset_email(user) -> None:
         send_mail(
             subject,
             message,
-            getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
+            getattr(settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL),
             [user.email],
             fail_silently=False,
             html_message=_password_reset_email_html(reset_url),

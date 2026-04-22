@@ -29,5 +29,5 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 1025))
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = ""
 EMAIL_HOST_PASSWORD = ""
-DEFAULT_FROM_EMAIL = "noreply@dentalshop.sk"
-WAREHOUSE_EMAIL = "warehouse@dentalshop.sk"
+DEFAULT_FROM_EMAIL = "noreply@ebringer.sk"
+WAREHOUSE_EMAIL = "warehouse@ebringer.sk"

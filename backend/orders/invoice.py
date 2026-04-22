@@ -14,6 +14,8 @@ from decimal import Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape as esc
 
+from users.models import DEFAULT_COMPANY_PROFILE
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -298,7 +300,7 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     s_td_r = _s("td_r", align=TA_RIGHT)
     s_total_r = _s("total_r", bold=True, size=11, align=TA_RIGHT)
 
-    seller_name = shop_settings.company_name or "E-Plant"
+    seller_name = shop_settings.company_name or DEFAULT_COMPANY_PROFILE["company_name"]
     story = []
 
     # ── HEADER: logo + seller (left) + invoice meta (right) ──────────────
@@ -338,6 +340,10 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     if shop_settings.company_dic:
         seller_cell.append(
             Paragraph(f"DIČ: {esc(shop_settings.company_dic)}", s_normal)
+        )
+    if shop_settings.company_vat_id:
+        seller_cell.append(
+            Paragraph(f"IČ DPH: {esc(shop_settings.company_vat_id)}", s_normal)
         )
 
     created_date = order.created_at.strftime("%d.%m.%Y")

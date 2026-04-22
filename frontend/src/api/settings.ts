@@ -12,6 +12,7 @@ export interface GlobalSettings {
     company_name: string;
     company_ico: string;
     company_dic: string;
+    company_vat_id: string;
     company_street: string;
     company_city: string;
     company_postal_code: string;

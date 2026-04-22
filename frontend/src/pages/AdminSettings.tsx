@@ -11,25 +11,26 @@ export default function AdminSettings() {
     const [activeSection, setActiveSection] = useState<'notifications' | 'inventory' | 'company'>('notifications');
 
     const [formData, setFormData] = useState<GlobalSettings>({
-        warehouse_email: 'warehouse@dentalshop.sk',
+        warehouse_email: 'warehouse@ebringer.sk',
         low_stock_threshold: 5,
         currency: 'EUR (€)',
         shipping_cost: '5.00',
         vat_rate: '23.00',
         pickup_address: '',
         opening_hours: '',
-        company_name: '',
-        company_ico: '',
-        company_dic: '',
-        company_street: '',
-        company_city: '',
-        company_postal_code: '',
-        company_state: '',
-        company_phone: '',
-        company_email: '',
-        iban: '',
-        bank_name: '',
-        bank_swift: '',
+        company_name: 'Martin Ebringer s.r.o.',
+        company_ico: '52595684',
+        company_dic: '2121087859',
+        company_vat_id: 'SK2121087859',
+        company_street: 'Charkovská 13',
+        company_city: 'Bratislava',
+        company_postal_code: '84107',
+        company_state: 'Slovensko',
+        company_phone: '+421 903 428 948',
+        company_email: 'martin.ebringer@swanmail.sk',
+        iban: 'SK78 1100 0000 0029 4107 6639',
+        bank_name: 'Tatra banka, a.s.',
+        bank_swift: 'TATRSKBX',
     });
 
     useEffect(() => {
@@ -168,6 +169,10 @@ export default function AdminSettings() {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">DIČ</label>
                                             <input type="text" value={formData.company_dic} onChange={e => setFormData({ ...formData, company_dic: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">IČ DPH</label>
+                                            <input type="text" value={formData.company_vat_id} onChange={e => setFormData({ ...formData, company_vat_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>
