@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Avg, Sum
+from django.db.models import Avg, DecimalField, ExpressionWrapper, F, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -222,7 +222,15 @@ class AdminStatsView(APIView):
         top_products = (
             OrderItem.objects.filter(order__created_at__gte=since)
             .values("product_id", "product__name")
-            .annotate(total_qty=Sum("quantity"), total_revenue=Sum("price_snapshot"))
+            .annotate(
+                total_qty=Sum("quantity"),
+                total_revenue=Sum(
+                    ExpressionWrapper(
+                        F("quantity") * F("price_snapshot"),
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    )
+                ),
+            )
             .order_by("-total_qty")[:10]
         )
 

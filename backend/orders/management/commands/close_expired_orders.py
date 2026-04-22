@@ -16,7 +16,7 @@ class Command(BaseCommand):
             "--hours",
             type=int,
             default=24,
-            help="Hours after which awaiting_payment orders are cancelled (default: 24).",
+            help="Hours after which awaiting_payment bank transfer orders are cancelled (default: 24).",
         )
         parser.add_argument(
             "--dry-run",
@@ -31,6 +31,7 @@ class Command(BaseCommand):
 
         expired = Order.objects.filter(
             status="awaiting_payment",
+            payment_method="bank_transfer",
             created_at__lt=cutoff,
         )
 

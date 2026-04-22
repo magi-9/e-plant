@@ -578,6 +578,11 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     # ── TOTALS SUMMARY (with VAT and optional skonto) ─────────────────────
     country = getattr(order, "country", "SK") or "SK"
     vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
+    settings_vat_rate = getattr(shop_settings, "vat_rate", None)
+    if settings_vat_rate is not None and country == "SK":
+        vat_rate = Decimal(str(settings_vat_rate))
+        if vat_rate > 1:
+            vat_rate = vat_rate / Decimal("100")
     base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
     vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
     vat_pct = int(vat_rate * 100)

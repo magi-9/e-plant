@@ -62,6 +62,19 @@ def test_does_not_affect_other_statuses(product_factory):
 
 
 @pytest.mark.django_db
+def test_does_not_cancel_expired_card_orders(product_factory):
+    card_order = _make_order(
+        product_factory,
+        status="awaiting_payment",
+        hours_ago=48,
+        payment_method="card",
+    )
+    call_command("close_expired_orders", stdout=StringIO())
+    card_order.refresh_from_db()
+    assert card_order.status == "awaiting_payment"
+
+
+@pytest.mark.django_db
 def test_dry_run_does_not_cancel(product_factory):
     order = _make_order(product_factory, hours_ago=25)
     out = StringIO()

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const STORAGE_KEY = 'cookie_consent';
+const CONSENT_EVENT = 'cookie-consent-changed';
 
 export default function CookieConsent() {
     const [visible, setVisible] = useState(false);
@@ -15,11 +16,13 @@ export default function CookieConsent() {
 
     const accept = () => {
         localStorage.setItem(STORAGE_KEY, 'accepted');
+        window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: 'accepted' }));
         setVisible(false);
     };
 
     const decline = () => {
         localStorage.setItem(STORAGE_KEY, 'declined');
+        window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: 'declined' }));
         setVisible(false);
     };
 
