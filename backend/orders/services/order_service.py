@@ -74,6 +74,23 @@ class OrderService:
         """
         items_data = validated_data.pop("items")
 
+        logger.info(
+            "ORDER_CHECKOUT_STARTED payment_method=%s items=%d",
+            validated_data.get("payment_method", "unknown"),
+            len(items_data),
+        )
+        try:
+            return self._create_order_transactional(validated_data, items_data)
+        except Exception:
+            logger.exception(
+                "ORDER_CHECKOUT_FAILED payment_method=%s",
+                validated_data.get("payment_method", "unknown"),
+            )
+            raise
+
+    def _create_order_transactional(
+        self, validated_data: Dict[str, Any], items_data: List[Dict[str, Any]]
+    ) -> "Order":
         with transaction.atomic():
             # Validate stock and prepare items (locks products)
             prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
@@ -150,9 +167,17 @@ class OrderService:
             # This ensures DB locks are released before potentially slow SMTP calls
             transaction.on_commit(lambda: self._send_order_notifications(order))
 
+            if status == "awaiting_payment":
+                logger.info(
+                    "ORDER_PAYMENT_PENDING order_number=%s total=%s",
+                    order.order_number,
+                    order.total_price,
+                )
+
             logger.info(
-                "Order created successfully: %s - Total: %s",
+                "ORDER_CREATED order_number=%s status=%s total=%s",
                 order.order_number,
+                status,
                 order.total_price,
             )
 

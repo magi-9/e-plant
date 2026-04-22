@@ -74,7 +74,11 @@ class BaseEmailService:
 
             return msg.send(fail_silently=fail_silently)
         except Exception:
-            logger.exception("Failed to send email '%s' to %s", subject, to)
+            logger.exception(
+                "EMAIL_SEND_FAILED subject=%r recipients=%s",
+                subject,
+                ",".join(to),
+            )
             if not fail_silently:
                 raise
             return 0

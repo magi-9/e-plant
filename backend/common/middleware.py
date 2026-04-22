@@ -1,8 +1,19 @@
 import logging
+import uuid
 
+import sentry_sdk
 from django.utils.deprecation import MiddlewareMixin
 
 logger = logging.getLogger("django.security.admin")
+
+
+class RequestContextMiddleware(MiddlewareMixin):
+    """Attach a unique request_id to each request and enrich the Sentry scope."""
+
+    def process_request(self, request):
+        request_id = str(uuid.uuid4())
+        request.request_id = request_id
+        sentry_sdk.set_tag("request_id", request_id)
 
 
 class AdminAuditMiddleware(MiddlewareMixin):

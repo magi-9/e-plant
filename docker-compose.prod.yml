@@ -70,6 +70,7 @@ services:
       dockerfile: Dockerfile.prod
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     expose:
       - "80"
     networks:
@@ -103,6 +104,22 @@ services:
         parallelism: 1
         delay: 5s
         order: stop-first
+
+  alloy:
+    image: grafana/alloy:latest
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL:-}
+      - GRAFANA_LOKI_USER=${GRAFANA_LOKI_USER:-}
+      - GRAFANA_LOKI_API_KEY=${GRAFANA_LOKI_API_KEY:-}
+    networks:
+      - dokploy-network
+    deploy:
+      restart_policy:
+        condition: on-failure
 
   dokploy-webhook-relay:
     image: alpine/socat:1.8.0.3
