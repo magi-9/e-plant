@@ -8,7 +8,6 @@ import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, Ex
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
-import CookieConsent from '../components/CookieConsent';
 import { isAdmin } from '../api/auth';
 import toast from 'react-hot-toast';
 
@@ -245,7 +244,6 @@ export default function ProductsPage() {
 
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">
-            <CookieConsent />
             <Helmet>
                 <title>Digital Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
                 <meta name="description" content="Shop premium Dynamic Abutment Solutions products: TiBase scanning bodies, Multi-Unit abutments, custom CAD/CAM solutions, and more. Official distributor for Slovakia." />

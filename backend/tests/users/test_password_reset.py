@@ -17,7 +17,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import status
 
-from users.models import EmailRateLimit
+from users.models import EmailRateLimit, GlobalSettings
 from users.utils import (
     BLOCK_HOURS,
     COOLDOWN_SECONDS,
@@ -88,6 +88,22 @@ def test_password_reset_request_missing_email(api_client):
     response = api_client.post(url, {}, format="json")
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_password_reset_email_escapes_company_name_in_html(api_client, user_factory):
+    user = user_factory(email="escaped@example.com")
+    settings = GlobalSettings.load()
+    settings.company_name = "<script>alert(1)</script>"
+    settings.save(update_fields=["company_name"])
+    url = reverse("password_reset_request")
+
+    response = api_client.post(url, {"email": user.email}, format="json")
+
+    assert response.status_code == status.HTTP_200_OK
+    html_body = mail.outbox[0].alternatives[0][0]
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_body
+    assert "<script>alert(1)</script>" not in html_body
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,6 +222,22 @@ def test_resend_verification_sends_email(api_client, user_factory):
     assert len(mail.outbox) == 1
     assert user.email in mail.outbox[0].to
     assert "verify-email" in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_resend_verification_escapes_company_name_in_html(api_client, user_factory):
+    user = user_factory(is_active=False, email="inactive2@example.com")
+    settings = GlobalSettings.load()
+    settings.company_name = "<img src=x onerror=alert(1)>"
+    settings.save(update_fields=["company_name"])
+    url = reverse("resend_verification")
+
+    response = api_client.post(url, {"email": user.email}, format="json")
+
+    assert response.status_code == status.HTTP_200_OK
+    html_body = mail.outbox[0].alternatives[0][0]
+    assert "&lt;img src=x onerror=alert(1)&gt;" in html_body
+    assert "<img src=x onerror=alert(1)>" not in html_body
 
 
 @pytest.mark.django_db

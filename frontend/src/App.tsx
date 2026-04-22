@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import ShopLayout from './components/ShopLayout';
+import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import LoginPage from './pages/LoginPage';
@@ -72,6 +73,7 @@ function App() {
       <HelmetProvider>
         <BrowserRouter>
           <Toaster position="top-right" />
+          <CookieConsent />
           <Routes>
           {/* Representative page — no navbar, no footer */}
           <Route path="/" element={<HomePage />} />

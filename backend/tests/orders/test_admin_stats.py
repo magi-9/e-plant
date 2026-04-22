@@ -7,7 +7,7 @@ from django.urls import reverse
 from rest_framework import status as http_status
 
 
-def _create_order_with_item(order_factory_fn, product, qty, order_status="paid"):
+def _create_order_with_item(product, qty, order_status="paid"):
     """Helper that creates an Order + OrderItem without going through the full API."""
     from orders.models import Order, OrderItem
 
@@ -50,8 +50,8 @@ def test_stats_returns_counts(api_client, user_factory, product_factory):
     api_client.force_authenticate(user=admin)
 
     product = product_factory(price=Decimal("20.00"), stock_quantity=100)
-    _create_order_with_item(None, product, 2, order_status="paid")
-    _create_order_with_item(None, product, 1, order_status="awaiting_payment")
+    _create_order_with_item(product, 2, order_status="paid")
+    _create_order_with_item(product, 1, order_status="awaiting_payment")
 
     url = reverse("admin_stats")
     response = api_client.get(url, {"days": 30})

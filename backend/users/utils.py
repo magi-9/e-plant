@@ -19,6 +19,7 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.utils.html import escape
 from django.utils.http import urlsafe_base64_encode
 
 from .models import EmailRateLimit, GlobalSettings
@@ -114,7 +115,10 @@ def _translate_password_errors(exc) -> str:
 
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
-    company_name = (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    company_name = escape(
+        (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    )
+    safe_verify_url = escape(verify_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -138,12 +142,12 @@ def _verification_email_html(verify_url: str) -> str:
               Ďakujeme za Vašu registráciu na <strong>{company_name}</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
-            <a href="{verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{safe_verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Overiť e-mailovú adresu
             </a>
             <p style="color:#94a3b8;font-size:12px;margin:24px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{verify_url}" style="color:#2563eb;word-break:break-all;">{verify_url}</a>
+              <a href="{safe_verify_url}" style="color:#2563eb;word-break:break-all;">{safe_verify_url}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.
@@ -164,7 +168,10 @@ def _verification_email_html(verify_url: str) -> str:
 
 def _password_reset_email_html(reset_url: str) -> str:
     """HTML template for password reset email."""
-    company_name = (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    company_name = escape(
+        (GlobalSettings.load().company_name or "").strip() or "E-Plant"
+    )
+    safe_reset_url = escape(reset_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -188,7 +195,7 @@ def _password_reset_email_html(reset_url: str) -> str:
               Dostali sme žiadosť o obnovenie hesla pre Váš účet.<br>
               Kliknite na tlačidlo nižšie pre nastavenie nového hesla.
             </p>
-            <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{safe_reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Nastaviť nové heslo
             </a>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;margin:24px 0 0;border-collapse:collapse;">
@@ -202,7 +209,7 @@ def _password_reset_email_html(reset_url: str) -> str:
             </table>
             <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{reset_url}" style="color:#2563eb;word-break:break-all;">{reset_url}</a>
+              <a href="{safe_reset_url}" style="color:#2563eb;word-break:break-all;">{safe_reset_url}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — Vaše heslo zostane nezmenené.

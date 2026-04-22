@@ -147,13 +147,13 @@ def _apply_default_ordering(products, user, top_n=5):
     """
     from orders.models import OrderItem
 
-    product_ids = [p.id for p in products]
-    if not product_ids:
+    in_stock_ids = [p.id for p in products if p.stock_quantity > 0]
+    if not in_stock_ids:
         return products
 
     # Global top product IDs ranked by total quantity sold
     global_counts = (
-        OrderItem.objects.filter(product_id__in=product_ids)
+        OrderItem.objects.filter(product_id__in=in_stock_ids)
         .values("product_id")
         .annotate(total=Sum("quantity"))
         .order_by("-total")[:top_n]
@@ -165,7 +165,7 @@ def _apply_default_ordering(products, user, top_n=5):
     if user and user.is_authenticated:
         user_counts = (
             OrderItem.objects.filter(
-                product_id__in=product_ids,
+                product_id__in=in_stock_ids,
                 order__user=user,
             )
             .values("product_id")
@@ -310,6 +310,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             has_filters = bool(
                 request.query_params.get("search")
                 or request.query_params.get("group")
+                or request.query_params.get("ordering")
                 or _parse_categories(request)
             )
             if not has_filters:

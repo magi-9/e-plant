@@ -9,7 +9,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import CookieConsent from '../components/CookieConsent';
 
 type FadeInSectionProps = {
   children: ReactNode;
@@ -67,7 +66,6 @@ export default function HomePage() {
 
   return (
     <div className="bg-slate-50 text-slate-900 flex flex-col min-h-screen">
-      <CookieConsent />
       {/* Hero */}
       <section
         id="uvod"
@@ -648,4 +646,3 @@ export default function HomePage() {
     </div>
   );
 }
-
