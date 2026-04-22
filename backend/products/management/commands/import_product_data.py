@@ -423,21 +423,20 @@ def load_merged_products(merged_csv_path):
     products = []
 
     def row_to_single_product(row):
+        primary_category = row.get("primary_system_category", "").strip()
+        fallback_category = row.get("category", "").strip()
+        generated_description = row.get("generated_description", "").strip()
+        fallback_description = row.get("description", "").strip()
+        active_flag = str(row.get("is_active_from_categories", "1")).strip()
         return {
             "name": row.get("name", "").strip(),
             "reference": row.get("reference", "").strip(),
             "reference_num": row.get("reference_num", "").strip(),
-            "category": (
-                row.get("primary_system_category", "").strip()
-                or row.get("category", "").strip()
-            ),
+            "category": primary_category or fallback_category,
             "price": row["_price"],
-            "description": row.get("generated_description", "").strip()
-            or row.get("description", "").strip(),
+            "description": generated_description or fallback_description,
             "is_active": bool(
-                str(row.get("is_active_from_categories", "1")).strip()
-                in ("1", "true", "True", "yes", "YES")
-                and row["_has_price"]
+                active_flag in ("1", "true", "True", "yes", "YES") and row["_has_price"]
             ),
             "parameters": {
                 "type": "single",
@@ -505,20 +504,19 @@ def load_merged_products(merged_csv_path):
             representative.get("generated_description", "").strip()
             or representative.get("description", "").strip()
         )
-        description = (
-            description + " | " if description else ""
-        ) + f"Počet variantov: {len(options)}"
+        description_prefix = f"{description} | " if description else ""
+        description = f"{description_prefix}Počet variantov: {len(options)}"
+        retail_name = representative.get("retail_name", "").strip()
+        base_name = representative.get("name", "").strip()
+        primary_category = representative.get("primary_system_category", "").strip()
+        fallback_category = representative.get("category", "").strip()
 
         products.append(
             {
-                "name": representative.get("retail_name", "").strip()
-                or representative.get("name", "").strip(),
+                "name": retail_name or base_name,
                 "reference": wildcard_reference,
                 "reference_num": "",
-                "category": (
-                    representative.get("primary_system_category", "").strip()
-                    or representative.get("category", "").strip()
-                ),
+                "category": primary_category or fallback_category,
                 "price": min_price,
                 "description": description,
                 "is_active": bool(any_active_category and any_has_price),

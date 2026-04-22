@@ -31,6 +31,7 @@ export interface CreateOrderData {
     dic_dph?: string;
     is_vat_payer: boolean;
     payment_method: 'bank_transfer' | 'card';
+    shipping_method: 'courier' | 'pickup';
     notes?: string;
     items: OrderItem[];
 }
@@ -53,6 +54,7 @@ export interface Order {
     dic_dph: string;
     is_vat_payer: boolean;
     payment_method: string;
+    shipping_method: string;
     status: string;
     total_price: string;
     shipping_cost: string;

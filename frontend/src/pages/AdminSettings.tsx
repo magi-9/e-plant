@@ -6,24 +6,29 @@ import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 
 export default function AdminSettings() {
+    const fallbackEmailDomain = import.meta.env.VITE_EMAIL_DOMAIN || 'example.com';
     const queryClient = useQueryClient();
     const { data: currentSettings, isLoading } = useQuery({ queryKey: ['global-settings'], queryFn: getGlobalSettings });
     const [activeSection, setActiveSection] = useState<'notifications' | 'inventory' | 'company'>('notifications');
 
     const [formData, setFormData] = useState<GlobalSettings>({
-        warehouse_email: 'warehouse@dentalshop.sk',
+        warehouse_email: `warehouse@${fallbackEmailDomain}`,
         low_stock_threshold: 5,
         currency: 'EUR (€)',
         shipping_cost: '5.00',
+        vat_rate: '23.00',
+        pickup_address: '',
+        opening_hours: '',
         company_name: '',
         company_ico: '',
         company_dic: '',
+        company_vat_id: '',
         company_street: '',
         company_city: '',
         company_postal_code: '',
-        company_state: '',
+        company_state: 'Slovensko',
         company_phone: '',
-        company_email: '',
+        company_email: `martin@${fallbackEmailDomain}`,
         iban: '',
         bank_name: '',
         bank_swift: '',
@@ -116,17 +121,34 @@ export default function AdminSettings() {
                                         <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Sklad a katalóg</h3>
                                         <div className="mt-4 grid grid-cols-1 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">Predvolený 'Low Stock Threshold'</label>
+                                                <label className="block text-sm font-medium text-gray-700">Predvolený limit nízkych zásob</label>
                                                 <input type="number" value={formData.low_stock_threshold} onChange={e => setFormData({ ...formData, low_stock_threshold: Number(e.target.value) })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                                <p className="mt-1 text-sm text-gray-500">Produkty s nižším počtom kusov budú označené ako "nízke zásoby".</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Doprava</h3>
+                                        <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Doprava a DPH</h3>
+                                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Cena kuriéra (€)</label>
+                                                <input type="number" step="0.01" value={formData.shipping_cost} onChange={e => setFormData({ ...formData, shipping_cost: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Sadzba DPH (%)</label>
+                                                <input type="number" step="0.01" value={formData.vat_rate} onChange={e => setFormData({ ...formData, vat_rate: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                                <p className="mt-1 text-sm text-gray-500">Napr. 23 pre 23% DPH.</p>
+                                            </div>
+                                        </div>
+                                        <p className="mt-2 text-sm text-gray-500">Osobný odber je vždy zdarma (0 €).</p>
                                         <div className="mt-4">
-                                            <label className="block text-sm font-medium text-gray-700">Cena dopravy</label>
-                                            <input type="number" step="0.01" value={formData.shipping_cost} onChange={e => setFormData({ ...formData, shipping_cost: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <label className="block text-sm font-medium text-gray-700">Adresa osobného odberu</label>
+                                            <input type="text" value={formData.pickup_address} onChange={e => setFormData({ ...formData, pickup_address: e.target.value })} placeholder="napr. Hlavná 1, 811 01 Bratislava" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                        </div>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700">Otváracie hodiny</label>
+                                            <input type="text" value={formData.opening_hours} onChange={e => setFormData({ ...formData, opening_hours: e.target.value })} placeholder="napr. Po–Pi 8:00–17:00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
                                         </div>
                                     </div>
                                 </>
@@ -148,6 +170,10 @@ export default function AdminSettings() {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">DIČ</label>
                                             <input type="text" value={formData.company_dic} onChange={e => setFormData({ ...formData, company_dic: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">IČ DPH</label>
+                                            <input type="text" value={formData.company_vat_id} onChange={e => setFormData({ ...formData, company_vat_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>

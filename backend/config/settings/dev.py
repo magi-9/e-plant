@@ -1,6 +1,7 @@
 import os
 
 from .base import *  # noqa: F403, F401
+from .base import EMAIL_DOMAIN
 
 DEBUG = True
 
@@ -29,5 +30,5 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 1025))
 EMAIL_USE_TLS = False
 EMAIL_HOST_USER = ""
 EMAIL_HOST_PASSWORD = ""
-DEFAULT_FROM_EMAIL = "noreply@dentalshop.sk"
-WAREHOUSE_EMAIL = "warehouse@dentalshop.sk"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"noreply@{EMAIL_DOMAIN}")
+WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", f"warehouse@{EMAIL_DOMAIN}")

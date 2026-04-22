@@ -1,4 +1,14 @@
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
+
 export default function ComplaintsPage() {
+    const { data: globalSettings } = useQuery({
+        queryKey: ['global-settings'],
+        queryFn: getGlobalSettings,
+    });
+    const company = getCompanyProfile(globalSettings);
+
     return (
         <div className="bg-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
@@ -37,12 +47,12 @@ export default function ComplaintsPage() {
                     <h2>5. Kontaktné údaje pre zaslanie tovaru</h2>
                     <p>
                         <strong>Adresa pre zasielanie reklamácií:</strong><br />
-                        [DOPLNIŤ: Názov firmy]<br />
-                        [DOPLNIŤ: Ulica, Číslo]<br />
-                        [DOPLNIŤ: PSČ, Mesto]<br />
+                        {company.companyName}<br />
+                        {company.companyStreet || 'Neuvedená adresa'}<br />
+                        {[company.companyPostalCode, company.companyCity].filter(Boolean).join(' ') || 'Neuvedené mesto'}<br />
                     </p>
                     <p>
-                        E-mail pre oznámenie reklamácie vopred: <strong>[DOPLNIŤ: reklamacie@domena.sk]</strong>
+                        E-mail pre oznámenie reklamácie vopred: <strong>{company.companyEmail}</strong>
                     </p>
                 </div>
             </div>

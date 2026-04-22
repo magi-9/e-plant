@@ -1,6 +1,7 @@
 FROM node:22-alpine AS builder
 
 ARG VITE_API_URL=https://api.yourdomain.com/api
+ARG VITE_SENTRY_DSN=""
 
 WORKDIR /app
 
@@ -8,7 +9,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN VITE_API_URL=${VITE_API_URL} npm run build
+RUN VITE_API_URL=${VITE_API_URL} VITE_SENTRY_DSN=${VITE_SENTRY_DSN} npm run build
 
 FROM node:22-alpine
 

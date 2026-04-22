@@ -34,8 +34,8 @@ class Order(AddressModel):
     ]
 
     PAYMENT_METHOD_CHOICES = [
-        ("bank_transfer", "Bank Transfer"),
-        ("card", "Card"),
+        ("bank_transfer", "Bankový prevod"),
+        ("card", "Karta"),
     ]
 
     # Customer info
@@ -68,6 +68,13 @@ class Order(AddressModel):
     notes = models.TextField(blank=True)
 
     # Shipping
+    SHIPPING_METHOD_CHOICES = [
+        ("courier", "Kuriér"),
+        ("pickup", "Osobný odber"),
+    ]
+    shipping_method = models.CharField(
+        max_length=20, choices=SHIPPING_METHOD_CHOICES, default="courier"
+    )
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     shipping_carrier = models.CharField(max_length=100, blank=True)
 

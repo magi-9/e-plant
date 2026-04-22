@@ -333,3 +333,31 @@ def test_wildcard_off_no_deduplication():
     assert response.data["count"] == 2
     for result in response.data["results"]:
         assert result.get("parameters", {}).get("type") != "wildcard_group"
+
+
+# ─── default ordering ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_default_ordering_puts_in_stock_before_out_of_stock():
+    """Products in stock should appear before out-of-stock when no filters."""
+    out_of_stock = make_product(name="OutOfStock", stock_quantity=0)
+    in_stock = make_product(name="InStock", stock_quantity=5)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids.index(in_stock.id) < ids.index(out_of_stock.id)
+
+
+@pytest.mark.django_db
+def test_filter_active_bypasses_default_ordering():
+    """With an active search, default ordering must not be applied (no crash)."""
+    make_product(name="Alpha", stock_quantity=5)
+    make_product(name="Beta", stock_quantity=5)
+
+    response = APIClient().get("/api/products/", {"search": "Alpha"})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["count"] == 1

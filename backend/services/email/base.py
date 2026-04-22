@@ -6,6 +6,8 @@ from typing import Optional
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
+from users.models import DEFAULT_SENDER_EMAIL
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +22,7 @@ class BaseEmailService:
             from_email: The sender's email address. Defaults to DEFAULT_FROM_EMAIL.
         """
         self.from_email = from_email or getattr(
-            settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"
+            settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL
         )
 
     def send_email(
@@ -74,7 +76,11 @@ class BaseEmailService:
 
             return msg.send(fail_silently=fail_silently)
         except Exception:
-            logger.exception("Failed to send email '%s' to %s", subject, to)
+            logger.exception(
+                "EMAIL_SEND_FAILED subject=%r recipients=%s",
+                subject,
+                ",".join(to),
+            )
             if not fail_silently:
                 raise
             return 0

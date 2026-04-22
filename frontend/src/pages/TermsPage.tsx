@@ -1,4 +1,14 @@
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
+
 export default function TermsPage() {
+    const { data: globalSettings } = useQuery({
+        queryKey: ['global-settings'],
+        queryFn: getGlobalSettings,
+    });
+    const company = getCompanyProfile(globalSettings);
+
     return (
         <div className="bg-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
@@ -9,17 +19,16 @@ export default function TermsPage() {
                 <div className="prose prose-blue max-w-none">
                     <h2>1. Identifikačné údaje prevádzkovateľa</h2>
                     <p>
-                        <strong>Názov spoločnosti:</strong> [DOPLNIŤ: Názov spoločnosti s.r.o.]<br />
-                        <strong>Sídlo:</strong> [DOPLNIŤ: Ulica, Číslo, PSČ Mesto]<br />
-                        <strong>IČO:</strong> [DOPLNIŤ: IČO]<br />
-                        <strong>DIČ / IČ DPH:</strong> [DOPLNIŤ: DIČ / IČ DPH]<br />
-                        <strong>Zápis v OR/ŽR:</strong> [DOPLNIŤ: Zapísaná v Obchodnom registri Okresného súdu...]<br />
+                        <strong>Názov spoločnosti:</strong> {company.companyName}<br />
+                        <strong>Sídlo:</strong> {company.fullAddress || 'Slovensko'}<br />
+                        <strong>IČO:</strong> {company.companyIco || 'Neuvedené'}<br />
+                        <strong>DIČ / IČ DPH:</strong> {[company.companyDic, company.companyVatId].filter(Boolean).join(' / ') || 'Neuvedené'}<br />
                     </p>
 
                     <h2>2. Kontaktné údaje</h2>
                     <p>
-                        <strong>Email:</strong> [DOPLNIŤ: email@domena.sk]<br />
-                        <strong>Telefón:</strong> [DOPLNIŤ: +421 9XX XXX XXX]<br />
+                        <strong>Email:</strong> {company.companyEmail}<br />
+                        <strong>Telefón:</strong> {company.companyPhone || 'Neuvedené'}<br />
                     </p>
 
                     <h2>3. Ceny tovaru</h2>

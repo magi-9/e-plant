@@ -2,6 +2,7 @@ import os
 
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
+from .base import EMAIL_DOMAIN
 from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
 DEBUG = False
@@ -94,8 +95,8 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         RuntimeWarning,
     )
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk")
-WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "warehouse@dentalshop.sk")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"noreply@{EMAIL_DOMAIN}")
+WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", f"warehouse@{EMAIL_DOMAIN}")
 
 LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
 LOGGING = {
@@ -132,5 +133,36 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        "orders": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "services.email": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
+
+# Sentry — error tracking and performance monitoring
+import logging  # noqa: E402 (needed after LOGGING dict)
+
+import sentry_sdk  # noqa: E402
+from sentry_sdk.integrations.django import DjangoIntegration  # noqa: E402
+from sentry_sdk.integrations.logging import LoggingIntegration  # noqa: E402
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(transaction_style="url"),
+            # Capture logger.error() / logger.exception() as Sentry events
+            LoggingIntegration(level=logging.WARNING, event_level=logging.ERROR),
+        ],
+        environment="production",
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )

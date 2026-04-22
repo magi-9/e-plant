@@ -1,7 +1,10 @@
+import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import ShopLayout from './components/ShopLayout';
+import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import LoginPage from './pages/LoginPage';
@@ -28,14 +31,59 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 
 import { Toaster } from 'react-hot-toast';
 
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const COOKIE_CONSENT_KEY = 'cookie_consent';
+const CONSENT_EVENT = 'cookie-consent-changed';
+let sentryInitialized = false;
+
+function initSentryIfConsented() {
+  if (sentryInitialized || !SENTRY_DSN) {
+    return;
+  }
+  if (localStorage.getItem(COOKIE_CONSENT_KEY) !== 'accepted') {
+    return;
+  }
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    tracesSampleRate: 0.1,
+  });
+  sentryInitialized = true;
+}
+
+function disableSentryIfInitialized() {
+  if (!sentryInitialized) {
+    return;
+  }
+  void Sentry.close(2000);
+  sentryInitialized = false;
+}
+
 const queryClient = new QueryClient();
 
 function App() {
+  useEffect(() => {
+    initSentryIfConsented();
+    const onConsentChange = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      if (customEvent.detail === 'accepted') {
+        initSentryIfConsented();
+      } else if (customEvent.detail === 'declined') {
+        disableSentryIfInitialized();
+      }
+    };
+    window.addEventListener(CONSENT_EVENT, onConsentChange);
+    return () => {
+      window.removeEventListener(CONSENT_EVENT, onConsentChange);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <BrowserRouter>
           <Toaster position="top-right" />
+          <CookieConsent />
           <Routes>
           {/* Representative page — no navbar, no footer */}
           <Route path="/" element={<HomePage />} />

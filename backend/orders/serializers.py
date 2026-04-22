@@ -72,6 +72,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             "dic_dph",
             "is_vat_payer",
             "payment_method",
+            "shipping_method",
             "notes",
             "items",
         )
@@ -107,18 +108,22 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         country = (attrs.get("country") or "SK").upper()
         postal_code = attrs.get("postal_code", "")
         street = (attrs.get("street") or "").strip()
+        shipping_method = attrs.get("shipping_method", "courier")
 
         postal_compact = re.sub(r"\s+", "", postal_code)
-        if country in {"SK", "CZ"}:
-            if not (postal_compact.isdigit() and len(postal_compact) == 5):
-                raise serializers.ValidationError(
-                    {"postal_code": "PSČ musí mať 5 číslic (napr. 81101 alebo 811 01)."}
-                )
+        if shipping_method != "pickup":
+            if country in {"SK", "CZ"}:
+                if not (postal_compact.isdigit() and len(postal_compact) == 5):
+                    raise serializers.ValidationError(
+                        {
+                            "postal_code": "PSČ musí mať 5 číslic (napr. 81101 alebo 811 01)."
+                        }
+                    )
 
-        if street and not any(char.isdigit() for char in street):
-            raise serializers.ValidationError(
-                {"street": "Adresa musí obsahovať ulicu aj číslo domu."}
-            )
+            if street and not any(char.isdigit() for char in street):
+                raise serializers.ValidationError(
+                    {"street": "Adresa musí obsahovať ulicu aj číslo domu."}
+                )
 
         attrs["postal_code"] = postal_compact
         attrs["street"] = street
@@ -166,6 +171,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "dic_dph",
             "is_vat_payer",
             "payment_method",
+            "shipping_method",
             "status",
             "total_price",
             "shipping_cost",

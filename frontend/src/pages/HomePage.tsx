@@ -7,8 +7,11 @@ import {
   EnvelopeIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
 
 type FadeInSectionProps = {
   children: ReactNode;
@@ -57,6 +60,12 @@ function FadeInSection({ children, delay = 0 }: FadeInSectionProps) {
 }
 
 export default function HomePage() {
+  const { data: globalSettings } = useQuery({
+    queryKey: ['global-settings'],
+    queryFn: getGlobalSettings,
+  });
+  const company = getCompanyProfile(globalSettings);
+
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
@@ -530,7 +539,7 @@ export default function HomePage() {
                   </dt>
                   <dd>
                     <p className="font-medium text-slate-900">E‑mail</p>
-                    <p className="text-slate-700">info@dentaltechlab.sk</p>
+                    <p className="text-slate-700">{company.companyEmail}</p>
                   </dd>
                 </div>
                 <div className="flex items-start gap-3">
@@ -539,7 +548,7 @@ export default function HomePage() {
                   </dt>
                   <dd>
                     <p className="font-medium text-slate-900">Lokalita</p>
-                    <p className="text-slate-700">Bratislava, Slovensko</p>
+                    <p className="text-slate-700">{company.fullAddress || 'Slovensko'}</p>
                   </dd>
                 </div>
               </dl>
@@ -646,4 +655,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -74,6 +74,23 @@ class OrderService:
         """
         items_data = validated_data.pop("items")
 
+        logger.info(
+            "ORDER_CHECKOUT_STARTED payment_method=%s items=%d",
+            validated_data.get("payment_method", "unknown"),
+            len(items_data),
+        )
+        try:
+            return self._create_order_transactional(validated_data, items_data)
+        except Exception:
+            logger.exception(
+                "ORDER_CHECKOUT_FAILED payment_method=%s",
+                validated_data.get("payment_method", "unknown"),
+            )
+            raise
+
+    def _create_order_transactional(
+        self, validated_data: Dict[str, Any], items_data: List[Dict[str, Any]]
+    ) -> "Order":
         with transaction.atomic():
             # Validate stock and prepare items (locks products)
             prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
@@ -82,19 +99,24 @@ class OrderService:
             items_total = self.pricing_service.calculate_order_total(prepared_items)
 
             # Resolve shipping cost
-            # Treat blank/missing country as "SK" to avoid empty-string DB lookups.
-            country = validated_data.get("country") or "SK"
-            # Picks the cheapest carrier for the country (ordering = ["country", "price"]).
-            shipping_rate = ShippingRate.objects.filter(country=country).first()
-            if shipping_rate is not None:
-                shipping_cost = self.pricing_service.calculate_shipping(
-                    items_total, shipping_rate
-                )
-                shipping_carrier = shipping_rate.carrier
+            shipping_method = validated_data.get("shipping_method", "courier")
+            if shipping_method == "pickup":
+                shipping_cost = Decimal("0.00")
+                shipping_carrier = "Osobný odber"
             else:
-                shop = GlobalSettings.load()
-                shipping_cost = Decimal(str(shop.shipping_cost))
-                shipping_carrier = ""
+                # Treat blank/missing country as "SK" to avoid empty-string DB lookups.
+                country = validated_data.get("country") or "SK"
+                # Picks the cheapest carrier for the country (ordering = ["country", "price"]).
+                shipping_rate = ShippingRate.objects.filter(country=country).first()
+                if shipping_rate is not None:
+                    shipping_cost = self.pricing_service.calculate_shipping(
+                        items_total, shipping_rate
+                    )
+                    shipping_carrier = shipping_rate.carrier
+                else:
+                    shop = GlobalSettings.load()
+                    shipping_cost = Decimal(str(shop.shipping_cost))
+                    shipping_carrier = ""
 
             total_price = items_total + shipping_cost
 
@@ -145,9 +167,17 @@ class OrderService:
             # This ensures DB locks are released before potentially slow SMTP calls
             transaction.on_commit(lambda: self._send_order_notifications(order))
 
+            if status == "awaiting_payment":
+                logger.info(
+                    "ORDER_PAYMENT_PENDING order_number=%s total=%s",
+                    order.order_number,
+                    order.total_price,
+                )
+
             logger.info(
-                "Order created successfully: %s - Total: %s",
+                "ORDER_CREATED order_number=%s status=%s total=%s",
                 order.order_number,
+                status,
                 order.total_price,
             )
 
@@ -338,17 +368,26 @@ class OrderService:
             self._create_order_items(order, prepared_items)
 
             items_total = self.pricing_service.calculate_order_total(prepared_items)
-            country = validated_data.get("country") or order.country or "SK"
-            shipping_rate = ShippingRate.objects.filter(country=country).first()
-            if shipping_rate is not None:
-                shipping_cost = self.pricing_service.calculate_shipping(
-                    items_total, shipping_rate
-                )
-                shipping_carrier = shipping_rate.carrier
+            shipping_method = (
+                validated_data.get("shipping_method")
+                or order.shipping_method
+                or "courier"
+            )
+            if shipping_method == "pickup":
+                shipping_cost = Decimal("0.00")
+                shipping_carrier = "Osobný odber"
             else:
-                shop = GlobalSettings.load()
-                shipping_cost = Decimal(str(shop.shipping_cost))
-                shipping_carrier = ""
+                country = validated_data.get("country") or order.country or "SK"
+                shipping_rate = ShippingRate.objects.filter(country=country).first()
+                if shipping_rate is not None:
+                    shipping_cost = self.pricing_service.calculate_shipping(
+                        items_total, shipping_rate
+                    )
+                    shipping_carrier = shipping_rate.carrier
+                else:
+                    shop = GlobalSettings.load()
+                    shipping_cost = Decimal(str(shop.shipping_cost))
+                    shipping_carrier = ""
 
             for field, value in validated_data.items():
                 setattr(order, field, value)

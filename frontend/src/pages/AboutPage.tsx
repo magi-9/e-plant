@@ -1,7 +1,16 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronLeftIcon, MapPinIcon, BuildingOfficeIcon, ShieldCheckIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
 
 export default function AboutPage() {
+  const { data: globalSettings } = useQuery({
+    queryKey: ['global-settings'],
+    queryFn: getGlobalSettings,
+  });
+  const company = getCompanyProfile(globalSettings);
+
   return (
     <div className="min-h-screen bg-slate-50 pt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -25,7 +34,7 @@ export default function AboutPage() {
             <div className="flex items-start gap-4 mb-6">
               <BuildingOfficeIcon className="h-8 w-8 text-cyan-600 flex-shrink-0 mt-1" />
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">DentalTech Lab &amp; Academy</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{company.companyName}</h2>
                 <p className="text-slate-600">
                   Sme exkluzívnym distribútorom produktov <strong>Dynamic Abutment Solutions</strong> pre Slovensko a Českú republiku.
                 </p>
@@ -59,19 +68,19 @@ export default function AboutPage() {
             <div className="space-y-4 text-slate-700">
               <div>
                 <p className="font-semibold text-slate-900 mb-1">Adresa:</p>
-                <p>DentalTech Lab &amp; Academy</p>
-                <p>Bratislava, Slovensko</p>
+                <p>{company.companyName}</p>
+                <p>{company.fullAddress || 'Slovensko'}</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-900 mb-1">E-mail:</p>
-                <a href="mailto:info@dentaltech.sk" className="text-cyan-600 hover:text-cyan-500">
-                  info@dentaltech.sk
+                <a href={`mailto:${company.companyEmail}`} className="text-cyan-600 hover:text-cyan-500">
+                  {company.companyEmail}
                 </a>
               </div>
               <div>
                 <p className="font-semibold text-slate-900 mb-1">Telefón:</p>
-                <a href="tel:+421" className="text-cyan-600 hover:text-cyan-500">
-                  +421 2 ****-****
+                <a href={`tel:${company.companyPhone || '+421'}`} className="text-cyan-600 hover:text-cyan-500">
+                  {company.companyPhone || 'Neuvedené'}
                 </a>
               </div>
               <div className="mt-4 p-4 bg-cyan-50 rounded-lg border border-cyan-200">
@@ -154,8 +163,8 @@ export default function AboutPage() {
               <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-slate-700">
                   Máte právo na prístup, opravu a vymazanie svojich údajov. Ak máte otázky týkajúce sa ochrany údajov, kontaktujte nás na{' '}
-                  <a href="mailto:privacy@dentaltech.sk" className="text-blue-600 hover:text-blue-500 font-medium">
-                    privacy@dentaltech.sk
+                  <a href={`mailto:${company.companyEmail}`} className="text-blue-600 hover:text-blue-500 font-medium">
+                    {company.companyEmail}
                   </a>
                 </p>
               </div>

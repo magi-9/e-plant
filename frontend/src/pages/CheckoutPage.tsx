@@ -5,7 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
 import { getMe, isAdmin } from '../api/auth';
-import { getPaymentSettings } from '../api/settings';
+import { getGlobalSettings } from '../api/settings';
 import client from '../api/client';
 import { isAxiosError } from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
@@ -52,7 +52,7 @@ export default function CheckoutPage() {
 
     const { data: globalSettings } = useQuery({
         queryKey: ['global-settings'],
-        queryFn: getPaymentSettings,
+        queryFn: getGlobalSettings,
     });
 
     const [step, setStep] = useState<1 | 2>(1);
@@ -76,6 +76,7 @@ export default function CheckoutPage() {
         is_vat_payer: false,
         country: 'SK',
         payment_method: 'bank_transfer' as 'bank_transfer' | 'card',
+        shipping_method: 'courier' as 'courier' | 'pickup',
         notes: ''
     });
 
@@ -129,14 +130,16 @@ export default function CheckoutPage() {
             return;
         }
 
-        if (!POSTAL_CODE_REGEX.test(formData.postal_code.trim())) {
-            setError('PSČ musí mať formát 81101 alebo 811 01.');
-            return;
-        }
+        if (formData.shipping_method === 'courier') {
+            if (!POSTAL_CODE_REGEX.test(formData.postal_code.trim())) {
+                setError('PSČ musí mať formát 81101 alebo 811 01.');
+                return;
+            }
 
-        if (!formData.street_name.trim() || !formData.street_number.trim()) {
-            setError('Zadajte ulicu aj číslo domu samostatne.');
-            return;
+            if (!formData.street_name.trim() || !formData.street_number.trim()) {
+                setError('Zadajte ulicu aj číslo domu samostatne.');
+                return;
+            }
         }
 
         setError(null);
@@ -159,8 +162,13 @@ export default function CheckoutPage() {
         const normalizedPostalCode = formData.postal_code.replace(/[\s-]/g, '');
         const combinedStreet = `${formData.street_name} ${formData.street_number}`.trim();
 
-        if (!PHONE_REGEX.test(normalizedPhone) || !POSTAL_CODE_REGEX.test(formData.postal_code.trim()) || !combinedStreet || !formData.street_number.trim()) {
-            setError('Skontrolujte telefón, PSČ a adresu (ulica + číslo).');
+        const isPickup = formData.shipping_method === 'pickup';
+        if (!PHONE_REGEX.test(normalizedPhone)) {
+            setError('Skontrolujte telefón.');
+            return;
+        }
+        if (!isPickup && (!POSTAL_CODE_REGEX.test(formData.postal_code.trim()) || !combinedStreet || !formData.street_number.trim())) {
+            setError('Skontrolujte PSČ a adresu (ulica + číslo).');
             return;
         }
 
@@ -182,9 +190,9 @@ export default function CheckoutPage() {
                 customer_name: `${formData.title} ${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email,
                 phone: normalizedPhone,
-                street: combinedStreet,
-                city: formData.city,
-                postal_code: normalizedPostalCode,
+                street: isPickup ? '' : combinedStreet,
+                city: isPickup ? '' : formData.city,
+                postal_code: isPickup ? '' : normalizedPostalCode,
                 country: formData.country,
                 shipping_address: formData.address_line2.trim(),
                 is_company: formData.is_company,
@@ -194,6 +202,7 @@ export default function CheckoutPage() {
                 dic_dph: formData.dic_dph,
                 is_vat_payer: formData.is_vat_payer,
                 payment_method: formData.payment_method,
+                shipping_method: formData.shipping_method,
                 notes: mergedNotes,
                 items: items.map(item => ({
                     product_id: item.productId,
@@ -205,19 +214,26 @@ export default function CheckoutPage() {
 
             if (saveToProfile && isLoggedIn) {
                 try {
-                    await client.patch('/auth/me/', {
+                    const profilePatchPayload = {
                         title: formData.title,
                         first_name: formData.first_name,
                         last_name: formData.last_name,
                         phone: normalizedPhone,
-                        street: combinedStreet,
-                        city: formData.city,
-                        postal_code: normalizedPostalCode,
                         is_company: formData.is_company,
                         company_name: formData.company_name,
                         ico: formData.ico,
                         dic: formData.dic,
-                    });
+                        ...(
+                            isPickup
+                                ? {}
+                                : {
+                                    street: combinedStreet,
+                                    city: formData.city,
+                                    postal_code: normalizedPostalCode,
+                                }
+                        ),
+                    };
+                    await client.patch('/auth/me/', profilePatchPayload);
                     queryClient.invalidateQueries({ queryKey: ['me'] });
                     toast.success('Údaje boli uložené do profilu.');
                 } catch {
@@ -226,7 +242,7 @@ export default function CheckoutPage() {
             }
 
             setOrderNumber(order.order_number);
-            setOrderTotal(getTotalPrice());
+            setOrderTotal(Number(order.total_price));
             setOrderSuccess(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
             clearCart();
@@ -331,11 +347,23 @@ export default function CheckoutPage() {
                                 </span>
                             </div>
                         ))}
-                        <div className="border-t border-slate-200 pt-2 mt-2">
+                        <div className="border-t border-slate-200 pt-2 mt-2 space-y-1">
+                            <div className="flex justify-between text-sm text-slate-600">
+                                <span>
+                                    {formData.shipping_method === 'pickup' ? 'Osobný odber' : 'Kuriér'}
+                                </span>
+                                <span>
+                                    {formData.shipping_method === 'pickup'
+                                        ? '0,00 €'
+                                        : globalSettings?.shipping_cost
+                                            ? `${Number(globalSettings.shipping_cost).toFixed(2)} €`
+                                            : '...'}
+                                </span>
+                            </div>
                             <div className="flex justify-between">
                                 <span className="text-base font-medium text-slate-900">Celkom</span>
                                 <span className="text-xl font-bold text-cyan-700">
-                                    {getTotalPrice().toFixed(2)} €
+                                    {(getTotalPrice() + (formData.shipping_method === 'pickup' ? 0 : Number(globalSettings?.shipping_cost ?? 0))).toFixed(2)} €
                                 </span>
                             </div>
                         </div>
@@ -638,6 +666,48 @@ export default function CheckoutPage() {
 
                             <div>
                                 <span className="block text-sm font-medium text-slate-700 mb-2">
+                                    Spôsob dopravy *
+                                </span>
+                                <div className="space-y-2">
+                                    <label className="flex items-start p-4 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                        <input
+                                            type="radio"
+                                            name="shipping_method"
+                                            value="courier"
+                                            checked={formData.shipping_method === 'courier'}
+                                            onChange={handleChange}
+                                            className="h-4 w-4 mt-0.5 text-cyan-600 focus:ring-cyan-500"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="text-sm font-medium text-slate-900">
+                                                Kuriér — {globalSettings?.shipping_cost ? `${Number(globalSettings.shipping_cost).toFixed(2)} €` : '...'}
+                                            </span>
+                                        </div>
+                                    </label>
+                                    <label className="flex items-start p-4 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50">
+                                        <input
+                                            type="radio"
+                                            name="shipping_method"
+                                            value="pickup"
+                                            checked={formData.shipping_method === 'pickup'}
+                                            onChange={handleChange}
+                                            className="h-4 w-4 mt-0.5 text-cyan-600 focus:ring-cyan-500"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="text-sm font-medium text-slate-900">Osobný odber — zdarma (0 €)</span>
+                                            {globalSettings?.pickup_address && (
+                                                <p className="text-xs text-slate-500 mt-0.5">{globalSettings.pickup_address}</p>
+                                            )}
+                                            {globalSettings?.opening_hours && (
+                                                <p className="text-xs text-slate-500">{globalSettings.opening_hours}</p>
+                                            )}
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <span className="block text-sm font-medium text-slate-700 mb-2">
                                     Spôsob platby *
                                 </span>
                                 <div className="space-y-2">
@@ -732,6 +802,13 @@ export default function CheckoutPage() {
                                 <span className="block text-slate-500 text-xs uppercase tracking-wider mb-1">Kontaktné údaje</span>
                                 <p>{formData.email}</p>
                                 <p>{formData.phone}</p>
+                            </div>
+
+                            <div>
+                                <span className="block text-slate-500 text-xs uppercase tracking-wider mb-1">Doprava</span>
+                                <p className="font-medium text-slate-900">
+                                    {formData.shipping_method === 'pickup' ? 'Osobný odber (0 €)' : `Kuriér (${Number(globalSettings?.shipping_cost ?? 0).toFixed(2)} €)`}
+                                </p>
                             </div>
 
                             <div>

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.core import mail
 from django.urls import reverse
 from rest_framework import status
@@ -93,9 +94,13 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     warehouse_emails = [
         e
         for e in mail.outbox
-        if "warehouse@dentalshop.sk" in e.to
-        or "sklad" in e.subject.lower()
-        or "objednávka" in e.subject.lower()
+        if any(
+            (
+                settings.WAREHOUSE_EMAIL in e.to,
+                "sklad" in e.subject.lower(),
+                "objednávka" in e.subject.lower(),
+            )
+        )
     ]
     assert len(warehouse_emails) >= 1
 

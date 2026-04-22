@@ -1,4 +1,14 @@
+import { useQuery } from '@tanstack/react-query';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
+
 export default function WithdrawalPage() {
+    const { data: globalSettings } = useQuery({
+        queryKey: ['global-settings'],
+        queryFn: getGlobalSettings,
+    });
+    const company = getCompanyProfile(globalSettings);
+
     return (
         <div className="bg-white py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto">
@@ -16,9 +26,9 @@ export default function WithdrawalPage() {
                     <div className="bg-gray-50 border border-gray-200 p-6 rounded-md text-sm text-gray-800 font-mono">
                         <p className="mb-4">
                             <strong>Predávajúci:</strong><br />
-                            [DOPLNIŤ: Názov spoločnosti]<br />
-                            [DOPLNIŤ: Presná adresa, PSČ, Mesto]<br />
-                            [DOPLNIŤ: E-mail: email@domena.sk]
+                            {company.companyName}<br />
+                            {company.fullAddress || 'Slovensko'}<br />
+                            E-mail: {company.companyEmail}
                         </p>
 
                         <p className="mb-4">

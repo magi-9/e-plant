@@ -6,6 +6,8 @@ import { TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { isAdmin } from '../api/auth';
 import { getMe } from '../api/auth';
 import { getProduct } from '../api/products';
+import { getGlobalSettings } from '../api/settings';
+import { getCompanyProfile } from '../utils/companyProfile';
 import toast from 'react-hot-toast';
 
 const getItemsLabel = (count: number): string => {
@@ -30,6 +32,12 @@ export default function CartPage() {
         queryFn: getMe,
         enabled: isLoggedIn,
     });
+
+    const { data: globalSettings } = useQuery({
+        queryKey: ['global-settings'],
+        queryFn: getGlobalSettings,
+    });
+    const company = getCompanyProfile(globalSettings);
 
     const uniqueProductIds = useMemo(
         () => Array.from(new Set(items.map((item) => item.productId))),
@@ -125,7 +133,7 @@ export default function CartPage() {
     };
 
     const handleStockInquiry = () => {
-        const recipient = 'warehouse@dentalshop.sk';
+        const recipient = company.warehouseEmail;
         const subject = encodeURIComponent('Záujem o nedostupný produkt z košíka');
         const body = encodeURIComponent(contactMessage);
         window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;

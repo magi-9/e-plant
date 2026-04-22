@@ -19,9 +19,15 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.utils.html import escape
 from django.utils.http import urlsafe_base64_encode
 
-from .models import EmailRateLimit
+from .models import (
+    DEFAULT_COMPANY_PROFILE,
+    DEFAULT_SENDER_EMAIL,
+    EmailRateLimit,
+    GlobalSettings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +120,11 @@ def _translate_password_errors(exc) -> str:
 
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
+    company_name = escape(
+        (GlobalSettings.load().company_name or "").strip()
+        or DEFAULT_COMPANY_PROFILE["company_name"]
+    )
+    safe_verify_url = escape(verify_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -127,22 +138,22 @@ def _verification_email_html(verify_url: str) -> str:
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">DentalShop</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name}</h1>
           </td>
         </tr>
         <tr>
           <td style="padding:36px 40px;text-align:center;">
             <h2 style="margin:0 0 12px;font-size:20px;color:#1e293b;">Overenie e-mailovej adresy</h2>
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px;">
-              Ďakujeme za Vašu registráciu na <strong>DentalShop</strong>!<br>
+              Ďakujeme za Vašu registráciu na <strong>{company_name}</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
-            <a href="{verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{safe_verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Overiť e-mailovú adresu
             </a>
             <p style="color:#94a3b8;font-size:12px;margin:24px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{verify_url}" style="color:#2563eb;word-break:break-all;">{verify_url}</a>
+              <a href="{safe_verify_url}" style="color:#2563eb;word-break:break-all;">{safe_verify_url}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.
@@ -151,7 +162,7 @@ def _verification_email_html(verify_url: str) -> str:
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím DentalShop</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name}</strong></p>
           </td>
         </tr>
       </table>
@@ -163,6 +174,11 @@ def _verification_email_html(verify_url: str) -> str:
 
 def _password_reset_email_html(reset_url: str) -> str:
     """HTML template for password reset email."""
+    company_name = escape(
+        (GlobalSettings.load().company_name or "").strip()
+        or DEFAULT_COMPANY_PROFILE["company_name"]
+    )
+    safe_reset_url = escape(reset_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -176,7 +192,7 @@ def _password_reset_email_html(reset_url: str) -> str:
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">DentalShop</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name}</h1>
           </td>
         </tr>
         <tr>
@@ -186,7 +202,7 @@ def _password_reset_email_html(reset_url: str) -> str:
               Dostali sme žiadosť o obnovenie hesla pre Váš účet.<br>
               Kliknite na tlačidlo nižšie pre nastavenie nového hesla.
             </p>
-            <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
+            <a href="{safe_reset_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
               Nastaviť nové heslo
             </a>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;margin:24px 0 0;border-collapse:collapse;">
@@ -200,7 +216,7 @@ def _password_reset_email_html(reset_url: str) -> str:
             </table>
             <p style="color:#94a3b8;font-size:12px;margin:20px 0 0;line-height:1.6;">
               Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:<br>
-              <a href="{reset_url}" style="color:#2563eb;word-break:break-all;">{reset_url}</a>
+              <a href="{safe_reset_url}" style="color:#2563eb;word-break:break-all;">{safe_reset_url}</a>
             </p>
             <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">
               Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — Vaše heslo zostane nezmenené.
@@ -209,7 +225,7 @@ def _password_reset_email_html(reset_url: str) -> str:
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím DentalShop</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name}</strong></p>
           </td>
         </tr>
       </table>
@@ -225,21 +241,24 @@ def send_verification_email(user) -> None:
     token = default_token_generator.make_token(user)
     verify_url = f"{_frontend_url()}/verify-email/{uid}/{token}/"
 
-    subject = "Overenie e-mailovej adresy - DentalShop"
+    company_name = (
+        GlobalSettings.load().company_name or ""
+    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    subject = f"Overenie e-mailovej adresy - {company_name}"
     message = (
         "Dobrý deň,\n\n"
-        "Ďakujeme za vašu registráciu na DentalShop.\n"
+        f"Ďakujeme za vašu registráciu na {company_name}.\n"
         "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
         f"{verify_url}\n\n"
         "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
-        "S pozdravom,\nDentalShop Tím"
+        f"S pozdravom,\n{company_name} Tím"
     )
 
     try:
         send_mail(
             subject,
             message,
-            getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
+            getattr(settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL),
             [user.email],
             fail_silently=False,
             html_message=_verification_email_html(verify_url),
@@ -254,23 +273,26 @@ def send_password_reset_email(user) -> None:
     token = default_token_generator.make_token(user)
     reset_url = f"{_frontend_url()}/reset-password/{uid}/{token}/"
 
-    subject = "Obnovenie hesla - DentalShop"
+    company_name = (
+        GlobalSettings.load().company_name or ""
+    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    subject = f"Obnovenie hesla - {company_name}"
     message = (
         "Dobrý deň,\n\n"
-        "Dostali sme žiadosť o obnovenie hesla pre váš účet na DentalShop.\n"
+        f"Dostali sme žiadosť o obnovenie hesla pre váš účet na {company_name}.\n"
         "Pre nastavenie nového hesla kliknite na nasledujúci odkaz:\n\n"
         f"{reset_url}\n\n"
         "Odkaz je platný 30 minút.\n\n"
         "Ak ste o obnovenie hesla nežiadali, tento e-mail môžete ignorovať — "
         "vaše heslo zostane nezmenené.\n\n"
-        "S pozdravom,\nDentalShop Tím"
+        f"S pozdravom,\n{company_name} Tím"
     )
 
     try:
         send_mail(
             subject,
             message,
-            getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@dentalshop.sk"),
+            getattr(settings, "DEFAULT_FROM_EMAIL", DEFAULT_SENDER_EMAIL),
             [user.email],
             fail_silently=False,
             html_message=_password_reset_email_html(reset_url),

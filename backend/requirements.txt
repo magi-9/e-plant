@@ -16,3 +16,4 @@ Pillow
 django-cors-headers
 reportlab==4.4.10
 qrcode[pil]==8.2
+sentry-sdk[django]

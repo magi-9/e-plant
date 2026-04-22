@@ -26,6 +26,24 @@ const STATUS_COLORS: Record<string, string> = {
     cancelled: 'bg-red-100 text-red-800',
 };
 
+const AUTO_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function getStatusLabel(order: Order): string {
+    const isOld = Date.now() - new Date(order.created_at).getTime() > AUTO_CANCEL_WINDOW_MS;
+    if (isOld && order.status === 'cancelled' && order.payment_method === 'bank_transfer') {
+        return 'Platba nevybavená';
+    }
+    return STATUS_LABELS[order.status] ?? order.status;
+}
+
+function getStatusColor(order: Order): string {
+    const isOld = Date.now() - new Date(order.created_at).getTime() > AUTO_CANCEL_WINDOW_MS;
+    if (isOld && order.status === 'cancelled' && order.payment_method === 'bank_transfer') {
+        return 'bg-gray-100 text-gray-600';
+    }
+    return STATUS_COLORS[order.status] ?? 'bg-slate-100 text-slate-700';
+}
+
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -78,8 +96,8 @@ export default function OrdersPage() {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-mono font-semibold text-gray-900 text-sm">#{order.order_number}</span>
                                         {order.status && (
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] ?? 'bg-slate-100 text-slate-700'}`}>
-                                                {STATUS_LABELS[order.status] ?? order.status}
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order)}`}>
+                                                {getStatusLabel(order)}
                                             </span>
                                         )}
                                         <span className="text-xs text-gray-500">{PAYMENT_LABELS[order.payment_method] ?? order.payment_method}</span>

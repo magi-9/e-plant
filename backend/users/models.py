@@ -4,6 +4,35 @@ from django.db import IntegrityError, models, transaction
 from common.models import AddressModel
 
 
+from django.conf import settings
+
+_old_warehouse_email = "warehouse@ebringer.sk"
+_old_company_email = "martin.ebringer@swanmail.sk"
+
+
+DEFAULT_COMPANY_PROFILE = {
+    "warehouse_email": f"warehouse@{settings.EMAIL_DOMAIN}",
+    "company_name": "Martin Ebringer s.r.o.",
+    "company_ico": "52595684",
+    "company_dic": "2121087859",
+    "company_vat_id": "SK2121087859",
+    "company_street": "Charkovská 13",
+    "company_city": "Bratislava",
+    "company_postal_code": "84107",
+    "company_state": "Slovensko",
+    "company_phone": "+421 903 428 948",
+    "company_email": (
+        f"{getattr(settings, 'CONTACT_EMAIL_LOCAL_PART', 'martin')}"
+        f"@{settings.EMAIL_DOMAIN}"
+    ),
+    "iban": "SK78 1100 0000 0029 4107 6639",
+    "bank_name": "Tatra banka, a.s.",
+    "bank_swift": "TATRSKBX",
+}
+
+DEFAULT_SENDER_EMAIL = f"noreply@{settings.EMAIL_DOMAIN}"
+
+
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -85,9 +114,32 @@ class CustomUser(AbstractUser, AddressModel):
 
 class GlobalSettingsManager(models.Manager):
     def get_settings(self):
+        defaults = self.model.default_seed_values()
         try:
             with transaction.atomic():
-                obj, _ = self.get_or_create(pk=1)
+                obj, created = self.get_or_create(pk=1, defaults=defaults)
+                if created:
+                    return obj
+
+                fields_to_update = []
+                for field_name, default_value in defaults.items():
+                    current_value = getattr(obj, field_name, None)
+                    if isinstance(current_value, str) and not current_value.strip():
+                        setattr(obj, field_name, default_value)
+                        fields_to_update.append(field_name)
+
+                # Keep seeded warehouse address consistent if it was previously auto-seeded
+                # with the older contact email value.
+                if obj.warehouse_email == _old_warehouse_email:
+                    obj.warehouse_email = DEFAULT_COMPANY_PROFILE["warehouse_email"]
+                    fields_to_update.append("warehouse_email")
+
+                if obj.company_email == _old_company_email:
+                    obj.company_email = DEFAULT_COMPANY_PROFILE["company_email"]
+                    fields_to_update.append("company_email")
+
+                if fields_to_update:
+                    obj.save(update_fields=fields_to_update)
                 return obj
         except IntegrityError:
             return self.get(pk=1)
@@ -96,7 +148,9 @@ class GlobalSettingsManager(models.Manager):
 class GlobalSettings(models.Model):
     objects = GlobalSettingsManager()
 
-    warehouse_email = models.EmailField(default="warehouse@dentalshop.sk")
+    warehouse_email = models.EmailField(
+        default=DEFAULT_COMPANY_PROFILE["warehouse_email"]
+    )
     low_stock_threshold = models.IntegerField(default=5)
     currency = models.CharField(max_length=10, default="EUR (€)")
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=5.00)
@@ -109,6 +163,9 @@ class GlobalSettings(models.Model):
     company_dic = models.CharField(
         max_length=20, blank=True, default="", verbose_name="DIČ"
     )
+    company_vat_id = models.CharField(
+        max_length=20, blank=True, default="", verbose_name="IČ DPH"
+    )
     company_street = models.CharField(max_length=255, blank=True, default="")
     company_city = models.CharField(max_length=100, blank=True, default="")
     company_postal_code = models.CharField(max_length=20, blank=True, default="")
@@ -118,6 +175,13 @@ class GlobalSettings(models.Model):
     iban = models.CharField(max_length=34, blank=True, default="")
     bank_name = models.CharField(max_length=100, blank=True, default="")
     bank_swift = models.CharField(max_length=20, blank=True, default="")
+
+    # VAT rate (percentage, e.g. 23 for 23%)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=23.00)
+
+    # Shipping / pickup settings
+    pickup_address = models.CharField(max_length=500, blank=True, default="")
+    opening_hours = models.CharField(max_length=500, blank=True, default="")
 
     class Meta:
         verbose_name = "Global Settings"
@@ -133,3 +197,7 @@ class GlobalSettings(models.Model):
     @classmethod
     def load(cls):
         return cls.objects.get_settings()
+
+    @classmethod
+    def default_seed_values(cls):
+        return dict(DEFAULT_COMPANY_PROFILE)

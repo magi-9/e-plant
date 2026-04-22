@@ -18,7 +18,7 @@ run_step() {
     else
         echo "❌ $label FAILED"
         echo "   Poslednych 20 riadkov logu:"
-        tail -n 20 "$log_file"
+        tail -n 30 "$log_file"
         FAILED+=("$label")
     fi
 }

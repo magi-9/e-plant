@@ -49,3 +49,28 @@ def test_product_detail_visibility(api_client, user_factory, product_factory):
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
     assert Decimal(response.data["price"]) == Decimal("99.99")
+
+
+@pytest.mark.django_db
+def test_ordering_query_param_skips_default_ordering(
+    api_client, user_factory, product_factory
+):
+    user = user_factory()
+    api_client.force_authenticate(user=user)
+    product_factory(
+        name="P-high", category="cat-a", price=Decimal("30.00"), stock_quantity=10
+    )
+    product_factory(
+        name="P-low", category="cat-b", price=Decimal("10.00"), stock_quantity=10
+    )
+    product_factory(
+        name="P-mid", category="cat-c", price=Decimal("20.00"), stock_quantity=10
+    )
+
+    url = reverse("product_list")
+    response = api_client.get(url, {"ordering": "price"})
+
+    assert response.status_code == status.HTTP_200_OK
+    results = response.data.get("results", response.data)
+    prices = [Decimal(item["price"]) for item in results]
+    assert prices == sorted(prices)
