@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 echo "Waiting for PostgreSQL to start..."
 python -c "
 import socket
@@ -22,10 +24,20 @@ while True:
 echo "PostgreSQL started properly."
 
 # apply database migrations
-python manage.py migrate
+attempt=1
+max_attempts=20
+until python manage.py migrate --noinput; do
+    if [ "$attempt" -ge "$max_attempts" ]; then
+        echo "Migrations failed after ${max_attempts} attempts."
+        exit 1
+    fi
+    echo "Migration attempt ${attempt}/${max_attempts} failed, retrying in 2s..."
+    attempt=$((attempt + 1))
+    sleep 2
+done
 
 # collect static files
-python manage.py collectstatic --noinput --clear
+python manage.py collectstatic --noinput
 
 # Create superuser if env variables exist (SAFE - using heredoc)
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
