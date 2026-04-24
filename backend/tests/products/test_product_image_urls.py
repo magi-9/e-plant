@@ -4,7 +4,9 @@ from products.models import Product
 
 
 @pytest.mark.django_db
-def test_product_image_url_uses_media_prefix_when_file_exists(client, settings, tmp_path):
+def test_product_image_url_uses_media_prefix_when_file_exists(
+    client, settings, tmp_path
+):
     settings.MEDIA_ROOT = str(tmp_path)
 
     image_relative_path = "products/test-image.jpg"
