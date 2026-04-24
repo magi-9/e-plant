@@ -18,11 +18,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
+    user: "0:0"
     env_file: .env
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - /home/tom/eplant-data:/app/data
+      - /home/tom/eplant-data:/data:ro
     expose:
       - "8000"
     depends_on:
@@ -31,7 +32,8 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.eplant-prod-backend.rule=Host(`${FRONTEND_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/admin`))"
+      # Manual path routing for tunnel traffic; avoid Host-based matching.
+      - "traefik.http.routers.eplant-prod-backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`)"
       - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-backend.priority=10"
       - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
@@ -49,6 +51,18 @@ services:
       retries: 5
       start_period: 40s
     deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-prod-backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`)"
+        - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-prod-backend.priority=10"
+        - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
+        - "traefik.http.services.eplant-prod-backend.loadbalancer.server.port=8000"
+        - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
+        - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
+        - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
+        - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
+        - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
       replicas: 1
       restart_policy:
         condition: on-failure
@@ -78,7 +92,8 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.eplant-prod-frontend.rule=Host(`${FRONTEND_DOMAIN}`)"
+      # Frontend catch-all after higher-priority routers.
+      - "traefik.http.routers.eplant-prod-frontend.rule=PathPrefix(`/`)"
       - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-frontend.priority=1"
       - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
@@ -90,6 +105,13 @@ services:
       retries: 5
       start_period: 20s
     deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-prod-frontend.rule=PathPrefix(`/`)"
+        - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-prod-frontend.priority=1"
+        - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
+        - "traefik.http.services.eplant-prod-frontend.loadbalancer.server.port=80"
       replicas: 1
       restart_policy:
         condition: on-failure
@@ -131,12 +153,19 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.eplant-prod-dokploy-webhook.rule=Host(`${FRONTEND_DOMAIN}`) && Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
+      - "traefik.http.routers.eplant-prod-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
       - "traefik.http.routers.eplant-prod-dokploy-webhook.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-dokploy-webhook.priority=100"
       - "traefik.http.routers.eplant-prod-dokploy-webhook.service=eplant-prod-dokploy-webhook"
       - "traefik.http.services.eplant-prod-dokploy-webhook.loadbalancer.server.port=8080"
     deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-prod-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
+        - "traefik.http.routers.eplant-prod-dokploy-webhook.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-prod-dokploy-webhook.priority=100"
+        - "traefik.http.routers.eplant-prod-dokploy-webhook.service=eplant-prod-dokploy-webhook"
+        - "traefik.http.services.eplant-prod-dokploy-webhook.loadbalancer.server.port=8080"
       restart_policy:
         condition: on-failure
 

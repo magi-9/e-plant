@@ -1,5 +1,8 @@
 from django.core.files.images import get_image_dimensions
 from django.core.validators import FileExtensionValidator
+from django.conf import settings
+import os
+from urllib.parse import urlparse
 from rest_framework import serializers
 
 from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
@@ -44,6 +47,29 @@ class ProductImageField(serializers.ImageField):
             raise serializers.ValidationError(f"Invalid image format: {str(e)}")
 
         return image
+
+    def to_representation(self, value):
+        """Return relative media paths to avoid proxy scheme mixed-content issues."""
+        rendered = super().to_representation(value)
+        if not rendered:
+            return rendered
+
+        parsed = urlparse(rendered)
+        relative_url = parsed.path if parsed.scheme and parsed.netloc else rendered
+
+        media_prefix = settings.MEDIA_URL
+        relative_file = (
+            relative_url[len(media_prefix) :]
+            if relative_url.startswith(media_prefix)
+            else relative_url.lstrip("/")
+        )
+        absolute_path = os.path.join(str(settings.MEDIA_ROOT), relative_file)
+
+        # If the file is gone, serialize as null so frontend renders placeholder.
+        if not os.path.exists(absolute_path):
+            return None
+
+        return relative_url
 
 
 class ProductGroupSerializer(serializers.ModelSerializer):

@@ -974,6 +974,10 @@ class Command(BaseCommand):
                     existing.description = prod.get("description", "")
                     if image_relative:
                         existing.image = image_relative
+                    elif existing.image:
+                        existing_image_abs = os.path.join(BACKEND_DIR, "media", str(existing.image))
+                        if not os.path.exists(existing_image_abs):
+                            existing.image = ""
                     if prod.get("parameters") is not None:
                         existing.parameters = prod["parameters"]
                     to_update.append(existing)
