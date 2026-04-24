@@ -10,18 +10,21 @@ DEBUG = False
 # Must raise error if not defined in production
 SECRET_KEY = os.environ["SECRET_KEY"]
 
+
 def _parse_csv_env(var_name: str, default: str) -> list[str]:
     """Split comma-separated env var values and ignore empty items."""
-    return [item.strip() for item in os.environ.get(var_name, default).split(",") if item.strip()]
+    return [
+        item.strip()
+        for item in os.environ.get(var_name, default).split(",")
+        if item.strip()
+    ]
 
 
 ALLOWED_HOSTS = _parse_csv_env("ALLOWED_HOSTS", "localhost")
 CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "http://localhost")
 
 # CSRF Trusted origins (needed if using admin behind proxy/https)
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    "CSRF_TRUSTED_ORIGINS", "https://localhost"
-)
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "https://localhost")
 CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)
 
 # Database

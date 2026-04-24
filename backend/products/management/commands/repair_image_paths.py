@@ -30,7 +30,9 @@ class Command(BaseCommand):
         fix = options["fix"]
         media_root = str(settings.MEDIA_ROOT)
 
-        products_with_image = Product.objects.exclude(image="").exclude(image__isnull=True)
+        products_with_image = Product.objects.exclude(image="").exclude(
+            image__isnull=True
+        )
         total = products_with_image.count()
         self.stdout.write(f"Checking {total} products with image paths...")
 
@@ -55,7 +57,7 @@ class Command(BaseCommand):
             for ext, count in ext_counter.most_common():
                 self.stdout.write(f"  {ext}: {count}")
 
-            self.stdout.write(f"\nAffected products (first 20 references):")
+            self.stdout.write("\nAffected products (first 20 references):")
             for product in missing[:20]:
                 self.stdout.write(f"  ref={product.reference}  path={product.image}")
             if len(missing) > 20:

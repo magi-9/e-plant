@@ -168,8 +168,12 @@ def test_storefront_wildcard_group_exposes_masked_reference():
     s.wildcard_grouping_enabled = True
     s.save()
 
-    p1 = make_product(name="Implant A", reference="AB12345", price="10.00", category="A")
-    p2 = make_product(name="Implant B", reference="AB12355", price="10.00", category="A")
+    p1 = make_product(
+        name="Implant A", reference="AB12345", price="10.00", category="A"
+    )
+    p2 = make_product(
+        name="Implant B", reference="AB12355", price="10.00", category="A"
+    )
 
     wg = WildcardGroup.objects.create(name="Group AB", is_auto_generated=True)
     Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
