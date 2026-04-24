@@ -23,6 +23,20 @@ A Django + React E-shop developed with TDD.
 docker-compose up --build
 ```
 
+## Deployment compose split
+
+- `docker-compose.staging.yml`: staging setup (keeps current tunnel + manual Traefik routing labels).
+- `docker-compose.prod.yml`: production setup for Dokploy UI managed routing (no manual Traefik labels, no webhook tunnel relay).
+
+### Production quick start
+
+```bash
+cp .env.prod.example .env.prod
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+Set domains and public IP routing in Dokploy UI.
+
 ## Production domain split
 
 This project supports a split storefront setup:

@@ -1,0 +1,162 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eplant_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      POSTGRES_DB: ${POSTGRES_DB:-eplant_staging}
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+    networks:
+      - dokploy-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: /app/entrypoint.prod.sh
+    user: "0:0"
+    env_file: .env
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - /home/tom/eplant-data:/data:ro
+    expose:
+      - "8000"
+    depends_on:
+      - db
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
+      - "traefik.http.routers.eplant-staging-backend.entrypoints=web,websecure"
+      - "traefik.http.routers.eplant-staging-backend.priority=10"
+      - "traefik.http.routers.eplant-staging-backend.middlewares=eplant-security-headers@docker"
+      - "traefik.http.services.eplant-staging-backend.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
+      - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
+      - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
+        - "traefik.http.routers.eplant-staging-backend.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-staging-backend.priority=10"
+        - "traefik.http.routers.eplant-staging-backend.middlewares=eplant-security-headers@docker"
+        - "traefik.http.services.eplant-staging-backend.loadbalancer.server.port=8000"
+        - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
+        - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
+        - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
+        - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
+        - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_LANDING_HOST: ${VITE_LANDING_HOST:-staging.ebringer.sk}
+        VITE_SHOP_HOST: ${VITE_SHOP_HOST:-staging-shop.ebringer.sk}
+    expose:
+      - "80"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && PathPrefix(`/`)"
+      - "traefik.http.routers.eplant-staging-frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.eplant-staging-frontend.priority=1"
+      - "traefik.http.routers.eplant-staging-frontend.middlewares=eplant-security-headers@docker"
+      - "traefik.http.services.eplant-staging-frontend.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:80', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && PathPrefix(`/`)"
+        - "traefik.http.routers.eplant-staging-frontend.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-staging-frontend.priority=1"
+        - "traefik.http.routers.eplant-staging-frontend.middlewares=eplant-security-headers@docker"
+        - "traefik.http.services.eplant-staging-frontend.loadbalancer.server.port=80"
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 20s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: stop-first
+
+  dokploy-webhook-relay:
+    image: alpine/socat:1.8.0.3
+    command: "TCP-LISTEN:8080,fork,reuseaddr TCP:${DOKPLOY_INTERNAL_HOST:-192.168.0.15}:${DOKPLOY_INTERNAL_PORT:-3000}"
+    expose:
+      - "8080"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eplant-staging-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
+      - "traefik.http.routers.eplant-staging-dokploy-webhook.entrypoints=web,websecure"
+      - "traefik.http.routers.eplant-staging-dokploy-webhook.priority=100"
+      - "traefik.http.routers.eplant-staging-dokploy-webhook.service=eplant-staging-dokploy-webhook"
+      - "traefik.http.services.eplant-staging-dokploy-webhook.loadbalancer.server.port=8080"
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.eplant-staging-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
+        - "traefik.http.routers.eplant-staging-dokploy-webhook.entrypoints=web,websecure"
+        - "traefik.http.routers.eplant-staging-dokploy-webhook.priority=100"
+        - "traefik.http.routers.eplant-staging-dokploy-webhook.service=eplant-staging-dokploy-webhook"
+        - "traefik.http.services.eplant-staging-dokploy-webhook.loadbalancer.server.port=8080"
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  postgres_data_staging:
+  static_volume:
+  media_volume:
+
+networks:
+  dokploy-network:
+    external: true
