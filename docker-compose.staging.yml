@@ -32,7 +32,7 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
+      - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${STAGING_PRIMARY_DOMAIN:-dent.tomag.xyz}`) || Host(`${STAGING_SHOP_DOMAIN:-shop.dent.tomag.xyz}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
       - "traefik.http.routers.eplant-staging-backend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-staging-backend.priority=10"
       - "traefik.http.routers.eplant-staging-backend.middlewares=eplant-security-headers@docker"
@@ -51,7 +51,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
+        - "traefik.http.routers.eplant-staging-backend.rule=(Host(`${STAGING_PRIMARY_DOMAIN:-dent.tomag.xyz}`) || Host(`${STAGING_SHOP_DOMAIN:-shop.dent.tomag.xyz}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
         - "traefik.http.routers.eplant-staging-backend.entrypoints=web,websecure"
         - "traefik.http.routers.eplant-staging-backend.priority=10"
         - "traefik.http.routers.eplant-staging-backend.middlewares=eplant-security-headers@docker"
@@ -92,7 +92,7 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && PathPrefix(`/`)"
+      - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${STAGING_PRIMARY_DOMAIN:-dent.tomag.xyz}`) || Host(`${STAGING_SHOP_DOMAIN:-shop.dent.tomag.xyz}`)) && PathPrefix(`/`)"
       - "traefik.http.routers.eplant-staging-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-staging-frontend.priority=1"
       - "traefik.http.routers.eplant-staging-frontend.middlewares=eplant-security-headers@docker"
@@ -106,7 +106,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${PRIMARY_DOMAIN:-staging.ebringer.sk}`) || Host(`${SHOP_DOMAIN:-staging-shop.ebringer.sk}`)) && PathPrefix(`/`)"
+        - "traefik.http.routers.eplant-staging-frontend.rule=(Host(`${STAGING_PRIMARY_DOMAIN:-dent.tomag.xyz}`) || Host(`${STAGING_SHOP_DOMAIN:-shop.dent.tomag.xyz}`)) && PathPrefix(`/`)"
         - "traefik.http.routers.eplant-staging-frontend.entrypoints=web,websecure"
         - "traefik.http.routers.eplant-staging-frontend.priority=1"
         - "traefik.http.routers.eplant-staging-frontend.middlewares=eplant-security-headers@docker"
