@@ -23,6 +23,27 @@ A Django + React E-shop developed with TDD.
 docker-compose up --build
 ```
 
+## Production domain split
+
+This project supports a split storefront setup:
+
+- Landing page on `https://ebringer.sk/`
+- Product storefront on `https://digitalabutment.ebringer.sk/products`
+
+Set these environment variables for production routing:
+
+- `PRIMARY_DOMAIN=ebringer.sk`
+- `SHOP_DOMAIN=digitalabutment.ebringer.sk`
+- `VITE_LANDING_HOST=ebringer.sk`
+- `VITE_SHOP_HOST=digitalabutment.ebringer.sk`
+- `VITE_API_URL=/api`
+
+Backend security settings should include both origins:
+
+- `ALLOWED_HOSTS=ebringer.sk,digitalabutment.ebringer.sk`
+- `CORS_ALLOWED_ORIGINS=https://ebringer.sk,https://digitalabutment.ebringer.sk`
+- `CSRF_TRUSTED_ORIGINS=https://ebringer.sk,https://digitalabutment.ebringer.sk`
+
 ## Service testing
 
 Service-layer testing patterns are documented in [doc/SERVICE_TESTING_PATTERNS.md](doc/SERVICE_TESTING_PATTERNS.md).

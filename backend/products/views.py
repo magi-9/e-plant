@@ -16,7 +16,11 @@ from rest_framework.views import APIView
 
 from services.email import ProductInquiryEmailService
 
-from .grouping import normalized_storefront_name, storefront_group_key
+from .grouping import (
+    masked_variant_reference,
+    normalized_storefront_name,
+    storefront_group_key,
+)
 from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
 from .serializers import (
     GroupingSettingsSerializer,
@@ -128,11 +132,13 @@ def _option_entry(m):
 def _make_wildcard_group_card(members, group_name: str):
     """Return a virtual product representing a wildcard group card."""
     rep = copy(members[0])
+    masked_reference = masked_variant_reference([m.reference for m in members])
     rep.parameters = {
         "type": "wildcard_group",
         "wildcard_reference": rep.reference or "",
         "options": [_option_entry(m) for m in members],
         "option_fields": ["reference", "parameter_code", "name"],
+        "masked_reference": masked_reference,
     }
     # Use the stored group name (may differ from any individual product name)
     rep.name = group_name

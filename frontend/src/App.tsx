@@ -34,7 +34,20 @@ import { Toaster } from 'react-hot-toast';
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const COOKIE_CONSENT_KEY = 'cookie_consent';
 const CONSENT_EVENT = 'cookie-consent-changed';
+const LANDING_HOST = (import.meta.env.VITE_LANDING_HOST as string | undefined) || 'ebringer.sk';
+const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'digitalabutment.ebringer.sk';
 let sentryInitialized = false;
+
+function isMatchingHost(currentHost: string, expectedHost: string): boolean {
+  return currentHost === expectedHost || currentHost.endsWith(`.${expectedHost}`);
+}
+
+function ExternalRedirect({ to }: { to: string }) {
+  useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+  return null;
+}
 
 function initSentryIfConsented() {
   if (sentryInitialized || !SENTRY_DSN) {
@@ -62,6 +75,14 @@ function disableSentryIfInitialized() {
 const queryClient = new QueryClient();
 
 function App() {
+  const currentHost = window.location.hostname.toLowerCase();
+  const normalizedLandingHost = LANDING_HOST.toLowerCase();
+  const normalizedShopHost = SHOP_HOST.toLowerCase();
+  const hostSplitEnabled = !import.meta.env.DEV && normalizedLandingHost !== normalizedShopHost;
+  const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
+  const isShopHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedShopHost);
+  const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
+
   useEffect(() => {
     initSentryIfConsented();
     const onConsentChange = (event: Event) => {
@@ -86,11 +107,17 @@ function App() {
           <CookieConsent />
           <Routes>
           {/* Representative page — no navbar, no footer */}
-          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/"
+            element={isShopHost ? <Navigate to="/products" replace /> : <HomePage />}
+          />
 
           {/* E-shop — with Navbar + footer */}
           <Route element={<ShopLayout />}>
-            <Route path="/products" element={<ProductsPage />} />
+            <Route
+              path="/products"
+              element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
+            />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

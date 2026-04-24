@@ -9,6 +9,7 @@ import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
+import { getWildcardBadgeReference } from '../utils/variantReference';
 import toast from 'react-hot-toast';
 
 const getCategoryList = (product: Product): string[] => {
@@ -504,12 +505,25 @@ export default function ProductsPage() {
                                                     })()}
                                                 </div>
                                                 {product.parameters?.type === 'wildcard_group' ? (
-                                                    <p className="mt-0.5 text-[11px] text-cyan-600 font-semibold truncate">
+                                                    <div className="mt-0.5">
                                                         {(() => {
                                                             const count = (product.parameters.options || []).length;
-                                                            return `${count} ${getVariantWord(count)}`;
+                                                            const variantText = `${count} ${getVariantWord(count)}`;
+                                                            const maskedReference = getWildcardBadgeReference(product.parameters?.masked_reference);
+                                                            return (
+                                                                <>
+                                                                    {maskedReference && (
+                                                                        <p className="text-[11px] text-slate-600 font-medium truncate">
+                                                                            {maskedReference}
+                                                                        </p>
+                                                                    )}
+                                                                    <p className="text-[11px] text-cyan-600 font-semibold truncate">
+                                                                        {variantText}
+                                                                    </p>
+                                                                </>
+                                                            );
                                                         })()}
-                                                    </p>
+                                                    </div>
                                                 ) : product.reference && (
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
