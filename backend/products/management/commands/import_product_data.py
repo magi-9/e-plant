@@ -25,6 +25,7 @@ import re
 import shutil
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -143,7 +144,7 @@ def copy_image(image_key, image_index, dry_run):
     if not src:
         return None
 
-    ext = os.path.splitext(src)[1]
+    ext = os.path.splitext(src)[1].lower()
     dest_name = f"{image_key}{ext}"
     dest_abs = os.path.join(MEDIA_PRODUCTS_DIR, dest_name)
 
@@ -975,7 +976,9 @@ class Command(BaseCommand):
                     if image_relative:
                         existing.image = image_relative
                     elif existing.image:
-                        existing_image_abs = os.path.join(BACKEND_DIR, "media", str(existing.image))
+                        existing_image_abs = os.path.join(
+                            str(settings.MEDIA_ROOT), str(existing.image).lstrip("/")
+                        )
                         if not os.path.exists(existing_image_abs):
                             existing.image = ""
                     if prod.get("parameters") is not None:
