@@ -1,7 +1,7 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from orders.views import ShippingRateListView
@@ -20,4 +20,12 @@ urlpatterns = [
 ]
 
 # Uploaded files must be reachable in staging/prod behind Traefik as /media/.
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# django.conf.urls.static.static() is disabled when DEBUG=False, so use an
+# explicit serve route for this deployment setup.
+urlpatterns += [
+    re_path(
+        rf"^{settings.MEDIA_URL.lstrip('/')}(?P<path>.*)$",
+        serve,
+        {"document_root": settings.MEDIA_ROOT},
+    )
+]
