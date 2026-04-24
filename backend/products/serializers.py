@@ -59,16 +59,16 @@ class ProductImageField(serializers.ImageField):
             return rendered
 
         if settings.DEBUG:
-            return rendered
-
-        parsed = urlparse(rendered)
-        relative_url = parsed.path if parsed.scheme and parsed.netloc else rendered
+            base_url = rendered
+        else:
+            parsed = urlparse(rendered)
+            base_url = parsed.path if parsed.scheme and parsed.netloc else rendered
 
         media_prefix = settings.MEDIA_URL
         relative_file = (
-            relative_url[len(media_prefix) :]
-            if relative_url.startswith(media_prefix)
-            else relative_url.lstrip("/")
+            base_url[len(media_prefix) :]
+            if base_url.startswith(media_prefix)
+            else base_url.lstrip("/")
         )
         absolute_path = os.path.join(str(settings.MEDIA_ROOT), relative_file)
 
@@ -76,7 +76,8 @@ class ProductImageField(serializers.ImageField):
         if not os.path.exists(absolute_path):
             return None
 
-        return relative_url
+        version = int(os.path.getmtime(absolute_path))
+        return f"{base_url}?v={version}"
 
 
 class ProductGroupSerializer(serializers.ModelSerializer):
