@@ -15,6 +15,7 @@ export interface Product {
     parameters?: {
         type?: 'single' | 'wildcard_group';
         wildcard_reference?: string;
+        masked_reference?: string | null;
         option_fields?: string[];
         option_tokens?: string;
         all_categories?: string;

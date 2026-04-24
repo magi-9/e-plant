@@ -32,8 +32,7 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      # Manual path routing for tunnel traffic; avoid Host-based matching.
-      - "traefik.http.routers.eplant-prod-backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`)"
+      - "traefik.http.routers.eplant-prod-backend.rule=(Host(`${PRIMARY_DOMAIN:-ebringer.sk}`) || Host(`${SHOP_DOMAIN:-digitalabutment.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
       - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-backend.priority=10"
       - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
@@ -53,7 +52,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.eplant-prod-backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`)"
+        - "traefik.http.routers.eplant-prod-backend.rule=(Host(`${PRIMARY_DOMAIN:-ebringer.sk}`) || Host(`${SHOP_DOMAIN:-digitalabutment.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/media`))"
         - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
         - "traefik.http.routers.eplant-prod-backend.priority=10"
         - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
@@ -86,14 +85,15 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_LANDING_HOST: ${VITE_LANDING_HOST:-ebringer.sk}
+        VITE_SHOP_HOST: ${VITE_SHOP_HOST:-digitalabutment.ebringer.sk}
     expose:
       - "80"
     networks:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      # Frontend catch-all after higher-priority routers.
-      - "traefik.http.routers.eplant-prod-frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.eplant-prod-frontend.rule=(Host(`${PRIMARY_DOMAIN:-ebringer.sk}`) || Host(`${SHOP_DOMAIN:-digitalabutment.ebringer.sk}`)) && PathPrefix(`/`)"
       - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
       - "traefik.http.routers.eplant-prod-frontend.priority=1"
       - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
@@ -107,7 +107,7 @@ services:
     deploy:
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.eplant-prod-frontend.rule=PathPrefix(`/`)"
+        - "traefik.http.routers.eplant-prod-frontend.rule=(Host(`${PRIMARY_DOMAIN:-ebringer.sk}`) || Host(`${SHOP_DOMAIN:-digitalabutment.ebringer.sk}`)) && PathPrefix(`/`)"
         - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
         - "traefik.http.routers.eplant-prod-frontend.priority=1"
         - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"

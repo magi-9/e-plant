@@ -7,6 +7,7 @@ from products.models import (
     Product,
     WildcardGroup,
 )
+from products.grouping import masked_variant_reference
 from products.services.wildcard_sync import sync_wildcard_groups
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
@@ -159,6 +160,38 @@ def test_storefront_uses_persistent_wildcard_group():
     assert len(results) == 1
     assert results[0]["parameters"]["type"] == "wildcard_group"
     assert len(results[0]["parameters"]["options"]) == 2
+
+
+@pytest.mark.django_db
+def test_storefront_wildcard_group_exposes_masked_reference():
+    s = GroupingSettings.get()
+    s.wildcard_grouping_enabled = True
+    s.save()
+
+    p1 = make_product(name="Implant A", reference="AB12345", price="10.00", category="A")
+    p2 = make_product(name="Implant B", reference="AB12355", price="10.00", category="A")
+
+    wg = WildcardGroup.objects.create(name="Group AB", is_auto_generated=True)
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    results = response.data["results"]
+    assert len(results) == 1
+    assert results[0]["parameters"]["masked_reference"] == "AB123x5"
+
+
+def test_masked_variant_reference_masks_only_numeric_differences():
+    references = ["AB12345", "AB12355", "AB12365"]
+
+    assert masked_variant_reference(references) == "AB123x5"
+
+
+def test_masked_variant_reference_rejects_non_numeric_differences():
+    references = ["AB12345", "AC12345"]
+
+    assert masked_variant_reference(references) is None
 
 
 @pytest.mark.django_db
