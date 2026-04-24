@@ -78,8 +78,9 @@ function App() {
   const currentHost = window.location.hostname.toLowerCase();
   const normalizedLandingHost = LANDING_HOST.toLowerCase();
   const normalizedShopHost = SHOP_HOST.toLowerCase();
-  const isLandingHost = isMatchingHost(currentHost, normalizedLandingHost);
-  const isShopHost = isMatchingHost(currentHost, normalizedShopHost);
+  const hostSplitEnabled = !import.meta.env.DEV && normalizedLandingHost !== normalizedShopHost;
+  const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
+  const isShopHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedShopHost);
   const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
 
   useEffect(() => {
