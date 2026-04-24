@@ -49,9 +49,16 @@ class ProductImageField(serializers.ImageField):
         return image
 
     def to_representation(self, value):
-        """Return relative media paths to avoid proxy scheme mixed-content issues."""
+        """Use absolute media URLs in dev, relative paths in prod.
+
+        Dev frontend runs on a different origin/port and needs absolute backend media URLs.
+        Production stays relative to avoid mixed-content/scheme issues behind proxy.
+        """
         rendered = super().to_representation(value)
         if not rendered:
+            return rendered
+
+        if settings.DEBUG:
             return rendered
 
         parsed = urlparse(rendered)
