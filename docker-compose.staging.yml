@@ -1,18 +1,4 @@
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-eplant_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
-      POSTGRES_DB: ${POSTGRES_DB:-eplant_staging}
-    volumes:
-      - postgres_data_staging:/var/lib/postgresql/data
-    networks:
-      - dokploy-network
-    deploy:
-      restart_policy:
-        condition: on-failure
-
   backend:
     build:
       context: ./backend
@@ -26,8 +12,6 @@ services:
       - /home/tom/eplant-data:/data:ro
     expose:
       - "8000"
-    depends_on:
-      - db
     networks:
       - dokploy-network
     labels:
@@ -153,7 +137,6 @@ services:
         condition: on-failure
 
 volumes:
-  postgres_data_staging:
   static_volume:
   media_volume:
 
