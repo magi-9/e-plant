@@ -1,16 +1,4 @@
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-eplant_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
-      POSTGRES_DB: ${POSTGRES_DB:-eplant_prod}
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-    deploy:
-      restart_policy:
-        condition: on-failure
-
   backend:
     build:
       context: ./backend
@@ -24,8 +12,6 @@ services:
       - /home/tom/eplant-data:/data:ro
     expose:
       - "8000"
-    depends_on:
-      - db
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()"]
       interval: 30s
@@ -56,6 +42,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_HOME_PAGE_READY: ${VITE_HOME_PAGE_READY:-true}
         VITE_LANDING_HOST: ${VITE_LANDING_HOST:-ebringer.sk}
         VITE_SHOP_HOST: ${VITE_SHOP_HOST:-digitalabutment.ebringer.sk}
     expose:
@@ -83,21 +70,6 @@ services:
         delay: 5s
         order: stop-first
 
-  alloy:
-    image: grafana/alloy:v1.6.1
-    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
-    volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL:-}
-      - GRAFANA_LOKI_USER=${GRAFANA_LOKI_USER:-}
-      - GRAFANA_LOKI_API_KEY=${GRAFANA_LOKI_API_KEY:-}
-    deploy:
-      restart_policy:
-        condition: on-failure
-
 volumes:
-  postgres_data_prod:
   static_volume:
   media_volume:
