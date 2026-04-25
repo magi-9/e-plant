@@ -68,6 +68,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_HOME_PAGE_READY: ${VITE_HOME_PAGE_READY:-true}
         VITE_LANDING_HOST: ${VITE_LANDING_HOST:-staging.ebringer.sk}
         VITE_SHOP_HOST: ${VITE_SHOP_HOST:-staging-shop.ebringer.sk}
     expose:

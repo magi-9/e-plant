@@ -28,6 +28,8 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ConstructionPage from './pages/ConstructionPage';
+import { parseBooleanEnv } from './utils/env';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -36,6 +38,7 @@ const COOKIE_CONSENT_KEY = 'cookie_consent';
 const CONSENT_EVENT = 'cookie-consent-changed';
 const LANDING_HOST = (import.meta.env.VITE_LANDING_HOST as string | undefined) || 'ebringer.sk';
 const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'digitalabutment.ebringer.sk';
+const HOME_PAGE_READY = import.meta.env.DEV || parseBooleanEnv(import.meta.env.VITE_HOME_PAGE_READY, true);
 let sentryInitialized = false;
 
 function isMatchingHost(currentHost: string, expectedHost: string): boolean {
@@ -82,6 +85,7 @@ function App() {
   const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
   const isShopHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedShopHost);
   const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
+  const landingPageElement = HOME_PAGE_READY ? <HomePage /> : <ConstructionPage />;
 
   useEffect(() => {
     initSentryIfConsented();
@@ -109,7 +113,7 @@ function App() {
           {/* Representative page — no navbar, no footer */}
           <Route
             path="/"
-            element={isShopHost ? <Navigate to="/products" replace /> : <HomePage />}
+            element={isShopHost ? <Navigate to="/products" replace /> : landingPageElement}
           />
 
           {/* E-shop — with Navbar + footer */}
