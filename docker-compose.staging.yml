@@ -1,18 +1,4 @@
 services:
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-eplant_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
-      POSTGRES_DB: ${POSTGRES_DB:-eplant_staging}
-    volumes:
-      - postgres_data_staging:/var/lib/postgresql/data
-    networks:
-      - dokploy-network
-    deploy:
-      restart_policy:
-        condition: on-failure
-
   backend:
     build:
       context: ./backend
@@ -26,8 +12,6 @@ services:
       - /home/tom/eplant-data:/data:ro
     expose:
       - "8000"
-    depends_on:
-      - db
     networks:
       - dokploy-network
     labels:
@@ -84,6 +68,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_HOME_PAGE_READY: ${VITE_HOME_PAGE_READY:-true}
         VITE_LANDING_HOST: ${VITE_LANDING_HOST:-staging.ebringer.sk}
         VITE_SHOP_HOST: ${VITE_SHOP_HOST:-staging-shop.ebringer.sk}
     expose:
@@ -153,7 +138,6 @@ services:
         condition: on-failure
 
 volumes:
-  postgres_data_staging:
   static_volume:
   media_volume:
 

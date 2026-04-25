@@ -51,6 +51,7 @@ Set these environment variables for production routing:
 - `VITE_LANDING_HOST=ebringer.sk`
 - `VITE_SHOP_HOST=digitalabutment.ebringer.sk`
 - `VITE_API_URL=/api`
+- `VITE_HOME_PAGE_READY=true|false`
 
 Backend security settings should include both origins:
 
