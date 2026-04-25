@@ -69,20 +69,6 @@ services:
         delay: 5s
         order: stop-first
 
-  alloy:
-    image: grafana/alloy:v1.6.1
-    command: run --server.http.listen-addr=127.0.0.1:12345 /etc/alloy/config.alloy
-    volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL:-}
-      - GRAFANA_LOKI_USER=${GRAFANA_LOKI_USER:-}
-      - GRAFANA_LOKI_API_KEY=${GRAFANA_LOKI_API_KEY:-}
-    deploy:
-      restart_policy:
-        condition: on-failure
-
 volumes:
   static_volume:
   media_volume:
