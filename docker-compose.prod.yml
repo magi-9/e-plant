@@ -5,7 +5,11 @@ services:
       dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
     user: "0:0"
-    env_file: .env.prod
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.prod
+        required: false
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media

@@ -35,6 +35,9 @@ cp .env.prod.example .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
+For Dokploy deployments, you can set variables in the Dokploy UI instead of committing `.env.prod`.
+The production compose treats both `.env` and `.env.prod` as optional env files.
+
 Set domains and public IP routing in Dokploy UI.
 
 ## Production domain split
