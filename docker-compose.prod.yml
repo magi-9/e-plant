@@ -51,7 +51,7 @@ services:
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
         VITE_HOME_PAGE_READY: ${VITE_HOME_PAGE_READY:-true}
         VITE_LANDING_HOST: ${VITE_LANDING_HOST:-ebringer.sk}
-        VITE_SHOP_HOST: ${VITE_SHOP_HOST:-digitalabutment.ebringer.sk}
+        VITE_SHOP_HOST: ${VITE_SHOP_HOST:-dynamicabutment.ebringer.sk}
     expose:
       - "80"
     healthcheck:

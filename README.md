@@ -47,22 +47,22 @@ Note: Docker Compose creates a per-stack default network; backend is additionall
 This project supports a split storefront setup:
 
 - Landing page on `https://ebringer.sk/`
-- Product storefront on `https://digitalabutment.ebringer.sk/products`
+- Product storefront on `https://dynamicabutment.ebringer.sk/products`
 
 Set these environment variables for production routing:
 
 - `PRIMARY_DOMAIN=ebringer.sk`
-- `SHOP_DOMAIN=digitalabutment.ebringer.sk`
+- `SHOP_DOMAIN=dynamicabutment.ebringer.sk`
 - `VITE_LANDING_HOST=ebringer.sk`
-- `VITE_SHOP_HOST=digitalabutment.ebringer.sk`
+- `VITE_SHOP_HOST=dynamicabutment.ebringer.sk`
 - `VITE_API_URL=/api`
 - `VITE_HOME_PAGE_READY=true|false`
 
 Backend security settings should include both origins:
 
-- `ALLOWED_HOSTS=ebringer.sk,digitalabutment.ebringer.sk`
-- `CORS_ALLOWED_ORIGINS=https://ebringer.sk,https://digitalabutment.ebringer.sk`
-- `CSRF_TRUSTED_ORIGINS=https://ebringer.sk,https://digitalabutment.ebringer.sk`
+- `ALLOWED_HOSTS=ebringer.sk,dynamicabutment.ebringer.sk`
+- `CORS_ALLOWED_ORIGINS=https://ebringer.sk,https://dynamicabutment.ebringer.sk`
+- `CSRF_TRUSTED_ORIGINS=https://ebringer.sk,https://dynamicabutment.ebringer.sk`
 
 ## Service testing
 

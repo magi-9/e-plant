@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import logoUrl from '../assets/digitalabutment-logo.png';
+import logoUrl from '../assets/dynamicabutment-logo.png';
 import {
     ShoppingCartIcon,
     ArrowLeftOnRectangleIcon,
