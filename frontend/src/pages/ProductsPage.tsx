@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { getProductCategories, getProductCount, getProducts, type Product, type ProductListParams } from '../api/products';
+import { getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
 import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
@@ -67,6 +67,7 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedCompatibility, setSelectedCompatibility] = useState<CompatibilityOption | null>(null);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
 
     // Debounce search to avoid re-fetching on every keystroke
@@ -80,8 +81,12 @@ export default function ProductsPage() {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
         if (debouncedSearch) params.search = debouncedSearch;
         if (selectedCategories.length > 0) params.categories = selectedCategories;
+        if (selectedCompatibility) {
+            params.compatibility_section = selectedCompatibility.section;
+            params.compatibility_code = selectedCompatibility.compatibility_code;
+        }
         return params;
-    }, [debouncedSearch, selectedCategories]);
+    }, [debouncedSearch, selectedCategories, selectedCompatibility]);
 
     const {
         data,
@@ -92,7 +97,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', debouncedSearch, selectedCategories],
+        queryKey: ['products', debouncedSearch, selectedCategories, selectedCompatibility],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -107,8 +112,13 @@ export default function ProductsPage() {
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', debouncedSearch, selectedCategories],
-        queryFn: () => getProductCount({ search: debouncedSearch, categories: selectedCategories }),
+        queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility],
+        queryFn: () => getProductCount({
+            search: debouncedSearch,
+            categories: selectedCategories,
+            compatibility_section: selectedCompatibility?.section,
+            compatibility_code: selectedCompatibility?.compatibility_code,
+        }),
         placeholderData: keepPreviousData,
     });
 
@@ -117,6 +127,19 @@ export default function ProductsPage() {
         queryFn: getProductCategories,
         staleTime: 5 * 60 * 1000,
     });
+
+    const { data: compatibilityOptions = [] } = useQuery({
+        queryKey: ['compatibility-options'],
+        queryFn: getCompatibilityOptions,
+        staleTime: 10 * 60 * 1000,
+    });
+
+    // Group compatibility options by section for the dropdown
+    const compatibilityBySection = compatibilityOptions.reduce<Record<string, string[]>>((acc, opt) => {
+        if (!acc[opt.section]) acc[opt.section] = [];
+        acc[opt.section].push(opt.compatibility_code);
+        return acc;
+    }, {});
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
 
@@ -226,13 +249,13 @@ export default function ProductsPage() {
 
     const visibleCount = databaseProductCount ?? filteredProducts.length;
     const canonicalUrl = `${SEO_SITE_URL}${window.location.pathname}`;
-    const socialImageUrl = `${SEO_SITE_URL}/digitalabutment-logo.png`;
+    const socialImageUrl = `${SEO_SITE_URL}/dynamicabutment-logo.png`;
 
     // Generate structured data for products - computed on each render
     const schemaData = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
-        name: 'Digital Abutment Solutions Products',
+        name: 'Dynamic Abutment Solutions Products',
         description: 'Browse our complete catalog of Dynamic Abutment Solutions products including implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions for modern implantology.',
         url: canonicalUrl,
         image: socialImageUrl,
@@ -258,7 +281,7 @@ export default function ProductsPage() {
     return (
         <div className="bg-slate-50 flex flex-col text-slate-900 relative">
             <Helmet>
-                <title>Digital Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
+                <title>Dynamic Abutment Solutions – Implant Components & CAD/CAM Solutions</title>
                 <meta name="description" content="Shop premium Dynamic Abutment Solutions products: TiBase scanning bodies, Multi-Unit abutments, custom CAD/CAM solutions, and more. Official distributor for Slovakia." />
                 <meta name="keywords" content="abutment, implant components, TiBase, Multi-Unit abutment, CAD/CAM, implantology, dental surgery" />
                 <meta name="robots" content="index, follow" />
@@ -267,15 +290,15 @@ export default function ProductsPage() {
                 
                 {/* Open Graph - Social Media */}
                 <meta property="og:type" content="website" />
-                <meta property="og:title" content="Digital Abutment Solutions Products" />
+                <meta property="og:title" content="Dynamic Abutment Solutions Products" />
                 <meta property="og:description" content="Browse premium implant components, TiBase scanning bodies, Multi-Unit abutments, and CAD/CAM solutions." />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta property="og:image" content={socialImageUrl} />
-                <meta property="og:site_name" content="Digital Abutment Solutions" />
+                <meta property="og:site_name" content="Dynamic Abutment Solutions" />
                 
                 {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
-                <meta name="twitter:title" content="Digital Abutment Solutions" />
+                <meta name="twitter:title" content="Dynamic Abutment Solutions" />
                 <meta name="twitter:description" content="Premium implant components and solutions for modern implantology." />
                 <meta name="twitter:image" content={socialImageUrl} />
                 
@@ -339,7 +362,7 @@ export default function ProductsPage() {
                     {/* Logo */}
                     <div className="mb-8 rounded-[2rem] bg-white/90 px-6 py-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur-sm">
                         <img
-                            src="/digitalabutment-logo.png"
+                            src="/dynamicabutment-logo.png"
                             alt="Dynamic Abutment Solutions"
                             className="block h-auto w-[18rem] max-w-[70vw] sm:w-[22rem] md:w-[24rem] object-contain"
                         />
@@ -382,42 +405,90 @@ export default function ProductsPage() {
             <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56 flex flex-col">
 
                 {/* Search and Filters */}
-                <div ref={filtersRef} id="product-filters" className="scroll-mt-24 flex flex-col gap-3 md:flex-row md:items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                        <input
-                            type="text"
-                            placeholder="🔍 Hľadať produkt..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                aria-label="Vymazať hľadanie"
-                            >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        )}
+                <div ref={filtersRef} id="product-filters" className="scroll-mt-24 flex flex-col gap-3 mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                        {/* Search */}
+                        <div className="relative flex-1">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="🔍 Hľadať produkt..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label="Vymazať hľadanie"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            )}
+                        </div>
+                        {/* Sort */}
+                        <button
+                            onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
+                            title={priceSortOrder === 'none' ? 'Zoradiť podľa ceny' : priceSortOrder === 'asc' ? 'Cena vzostupne' : 'Cena zostupne'}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                                priceSortOrder !== 'none'
+                                    ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm'
+                                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <ArrowsUpDownIcon className={`h-4 w-4 transition-transform ${
+                                priceSortOrder === 'asc' ? 'rotate-0' : priceSortOrder === 'desc' ? 'rotate-180' : ''
+                            }`} />
+                            <span className="hidden sm:inline">{priceSortOrder === 'none' ? 'Cena' : priceSortOrder === 'asc' ? 'Cena ↑' : 'Cena ↓'}</span>
+                        </button>
                     </div>
-                    {/* Sort */}
-                    <button
-                        onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
-                        title={priceSortOrder === 'none' ? 'Zoradiť podľa ceny' : priceSortOrder === 'asc' ? 'Cena vzostupne' : 'Cena zostupne'}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                            priceSortOrder !== 'none'
-                                ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm'
-                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                    >
-                        <ArrowsUpDownIcon className={`h-4 w-4 transition-transform ${
-                            priceSortOrder === 'asc' ? 'rotate-0' : priceSortOrder === 'desc' ? 'rotate-180' : ''
-                        }`} />
-                        <span className="hidden sm:inline">{priceSortOrder === 'none' ? 'Cena' : priceSortOrder === 'asc' ? 'Cena ↑' : 'Cena ↓'}</span>
-                    </button>
+                    {/* Compatibility Filter */}
+                    {compatibilityOptions.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="compat-select" className="text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Kompatibilita:</label>
+                            <div className="relative flex-1 max-w-sm">
+                                <select
+                                    id="compat-select"
+                                    value={selectedCompatibility ? `${selectedCompatibility.section}|||${selectedCompatibility.compatibility_code}` : ''}
+                                    onChange={(e) => {
+                                        if (!e.target.value) {
+                                            setSelectedCompatibility(null);
+                                        } else {
+                                            const [section, code] = e.target.value.split('|||');
+                                            setSelectedCompatibility({ section, compatibility_code: code });
+                                            scrollToFilters();
+                                        }
+                                    }}
+                                    className={`w-full pl-3 pr-8 py-2 border rounded-lg text-sm appearance-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all ${
+                                        selectedCompatibility
+                                            ? 'bg-cyan-50 border-cyan-300 text-cyan-800 font-medium'
+                                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    <option value="">Všetky systémy</option>
+                                    {Object.entries(compatibilityBySection).map(([section, codes]) => (
+                                        <optgroup key={section} label={section}>
+                                            {codes.map((code) => (
+                                                <option key={code} value={`${section}|||${code}`}>
+                                                    Kód {code}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                                <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                            </div>
+                            {selectedCompatibility && (
+                                <button
+                                    onClick={() => setSelectedCompatibility(null)}
+                                    className="text-xs text-cyan-600 hover:text-cyan-800 font-medium transition-colors"
+                                >
+                                    Zrušiť
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Category Badges */}
@@ -460,6 +531,7 @@ export default function ProductsPage() {
                             onClick={() => {
                                 setSearchQuery('');
                                 setSelectedCategories([]);
+                                setSelectedCompatibility(null);
                                 setPriceSortOrder('none');
                             }}
                             className="mt-4 text-cyan-600 hover:text-cyan-500 font-medium"

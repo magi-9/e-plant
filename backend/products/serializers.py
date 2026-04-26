@@ -125,12 +125,43 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     all_categories = serializers.SerializerMethodField()
     image = ProductImageField(required=False, allow_null=True)
+    compatibility_code = serializers.CharField(
+        allow_blank=True, required=False, default=""
+    )
 
     def get_all_categories(self, obj):
         categories = obj.parameters.get("all_categories") if obj.parameters else ""
         if categories:
             return categories
         return obj.category
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["compatibility_code"] = (instance.parameters or {}).get(
+            "compatibility_code", ""
+        )
+        return rep
+
+    def _save_compatibility_code(self, instance, code):
+        params = dict(instance.parameters or {})
+        params["compatibility_code"] = code
+        instance.parameters = params
+        instance.save(update_fields=["parameters"])
+        return instance
+
+    def create(self, validated_data):
+        compat_code = validated_data.pop("compatibility_code", None)
+        instance = super().create(validated_data)
+        if compat_code is not None:
+            self._save_compatibility_code(instance, compat_code)
+        return instance
+
+    def update(self, instance, validated_data):
+        compat_code = validated_data.pop("compatibility_code", None)
+        instance = super().update(instance, validated_data)
+        if compat_code is not None:
+            self._save_compatibility_code(instance, compat_code)
+        return instance
 
     class Meta:
         model = Product
@@ -150,4 +181,5 @@ class ProductSerializer(serializers.ModelSerializer):
             "is_visible",
             "all_categories",
             "parameters",
+            "compatibility_code",
         )

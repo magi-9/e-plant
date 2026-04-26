@@ -27,6 +27,11 @@ const normalizeProductImages = (product: Product): Product => ({
         : product.parameters,
 });
 
+export interface CompatibilityOption {
+    section: string;
+    compatibility_code: string;
+}
+
 export interface Product {
     id: number;
     name: string;
@@ -39,6 +44,7 @@ export interface Product {
     image: string | null;
     is_visible: boolean;
     group_name?: string | null;
+    compatibility_code?: string;
     parameters?: {
         type?: 'single' | 'wildcard_group';
         wildcard_reference?: string;
@@ -89,6 +95,8 @@ export interface ProductListParams {
     is_visible?: boolean;
     stock?: 'in' | 'out';
     admin_view?: '1';
+    compatibility_section?: string;
+    compatibility_code?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -120,6 +128,8 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
     if (params?.search) query.set('search', params.search);
     if (typeof params?.group === 'number') query.set('group', String(params.group));
     (params?.categories || []).forEach((category) => query.append('categories', category));
+    if (params?.compatibility_section) query.set('compatibility_section', params.compatibility_section);
+    if (params?.compatibility_code) query.set('compatibility_code', params.compatibility_code);
 
     const suffix = query.toString();
     const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
@@ -130,6 +140,11 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
 export const getProductCategories = async (): Promise<string[]> => {
     const response = await client.get<ProductCategoriesResponse>('/products/categories/');
     return response.data.categories;
+};
+
+export const getCompatibilityOptions = async (): Promise<CompatibilityOption[]> => {
+    const response = await client.get<{ options: CompatibilityOption[] }>('/products/compatibility-options/');
+    return response.data.options;
 };
 
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
