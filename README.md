@@ -35,7 +35,12 @@ cp .env.prod.example .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
+For Dokploy deployments, you can set variables in the Dokploy UI instead of committing `.env.prod`.
+The production compose treats both `.env` and `.env.prod` as optional env files.
+
 Set domains and public IP routing in Dokploy UI.
+For database connectivity in Dokploy, set `DB_HOST` to your Dokploy Postgres service hostname (commonly `postgres`).
+Note: Docker Compose creates a per-stack default network; backend is additionally attached to `dokploy-network` in production compose so it can reach separately managed Dokploy services.
 
 ## Production domain split
 

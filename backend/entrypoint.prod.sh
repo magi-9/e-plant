@@ -4,20 +4,25 @@ set -e
 
 echo "Waiting for PostgreSQL to start..."
 python -c "
+import os
 import socket
 import time
-import os
 
-host = os.environ.get('DB_HOST', 'db')
+host = os.environ.get('DB_HOST') or os.environ.get('POSTGRES_HOST') or os.environ.get('DATABASE_HOST') or 'postgres'
 port = int(os.environ.get('DB_PORT', 5432))
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+wait_timeout = int(os.environ.get('DB_WAIT_TIMEOUT', 180))
+deadline = time.time() + wait_timeout
 
 while True:
     try:
-        s.connect((host, port))
-        s.close()
-        break
-    except socket.error:
+        with socket.create_connection((host, port), timeout=2):
+            break
+    except OSError:
+        if time.time() >= deadline:
+            raise SystemExit(
+                f'Timeout waiting for {host}:{port} after {wait_timeout}s. '
+                'Set DB_HOST (or POSTGRES_HOST) to your Dokploy Postgres service name.'
+            )
         print(f'Waiting for {host}:{port}...')
         time.sleep(1)
 "

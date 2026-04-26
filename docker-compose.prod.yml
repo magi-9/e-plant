@@ -5,11 +5,18 @@ services:
       dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
     user: "0:0"
-    env_file: .env.prod
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.prod
+        required: false
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - /home/tom/eplant-data:/data:ro
+      - /root/eplant-data:/data:ro
+    networks:
+      - default
+      - dokploy-network
     expose:
       - "8000"
     healthcheck:
@@ -73,3 +80,8 @@ services:
 volumes:
   static_volume:
   media_volume:
+
+networks:
+  dokploy-network:
+    external: true
+    name: ${DOKPLOY_NETWORK:-dokploy-network}

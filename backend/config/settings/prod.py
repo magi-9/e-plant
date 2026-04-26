@@ -1,5 +1,7 @@
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
 from .base import EMAIL_DOMAIN
@@ -7,8 +9,14 @@ from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
 DEBUG = False
 
-# Must raise error if not defined in production
-SECRET_KEY = os.environ["SECRET_KEY"]
+# Must raise error if not defined in production.
+# Support both names to make Dokploy env configuration less fragile.
+SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY is empty or missing. In Dokploy/.env files, avoid values that start with '#' "
+        "(parsed as comment). Set SECRET_KEY (or DJANGO_SECRET_KEY) to a non-empty value."
+    )
 
 
 def _parse_csv_env(var_name: str, default: str) -> list[str]:
@@ -34,7 +42,12 @@ DATABASES = {
         "NAME": os.environ["POSTGRES_DB"],
         "USER": os.environ["POSTGRES_USER"],
         "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-        "HOST": os.environ.get("DB_HOST", "db"),
+        "HOST": (
+            os.environ.get("DB_HOST")
+            or os.environ.get("POSTGRES_HOST")
+            or os.environ.get("DATABASE_HOST")
+            or "postgres"
+        ),
         "PORT": os.environ.get("DB_PORT", "5432"),
     }
 }
