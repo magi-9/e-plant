@@ -109,6 +109,9 @@ _PASSWORD_ERRORS_SK = {
     "password_too_similar": "Heslo je príliš podobné Vaším osobným údajom.",
 }
 
+VERIFICATION_BRAND_NAME = "Dynamic Abutment"
+VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
+
 
 def _translate_password_errors(exc) -> str:
     """Return a Slovak string summarising Django password ValidationError(s)."""
@@ -120,10 +123,8 @@ def _translate_password_errors(exc) -> str:
 
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
-    company_name = escape(
-        (GlobalSettings.load().company_name or "").strip()
-        or DEFAULT_COMPANY_PROFILE["company_name"]
-    )
+    brand_name = escape(VERIFICATION_BRAND_NAME)
+    signature_name = escape(VERIFICATION_SIGNATURE_NAME)
     safe_verify_url = escape(verify_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">
@@ -138,14 +139,14 @@ def _verification_email_html(verify_url: str) -> str:
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name}</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{brand_name}</h1>
           </td>
         </tr>
         <tr>
           <td style="padding:36px 40px;text-align:center;">
             <h2 style="margin:0 0 12px;font-size:20px;color:#1e293b;">Overenie e-mailovej adresy</h2>
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px;">
-              Ďakujeme za Vašu registráciu na <strong>{company_name}</strong>!<br>
+              Ďakujeme za Vašu registráciu na <strong>{brand_name}</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
             <a href="{safe_verify_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
@@ -162,7 +163,7 @@ def _verification_email_html(verify_url: str) -> str:
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name}</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">{signature_name}</strong></p>
           </td>
         </tr>
       </table>
@@ -241,17 +242,14 @@ def send_verification_email(user) -> None:
     token = default_token_generator.make_token(user)
     verify_url = f"{_frontend_url()}/verify-email/{uid}/{token}/"
 
-    company_name = (
-        GlobalSettings.load().company_name or ""
-    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
-    subject = f"Overenie e-mailovej adresy - {company_name}"
+    subject = f"Overenie e-mailovej adresy - {VERIFICATION_BRAND_NAME}"
     message = (
         "Dobrý deň,\n\n"
-        f"Ďakujeme za vašu registráciu na {company_name}.\n"
+        f"Ďakujeme za vašu registráciu na {VERIFICATION_BRAND_NAME}.\n"
         "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
         f"{verify_url}\n\n"
         "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
-        f"S pozdravom,\n{company_name} Tím"
+        f"S pozdravom,\n{VERIFICATION_SIGNATURE_NAME}"
     )
 
     try:

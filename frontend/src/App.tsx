@@ -29,6 +29,7 @@ import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConstructionPage from './pages/ConstructionPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { parseBooleanEnv } from './utils/env';
 
 import { Toaster } from 'react-hot-toast';
@@ -147,7 +148,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/complaints" element={<ComplaintsPage />} />
             <Route path="/withdrawal" element={<WithdrawalPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

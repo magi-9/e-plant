@@ -390,7 +390,7 @@ export default function CheckoutPage() {
                                         name="title"
                                         value={formData.title}
                                         onChange={handleChange}
-                                        placeholder="napr. MUDr., Ing., Bc."
+                                        placeholder="napr. MUDr., Ing., Bc., PhD."
                                         className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 px-4 py-2 border"
                                     />
                                 </div>

@@ -82,12 +82,12 @@ export default function Navbar() {
                                 navigate('/products');
                             }}
                             className="flex items-center gap-2 group"
-                            aria-label="Digital Abutment Solutions – e-shop"
+                            aria-label="Dynamic Abutment Solutions – e-shop"
                             title="Späť na začiatok"
                         >
                             <img
                                 src={logoUrl}
-                                alt="Digital Abutment Solutions"
+                                alt="Dynamic Abutment Solutions"
                                 className="h-8 w-auto object-contain brightness-0 invert group-hover:opacity-80 transition-opacity cursor-pointer"
                             />
                         </button>

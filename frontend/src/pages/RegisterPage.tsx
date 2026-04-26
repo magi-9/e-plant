@@ -6,6 +6,38 @@ import { UserPlusIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getRegisterErrorMessage(error: unknown): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
+    const data = err?.response?.data;
+    if (!data) return 'Registrácia zlyhala. Skúste to prosím znova.';
+
+    const firstMessage = (value: unknown): string | null => {
+        if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+        if (typeof value === 'string') return value;
+        return null;
+    };
+
+    const passwordMsg = firstMessage(data.password) || firstMessage(data.non_field_errors);
+    if (passwordMsg) return passwordMsg;
+
+    const emailMsg = firstMessage(data.email);
+    if (emailMsg) {
+        const normalized = emailMsg.toLowerCase();
+        if (normalized.includes('already') || normalized.includes('exists') || normalized.includes('už')) {
+            return 'Tento email je už zaregistrovaný. Prihláste sa alebo si resetujte heslo.';
+        }
+        return emailMsg;
+    }
+
+    for (const value of Object.values(data as Record<string, unknown>)) {
+        const msg = firstMessage(value);
+        if (msg) return msg;
+    }
+
+    return 'Registrácia zlyhala. Skúste to prosím znova.';
+}
+
 function Requirement({ met, label }: { met: boolean; label: string }) {
     return (
         <li className="flex items-center gap-2 text-sm">
@@ -50,7 +82,7 @@ export default function RegisterPage() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const err = error as any;
             console.error('Registration failed', err);
-            setErrorMsg(err.response?.data?.email?.[0] || 'Registrácia zlyhala. Skúste to prosím znova.');
+            setErrorMsg(getRegisterErrorMessage(error));
         }
     });
 

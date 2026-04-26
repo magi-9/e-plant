@@ -108,8 +108,8 @@ export default function ProfilePage() {
                     <h3 className="text-lg font-medium leading-6 text-slate-900 border-b pb-2">Osobné údaje</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700">Titul</label>
-                            <input type="text" name="title" value={formData.title} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                            <label htmlFor="title" className="block text-sm font-medium text-slate-700">Titul</label>
+                            <input id="title" type="text" name="title" value={formData.title} onChange={handleChange} placeholder="napr. MUDr., Ing., Bc." className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700">Meno</label>
