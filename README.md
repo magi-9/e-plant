@@ -39,6 +39,7 @@ For Dokploy deployments, you can set variables in the Dokploy UI instead of comm
 The production compose treats both `.env` and `.env.prod` as optional env files.
 
 Set domains and public IP routing in Dokploy UI.
+For database connectivity in Dokploy, set `DB_HOST` to your Dokploy Postgres service hostname (commonly `postgres`).
 
 ## Production domain split
 
