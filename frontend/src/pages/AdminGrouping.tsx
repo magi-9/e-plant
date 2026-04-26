@@ -12,8 +12,11 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 export default function AdminGrouping() {
+    const canAccess = useAdminPageGuard();
+
     const queryClient = useQueryClient();
 
     const fetchAllAdminProductsForGrouping = async (search: string) => {
@@ -125,6 +128,8 @@ export default function AdminGrouping() {
         setEditingWcGroup(group);
         setEditWcForm({ name: group.name, is_enabled: group.is_enabled });
     };
+
+    if (!canAccess) return null;
 
     if (settingsLoading) {
         return <div className="p-8 text-center text-gray-500">Načítavam...</div>;

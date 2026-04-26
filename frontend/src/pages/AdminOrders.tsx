@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     adminInterventionDeleteOrder,
     adminInterventionUpdateOrder,
+    downloadAdminInvoice,
     getAdminOrders,
     updateOrderStatus,
     type AdminOrderInterventionUpdateData,
@@ -12,6 +13,7 @@ import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import ConfirmModal from '../components/ConfirmModal';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 const STATUS_LABELS: Record<string, string> = {
     new: 'Nová',
@@ -96,6 +98,8 @@ type PendingAction = {
 };
 
 export default function AdminOrders() {
+    const canAccess = useAdminPageGuard();
+
     const queryClient = useQueryClient();
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -135,6 +139,8 @@ export default function AdminOrders() {
         },
         onError: () => toast.error('Vymazanie objednávky sa nepodarilo.'),
     });
+
+    if (!canAccess) return null;
 
     if (isLoading) {
         return (
@@ -504,6 +510,13 @@ export default function AdminOrders() {
                                                     className="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
                                                 >
                                                     Uložiť zásah
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => downloadAdminInvoice(order.id, order.order_number).catch(() => toast.error('Chyba pri generovaní faktúry.'))}
+                                                    className="inline-flex items-center rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                                                >
+                                                    Stiahnuť faktúru (PDF)
                                                 </button>
                                                 <button
                                                     type="button"

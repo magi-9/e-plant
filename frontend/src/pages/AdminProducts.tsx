@@ -21,9 +21,6 @@ const getCategoryList = (product: Product): string[] => {
 };
 
 export default function AdminProducts() {
-    const canAccess = useAdminPageGuard();
-    if (!canAccess) return null;
-
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -261,6 +258,9 @@ export default function AdminProducts() {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
+
+    const canAccess = useAdminPageGuard();
+    if (!canAccess) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">

@@ -17,6 +17,7 @@ urlpatterns = [
         "api/auth/login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"
     ),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("metrics/", include("django_prometheus.urls")),
 ]
 
 # Uploaded files must be reachable in staging/prod behind Traefik as /media/.

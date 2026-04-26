@@ -5,9 +5,17 @@ from django.core.exceptions import ImproperlyConfigured
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
 from .base import EMAIL_DOMAIN
+from .base import MIDDLEWARE as BASE_MIDDLEWARE
 from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
 DEBUG = False
+
+# Wrap base middleware with Prometheus before/after measurement
+MIDDLEWARE = (
+    ["django_prometheus.middleware.PrometheusBeforeMiddleware"]
+    + list(BASE_MIDDLEWARE)
+    + ["django_prometheus.middleware.PrometheusAfterMiddleware"]
+)
 
 # Must raise error if not defined in production.
 # Support both names to make Dokploy env configuration less fragile.

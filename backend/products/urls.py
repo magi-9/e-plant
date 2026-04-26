@@ -25,7 +25,11 @@ from .views import (
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
     path("categories/", ProductCategoriesView.as_view(), name="product_categories"),
-    path("compatibility-options/", CompatibilityOptionsView.as_view(), name="compatibility_options"),
+    path(
+        "compatibility-options/",
+        CompatibilityOptionsView.as_view(),
+        name="compatibility_options",
+    ),
     path("count/", ProductCountView.as_view(), name="product_count"),
     path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),

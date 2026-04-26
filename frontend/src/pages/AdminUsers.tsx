@@ -4,8 +4,11 @@ import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
 import AdminNav from '../components/AdminNav';
 import ConfirmModal from '../components/ConfirmModal';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 export default function AdminUsers() {
+    const canAccess = useAdminPageGuard();
+
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -67,7 +70,22 @@ export default function AdminUsers() {
         }
     };
 
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Načítavam používateľov...</div>;
+    if (!canAccess) return null;
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 py-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <AdminNav />
+                    <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500" aria-live="polite">
+                        Načítavam používateľov...
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
     const renderTable = (list: User[], sectionTitle: string, role: 'admin' | 'client') => (
         <div className="mb-10">
@@ -117,10 +135,10 @@ export default function AdminUsers() {
                                     {user.date_joined ? new Date(user.date_joined).toLocaleDateString('sk-SK') : '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                    <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-3" title="Upraviť">
+                                    <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-3" title="Upraviť" aria-label={`Upraviť používateľa ${user.email}`}>
                                         <PencilIcon className="h-5 w-5" />
                                     </button>
-                                    <button onClick={() => setDeleteTarget(user)} className="text-red-600 hover:text-red-900" title="Odstrániť">
+                                    <button onClick={() => setDeleteTarget(user)} className="text-red-600 hover:text-red-900" title="Odstrániť" aria-label={`Odstrániť používateľa ${user.email}`}>
                                         <TrashIcon className="h-5 w-5" />
                                     </button>
                                 </td>
@@ -158,8 +176,9 @@ export default function AdminUsers() {
                                         </h3>
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                                <label htmlFor="admin-user-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                                 <input
+                                                    id="admin-user-email"
                                                     type="email"
                                                     required
                                                     value={formData.email}
@@ -170,8 +189,9 @@ export default function AdminUsers() {
                                             </div>
                                             {!editingUser && (
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Heslo</label>
+                                                    <label htmlFor="admin-user-password" className="block text-sm font-medium text-gray-700 mb-1">Heslo</label>
                                                     <input
+                                                        id="admin-user-password"
                                                         type="password"
                                                         required
                                                         value={formData.password}
@@ -197,8 +217,8 @@ export default function AdminUsers() {
                                         <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition">
                                             Zrušiť
                                         </button>
-                                        <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition disabled:opacity-50">
-                                            {editingUser ? 'Uložiť zmeny' : 'Vytvoriť'}
+                                        <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                                            {isSubmitting ? 'Ukladám...' : editingUser ? 'Uložiť zmeny' : 'Vytvoriť'}
                                         </button>
                                     </div>
                                 </form>

@@ -14,7 +14,6 @@ from .base import BaseEmailService
 from .branding import get_company_name
 from .templates import password_reset_email_html, verification_email_html
 
-
 VERIFICATION_BRAND_NAME = "Dynamic Abutment"
 VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
 

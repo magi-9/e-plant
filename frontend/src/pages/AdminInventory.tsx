@@ -6,10 +6,13 @@ import type { Product, ProductListParams } from '../api/products';
 import { ArchiveBoxArrowDownIcon, ArchiveBoxXMarkIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 const PAGE_SIZE = 50;
 
 export default function AdminInventory() {
+    const canAccess = useAdminPageGuard();
+
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -96,6 +99,8 @@ export default function AdminInventory() {
         qty > 0
             ? { text: `${qty} ks`, cls: 'bg-emerald-100 text-emerald-800' }
             : { text: '0 ks', cls: 'bg-red-100 text-red-800' };
+
+    if (!canAccess) return null;
 
     return (
         <div className="min-h-screen bg-slate-50 py-8">

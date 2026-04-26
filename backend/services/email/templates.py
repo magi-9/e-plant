@@ -4,7 +4,6 @@ from django.utils.html import escape
 
 from users.models import DEFAULT_COMPANY_PROFILE
 
-
 VERIFICATION_BRAND_NAME = "Dynamic Abutment"
 VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
 

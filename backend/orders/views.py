@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.db.models import Avg, DecimalField, ExpressionWrapper, F, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -9,7 +10,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from products.models import Product
+from users.models import GlobalSettings
 
+from .invoice import generate_invoice_pdf
 from .models import Order, OrderItem, ShippingRate
 from .serializers import (
     AdminOrderInterventionDeleteSerializer,
@@ -256,3 +259,35 @@ class AdminStatsView(APIView):
                 ],
             }
         )
+
+
+class AdminOrderInvoiceView(APIView):
+    """Return PDF invoice for any order (admin only)."""
+
+    permission_classes = (IsAdminUser,)
+
+    def get(self, request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        shop_settings = GlobalSettings.objects.get_settings()
+        pdf_bytes = generate_invoice_pdf(order, shop_settings)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="invoice-{order.order_number}.pdf"'
+        )
+        return response
+
+
+class MyOrderInvoiceView(APIView):
+    """Return PDF invoice for a customer's own order."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, order_number):
+        order = get_object_or_404(Order, order_number=order_number, user=request.user)
+        shop_settings = GlobalSettings.objects.get_settings()
+        pdf_bytes = generate_invoice_pdf(order, shop_settings)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="invoice-{order.order_number}.pdf"'
+        )
+        return response

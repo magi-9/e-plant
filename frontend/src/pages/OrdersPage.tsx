@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
-import { getMyOrders, type Order } from '../api/orders';
+import { getMyOrders, downloadMyInvoice, type Order } from '../api/orders';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
@@ -148,6 +148,15 @@ export default function OrdersPage() {
                                         {order.notes && (
                                             <p className="mt-3 text-sm text-gray-500 italic">Poznámka: {order.notes}</p>
                                         )}
+                                        <div className="mt-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => downloadMyInvoice(order.order_number)}
+                                                className="inline-flex items-center rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                                            >
+                                                Stiahnuť faktúru (PDF)
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

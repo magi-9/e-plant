@@ -12,13 +12,31 @@ def compat_csv(tmp_path):
     path = tmp_path / "compatibility_options.csv"
     rows = [
         # code 0022 — only .01-2 is listed, but .02-2 is same family
-        {"compatibility_code": "0022", "section": "SCREWDRIVER", "reference": "50.313.022.01-2"},
-        {"compatibility_code": "0022", "section": "SCREWDRIVER", "reference": "50.313.022.03-2"},
-        {"compatibility_code": "0022", "section": "TIBASE",      "reference": "31.322.022.01-2"},
-        {"compatibility_code": "0001", "section": "TIBASE",      "reference": "31.322.001.01-2"},
+        {
+            "compatibility_code": "0022",
+            "section": "SCREWDRIVER",
+            "reference": "50.313.022.01-2",
+        },
+        {
+            "compatibility_code": "0022",
+            "section": "SCREWDRIVER",
+            "reference": "50.313.022.03-2",
+        },
+        {
+            "compatibility_code": "0022",
+            "section": "TIBASE",
+            "reference": "31.322.022.01-2",
+        },
+        {
+            "compatibility_code": "0001",
+            "section": "TIBASE",
+            "reference": "31.322.001.01-2",
+        },
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["compatibility_code", "section", "reference"])
+        writer = csv.DictWriter(
+            f, fieldnames=["compatibility_code", "section", "reference"]
+        )
         writer.writeheader()
         writer.writerows(rows)
     return str(path)
@@ -26,7 +44,9 @@ def compat_csv(tmp_path):
 
 @pytest.mark.django_db
 class TestCompatibilityFilter:
-    def test_50_313_022_02_found_by_code_0022(self, api_client, user_factory, product_factory, compat_csv):
+    def test_50_313_022_02_found_by_code_0022(
+        self, api_client, user_factory, product_factory, compat_csv
+    ):
         """THE core test: 50.313.022.02-2 is NOT in CSV but shares family 50.313.022 with .01-2.
         Filtering by code 0022 must return it."""
         import products.compatibility as compat_module
@@ -48,7 +68,9 @@ class TestCompatibilityFilter:
         ids = {r["id"] for r in response.data["results"]}
         assert target.id in ids
 
-    def test_section_param_is_ignored(self, api_client, user_factory, product_factory, compat_csv):
+    def test_section_param_is_ignored(
+        self, api_client, user_factory, product_factory, compat_csv
+    ):
         """compatibility_section is accepted but does not narrow results — code is the only filter."""
         import products.compatibility as compat_module
 
@@ -69,7 +91,9 @@ class TestCompatibilityFilter:
         ids = {r["id"] for r in response.data["results"]}
         assert target.id in ids
 
-    def test_all_families_for_code_returned(self, api_client, user_factory, product_factory, compat_csv):
+    def test_all_families_for_code_returned(
+        self, api_client, user_factory, product_factory, compat_csv
+    ):
         """Code 0022 covers both 50.313.022 and 31.322.022 families."""
         import products.compatibility as compat_module
 
@@ -93,7 +117,9 @@ class TestCompatibilityFilter:
         assert tibase.id in ids
         assert other.id not in ids
 
-    def test_unknown_code_returns_empty(self, api_client, user_factory, product_factory, compat_csv):
+    def test_unknown_code_returns_empty(
+        self, api_client, user_factory, product_factory, compat_csv
+    ):
         import products.compatibility as compat_module
 
         user = user_factory()
@@ -141,20 +167,28 @@ class TestCompatibilityOptionsEndpoint:
 
 @pytest.mark.django_db
 class TestCompatibilityCodeSerializer:
-    def test_compatibility_code_in_response(self, api_client, user_factory, product_factory):
+    def test_compatibility_code_in_response(
+        self, api_client, user_factory, product_factory
+    ):
         user = user_factory()
         api_client.force_authenticate(user=user)
-        product = product_factory(parameters={"type": "single", "compatibility_code": "022"})
+        product = product_factory(
+            parameters={"type": "single", "compatibility_code": "022"}
+        )
 
         response = api_client.get(reverse("product_detail", args=[product.id]))
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["compatibility_code"] == "022"
 
-    def test_admin_can_update_compatibility_code(self, api_client, user_factory, product_factory):
+    def test_admin_can_update_compatibility_code(
+        self, api_client, user_factory, product_factory
+    ):
         admin = user_factory(is_staff=True)
         api_client.force_authenticate(user=admin)
-        product = product_factory(parameters={"type": "single", "compatibility_code": "022"})
+        product = product_factory(
+            parameters={"type": "single", "compatibility_code": "022"}
+        )
 
         response = api_client.patch(
             reverse("admin_product_update", args=[product.id]),
