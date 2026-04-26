@@ -58,17 +58,19 @@ class ProductImageField(serializers.ImageField):
         if not rendered:
             return rendered
 
+        parsed = urlparse(rendered)
+        path_only = parsed.path if parsed.scheme and parsed.netloc else rendered
+
         if settings.DEBUG:
             base_url = rendered
         else:
-            parsed = urlparse(rendered)
-            base_url = parsed.path if parsed.scheme and parsed.netloc else rendered
+            base_url = path_only
 
         media_prefix = settings.MEDIA_URL
         relative_file = (
-            base_url[len(media_prefix) :]
-            if base_url.startswith(media_prefix)
-            else base_url.lstrip("/")
+            path_only[len(media_prefix) :]
+            if path_only.startswith(media_prefix)
+            else path_only.lstrip("/")
         )
         absolute_path = os.path.join(str(settings.MEDIA_ROOT), relative_file)
 

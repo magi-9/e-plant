@@ -1,5 +1,32 @@
 import client from './client';
 
+const API_URL =
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? 'http://localhost:5002/api' : '/api');
+
+const MEDIA_HOST_BASE = API_URL.replace(/\/api\/?$/, '');
+
+const normalizeImageUrl = (image: string | null | undefined): string | null => {
+    if (!image) return null;
+    if (image.startsWith('http://') || image.startsWith('https://')) return image;
+    if (!image.startsWith('/')) return `${MEDIA_HOST_BASE}/${image}`;
+    return `${MEDIA_HOST_BASE}${image}`;
+};
+
+const normalizeProductImages = (product: Product): Product => ({
+    ...product,
+    image: normalizeImageUrl(product.image),
+    parameters: product.parameters
+        ? {
+            ...product.parameters,
+            options: product.parameters.options?.map((option) => ({
+                ...option,
+                image: normalizeImageUrl(option.image),
+            })),
+        }
+        : product.parameters,
+});
+
 export interface Product {
     id: number;
     name: string;
@@ -81,7 +108,10 @@ interface ProductCategoriesResponse {
 
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
-    return response.data;
+    return {
+        ...response.data,
+        results: response.data.results.map(normalizeProductImages),
+    };
 };
 
 export const getProductCount = async (params?: ProductListParams): Promise<number> => {
@@ -106,7 +136,7 @@ export const updateProduct = async (id: number, data: FormData): Promise<Product
     const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const deleteProduct = async (id: number): Promise<void> => {
@@ -123,14 +153,14 @@ export const sendProductInquiry = async (productId: number, message: string): Pr
 
 export const getProduct = async (id: number): Promise<Product> => {
     const response = await client.get<Product>(`/products/${id}/`);
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const createProduct = async (data: FormData): Promise<Product> => {
     const response = await client.post<Product>('/products/admin/create/', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const seedDemoData = async (): Promise<{ message: string }> => {
@@ -199,7 +229,7 @@ export const syncWildcardGroups = async (): Promise<{ created: number; updated: 
 
 export const getWildcardGroupProducts = async (groupId: number): Promise<Product[]> => {
     const response = await client.get<Product[]>(`/products/admin/wildcard-groups/${groupId}/products/`);
-    return response.data;
+    return response.data.map(normalizeProductImages);
 };
 
 export const addProductsToWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {

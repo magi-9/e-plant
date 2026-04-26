@@ -20,6 +20,17 @@ const getCategoryList = (product: Product): string[] => {
         .filter(Boolean);
 };
 
+const getProductPreviewImage = (product: Product): string | null => {
+    if (product.image) return product.image;
+
+    if (product.parameters?.type === 'wildcard_group') {
+        const firstVariantWithImage = (product.parameters.options || []).find((option) => !!option.image);
+        return firstVariantWithImage?.image || null;
+    }
+
+    return null;
+};
+
 const PAGE_SIZE = 20;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
 
@@ -167,11 +178,12 @@ export default function ProductsPage() {
         }
 
         setAddingId(product.id);
+        const previewImage = getProductPreviewImage(product);
         addItem({
             productId: product.id,
             name: product.name,
             price: product.price!,
-            image: product.image,
+            image: previewImage,
             stockQuantity: product.stock_quantity,
         });
 
@@ -459,6 +471,9 @@ export default function ProductsPage() {
                     <>
                         <div className={`grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
+                                (() => {
+                                    const previewImage = getProductPreviewImage(product);
+                                    return (
                                 <div
                                     key={product.id}
                                     onClick={() => handleProductClick(product)}
@@ -468,9 +483,9 @@ export default function ProductsPage() {
                                     className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
                                 >
                                     <div className="w-full h-56 sm:h-60 lg:h-64 overflow-hidden bg-slate-100">
-                                        {product.image ? (
+                                        {previewImage ? (
                                             <img
-                                                src={product.image}
+                                                src={previewImage}
                                                 alt={product.name}
                                                 loading="lazy"
                                                 className="h-full w-full object-contain object-center p-3 group-hover:scale-105 transition-transform duration-500 ease-in-out"
@@ -664,6 +679,8 @@ export default function ProductsPage() {
                                         )}
                                     </div>
                                 </div>
+                                    );
+                                })()
                             ))}
                         </div>
 
