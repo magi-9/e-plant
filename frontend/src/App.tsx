@@ -42,12 +42,16 @@ const HOME_PAGE_READY = import.meta.env.DEV || parseBooleanEnv(import.meta.env.V
 let sentryInitialized = false;
 
 function isMatchingHost(currentHost: string, expectedHost: string): boolean {
-  return currentHost === expectedHost || currentHost.endsWith(`.${expectedHost}`);
+  return currentHost === expectedHost;
 }
 
 function ExternalRedirect({ to }: { to: string }) {
   useEffect(() => {
-    window.location.replace(to);
+    const currentUrl = window.location.href;
+    const targetUrl = new URL(to, window.location.origin).href;
+    if (currentUrl !== targetUrl) {
+      window.location.replace(targetUrl);
+    }
   }, [to]);
   return null;
 }
