@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { Link } from 'react-router-dom';
 import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowsUpDownIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
@@ -69,6 +69,10 @@ export default function ProductsPage() {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedCompatibility, setSelectedCompatibility] = useState<CompatibilityOption | null>(null);
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
+    const [maxPrice, setMaxPrice] = useState(500);
+    const [inStockOnly, setInStockOnly] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
     // Debounce search to avoid re-fetching on every keystroke
     useEffect(() => {
@@ -236,7 +240,36 @@ export default function ProductsPage() {
         ? allCategories
         : Array.from(new Set(allProducts.flatMap((product: Product) => getCategoryList(product))));
 
-    const filteredProducts = [...allProducts];
+    // Compute category counts from loaded products
+    const categoryCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        allProducts.forEach(product => {
+            getCategoryList(product).forEach(cat => {
+                counts.set(cat, (counts.get(cat) || 0) + 1);
+            });
+        });
+        return counts;
+    }, [allProducts]);
+
+    let filteredProducts = [...allProducts];
+
+    // Apply price filter
+    if (maxPrice < 500) {
+        filteredProducts = filteredProducts.filter(p => {
+            if (!p.price) return true;
+            return parseFloat(p.price) <= maxPrice;
+        });
+    }
+
+    // Apply in-stock filter
+    if (inStockOnly) {
+        filteredProducts = filteredProducts.filter(p => {
+            if (p.parameters?.type === 'wildcard_group') {
+                return (p.parameters.options || []).some(o => (o.stock_quantity ?? 0) > 0);
+            }
+            return p.stock_quantity > 0;
+        });
+    }
 
     // Apply price sort
     if (priceSortOrder !== 'none') {
@@ -308,14 +341,15 @@ export default function ProductsPage() {
                 </script>
             </Helmet>
             
-            {/* Left Sidebar - Categories (Desktop only) */}
+            {/* Left Sidebar - Categories & Filters (Desktop only) */}
             <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
                 <div className="p-5">
+                    {/* Categories Section */}
                     <div className="flex items-center gap-2 mb-4">
                         <TagIcon className="h-5 w-5 text-cyan-600" />
                         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em]">Kategórie</h3>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 mb-6">
                         <button
                             onClick={() => {
                                 setSelectedCategories([]);
@@ -327,28 +361,73 @@ export default function ProductsPage() {
                                     : 'text-slate-700 hover:bg-slate-100'
                             }`}
                         >
-                            Všetko
+                            <div className="flex items-center justify-between">
+                                <span>Všetko</span>
+                                <span className="text-xs font-semibold text-slate-500">({allProducts.length})</span>
+                            </div>
                         </button>
-                        {categories.map((category: string) => (
-                            <button
-                                key={category}
-                                onClick={() => {
-                                    setSelectedCategories(
+                        {categories.map((category: string) => {
+                            const count = categoryCounts.get(category) || 0;
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => {
+                                        setSelectedCategories(
+                                            selectedCategories.includes(category)
+                                                ? selectedCategories.filter((c) => c !== category)
+                                                : [...selectedCategories, category]
+                                        );
+                                        scrollToFilters();
+                                    }}
+                                    className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
                                         selectedCategories.includes(category)
-                                            ? selectedCategories.filter((c) => c !== category)
-                                            : [...selectedCategories, category]
-                                    );
-                                    scrollToFilters();
-                                }}
-                                className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
-                                    selectedCategories.includes(category)
-                                        ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
-                                        : 'text-slate-700 hover:bg-slate-100'
+                                            ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
+                                            : 'text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span>{category}</span>
+                                        <span className="text-xs font-semibold text-slate-500">({count})</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Price Range Filter */}
+                    <div className="pt-6 border-t border-slate-100">
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em] mb-3">Cena</h3>
+                        <input
+                            type="range"
+                            min="0"
+                            max="500"
+                            step="10"
+                            value={maxPrice}
+                            onChange={(e) => setMaxPrice(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">
+                            {maxPrice >= 500 ? 'Všetky ceny' : `do ${maxPrice} €`}
+                        </p>
+                    </div>
+
+                    {/* In-Stock Toggle */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-700">Iba skladom</span>
+                        <button
+                            onClick={() => setInStockOnly(!inStockOnly)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                inStockOnly
+                                    ? 'bg-gradient-to-r from-cyan-500 to-emerald-500'
+                                    : 'bg-slate-200'
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                                    inStockOnly ? 'translate-x-6' : 'translate-x-1'
                                 }`}
-                            >
-                                {category}
-                            </button>
-                        ))}
+                            />
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -489,32 +568,64 @@ export default function ProductsPage() {
                             )}
                         </div>
                     )}
+
+                    {/* Sort Dropdown */}
+                    <select
+                        value={priceSortOrder}
+                        onChange={(e) => setPriceSortOrder(e.target.value as 'asc' | 'desc' | 'none')}
+                        className="px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all focus:ring-2 focus:ring-cyan-500/30 focus:outline-none"
+                    >
+                        <option value="none">Zoradiť</option>
+                        <option value="asc">Cena: vzostupne</option>
+                        <option value="desc">Cena: zostupne</option>
+                    </select>
+
+                    {/* Grid/List Toggle */}
+                    <div className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-md transition ${
+                                viewMode === 'grid'
+                                    ? 'bg-white shadow-sm text-cyan-600'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                            title="Zobrazenie: Grid"
+                        >
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-1.5 rounded-md transition ${
+                                viewMode === 'list'
+                                    ? 'bg-white shadow-sm text-cyan-600'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                            title="Zobrazenie: List"
+                        >
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                {/* Category Badges */}
-                {categories.length > 0 && (
-                    <div className="mb-8 flex flex-wrap gap-2 lg:hidden">
-                        {categories.map((cat: string) => (
-                            <button
-                                key={cat}
-                                onClick={() => {
-                                    setSelectedCategories(prev =>
-                                        prev.includes(cat)
-                                            ? prev.filter(c => c !== cat)
-                                            : [...prev, cat]
-                                    );
-                                    scrollToFilters();
-                                }}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border shadow-sm ${selectedCategories.includes(cat)
-                                        ? 'bg-cyan-600 border-cyan-500 text-white'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                    }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                {/* Mobile Filters Button */}
+                <div className="mb-6 lg:hidden flex gap-2">
+                    <button
+                        onClick={() => setMobileFiltersOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors relative"
+                    >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
+                        </svg>
+                        Filtre
+                        {(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly) && (
+                            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-cyan-600"></span>
+                        )}
+                    </button>
+                </div>
 
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
@@ -541,7 +652,11 @@ export default function ProductsPage() {
                     </div>
                 ) : (
                     <>
-                        <div className={`grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8 transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
+                        <div className={`${
+                            viewMode === 'list'
+                                ? 'flex flex-col gap-4'
+                                : 'grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8'
+                        } transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
                                 (() => {
                                     const previewImage = getProductPreviewImage(product);
@@ -552,9 +667,13 @@ export default function ProductsPage() {
                                     style={{
                                         animation: `slideUp 0.5s ease-out ${Math.min((index % PAGE_SIZE) * 40, 320)}ms both`,
                                     }}
-                                    className="group relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 cursor-pointer flex flex-col"
+                                    className={`group relative bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-300 cursor-pointer flex flex-col ${
+                                        viewMode === 'list'
+                                            ? 'flex-row hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60'
+                                            : 'hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60 hover:-translate-y-0.5'
+                                    }`}
                                 >
-                                    <div className="w-full h-56 sm:h-60 lg:h-64 overflow-hidden bg-slate-100">
+                                    <div className={`${viewMode === 'list' ? 'w-32 h-32 flex-shrink-0' : 'w-full h-56 sm:h-60 lg:h-64'} overflow-hidden bg-slate-100`}>
                                         {previewImage ? (
                                             <img
                                                 src={previewImage}
@@ -571,6 +690,39 @@ export default function ProductsPage() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Stock Badge (Top Right for Grid View) */}
+                                    {viewMode === 'grid' && isLoggedIn && (() => {
+                                        const effectiveStock = product.parameters?.type === 'wildcard_group'
+                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
+                                            : product.stock_quantity;
+                                        return (
+                                            <>
+                                                {effectiveStock > 5 && (
+                                                    <div className="absolute top-3 right-3 z-10">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
+                                                            <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                                                            Na sklade
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {effectiveStock > 0 && effectiveStock <= 5 && (
+                                                    <div className="absolute top-3 right-3 z-10">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-700">
+                                                            Posledné {effectiveStock} ks
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {effectiveStock === 0 && (
+                                                    <div className="absolute top-3 right-3 z-10">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-red-100 text-red-700">
+                                                            Vypredané
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                     <div className="p-4 flex-1 flex flex-col">
                                         <div className="mb-2 min-h-[5.5rem]">
                                             <div className="min-h-[5.5rem]">
@@ -627,7 +779,7 @@ export default function ProductsPage() {
                                             {product.price ? (
                                                 <div className="flex items-center gap-2">
                                                     <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                                    <p className="text-xl font-bold text-cyan-700">{product.price} €</p>
+                                                    <p className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
                                                 </div>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
@@ -779,6 +931,111 @@ export default function ProductsPage() {
                 setOpen={setOpenModal}
                 product={selectedProduct}
             />
+
+            {/* Mobile Filters Bottom Sheet */}
+            {mobileFiltersOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden">
+                    <div
+                        className="absolute inset-0 bg-black/50 transition-opacity"
+                        onClick={() => setMobileFiltersOpen(false)}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold text-slate-900">Filtre</h2>
+                            <button
+                                onClick={() => setMobileFiltersOpen(false)}
+                                className="text-slate-500 hover:text-slate-700"
+                            >
+                                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Categories */}
+                        <div className="mb-6">
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Kategórie</h3>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition ${
+                                        selectedCategories.length === 0
+                                            ? 'bg-cyan-50 text-cyan-700'
+                                            : 'text-slate-700 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    Všetko
+                                </button>
+                                {categories.map((cat: string) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => {
+                                            setSelectedCategories(
+                                                selectedCategories.includes(cat)
+                                                    ? selectedCategories.filter((c) => c !== cat)
+                                                    : [...selectedCategories, cat]
+                                            );
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition ${
+                                            selectedCategories.includes(cat)
+                                                ? 'bg-cyan-50 text-cyan-700'
+                                                : 'text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Price Range */}
+                        <div className="mb-6 pt-6 border-t border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Cena</h3>
+                            <input
+                                type="range"
+                                min="0"
+                                max="500"
+                                step="10"
+                                value={maxPrice}
+                                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                                {maxPrice >= 500 ? 'Všetky ceny' : `do ${maxPrice} €`}
+                            </p>
+                        </div>
+
+                        {/* In-Stock Toggle */}
+                        <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700">Iba skladom</span>
+                            <button
+                                onClick={() => setInStockOnly(!inStockOnly)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                    inStockOnly
+                                        ? 'bg-gradient-to-r from-cyan-500 to-emerald-500'
+                                        : 'bg-slate-200'
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                                        inStockOnly ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {/* Apply Button */}
+                        <button
+                            onClick={() => setMobileFiltersOpen(false)}
+                            className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-cyan-600 to-emerald-600 text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                        >
+                            Použiť filtre
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <RequestProductModal
                 open={openRequestModal}
