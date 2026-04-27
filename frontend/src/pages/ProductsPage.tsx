@@ -138,6 +138,22 @@ export default function ProductsPage() {
         staleTime: 10 * 60 * 1000,
     });
 
+    // Collect all products from all pages.
+    const allProducts = useMemo(() => {
+        return data?.pages.flatMap(page => page.results) || [];
+    }, [data]);
+
+    // Compute category counts from loaded products.
+    const categoryCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        allProducts.forEach(product => {
+            getCategoryList(product).forEach(cat => {
+                counts.set(cat, (counts.get(cat) || 0) + 1);
+            });
+        });
+        return counts;
+    }, [allProducts]);
+
     // Group compatibility options by section for the dropdown
     const compatibilityBySection = compatibilityOptions.reduce<Record<string, string[]>>((acc, opt) => {
         if (!acc[opt.section]) acc[opt.section] = [];
@@ -232,24 +248,10 @@ export default function ProductsPage() {
         </div>
     );
 
-    // Collect all products from all pages
-    const allProducts = data?.pages.flatMap(page => page.results) || [];
-
     // Categories are fetched separately for all visible products, not only loaded pages.
     const categories = allCategories.length > 0
         ? allCategories
         : Array.from(new Set(allProducts.flatMap((product: Product) => getCategoryList(product))));
-
-    // Compute category counts from loaded products
-    const categoryCounts = useMemo(() => {
-        const counts = new Map<string, number>();
-        allProducts.forEach(product => {
-            getCategoryList(product).forEach(cat => {
-                counts.set(cat, (counts.get(cat) || 0) + 1);
-            });
-        });
-        return counts;
-    }, [allProducts]);
 
     let filteredProducts = [...allProducts];
 
