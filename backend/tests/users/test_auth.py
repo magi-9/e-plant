@@ -13,11 +13,16 @@ def test_use_registration(api_client):
     data = {
         "email": "newuser@example.com",
         "password": "Xk7#mPqZ92",
+        "first_name": "New",
+        "last_name": "User",
     }
     response = api_client.post(url, data)
     assert response.status_code == status.HTTP_201_CREATED
     assert User.objects.filter(email="newuser@example.com").exists()
     assert User.objects.filter(email="newuser@example.com").count() == 1
+    user = User.objects.get(email="newuser@example.com")
+    assert user.first_name == "New"
+    assert user.last_name == "User"
 
 
 @pytest.mark.django_db

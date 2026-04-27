@@ -54,26 +54,34 @@ function Requirement({ met, label }: { met: boolean; label: string }) {
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
         title: '',
+        firstName: '',
+        lastName: '',
         email: '',
         password: '',
         confirmPassword: ''
     });
+    const [firstNameTouched, setFirstNameTouched] = useState(false);
+    const [lastNameTouched, setLastNameTouched] = useState(false);
     const [emailTouched, setEmailTouched] = useState(false);
     const [passwordTouched, setPasswordTouched] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
+    const firstNameValid = formData.firstName.trim().length > 0;
+    const lastNameValid = formData.lastName.trim().length > 0;
     const emailValid = EMAIL_REGEX.test(formData.email);
     const hasMinLength = formData.password.length >= 8;
     const notEntirelyNumeric = formData.password.length > 0 && !/^\d+$/.test(formData.password);
     const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
-    const canSubmit = emailValid && hasMinLength && notEntirelyNumeric && passwordsMatch;
+    const canSubmit = firstNameValid && lastNameValid && emailValid && hasMinLength && notEntirelyNumeric && passwordsMatch;
 
     const mutation = useMutation({
         mutationFn: () => register({
             email: formData.email,
             password: formData.password,
             title: formData.title,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
         }),
         onSuccess: () => {
             setRegistrationSuccess(true);
@@ -93,6 +101,8 @@ export default function RegisterPage() {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrorMsg('');
+        setFirstNameTouched(true);
+        setLastNameTouched(true);
         setEmailTouched(true);
         if (!canSubmit) return;
         mutation.mutate();
@@ -156,6 +166,54 @@ export default function RegisterPage() {
                                 placeholder="napr. MUDr., Ing., Bc."
                                 className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
                             />
+                        </div>
+
+                        <div>
+                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                                Meno <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="firstName"
+                                name="firstName"
+                                type="text"
+                                required
+                                value={formData.firstName}
+                                onChange={handleChange}
+                                onBlur={() => setFirstNameTouched(true)}
+                                placeholder="Ján"
+                                className={`block w-full rounded-lg border px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:ring-1 outline-none transition ${
+                                    firstNameTouched && !firstNameValid
+                                        ? 'border-red-400 focus:border-red-500 focus:ring-red-400'
+                                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                }`}
+                            />
+                            {firstNameTouched && !firstNameValid && (
+                                <p className="mt-1 text-xs text-red-600" role="alert">Zadajte meno.</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                                Priezvisko <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                id="lastName"
+                                name="lastName"
+                                type="text"
+                                required
+                                value={formData.lastName}
+                                onChange={handleChange}
+                                onBlur={() => setLastNameTouched(true)}
+                                placeholder="Novák"
+                                className={`block w-full rounded-lg border px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:ring-1 outline-none transition ${
+                                    lastNameTouched && !lastNameValid
+                                        ? 'border-red-400 focus:border-red-500 focus:ring-red-400'
+                                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                }`}
+                            />
+                            {lastNameTouched && !lastNameValid && (
+                                <p className="mt-1 text-xs text-red-600" role="alert">Zadajte priezvisko.</p>
+                            )}
                         </div>
 
                         <div>

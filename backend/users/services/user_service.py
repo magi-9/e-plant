@@ -12,6 +12,8 @@ class UserService:
         email,
         password,
         title="",
+        first_name="",
+        last_name="",
         is_active=False,
         send_verification_email=True,
     ):
@@ -19,6 +21,8 @@ class UserService:
             email=email,
             password=password,
             title=title,
+            first_name=first_name,
+            last_name=last_name,
             is_active=is_active,
         )
 

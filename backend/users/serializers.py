@@ -12,10 +12,12 @@ User = get_user_model()
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     title = serializers.CharField(required=False, allow_blank=True, default="")
+    first_name = serializers.CharField(required=True, allow_blank=False)
+    last_name = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
         model = User
-        fields = ("id", "email", "password", "title")
+        fields = ("id", "email", "password", "title", "first_name", "last_name")
 
     def validate_password(self, value):
         """Validate password using Django's validators."""
