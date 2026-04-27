@@ -17,6 +17,7 @@ MIDDLEWARE = (
     + ["django_prometheus.middleware.PrometheusAfterMiddleware"]
 )
 
+
 # Must raise error if not defined in production.
 # Support both names to make Dokploy env configuration less fragile.
 SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("DJANGO_SECRET_KEY")
