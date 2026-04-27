@@ -28,6 +28,7 @@ run_pytest() {
     local log_file="$TMP_DIR/pytest.log"
     local spinner='|/-\\'
     local i=0
+    local exit_code=0
 
     docker compose exec -T \
         -e DJANGO_SETTINGS_MODULE=config.settings.dev \
@@ -36,12 +37,15 @@ run_pytest() {
     local pid=$!
 
     while kill -0 "$pid" 2>/dev/null; do
-        printf "\r⏳ pytest bezi %c" "${spinner:i++%${#spinner}:1}"
+        printf "\r⏳ pytest running %c" "${spinner:i++%${#spinner}:1}"
         sleep 0.2
     done
 
-    wait "$pid"
-    local exit_code=$?
+    if wait "$pid"; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
     printf "\r\033[K"
 
     if [ "$exit_code" -eq 0 ]; then
@@ -49,8 +53,8 @@ run_pytest() {
     else
         echo "❌ $label FAILED"
         echo "   Failed testy:"
-        if grep -q '^FAILED ' "$log_file"; then
-            grep '^FAILED ' "$log_file" | sed 's/^FAILED /   - /'
+        if grep -Eq '^(FAILED|ERROR) ' "$log_file"; then
+            grep -E '^(FAILED|ERROR) ' "$log_file" | sed -E 's/^(FAILED|ERROR) /   - [\1] /'
         else
             echo "   - Nepodarilo sa nacitat zoznam failed testov, poslednych 30 riadkov:"
             tail -n 30 "$log_file"

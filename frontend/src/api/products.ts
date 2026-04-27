@@ -1,5 +1,37 @@
 import client from './client';
 
+const API_URL =
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? 'http://localhost:5002/api' : '/api');
+
+const MEDIA_HOST_BASE = API_URL.replace(/\/api\/?$/, '');
+
+const normalizeImageUrl = (image: string | null | undefined): string | null => {
+    if (!image) return null;
+    if (image.startsWith('http://') || image.startsWith('https://')) return image;
+    if (!image.startsWith('/')) return `${MEDIA_HOST_BASE}/${image}`;
+    return `${MEDIA_HOST_BASE}${image}`;
+};
+
+const normalizeProductImages = (product: Product): Product => ({
+    ...product,
+    image: normalizeImageUrl(product.image),
+    parameters: product.parameters
+        ? {
+            ...product.parameters,
+            options: product.parameters.options?.map((option) => ({
+                ...option,
+                image: normalizeImageUrl(option.image),
+            })),
+        }
+        : product.parameters,
+});
+
+export interface CompatibilityOption {
+    section: string;
+    compatibility_code: string;
+}
+
 export interface Product {
     id: number;
     name: string;
@@ -12,6 +44,7 @@ export interface Product {
     image: string | null;
     is_visible: boolean;
     group_name?: string | null;
+    compatibility_code?: string;
     parameters?: {
         type?: 'single' | 'wildcard_group';
         wildcard_reference?: string;
@@ -62,6 +95,8 @@ export interface ProductListParams {
     is_visible?: boolean;
     stock?: 'in' | 'out';
     admin_view?: '1';
+    compatibility_section?: string;
+    compatibility_code?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -81,7 +116,10 @@ interface ProductCategoriesResponse {
 
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
-    return response.data;
+    return {
+        ...response.data,
+        results: response.data.results.map(normalizeProductImages),
+    };
 };
 
 export const getProductCount = async (params?: ProductListParams): Promise<number> => {
@@ -90,6 +128,8 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
     if (params?.search) query.set('search', params.search);
     if (typeof params?.group === 'number') query.set('group', String(params.group));
     (params?.categories || []).forEach((category) => query.append('categories', category));
+    if (params?.compatibility_section) query.set('compatibility_section', params.compatibility_section);
+    if (params?.compatibility_code) query.set('compatibility_code', params.compatibility_code);
 
     const suffix = query.toString();
     const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
@@ -102,11 +142,16 @@ export const getProductCategories = async (): Promise<string[]> => {
     return response.data.categories;
 };
 
+export const getCompatibilityOptions = async (): Promise<CompatibilityOption[]> => {
+    const response = await client.get<{ options: CompatibilityOption[] }>('/products/compatibility-options/');
+    return response.data.options;
+};
+
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
     const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const deleteProduct = async (id: number): Promise<void> => {
@@ -123,14 +168,14 @@ export const sendProductInquiry = async (productId: number, message: string): Pr
 
 export const getProduct = async (id: number): Promise<Product> => {
     const response = await client.get<Product>(`/products/${id}/`);
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const createProduct = async (data: FormData): Promise<Product> => {
     const response = await client.post<Product>('/products/admin/create/', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+    return normalizeProductImages(response.data);
 };
 
 export const seedDemoData = async (): Promise<{ message: string }> => {
@@ -199,7 +244,7 @@ export const syncWildcardGroups = async (): Promise<{ created: number; updated: 
 
 export const getWildcardGroupProducts = async (groupId: number): Promise<Product[]> => {
     const response = await client.get<Product[]>(`/products/admin/wildcard-groups/${groupId}/products/`);
-    return response.data;
+    return response.data.map(normalizeProductImages);
 };
 
 export const addProductsToWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {

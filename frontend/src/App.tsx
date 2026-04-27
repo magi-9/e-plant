@@ -29,6 +29,7 @@ import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConstructionPage from './pages/ConstructionPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { parseBooleanEnv } from './utils/env';
 
 import { Toaster } from 'react-hot-toast';
@@ -37,7 +38,7 @@ const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const COOKIE_CONSENT_KEY = 'cookie_consent';
 const CONSENT_EVENT = 'cookie-consent-changed';
 const LANDING_HOST = (import.meta.env.VITE_LANDING_HOST as string | undefined) || 'ebringer.sk';
-const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'digitalabutment.ebringer.sk';
+const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'dynamicabutment.ebringer.sk';
 const HOME_PAGE_READY = import.meta.env.DEV || parseBooleanEnv(import.meta.env.VITE_HOME_PAGE_READY, true);
 let sentryInitialized = false;
 
@@ -147,7 +148,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/complaints" element={<ComplaintsPage />} />
             <Route path="/withdrawal" element={<WithdrawalPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

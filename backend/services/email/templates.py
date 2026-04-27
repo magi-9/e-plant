@@ -4,6 +4,9 @@ from django.utils.html import escape
 
 from users.models import DEFAULT_COMPANY_PROFILE
 
+VERIFICATION_BRAND_NAME = "Dynamic Abutment"
+VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
+
 
 def _safe_company_name(company_name: str) -> str:
     cleaned = (company_name or "").strip() or DEFAULT_COMPANY_PROFILE["company_name"]
@@ -15,7 +18,10 @@ def verification_email_html(
 ) -> str:
     """HTML template for email verification email."""
     verify_url_escaped = escape(verify_url)
-    company_name_escaped = _safe_company_name(company_name)
+    brand_name_escaped = _safe_company_name(company_name)
+    signature_name_escaped = escape(
+        f"Tím {(company_name or '').strip() or DEFAULT_COMPANY_PROFILE['company_name']}"
+    )
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -29,14 +35,14 @@ def verification_email_html(
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
+            <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{brand_name_escaped}</h1>
           </td>
         </tr>
         <tr>
           <td style="padding:36px 40px;text-align:center;">
             <h2 style="margin:0 0 12px;font-size:20px;color:#1e293b;">Overenie e-mailovej adresy</h2>
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px;">
-              Ďakujeme za Vašu registráciu na <strong>{company_name_escaped}</strong>!<br>
+              Ďakujeme za Vašu registráciu na <strong>{brand_name_escaped}</strong>!<br>
               Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
             </p>
             <a href="{verify_url_escaped}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:700;">
@@ -53,7 +59,7 @@ def verification_email_html(
         </tr>
         <tr>
           <td style="background:#f8fafc;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">Tím {company_name_escaped}</strong></p>
+            <p style="margin:0;font-size:12px;color:#94a3b8;">S pozdravom, <strong style="color:#64748b;">{signature_name_escaped}</strong></p>
           </td>
         </tr>
       </table>

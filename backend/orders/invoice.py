@@ -117,10 +117,10 @@ def _resolve_logo_path(shop_settings):
     candidates = [
         os.path.join(root, "assets", "invoice-logo.png"),
         os.path.join(root, "source", "logo_small.png"),
-        os.path.join(root, "frontend", "public", "digitalabutment-logo.png"),
-        os.path.join(root, "frontend", "src", "assets", "digitalabutment-logo.png"),
+        os.path.join(root, "frontend", "public", "dynamicabutment-logo.png"),
+        os.path.join(root, "frontend", "src", "assets", "dynamicabutment-logo.png"),
         os.path.join(root, "backend", "assets", "invoice-logo.png"),
-        os.path.join(root, "backend", "media", "digitalabutment-logo.png"),
+        os.path.join(root, "backend", "media", "dynamicabutment-logo.png"),
     ]
     for path in candidates:
         if os.path.exists(path):
