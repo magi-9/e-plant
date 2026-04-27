@@ -123,8 +123,11 @@ def _translate_password_errors(exc) -> str:
 
 def _verification_email_html(verify_url: str) -> str:
     """HTML template for account verification email."""
-    brand_name = escape(VERIFICATION_BRAND_NAME)
-    signature_name = escape(VERIFICATION_SIGNATURE_NAME)
+    company_name = (
+        GlobalSettings.load().company_name or ""
+    ).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    brand_name = escape(company_name)
+    signature_name = escape(f"Tím {company_name}")
     safe_verify_url = escape(verify_url)
     return f"""<!DOCTYPE html>
 <html lang="sk">

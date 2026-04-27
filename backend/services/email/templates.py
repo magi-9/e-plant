@@ -18,8 +18,10 @@ def verification_email_html(
 ) -> str:
     """HTML template for email verification email."""
     verify_url_escaped = escape(verify_url)
-    brand_name_escaped = escape(VERIFICATION_BRAND_NAME)
-    signature_name_escaped = escape(VERIFICATION_SIGNATURE_NAME)
+    brand_name_escaped = _safe_company_name(company_name)
+    signature_name_escaped = escape(
+        f"Tím {(company_name or '').strip() or DEFAULT_COMPANY_PROFILE['company_name']}"
+    )
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
