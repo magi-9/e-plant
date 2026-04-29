@@ -9,4 +9,15 @@ services:
       - GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL:-}
       - GRAFANA_LOKI_USER=${GRAFANA_LOKI_USER:-}
       - GRAFANA_LOKI_API_KEY=${GRAFANA_LOKI_API_KEY:-}
+      - GRAFANA_PROM_URL=${GRAFANA_PROM_URL:-}
+      - GRAFANA_PROM_USER=${GRAFANA_PROM_USER:-}
+      - GRAFANA_PROM_API_KEY=${GRAFANA_PROM_API_KEY:-}
+    networks:
+      - default
+      - dokploy-network
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
+    name: ${DOKPLOY_NETWORK:-dokploy-network}
