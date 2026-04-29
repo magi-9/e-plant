@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.static import serve
+from django_prometheus import exports
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from orders.views import ShippingRateListView
@@ -17,7 +18,7 @@ urlpatterns = [
         "api/auth/login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"
     ),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("metrics/", include("django_prometheus.urls")),
+    path("metrics/", exports.ExportToDjangoView, name="prometheus-django-metrics"),
 ]
 
 # Uploaded files must be reachable in staging/prod behind Traefik as /media/.
