@@ -5,6 +5,9 @@ services:
       dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
     user: "0:0"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
     env_file:
       - path: .env
         required: false
@@ -14,6 +17,7 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
       - /root/eplant-data:/data:ro
+      - prometheus_multiproc:/tmp/prometheus_multiproc
     networks:
       - default
       - dokploy-network
@@ -80,6 +84,11 @@ services:
 volumes:
   static_volume:
   media_volume:
+  prometheus_multiproc:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
 
 networks:
   dokploy-network:

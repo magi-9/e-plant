@@ -43,3 +43,44 @@ loki.write "grafana_cloud" {
     app = "e-plant",
   }
 }
+
+// Scrape Django Prometheus metrics from the backend container and forward them
+// to Grafana Cloud metrics.
+discovery.relabel "backend_metrics" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "backend"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "__address__"
+    replacement  = "backend:8000"
+  }
+}
+
+prometheus.scrape "backend" {
+  targets       = discovery.relabel.backend_metrics.output
+  forward_to    = [prometheus.remote_write.grafana_cloud.receiver]
+  job_name      = "django-backend"
+  metrics_path  = "/metrics/"
+  scrape_interval = "30s"
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = env("GRAFANA_PROM_URL")
+
+    basic_auth {
+      username = env("GRAFANA_PROM_USER")
+      password = env("GRAFANA_PROM_API_KEY")
+    }
+  }
+
+  external_labels = {
+    env = "production",
+    app = "e-plant",
+  }
+}
