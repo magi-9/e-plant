@@ -2,6 +2,9 @@
 
 set -e
 
+# Force production Django settings in Dokploy/production containers.
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-config.settings.prod}"
+
 echo "Waiting for PostgreSQL to start..."
 python -c "
 import os
@@ -108,6 +111,12 @@ PYTHON_EOF
 else
     echo "Skipping default user creation (CREATE_DEFAULT_USERS=${CREATE_DEFAULT_USERS})"
 fi
+
+# Ensure prometheus multiprocess dir exists and is empty (stale data from previous
+# run would skew metrics after a restart)
+PROM_DIR="${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc}"
+mkdir -p "$PROM_DIR"
+rm -f "$PROM_DIR"/*.db
 
 # start gunicorn
 echo "Starting Gunicorn production server..."
