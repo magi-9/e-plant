@@ -7,8 +7,7 @@ import ShopLayout from './components/ShopLayout';
 import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import AuthPage from './pages/AuthPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
@@ -132,8 +131,8 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/register" element={<AuthPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/users" element={<AdminUsers />} />

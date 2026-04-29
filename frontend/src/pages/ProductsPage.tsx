@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
-import { Link } from 'react-router-dom';
-import { ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { MagnifyingGlassIcon, ArrowUpIcon, ArrowsUpDownIcon, ChevronDownIcon, ExclamationTriangleIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
+import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import { getWildcardBadgeReference } from '../utils/variantReference';
 import toast from 'react-hot-toast';
+
+function StockDot({ stock }: { stock: number }) {
+    const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
+    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
+    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
+}
 
 const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
@@ -52,7 +56,6 @@ const getVariantWord = (count: number): string => {
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
-    const filtersRef = useRef<HTMLDivElement>(null);
     const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
@@ -73,6 +76,13 @@ export default function ProductsPage() {
     const [inStockOnly, setInStockOnly] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+    const [categoriesOpen, setCategoriesOpen] = useState(false);
+    const [compatOpen, setCompatOpen] = useState(false);
+
+    // Derive "effective" open states instead of calling setState inside effects.
+    // This avoids triggering setState synchronously within an effect body.
+    const effectiveCategoriesOpen = categoriesOpen || selectedCategories.length > 0;
+    const effectiveCompatOpen = compatOpen || !!selectedCompatibility;
 
     // Debounce search to avoid re-fetching on every keystroke
     useEffect(() => {
@@ -138,28 +148,52 @@ export default function ProductsPage() {
         staleTime: 10 * 60 * 1000,
     });
 
+    const { data: compatibilityCounts = {} } = useQuery({
+        queryKey: ['compatibility-counts'],
+        queryFn: getCompatibilityCounts,
+        staleTime: 30 * 60 * 1000,
+    });
+
     // Collect all products from all pages.
     const allProducts = useMemo(() => {
         return data?.pages.flatMap(page => page.results) || [];
     }, [data]);
 
-    // Compute category counts from loaded products.
-    const categoryCounts = useMemo(() => {
-        const counts = new Map<string, number>();
-        allProducts.forEach(product => {
-            getCategoryList(product).forEach(cat => {
-                counts.set(cat, (counts.get(cat) || 0) + 1);
-            });
-        });
-        return counts;
-    }, [allProducts]);
+    // Fetch cached category counts from backend (pre-computed + cached server-side)
+    const { data: categoryCounts = {} } = useQuery({
+        queryKey: ['category-counts'],
+        queryFn: getCategoryCounts,
+        staleTime: 30 * 60 * 1000,
+    });
 
-    // Group compatibility options by section for the dropdown
-    const compatibilityBySection = compatibilityOptions.reduce<Record<string, string[]>>((acc, opt) => {
-        if (!acc[opt.section]) acc[opt.section] = [];
-        acc[opt.section].push(opt.compatibility_code);
-        return acc;
-    }, {});
+    // Keep only one option per compatibility code for storefront filters.
+    // API options can include duplicate codes across different sections.
+    const uniqueCompatibilityOptions = useMemo(() => {
+        const byCode = new Map<string, CompatibilityOption>();
+        for (const option of compatibilityOptions) {
+            if (!byCode.has(option.compatibility_code)) {
+                byCode.set(option.compatibility_code, option);
+            }
+        }
+        return Array.from(byCode.values());
+    }, [compatibilityOptions]);
+
+    // Sort compatibility options numerically (smallest to largest)
+    const sortedCompatibilityOptions = [...uniqueCompatibilityOptions].slice().sort((a, b) => {
+        const numA = parseFloat(a.compatibility_code.replace(/[^\d.]/g, ''));
+        const numB = parseFloat(b.compatibility_code.replace(/[^\d.]/g, ''));
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.compatibility_code.localeCompare(b.compatibility_code);
+    });
+
+    // Show a suggestion when the search query matches a compatibility code (computed inline)
+    const compatSuggestion = (() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q || selectedCompatibility) return null;
+        return sortedCompatibilityOptions.find(
+            (opt) => opt.compatibility_code.toLowerCase() === q
+        ) || null;
+    })();
 
     // Check if we're filtering (comparing currentPrevious state to detect filter changes)
 
@@ -189,7 +223,9 @@ export default function ProductsPage() {
     }, []);
 
     const scrollToFilters = useCallback(() => {
-        filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+        const element = document.getElementById(isDesktop ? 'product-filters' : 'product-filters-mobile');
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
     const handleProductClick = (product: Product) => {
@@ -344,97 +380,120 @@ export default function ProductsPage() {
             </Helmet>
             
             {/* Left Sidebar - Categories & Filters (Desktop only) */}
-            <aside className="hidden lg:block w-56 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
-                <div className="p-5">
-                    {/* Categories Section */}
-                    <div className="flex items-center gap-2 mb-4">
-                        <TagIcon className="h-5 w-5 text-cyan-600" />
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em]">Kategórie</h3>
-                    </div>
-                    <div className="space-y-1.5 mb-6">
-                        <button
-                            onClick={() => {
-                                setSelectedCategories([]);
-                                scrollToFilters();
-                            }}
-                            className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
-                                selectedCategories.length === 0
-                                    ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
-                                    : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            <div className="flex items-center justify-between">
+            <aside className="hidden lg:block w-60 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
+                <div className="px-3 py-4">
+                    {/* Categories */}
+                    <button
+                        onClick={() => setCategoriesOpen(o => !o)}
+                        className="w-full flex items-center justify-between mb-2.5 group"
+                    >
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">Kategórie</p>
+                        <svg className={`h-3.5 w-3.5 text-slate-400 transition-transform ${effectiveCategoriesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {effectiveCategoriesOpen && (
+                        <div className="space-y-0.5 mb-5">
+                            <button
+                                onClick={() => { setSelectedCategories([]); scrollToFilters(); }}
+                                className="w-full text-left px-3 py-2 rounded-[10px] text-sm transition-all flex justify-between items-center"
+                                style={selectedCategories.length === 0 ? { background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.2)', color: '#0891b2', fontWeight: 600 } : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
+                            >
                                 <span>Všetko</span>
-                                <span className="text-xs font-semibold text-slate-500">({allProducts.length})</span>
-                            </div>
-                        </button>
-                        {categories.map((category: string) => {
-                            const count = categoryCounts.get(category) || 0;
-                            return (
-                                <button
-                                    key={category}
-                                    onClick={() => {
-                                        setSelectedCategories(
-                                            selectedCategories.includes(category)
-                                                ? selectedCategories.filter((c) => c !== category)
-                                                : [...selectedCategories, category]
-                                        );
-                                        scrollToFilters();
-                                    }}
-                                    className={`w-full text-left px-3 py-2.5 rounded transition text-sm font-medium ${
-                                        selectedCategories.includes(category)
-                                            ? 'bg-cyan-50 text-cyan-700 border border-cyan-100'
-                                            : 'text-slate-700 hover:bg-slate-100'
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-between">
+                                <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: '#f8fafc', color: '#94a3b8' }}>{databaseProductCount || allProducts.length}</span>
+                            </button>
+                            {categories.map((category: string) => {
+                                const count = categoryCounts[category] || 0;
+                                const active = selectedCategories.includes(category);
+                                return (
+                                    <button
+                                        key={category}
+                                        onClick={() => { setSelectedCategories(active ? selectedCategories.filter(c => c !== category) : [...selectedCategories, category]); scrollToFilters(); }}
+                                        className="w-full text-left px-3 py-2 rounded-[10px] text-sm transition-all flex justify-between items-center"
+                                        style={active ? { background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.2)', color: '#0891b2', fontWeight: 600 } : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
+                                    >
                                         <span>{category}</span>
-                                        <span className="text-xs font-semibold text-slate-500">({count})</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                                        <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: active ? 'rgba(8,145,178,0.12)' : '#f8fafc', color: active ? '#0891b2' : '#94a3b8' }}>{count}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
 
-                    {/* Price Range Filter */}
-                    <div className="pt-6 border-t border-slate-100">
-                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-[0.08em] mb-3">Cena</h3>
+                    {/* Compatibility */}
+                    {sortedCompatibilityOptions.length > 0 && (
+                        <>
+                            <div className="h-px bg-slate-100 mb-3" />
+                            <button
+                                onClick={() => setCompatOpen(o => !o)}
+                                className="w-full flex items-center justify-between mb-2.5 group"
+                            >
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">Kompatibilita</p>
+                                <svg className={`h-3.5 w-3.5 text-slate-400 transition-transform ${effectiveCompatOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            {effectiveCompatOpen && (
+                                <div className="space-y-0.5 mb-5">
+                                    {sortedCompatibilityOptions.map((opt) => {
+                                        const active = selectedCompatibility?.section === opt.section && selectedCompatibility?.compatibility_code === opt.compatibility_code;
+                                        return (
+                                            <button
+                                                key={`${opt.section}-${opt.compatibility_code}`}
+                                                onClick={() => setSelectedCompatibility(active ? null : opt)}
+                                                className="w-full text-left px-3 py-2 rounded-[10px] text-sm transition-all flex justify-between items-center"
+                                                style={active
+                                                    ? { background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: '#7c3aed', fontWeight: 600 }
+                                                    : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
+                                            >
+                                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: active ? '#7c3aed' : '#a78bfa' }} />
+                                                    <span className="truncate">{opt.compatibility_code}</span>
+                                                </div>
+                                                {compatibilityCounts[opt.compatibility_code] != null && (
+                                                    <span className="text-[11px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: active ? 'rgba(139,92,246,0.15)' : '#f8fafc', color: active ? '#7c3aed' : '#94a3b8' }}>
+                                                        {compatibilityCounts[opt.compatibility_code]}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Price Range */}
+                    <div className="border-t border-slate-100 pt-4">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-3">Max. cena</p>
                         <input
-                            type="range"
-                            min="0"
-                            max="500"
-                            step="10"
-                            value={maxPrice}
+                            type="range" min="0" max="500" step="10" value={maxPrice}
                             onChange={(e) => setMaxPrice(Number(e.target.value))}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+                            className="w-full appearance-none cursor-pointer accent-cyan-600"
+                            style={{ height: 4, borderRadius: 2 }}
                         />
-                        <p className="text-xs text-slate-500 mt-2">
-                            {maxPrice >= 500 ? 'Všetky ceny' : `do ${maxPrice} €`}
-                        </p>
+                        <div className="flex justify-between mt-2">
+                            <span className="text-xs text-slate-400">0 €</span>
+                            <span className="text-xs font-semibold" style={{ color: maxPrice < 500 ? '#0891b2' : '#94a3b8' }}>
+                                {maxPrice >= 500 ? 'Všetky ceny' : `do ${maxPrice} €`}
+                            </span>
+                        </div>
                     </div>
 
                     {/* In-Stock Toggle */}
-                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-700">Iba skladom</span>
-                        <button
-                            onClick={() => setInStockOnly(!inStockOnly)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                inStockOnly
-                                    ? 'bg-gradient-to-r from-cyan-500 to-emerald-500'
-                                    : 'bg-slate-200'
-                            }`}
-                        >
-                            <span
-                                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                                    inStockOnly ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                            />
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        <button type="button" onClick={() => setInStockOnly(!inStockOnly)} className="w-full flex items-center justify-between cursor-pointer text-left" aria-pressed={inStockOnly}>
+                            <div>
+                                <p className="text-sm font-medium text-slate-800">Len skladom</p>
+                                <p className="text-xs text-slate-400">Skryť vypredané</p>
+                            </div>
+                            <div className="relative flex-shrink-0 transition-all"
+                                style={{ width: 40, height: 22, borderRadius: 11, background: inStockOnly ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#e2e8f0' }}>
+                                <div className="absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-all"
+                                    style={{ left: inStockOnly ? 21 : 3 }} />
+                            </div>
                         </button>
                     </div>
                 </div>
             </aside>
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-br from-cyan-50 via-sky-50 to-emerald-50 lg:ml-56 scroll-mt-16" id="hero-section">
+            <div className="relative bg-gradient-to-br from-cyan-50 via-sky-50 to-emerald-50 lg:ml-60 scroll-mt-16" id="hero-section">
                 <div className="absolute inset-0 opacity-30" aria-hidden="true">
                     <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-cyan-200 blur-3xl" />
                     <div className="absolute -bottom-10 left-1/3 w-72 h-72 rounded-full bg-emerald-200 blur-3xl" />
@@ -483,158 +542,216 @@ export default function ProductsPage() {
             </div>
 
             {/* Product Grid */}
-            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-56 flex flex-col">
+            <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-60 flex flex-col">
 
-                {/* Search and Filters */}
-                <div ref={filtersRef} id="product-filters" className="scroll-mt-24 flex flex-col gap-3 mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder="🔍 Hľadať produkt..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all shadow-none text-sm text-slate-900 placeholder:text-slate-400"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                    aria-label="Vymazať hľadanie"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            )}
-                        </div>
-                        {/* Sort */}
-                        <button
-                            onClick={() => setPriceSortOrder(prev => prev === 'none' ? 'asc' : prev === 'asc' ? 'desc' : 'none')}
-                            title={priceSortOrder === 'none' ? 'Zoradiť podľa ceny' : priceSortOrder === 'asc' ? 'Cena vzostupne' : 'Cena zostupne'}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                                priceSortOrder !== 'none'
-                                    ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm'
-                                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                            <ArrowsUpDownIcon className={`h-4 w-4 transition-transform ${
-                                priceSortOrder === 'asc' ? 'rotate-0' : priceSortOrder === 'desc' ? 'rotate-180' : ''
-                            }`} />
-                            <span className="hidden sm:inline">{priceSortOrder === 'none' ? 'Cena' : priceSortOrder === 'asc' ? 'Cena ↑' : 'Cena ↓'}</span>
-                        </button>
+                {/* Desktop: unified search + sort + view card */}
+                <div id="product-filters" className="hidden lg:flex scroll-mt-24 items-center gap-3 mb-4 bg-white border border-slate-200 rounded-2xl px-4 py-2.5">
+                    {/* Search */}
+                    <div className="flex flex-1 items-center gap-2 min-w-0">
+                        <MagnifyingGlassIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        <input
+                            type="text"
+                            placeholder="Hľadať produkt, referenčné číslo..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400 min-w-0"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                aria-label="Vymazať vyhľadávanie"
+                                onClick={() => setSearchQuery('')}
+                                className="text-slate-400 hover:text-slate-600 text-base leading-none flex-shrink-0"
+                            >
+                                ×
+                            </button>
+                        )}
                     </div>
-                    {/* Compatibility Filter */}
-                    {compatibilityOptions.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="compat-select" className="text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">Kompatibilita:</label>
-                            <div className="relative flex-1 max-w-sm">
-                                <select
-                                    id="compat-select"
-                                    value={selectedCompatibility ? `${selectedCompatibility.section}|||${selectedCompatibility.compatibility_code}` : ''}
-                                    onChange={(e) => {
-                                        if (!e.target.value) {
-                                            setSelectedCompatibility(null);
-                                        } else {
-                                            const [section, code] = e.target.value.split('|||');
-                                            setSelectedCompatibility({ section, compatibility_code: code });
-                                            scrollToFilters();
-                                        }
-                                    }}
-                                    className={`w-full pl-3 pr-8 py-2 border rounded-lg text-sm appearance-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all ${
-                                        selectedCompatibility
-                                            ? 'bg-cyan-50 border-cyan-300 text-cyan-800 font-medium'
-                                            : 'bg-slate-50 border-slate-200 text-slate-700'
-                                    }`}
-                                >
-                                    <option value="">Všetky systémy</option>
-                                    {Object.entries(compatibilityBySection).map(([section, codes]) => (
-                                        <optgroup key={section} label={section}>
-                                            {codes.map((code) => (
-                                                <option key={code} value={`${section}|||${code}`}>
-                                                    Kód {code}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                                <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                            </div>
-                            {selectedCompatibility && (
-                                <button
-                                    onClick={() => setSelectedCompatibility(null)}
-                                    className="text-xs text-cyan-600 hover:text-cyan-800 font-medium transition-colors"
-                                >
-                                    Zrušiť
-                                </button>
-                            )}
-                        </div>
+                    <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                    {/* Compatibility filter */}
+                    {sortedCompatibilityOptions.length > 0 && (
+                        <>
+                            <select
+                                value={selectedCompatibility ? `${selectedCompatibility.section}::${selectedCompatibility.compatibility_code}` : ''}
+                                onChange={(e) => {
+                                    if (!e.target.value) { setSelectedCompatibility(null); return; }
+                                    const [section, code] = e.target.value.split('::');
+                                    const opt = sortedCompatibilityOptions.find(o => o.section === section && o.compatibility_code === code);
+                                    setSelectedCompatibility(opt ?? null);
+                                }}
+                                className="border-none bg-transparent outline-none text-sm font-medium cursor-pointer"
+                                style={{ color: selectedCompatibility ? '#7c3aed' : '#64748b' }}
+                            >
+                                <option value="">Kompatibilita</option>
+                                {sortedCompatibilityOptions.map(opt => (
+                                    <option key={`${opt.section}::${opt.compatibility_code}`} value={`${opt.section}::${opt.compatibility_code}`}>
+                                        {opt.compatibility_code}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                        </>
                     )}
-
-                    {/* Sort Dropdown */}
+                    {/* Sort */}
                     <select
                         value={priceSortOrder}
                         onChange={(e) => setPriceSortOrder(e.target.value as 'asc' | 'desc' | 'none')}
-                        className="px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all focus:ring-2 focus:ring-cyan-500/30 focus:outline-none"
+                        className="border-none bg-transparent outline-none text-sm text-slate-500 font-medium cursor-pointer"
                     >
                         <option value="none">Zoradiť</option>
                         <option value="asc">Cena: vzostupne</option>
                         <option value="desc">Cena: zostupne</option>
                     </select>
-
-                    {/* Grid/List Toggle */}
-                    <div className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                    <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                    {/* View toggle */}
+                    {(['grid', 'list'] as const).map((mode) => (
                         <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md transition ${
-                                viewMode === 'grid'
-                                    ? 'bg-white shadow-sm text-cyan-600'
-                                    : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                            title="Zobrazenie: Grid"
+                            key={mode}
+                            onClick={() => setViewMode(mode)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${viewMode === mode ? 'text-cyan-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            style={viewMode === mode ? { background: '#e0f7fa' } : {}}
                         >
-                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
-                            </svg>
+                            {mode === 'grid' ? (
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" /></svg>
+                            ) : (
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" /></svg>
+                            )}
                         </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition ${
-                                viewMode === 'list'
-                                    ? 'bg-white shadow-sm text-cyan-600'
-                                    : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                            title="Zobrazenie: List"
-                        >
-                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
-                            </svg>
-                        </button>
-                    </div>
+                    ))}
                 </div>
 
-                {/* Mobile Filters Button */}
-                <div className="mb-6 lg:hidden flex gap-2">
-                    <button
-                        onClick={() => setMobileFiltersOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors relative"
-                    >
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
-                        </svg>
-                        Filtre
-                        {(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly) && (
-                            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-cyan-600"></span>
+                {/* Desktop: compatibility suggestion when search matches a code */}
+                {compatSuggestion && (
+                    <div className="hidden lg:flex items-center gap-2 mb-3 px-3 py-2 rounded-xl text-sm"
+                        style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                        <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="#7c3aed" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        <span style={{ color: '#475569' }}>Nájdený kompatibilný kód:</span>
+                        <strong style={{ color: '#7c3aed' }}>{compatSuggestion.compatibility_code}</strong>
+                        <button
+                            onClick={() => { setSelectedCompatibility(compatSuggestion); setSearchQuery(''); }}
+                            className="ml-auto px-3 py-0.5 rounded-lg text-xs font-semibold transition-all"
+                            style={{ background: 'rgba(139,92,246,0.12)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.25)' }}
+                        >
+                            Filtrovať →
+                        </button>
+                    </div>
+                )}
+
+                {/* Desktop: active filter chips */}
+                {(selectedCategories.length > 0 || selectedCompatibility || inStockOnly || maxPrice < 500) && (
+                    <div className="hidden lg:flex flex-wrap gap-2 mb-4">
+                        {selectedCategories.map(c => (
+                            <button key={c} onClick={() => setSelectedCategories(s => s.filter(x => x !== c))}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-all"
+                                style={{ background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.25)', color: '#0891b2' }}>
+                                {c} <span className="text-sm leading-none">×</span>
+                            </button>
+                        ))}
+                        {selectedCompatibility && (
+                            <button onClick={() => setSelectedCompatibility(null)}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer"
+                                style={{ background: 'rgba(139,92,246,0.09)', border: '1px solid rgba(139,92,246,0.25)', color: '#7c3aed' }}>
+                                {selectedCompatibility.compatibility_code} <span className="text-sm leading-none">×</span>
+                            </button>
                         )}
-                    </button>
+                        {inStockOnly && (
+                            <button onClick={() => setInStockOnly(false)}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer"
+                                style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d' }}>
+                                Len skladom <span className="text-sm leading-none">×</span>
+                            </button>
+                        )}
+                        {maxPrice < 500 && (
+                            <button onClick={() => setMaxPrice(500)}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer"
+                                style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e' }}>
+                                do {maxPrice} € <span className="text-sm leading-none">×</span>
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* Mobile: dark search bar + filter button */}
+                <div className="lg:hidden -mx-4 mb-0" style={{ background: '#020617', borderBottom: '1px solid rgba(6,182,212,0.18)' }}>
+                    <div className="flex items-center gap-2 px-3 py-2.5">
+                        <div className="flex flex-1 items-center gap-2 px-3 h-10 rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <MagnifyingGlassIcon className="h-4 w-4 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                            <input
+                                type="text"
+                                placeholder="Hľadať produkt, ref..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="flex-1 bg-transparent border-none outline-none text-sm"
+                                style={{ color: '#fff', fontFamily: 'inherit' }}
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    aria-label="Vymazať vyhľadávanie"
+                                    onClick={() => setSearchQuery('')}
+                                    className="text-base leading-none"
+                                    style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setMobileFiltersOpen(true)}
+                            className="relative flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl flex-shrink-0 transition-all"
+                            style={{
+                                background: (selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility)
+                                    ? 'linear-gradient(135deg, #06b6d4, #10b981)'
+                                    : 'rgba(255,255,255,0.07)',
+                                border: 'none',
+                            }}
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke={(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) ? '#fff' : 'rgba(255,255,255,0.6)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+                            </svg>
+                            {(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) && (
+                                <span className="text-xs font-bold text-white">
+                                    {selectedCategories.length + (selectedCompatibility ? 1 : 0) + (inStockOnly ? 1 : 0) + (maxPrice < 500 ? 1 : 0) + (priceSortOrder !== 'none' ? 1 : 0)}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                    {/* Mobile CatStrip — on dark bg */}
+                    <div className="flex gap-1.5 px-3 pb-2.5 overflow-x-auto no-scrollbar" style={{ width: '100%' }}>
+                        {(['Všetko', ...categories] as string[]).map((cat) => {
+                            const active = cat === 'Všetko' ? selectedCategories.length === 0 : selectedCategories.includes(cat);
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => cat === 'Všetko' ? setSelectedCategories([]) : setSelectedCategories(
+                                        selectedCategories.includes(cat) ? selectedCategories.filter(c => c !== cat) : [...selectedCategories, cat]
+                                    )}
+                                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+                                    style={{
+                                        background: active ? 'linear-gradient(135deg, #06b6d4, #10b981)' : 'rgba(255,255,255,0.08)',
+                                        color: active ? '#fff' : 'rgba(255,255,255,0.6)',
+                                        border: 'none',
+                                        boxShadow: active ? '0 2px 8px rgba(6,182,212,0.3)' : 'none',
+                                    }}
+                                >
+                                    {cat}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                        <SparklesIcon className="h-6 w-6 text-cyan-600" />
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Naše produkty</h2>
-                    </div>
-                    <span className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">{visibleCount} produktov</span>
+                {/* Mobile: keep a scroll anchor here */}
+                <div id="product-filters-mobile" className="scroll-mt-24 lg:hidden" />
+
+                <div className="mb-5 hidden lg:block">
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-none">Naše produkty</h1>
+                    <p className="text-sm text-slate-400 mt-1">{visibleCount} produktov{selectedCategories.length > 0 ? ` v kategórii ${selectedCategories.join(', ')}` : ''}</p>
+                </div>
+                {/* Mobile heading */}
+                <div className="mb-3 mt-3 lg:hidden flex items-center justify-between">
+                    <h1 className="text-base font-bold text-slate-900">Produkty</h1>
+                    <span className="text-xs text-slate-400">{visibleCount} produktov</span>
                 </div>
 
                 {filteredProducts.length === 0 && !isFetching ? (
@@ -657,7 +774,7 @@ export default function ProductsPage() {
                         <div className={`${
                             viewMode === 'list'
                                 ? 'flex flex-col gap-4'
-                                : 'grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8'
+                                : 'grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6'
                         } transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
                                 (() => {
@@ -675,7 +792,7 @@ export default function ProductsPage() {
                                             : 'hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60 hover:-translate-y-0.5'
                                     }`}
                                 >
-                                    <div className={`${viewMode === 'list' ? 'w-32 h-32 flex-shrink-0' : 'w-full h-56 sm:h-60 lg:h-64'} overflow-hidden bg-slate-100`}>
+                                    <div className={`${viewMode === 'list' ? 'w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0' : 'w-full h-28 sm:h-40 lg:h-48'} overflow-hidden bg-slate-100`}>
                                         {previewImage ? (
                                             <img
                                                 src={previewImage}
@@ -725,11 +842,11 @@ export default function ProductsPage() {
                                             </>
                                         );
                                     })()}
-                                    <div className="p-4 flex-1 flex flex-col">
-                                        <div className="mb-2 min-h-[5.5rem]">
-                                            <div className="min-h-[5.5rem]">
-                                                <div className="flex items-start gap-2">
-                                                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[3.5rem] flex-1">
+                                    <div className="p-2.5 sm:p-4 flex-1 flex flex-col">
+                                        <div className="mb-1.5 sm:mb-2 min-h-[4rem] sm:min-h-[5.5rem]">
+                                            <div className="sm:min-h-[5.5rem]">
+                                                <div className="flex items-start gap-1.5 sm:gap-2">
+                                                    <h3 className="text-[11px] sm:text-sm font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
                                                     {isLoggedIn && (() => {
@@ -777,28 +894,27 @@ export default function ProductsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                                        <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
-                                                <div className="flex items-center gap-2">
-                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                                    <p className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    {(() => {
+                                                        const s = product.parameters?.type === 'wildcard_group'
+                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
+                                                            : product.stock_quantity;
+                                                        return <StockDot stock={s} />;
+                                                    })()}
+                                                    <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
                                                 </div>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800">
-                                                    <SparklesIcon className="h-3 w-3" />
-                                                    Členská cena
-                                                </span>
-                                            )}
-                                            {product.stock_quantity > 0 && product.stock_quantity <= 5 && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-yellow-50 text-yellow-800">
-                                                    <ExclamationTriangleIcon className="h-3 w-3" />
-                                                    Málo
+                                                <span className="text-[10px] sm:text-xs font-semibold text-cyan-700 bg-cyan-50 px-1.5 sm:px-2.5 py-0.5 rounded-full">
+                                                            <span className="sm:hidden">Člen.</span>
+                                                            <span className="hidden sm:inline">Členská cena</span>
                                                 </span>
                                             )}
                                         </div>
 
                                         {!userIsAdmin && (
-                                        <div className="mt-4">
+                                        <div className="mt-2 sm:mt-4 flex justify-end">
                                             {product.price ? (() => {
                                                 const cartItem = items.find(
                                                     item => item.productId === product.id && !item.variantReference
@@ -806,8 +922,11 @@ export default function ProductsPage() {
 
                                                 if (cartItem) {
                                                     return (
-                                                        <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-10 w-full shadow-sm">
+                                                        <div className="inline-flex items-center rounded-full overflow-hidden border-[1.5px] border-cyan-400"
+                                                            style={{ background: '#e0f7fa' }}>
                                                             <button
+                                                                type="button"
+                                                                aria-label="Znížiť množstvo"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (cartItem.quantity > 1) {
@@ -816,14 +935,12 @@ export default function ProductsPage() {
                                                                         removeItem(product.id);
                                                                     }
                                                                 }}
-                                                                className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
-                                                            >
-                                                                -
-                                                            </button>
-                                                            <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                                {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
-                                                            </span>
+                                                                className="w-7 h-7 flex items-center justify-center text-cyan-600 text-base font-light"
+                                                            >−</button>
+                                                            <span className="text-xs font-bold text-cyan-600 px-1.5">{cartItem.quantity}</span>
                                                             <button
+                                                                type="button"
+                                                                aria-label="Zvýšiť množstvo"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (cartItem.quantity >= product.stock_quantity) {
@@ -833,27 +950,14 @@ export default function ProductsPage() {
                                                                     updateQuantity(product.id, cartItem.quantity + 1);
                                                                 }}
                                                                 disabled={cartItem.quantity >= product.stock_quantity}
-                                                                className="w-10 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold"
-                                                            >
-                                                                +
-                                                            </button>
+                                                                className="w-7 h-7 flex items-center justify-center text-cyan-600 text-base font-light disabled:opacity-30"
+                                                            >+</button>
                                                         </div>
                                                     );
                                                 }
 
                                                 if (product.stock_quantity <= 0) {
-                                                    if (!isLoggedIn) {
-                                                        return (
-                                                            <Link
-                                                                to="/login"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
-                                                            >
-                                                                Prihláste sa
-                                                            </Link>
-                                                        );
-                                                    }
-
+                                                    if (!isLoggedIn) return null;
                                                     return (
                                                         <button
                                                             onClick={(e) => {
@@ -861,46 +965,40 @@ export default function ProductsPage() {
                                                                 setProductToRequest(product);
                                                                 setOpenRequestModal(true);
                                                             }}
-                                                            className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-500 hover:bg-slate-600 focus:outline-none transition-all duration-300 h-10"
+                                                            className="text-[10px] sm:text-xs font-medium text-slate-500 underline"
                                                         >
-                                                            Požiadať produkt
+                                                            Požiadať
                                                         </button>
                                                     );
                                                 }
 
                                                 return (
                                                     <button
+                                                            type="button"
+                                                            aria-label="Pridať do košíka"
+                                                            title="Pridať do košíka"
                                                         onClick={(e) => handleAddToCart(e, product)}
                                                         disabled={addingId === product.id}
-                                                        className={`w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none transition-all duration-300 transform h-10 ${addingId === product.id
-                                                            ? 'bg-emerald-500 scale-105'
-                                                            : 'bg-cyan-600 hover:bg-cyan-700'
-                                                            }`}
+                                                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+                                                        style={{
+                                                            background: addingId === product.id
+                                                                ? '#10b981'
+                                                                : 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+                                                            boxShadow: '0 2px 8px rgba(6,182,212,0.3)',
+                                                        }}
                                                     >
                                                         {addingId === product.id ? (
-                                                            <>
-                                                                <svg className="h-5 w-5 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                                </svg>
-                                                                Pridané!
-                                                            </>
+                                                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2.5}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
                                                         ) : (
-                                                            <>
-                                                                <ShoppingCartIcon className="h-4 w-4 mr-2" />
-                                                                Pridať do košíka
-                                                            </>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                                            </svg>
                                                         )}
                                                     </button>
                                                 );
-                                            })() : (
-                                                <Link
-                                                    to="/login"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="w-full flex justify-center items-center px-4 py-2 border border-cyan-500 rounded-md shadow-sm text-sm font-medium text-cyan-700 bg-white hover:bg-cyan-50 focus:outline-none transition-colors h-10"
-                                                >
-                                                    Prihláste sa
-                                                </Link>
-                                            )}
+                                            })() : null}
                                         </div>
                                         )}
                                     </div>
@@ -954,8 +1052,29 @@ export default function ProductsPage() {
                             </button>
                         </div>
 
-                        {/* Categories */}
+                        {/* Sort */}
                         <div className="mb-6">
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Zoradiť</h3>
+                            <div className="flex flex-col gap-1.5">
+                                {([['none', 'Predvolené'], ['asc', 'Cena: vzostupne'], ['desc', 'Cena: zostupne']] as const).map(([val, label]) => (
+                                    <button
+                                        key={val}
+                                        onClick={() => setPriceSortOrder(val)}
+                                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                                            priceSortOrder === val
+                                                ? 'text-white'
+                                                : 'bg-slate-50 text-slate-700'
+                                        }`}
+                                        style={priceSortOrder === val ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Categories */}
+                        <div className="mb-6 pt-5 border-t border-slate-100">
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Kategórie</h3>
                             <div className="space-y-2">
                                 <button
@@ -992,8 +1111,41 @@ export default function ProductsPage() {
                             </div>
                         </div>
 
+                        {/* Compatibility */}
+                        {sortedCompatibilityOptions.length > 0 && (
+                            <div className="mb-6 pt-5 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Kompatibilita</h3>
+                                <div className="space-y-1.5">
+                                    <button
+                                        onClick={() => setSelectedCompatibility(null)}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
+                                            !selectedCompatibility ? 'text-white' : 'bg-slate-50 text-slate-700'
+                                        }`}
+                                        style={!selectedCompatibility ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
+                                    >
+                                        Všetky
+                                    </button>
+                                    {sortedCompatibilityOptions.map((opt) => {
+                                        const isActive = selectedCompatibility?.compatibility_code === opt.compatibility_code;
+                                        return (
+                                            <button
+                                                key={opt.compatibility_code}
+                                                onClick={() => setSelectedCompatibility(isActive ? null : opt)}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
+                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
+                                                }`}
+                                                style={isActive ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
+                                            >
+                                                {opt.compatibility_code}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Price Range */}
-                        <div className="mb-6 pt-6 border-t border-slate-100">
+                        <div className="mb-6 pt-5 border-t border-slate-100">
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Cena</h3>
                             <input
                                 type="range"
@@ -1031,9 +1183,10 @@ export default function ProductsPage() {
                         {/* Apply Button */}
                         <button
                             onClick={() => setMobileFiltersOpen(false)}
-                            className="w-full mt-6 px-4 py-3 bg-gradient-to-r from-cyan-600 to-emerald-600 text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                            className="w-full mt-6 px-4 py-3.5 text-white font-bold rounded-full hover:opacity-90 transition-opacity shadow-md"
+                            style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}
                         >
-                            Použiť filtre
+                            Zobraziť výsledky
                         </button>
                     </div>
                 </div>

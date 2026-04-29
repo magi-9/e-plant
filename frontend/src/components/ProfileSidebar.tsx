@@ -15,7 +15,7 @@ export function ProfileSidebar({ active }: { active: 'profile' | 'orders' }) {
     };
 
     return (
-        <div className="w-60 flex-shrink-0">
+        <div className="hidden md:block w-60 flex-shrink-0">
             {/* User card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 shadow-sm">
                 <p className="text-sm font-bold text-slate-900">

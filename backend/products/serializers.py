@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from rest_framework import serializers
 
 from .models import GroupingSettings, Product, ProductGroup, WildcardGroup
+from .compatibility import get_compatibility_codes_for_ref
 
 
 class ProductImageField(serializers.ImageField):
@@ -124,6 +125,7 @@ class ProductSerializer(serializers.ModelSerializer):
         source="wildcard_group.name", read_only=True, default=None
     )
     all_categories = serializers.SerializerMethodField()
+    compatibility_codes = serializers.SerializerMethodField()
     image = ProductImageField(required=False, allow_null=True)
     compatibility_code = serializers.CharField(
         allow_blank=True, required=False, default=""
@@ -134,6 +136,9 @@ class ProductSerializer(serializers.ModelSerializer):
         if categories:
             return categories
         return obj.category
+
+    def get_compatibility_codes(self, obj):
+        return get_compatibility_codes_for_ref(obj.reference or "")
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -180,6 +185,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "wildcard_group_name",
             "is_visible",
             "all_categories",
+            "compatibility_codes",
             "parameters",
             "compatibility_code",
         )

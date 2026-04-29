@@ -107,18 +107,36 @@ function Field({
     );
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function ToggleRow({ checked, onChange, label, desc }: {
+    checked: boolean; onChange: (v: boolean) => void; label: string; desc?: string;
+}) {
     return (
-        <label className="flex items-center gap-3 cursor-pointer select-none">
+        <button
+            type="button"
+            onClick={() => onChange(!checked)}
+            aria-pressed={checked}
+            className="w-full flex items-center gap-3 cursor-pointer transition-all text-left"
+            style={{
+                padding: '14px 16px',
+                background: checked ? '#e0f7fa' : '#fff',
+                borderRadius: checked ? '14px 14px 0 0' : 14,
+                border: `1.5px solid ${checked ? '#0891b2' : '#e2e8f0'}`,
+            }}
+        >
             <div
-                onClick={() => onChange(!checked)}
-                className="relative flex-shrink-0 w-11 h-6 rounded-full transition-all cursor-pointer"
-                style={{ background: checked ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#cbd5e1' }}
+                className="relative flex-shrink-0 transition-all"
+                style={{ width: 44, height: 26, borderRadius: 13, background: checked ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#cbd5e1' }}
             >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${checked ? 'left-5' : 'left-0.5'}`} />
+                <div
+                    className="absolute top-[3px] w-5 h-5 rounded-full bg-white shadow transition-all"
+                    style={{ left: checked ? 21 : 3 }}
+                />
             </div>
-            <span className="text-sm font-medium text-slate-700">{label}</span>
-        </label>
+            <div>
+                <p className="text-sm font-semibold text-slate-900">{label}</p>
+                {desc && <p className="text-xs text-slate-400">{desc}</p>}
+            </div>
+        </button>
     );
 }
 
@@ -169,9 +187,9 @@ function PayCard({
 
 function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
     const steps = [
-        { n: 1 as const, label: 'Doručenie' },
-        { n: 2 as const, label: 'Platba' },
-        { n: 3 as const, label: 'Potvrdenie' },
+        { n: 1 as const, label: 'Kontaktné údaje', labelShort: 'Kontakt' },
+        { n: 2 as const, label: 'Doručenie & platba', labelShort: 'Doručenie' },
+        { n: 3 as const, label: 'Potvrdenie', labelShort: 'Potvrdenie' },
     ];
     return (
         <div className="flex items-center justify-center mb-8">
@@ -194,11 +212,12 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
                         </div>
                         <span className="mt-1.5 text-xs font-medium"
                             style={{ color: s.n <= current ? '#0f172a' : '#94a3b8' }}>
-                            {s.label}
+                            <span className="hidden sm:inline">{s.label}</span>
+                            <span className="sm:hidden">{s.labelShort}</span>
                         </span>
                     </div>
                     {i < steps.length - 1 && (
-                        <div className="w-16 h-0.5 mx-2 mb-5 transition-all"
+                        <div className="w-10 sm:w-16 h-0.5 mx-2 mb-5 transition-all"
                             style={{ background: s.n < current ? 'linear-gradient(90deg, #06b6d4, #10b981)' : '#e2e8f0' }} />
                     )}
                 </div>
@@ -281,6 +300,7 @@ export default function CheckoutPage() {
 
     const [step, setStep] = useState<1 | 2>(1);
     const formInitialized = useRef(false);
+    const step1FormRef = useRef<HTMLFormElement>(null);
 
     const [formData, setFormData] = useState({
         title: '', first_name: '', last_name: '', email: '', phone: '',
@@ -524,7 +544,7 @@ export default function CheckoutPage() {
     const indicatorStep = step === 1 ? 1 : 2;
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8">
+        <div className="min-h-screen bg-slate-50 pt-8 pb-28 md:pb-8">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <StepIndicator current={indicatorStep} />
 
@@ -534,7 +554,7 @@ export default function CheckoutPage() {
 
                         {/* STEP 1 ─ Contact & Address */}
                         {step === 1 && (
-                            <form onSubmit={proceedToStep2}>
+                            <form ref={step1FormRef} onSubmit={proceedToStep2}>
                                 {error && (
                                     <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                                         {error}
@@ -573,14 +593,16 @@ export default function CheckoutPage() {
                                     </div>
                                 </SectionCard>
 
-                                <SectionCard title="Firemné údaje">
-                                    <Toggle
+                                <div className="mb-4">
+                                    <ToggleRow
                                         checked={formData.is_company}
                                         onChange={v => setFormData(p => ({ ...p, is_company: v }))}
-                                        label="Objednávam na firmu"
+                                        label="Fakturovať na firmu / IČO"
+                                        desc="Zadajte IČO, DIČ a DIČ DPH"
                                     />
                                     {formData.is_company && (
-                                        <div className="mt-4 space-y-4">
+                                        <div className="px-5 py-5 space-y-4 border-x border-b border-cyan-400"
+                                            style={{ borderRadius: '0 0 14px 14px', background: '#f8fafc' }}>
                                             <Field label="Názov firmy" name="company_name" value={formData.company_name}
                                                 onChange={set('company_name')} required={formData.is_company} />
                                             <div className="flex gap-4">
@@ -588,14 +610,15 @@ export default function CheckoutPage() {
                                                 <Field label="DIČ" name="dic" value={formData.dic} onChange={set('dic')} half placeholder="SK1234567890" />
                                                 <Field label="IČ DPH" name="dic_dph" value={formData.dic_dph} onChange={set('dic_dph')} half placeholder="SK1234567890" />
                                             </div>
-                                            <Toggle
-                                                checked={formData.is_vat_payer}
-                                                onChange={v => setFormData(p => ({ ...p, is_vat_payer: v }))}
-                                                label="Som platiteľ DPH"
-                                            />
+                                            <label className="flex items-center gap-3 pt-2">
+                                                <input type="checkbox" checked={formData.is_vat_payer}
+                                                    onChange={e => setFormData(p => ({ ...p, is_vat_payer: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                                                <span className="text-sm text-slate-600">Som platiteľ DPH</span>
+                                            </label>
                                         </div>
                                     )}
-                                </SectionCard>
+                                </div>
 
                                 {isLoggedIn && (
                                     <div className="mb-4 flex items-center gap-3 px-1">
@@ -608,9 +631,9 @@ export default function CheckoutPage() {
                                     </div>
                                 )}
 
-                                <div className="flex gap-3 mt-2">
+                                <div className="hidden md:flex gap-3 mt-2">
                                     <GBtn outline onClick={() => navigate('/cart')}>← Späť do košíka</GBtn>
-                                    <GBtn type="submit" full>Pokračovať →</GBtn>
+                                    <GBtn type="submit" full>Pokračovať na doručenie & platbu →</GBtn>
                                 </div>
                             </form>
                         )}
@@ -707,7 +730,7 @@ export default function CheckoutPage() {
                                     </label>
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="hidden md:flex gap-3">
                                     <GBtn outline onClick={() => { setStep(1); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                                         ← Späť
                                     </GBtn>
@@ -728,6 +751,29 @@ export default function CheckoutPage() {
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* Mobile sticky bottom bar */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pt-3 pb-6 border-t border-slate-200"
+                style={{ background: 'rgba(248,250,252,0.97)', backdropFilter: 'blur(14px)' }}>
+                {step === 2 && (
+                    <button
+                        type="button"
+                        onClick={() => { setStep(1); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className="w-full py-2.5 px-5 rounded-full border border-cyan-500 text-sm font-semibold text-cyan-600 mb-2 bg-white"
+                    >
+                        ← Späť
+                    </button>
+                )}
+                {step === 1 ? (
+                    <GBtn full type="button" onClick={() => step1FormRef.current?.requestSubmit()}>
+                        Pokračovať na doručenie & platbu →
+                    </GBtn>
+                ) : (
+                    <GBtn full onClick={handleFinalSubmit} loading={loading} disabled={!agreementsAccepted}>
+                        {loading ? 'Spracovávam...' : 'Objednať s povinnosťou platby ✓'}
+                    </GBtn>
+                )}
             </div>
         </div>
     );

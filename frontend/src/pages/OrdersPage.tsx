@@ -4,6 +4,7 @@ import { isAdmin } from '../api/auth';
 import { getMyOrders, type Order } from '../api/orders';
 import { useNavigate, Link } from 'react-router-dom';
 import { ProfileSidebar } from '../components/ProfileSidebar';
+import MobileProfileOrdersTabs from '../components/MobileProfileOrdersTabs';
 
 // ── status config ────────────────────────────────────────────
 
@@ -205,7 +206,7 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center gap-4 px-5 py-4 transition-colors text-left"
+                className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 transition-colors text-left"
                 style={{ background: open ? '#e0f7fa' : '#ffffff' }}
             >
                 <svg
@@ -216,25 +217,26 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
                     <polyline points="9 18 15 12 9 6"/>
                 </svg>
 
-                <div className="w-40 flex-shrink-0">
-                    <div className="text-sm font-bold text-slate-900">{order.order_number}</div>
+                <div className="flex-1 min-w-0 sm:w-40 sm:flex-none">
+                    <div className="text-sm font-bold text-slate-900 truncate">{order.order_number}</div>
                     <div className="text-xs text-slate-400 mt-0.5">{formatDate(order.created_at)}</div>
                 </div>
 
-                <div className="flex-1 text-sm text-slate-500 truncate hidden sm:block">
+                <div className="hidden sm:block flex-1 text-sm text-slate-500 truncate">
                     {order.items.slice(0, 2).map(it => it.product_name).join(', ')}
                     {order.items.length > 2 ? ` +${order.items.length - 2} ďalšie` : ''}
                 </div>
 
                 <span
-                    className="text-xs font-semibold rounded-full px-3 py-1 flex-shrink-0 flex items-center gap-1.5"
+                    className="text-xs font-semibold rounded-full px-2.5 sm:px-3 py-1 flex-shrink-0 flex items-center gap-1.5"
                     style={{ color: sc.color, background: sc.bg }}
                 >
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc.dot }} />
-                    {sc.label}
+                        <span className="sr-only">{sc.label}</span>
+                        <span aria-hidden="true" className="hidden xs:inline">{sc.label}</span>
                 </span>
 
-                <div className="text-sm font-bold text-slate-900 flex-shrink-0 min-w-16 text-right">
+                <div className="text-sm font-bold text-slate-900 flex-shrink-0 text-right">
                     {parseFloat(order.total_price).toFixed(2)} €
                 </div>
             </button>
@@ -330,11 +332,13 @@ export default function OrdersPage() {
             <div className="min-h-screen bg-slate-50 py-8">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Breadcrumb */}
-                    <nav className="flex items-center gap-2 mb-6 text-xs text-slate-400">
-                        <Link to="/" className="hover:text-slate-600 transition-colors">Domov</Link>
+                    <nav className="hidden md:flex items-center gap-2 mb-6 text-xs text-slate-400">
+                        <Link to="/products" className="hover:text-slate-600 transition-colors">Domov</Link>
                         <svg width="5" height="8" viewBox="0 0 6 10"><path d="M1 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
                         <span className="text-slate-700 font-medium">Moje objednávky</span>
                     </nav>
+
+                    <MobileProfileOrdersTabs active="orders" />
 
                     <div className="flex gap-6 items-start">
                         <ProfileSidebar active="orders" />
@@ -370,13 +374,13 @@ export default function OrdersPage() {
 
                                     {/* Orders card */}
                                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                                            <div>
+                                        <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <div className="flex-1 min-w-0">
                                                 <h3 className="text-sm font-bold text-slate-900">Moje objednávky</h3>
-                                                <p className="text-xs text-slate-400 mt-0.5">Kliknite na objednávku pre zobrazenie detailov</p>
+                                                <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">Kliknite na objednávku pre zobrazenie detailov</p>
                                             </div>
                                             {/* Filter tabs */}
-                                            <div className="flex gap-1 bg-slate-50 rounded-xl p-1">
+                                            <div className="flex gap-1 bg-slate-50 rounded-xl p-1 self-start sm:self-auto">
                                                 {([
                                                     { id: 'all', label: 'Všetky' },
                                                     { id: 'delivered', label: 'Doručené' },
@@ -386,7 +390,7 @@ export default function OrdersPage() {
                                                         key={tab.id}
                                                         type="button"
                                                         onClick={() => setFilterTab(tab.id)}
-                                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
                                                             ${filterTab === tab.id
                                                                 ? 'bg-white text-slate-900 shadow-sm font-semibold'
                                                                 : 'text-slate-400 hover:text-slate-600'
