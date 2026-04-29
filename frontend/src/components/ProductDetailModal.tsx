@@ -119,7 +119,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         .filter(Boolean);
     const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
     const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
-    const compatibilityCodes = product.compatibility_codes || [];
+    const compatibilityCodes = (activeVariant?.compatibility_codes && activeVariant.compatibility_codes.length ? activeVariant.compatibility_codes : product.compatibility_codes) || [];
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
     const effectiveStockQuantity = (() => {
@@ -265,7 +265,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     </div>
                                                     {compatibilityCodes.length > 0 && (
                                                         <div className="flex flex-wrap gap-1.5 mb-4">
-                                                            {compatibilityCodes.map(code => (
+                                                            {compatibilityCodes.map((code: string) => (
                                                                 <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
                                                                     style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
                                                                     ⬡ {code}

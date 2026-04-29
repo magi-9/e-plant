@@ -68,6 +68,7 @@ export interface Product {
             option_tokens?: string;
             label?: string;
             stock_quantity?: number;
+            compatibility_codes?: string[];
         }>;
     };
 }
