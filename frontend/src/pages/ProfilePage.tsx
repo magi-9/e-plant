@@ -196,11 +196,23 @@ export default function ProfilePage() {
         <div className="min-h-screen bg-slate-50 py-8">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Breadcrumb */}
-                <nav className="flex items-center gap-2 mb-6 text-xs text-slate-400">
+                <nav className="hidden md:flex items-center gap-2 mb-6 text-xs text-slate-400">
                     <Link to="/" className="hover:text-slate-600 transition-colors">Domov</Link>
                     <svg width="5" height="8" viewBox="0 0 6 10"><path d="M1 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
                     <span className="text-slate-700 font-medium">Môj profil</span>
                 </nav>
+
+                {/* Mobile nav tabs */}
+                <div className="md:hidden mb-5 flex gap-1 bg-white rounded-2xl border border-slate-200 p-1 shadow-sm">
+                    <Link to="/profile" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Profil
+                    </Link>
+                    <Link to="/orders" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium text-slate-500">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                        Objednávky
+                    </Link>
+                </div>
 
                 <div className="flex gap-6 items-start">
                     <ProfileSidebar active="profile" />
@@ -210,12 +222,12 @@ export default function ProfilePage() {
                             {/* Personal info */}
                             <SectionCard title="Osobné údaje" subtitle="Základné informácie o vašom účte">
                                 <div className="space-y-4">
-                                    <div className="flex gap-4">
+                                    <div className="flex flex-wrap gap-3 sm:gap-4">
                                         <Field label="Titul" value={formData.title} onChange={set('title')} half />
                                         <Field label="Meno" value={formData.first_name} onChange={set('first_name')} half />
                                         <Field label="Priezvisko" value={formData.last_name} onChange={set('last_name')} half />
                                     </div>
-                                    <div className="flex gap-4">
+                                    <div className="flex flex-wrap gap-3 sm:gap-4">
                                         <Field label="E-mail" value={userProfile?.email || ''} readOnly half />
                                         <Field label="Telefón" value={formData.phone} onChange={set('phone')} type="tel" half />
                                     </div>
@@ -226,7 +238,7 @@ export default function ProfilePage() {
                             <SectionCard title="Fakturačná adresa" subtitle="Adresa pre vystavovanie faktúr">
                                 <div className="space-y-4">
                                     <Field label="Ulica a číslo" value={formData.street} onChange={set('street')} />
-                                    <div className="flex gap-4">
+                                    <div className="flex flex-wrap gap-3 sm:gap-4">
                                         <Field label="Mesto" value={formData.city} onChange={set('city')} half />
                                         <Field label="PSČ" value={formData.postal_code} onChange={set('postal_code')} half />
                                         <Field label="Krajina" value={formData.country} onChange={set('country')} half />
@@ -249,7 +261,7 @@ export default function ProfilePage() {
                                     {formData.is_company && (
                                         <div className="space-y-4 pt-1">
                                             <Field label="Názov firmy" value={formData.company_name} onChange={set('company_name')} />
-                                            <div className="flex gap-4">
+                                            <div className="flex flex-wrap gap-3 sm:gap-4">
                                                 <Field label="IČO" value={formData.ico} onChange={set('ico')} half />
                                                 <Field label="DIČ" value={formData.dic} onChange={set('dic')} half />
                                                 <Field label="IČ DPH" value={formData.dic_dph} onChange={set('dic_dph')} half />
@@ -287,11 +299,11 @@ export default function ProfilePage() {
                         {/* Password section — separate form */}
                         <SectionCard title="Heslo" subtitle="Zmeňte si prihlasovacie heslo">
                             <div className="space-y-4">
-                                <div className="flex gap-4">
+                                <div className="flex flex-wrap gap-3 sm:gap-4">
                                     <Field label="Aktuálne heslo" type="password" value={pwForm.current} onChange={v => setPwForm(p => ({ ...p, current: v }))} placeholder="••••••••" half autoComplete="current-password" />
                                     <Field label="Nové heslo" type="password" value={pwForm.next} onChange={v => setPwForm(p => ({ ...p, next: v }))} placeholder="••••••••" half autoComplete="new-password" />
                                 </div>
-                                <div className="flex gap-4">
+                                <div className="flex flex-wrap gap-3 sm:gap-4">
                                     <Field label="Potvrďte nové heslo" type="password" value={pwForm.confirm} onChange={v => setPwForm(p => ({ ...p, confirm: v }))} placeholder="••••••••" half autoComplete="new-password" />
                                     <div className="flex-1 flex items-end">
                                         <GBtn onClick={handlePasswordChange} disabled={pwLoading}>

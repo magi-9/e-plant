@@ -28,7 +28,11 @@ from .serializers import (
     ProductSerializer,
     WildcardGroupSerializer,
 )
-from .compatibility import get_compatibility_options, get_ref_prefixes_for_code
+from .compatibility import (
+    get_compatibility_counts,
+    get_compatibility_options,
+    get_ref_prefixes_for_code,
+)
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
 
@@ -712,6 +716,15 @@ class CompatibilityOptionsView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"options": get_compatibility_options()})
+
+
+class CompatibilityCountsView(APIView):
+    """Public endpoint: return product count per compatibility_code (cached)."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": get_compatibility_counts()})
 
 
 class AdminProductImport(APIView):

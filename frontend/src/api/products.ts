@@ -45,6 +45,7 @@ export interface Product {
     is_visible: boolean;
     group_name?: string | null;
     compatibility_code?: string;
+    compatibility_codes?: string[];
     parameters?: {
         type?: 'single' | 'wildcard_group';
         wildcard_reference?: string;
@@ -145,6 +146,11 @@ export const getProductCategories = async (): Promise<string[]> => {
 export const getCompatibilityOptions = async (): Promise<CompatibilityOption[]> => {
     const response = await client.get<{ options: CompatibilityOption[] }>('/products/compatibility-options/');
     return response.data.options;
+};
+
+export const getCompatibilityCounts = async (): Promise<Record<string, number>> => {
+    const response = await client.get<{ counts: Record<string, number> }>('/products/compatibility-counts/');
+    return response.data.counts;
 };
 
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {

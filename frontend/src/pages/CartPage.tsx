@@ -195,7 +195,7 @@ export default function CartPage() {
     const subtotal = getTotalPrice();
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8">
+        <div className="min-h-screen bg-slate-50 pt-8 pb-28 md:pb-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -214,7 +214,7 @@ export default function CartPage() {
                 <div className="flex flex-col lg:flex-row gap-6 items-start">
                     {/* ── Cart items ── */}
                     <div className="flex-1 min-w-0">
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="md:bg-white md:rounded-2xl md:border md:border-slate-200 md:shadow-sm overflow-hidden">
                             {/* Desktop table header */}
                             <div className="hidden md:grid grid-cols-[1fr_120px_96px_80px_36px] gap-4 px-5 py-3 border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                                 <span>Produkt</span>
@@ -224,7 +224,7 @@ export default function CartPage() {
                                 <span />
                             </div>
 
-                            <ul className="divide-y divide-slate-100">
+                            <ul className="flex flex-col gap-2.5 md:gap-0 md:divide-y md:divide-slate-100">
                                 {items.map((item) => {
                                     const key = `${item.productId}:${item.variantReference || 'default'}`;
                                     const available = stockByItemKey[key];
@@ -233,10 +233,10 @@ export default function CartPage() {
                                     const lineTotal = (parseFloat(item.price) * item.quantity).toFixed(2);
 
                                     return (
-                                        <li key={key} className="p-4 sm:p-5">
-                                            <div className="flex gap-4 items-start">
+                                        <li key={key} className="bg-white rounded-[18px] border border-slate-200 shadow-sm p-3 md:bg-transparent md:rounded-none md:border-0 md:shadow-none md:p-5">
+                                            <div className="flex gap-3 md:gap-4 items-start">
                                                 {/* Image */}
-                                                <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-xl overflow-hidden"
+                                                <div className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden"
                                                     style={{ background: 'linear-gradient(135deg, #cffafe, #d1fae5)' }}>
                                                     {item.image ? (
                                                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -284,7 +284,7 @@ export default function CartPage() {
                                                     </div>
 
                                                     {/* Qty + mobile total */}
-                                                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                                                    <div className="mt-2.5 md:mt-3 pt-2 md:pt-0 border-t md:border-0 border-slate-100 flex items-center gap-3">
                                                         <QtyStepper
                                                             value={item.quantity}
                                                             onDec={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
@@ -297,22 +297,54 @@ export default function CartPage() {
                                                             }}
                                                             disableInc={disableInc}
                                                         />
-                                                        <span className="md:hidden text-sm font-semibold text-slate-700 ml-auto">{lineTotal} €</span>
                                                         {hasShortage && (
-                                                            <span className="text-xs font-medium text-red-500">Nie je toľko skladom</span>
+                                                            <span className="hidden md:inline text-xs font-medium text-red-500">Nie je toľko skladom</span>
                                                         )}
+                                                        <div className="md:hidden ml-auto text-right">
+                                                            <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
+                                                            <p className="text-xs text-slate-400">{item.price} €/ks</p>
+                                                        </div>
                                                     </div>
+                                                    {hasShortage && (
+                                                        <p className="md:hidden text-xs font-medium text-red-500 mt-1.5">Nie je toľko skladom</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </li>
                                     );
                                 })}
                             </ul>
+
+                            {/* Mobile: summary card + clear */}
+                            <div className="md:hidden mt-2.5 bg-white rounded-[18px] border border-slate-200 p-3.5">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Súhrn objednávky</p>
+                                <div className="flex justify-between text-sm mb-1.5">
+                                    <span className="text-slate-500">Medziúčet</span>
+                                    <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between text-sm pb-2.5 mb-2.5 border-b border-slate-100">
+                                    <span className="text-slate-500">Doprava</span>
+                                    <span className="text-slate-400 text-xs">Podľa spôsobu</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-slate-900">Celkom</span>
+                                    <span className="text-lg font-extrabold bg-clip-text text-transparent"
+                                        style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                                        {subtotal.toFixed(2)} €
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="md:hidden text-center py-3">
+                                <button type="button" onClick={clearCart}
+                                    className="text-xs text-red-500 font-medium">
+                                    Vyprázdniť košík
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     {/* ── Order summary ── */}
-                    <div className="w-full lg:w-80 flex-shrink-0">
+                    <div className="hidden lg:block lg:w-80 flex-shrink-0">
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 lg:sticky lg:top-24">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Súhrn objednávky</p>
 
@@ -373,6 +405,21 @@ export default function CartPage() {
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Mobile sticky bottom bar */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pt-3 pb-6 border-t border-slate-200"
+                style={{ background: 'rgba(248,250,252,0.97)', backdropFilter: 'blur(14px)' }}>
+                <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                        <p className="text-xs text-slate-400 font-medium">Celkom</p>
+                        <p className="text-lg font-extrabold bg-clip-text text-transparent"
+                            style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                            {subtotal.toFixed(2)} €
+                        </p>
+                    </div>
+                    <GBtn full onClick={handleProceedToCheckout}>Pokračovať na objednávku →</GBtn>
                 </div>
             </div>
         </div>
