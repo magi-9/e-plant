@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
+import { getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -159,16 +159,12 @@ export default function ProductsPage() {
         return data?.pages.flatMap(page => page.results) || [];
     }, [data]);
 
-    // Compute category counts from loaded products.
-    const categoryCounts = useMemo(() => {
-        const counts = new Map<string, number>();
-        allProducts.forEach(product => {
-            getCategoryList(product).forEach(cat => {
-                counts.set(cat, (counts.get(cat) || 0) + 1);
-            });
-        });
-        return counts;
-    }, [allProducts]);
+    // Fetch cached category counts from backend (pre-computed + cached server-side)
+    const { data: categoryCounts = {} } = useQuery({
+        queryKey: ['category-counts'],
+        queryFn: getCategoryCounts,
+        staleTime: 30 * 60 * 1000,
+    });
 
     // Group compatibility options by section for the dropdown
     const compatibilityBySection = compatibilityOptions.reduce<Record<string, string[]>>((acc, opt) => {
@@ -397,10 +393,10 @@ export default function ProductsPage() {
                                 style={selectedCategories.length === 0 ? { background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.2)', color: '#0891b2', fontWeight: 600 } : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
                             >
                                 <span>Všetko</span>
-                                <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: '#f8fafc', color: '#94a3b8' }}>{allProducts.length}</span>
+                                <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: '#f8fafc', color: '#94a3b8' }}>{databaseProductCount || allProducts.length}</span>
                             </button>
                             {categories.map((category: string) => {
-                                const count = categoryCounts.get(category) || 0;
+                                const count = categoryCounts[category] || 0;
                                 const active = selectedCategories.includes(category);
                                 return (
                                     <button

@@ -2,6 +2,7 @@ import csv
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -725,6 +726,44 @@ class CompatibilityCountsView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"counts": get_compatibility_counts()})
+
+
+# Cached category counts
+
+
+@lru_cache(maxsize=1)
+def _get_category_counts():
+    """Return dict of {category: count} for visible storefront products.
+
+    Counts include values from `category` field and semi-colon separated
+    `parameters.all_categories` entries. Cached per-process via lru_cache.
+    """
+    from products.models import Product
+
+    qs = Product.objects.filter(is_visible=True).values_list(
+        "category", "parameters__all_categories"
+    )
+    counts: dict[str, int] = {}
+    for cat, params_all in qs:
+        if cat:
+            key = cat.strip()
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+        if params_all:
+            for part in str(params_all).split(";"):
+                part = part.strip()
+                if part:
+                    counts[part] = counts.get(part, 0) + 1
+    return counts
+
+
+class CategoryCountsView(APIView):
+    """Public endpoint: return cached counts per category."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": _get_category_counts()})
 
 
 class AdminProductImport(APIView):

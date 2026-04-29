@@ -153,6 +153,11 @@ export const getCompatibilityCounts = async (): Promise<Record<string, number>> 
     return response.data.counts;
 };
 
+export const getCategoryCounts = async (): Promise<Record<string, number>> => {
+    const response = await client.get<{ counts: Record<string, number> }>('/products/category-counts/');
+    return response.data.counts;
+};
+
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
     const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
