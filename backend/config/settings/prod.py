@@ -35,7 +35,12 @@ def _parse_csv_env(var_name: str, default: str) -> list[str]:
     ]
 
 
-ALLOWED_HOSTS = _parse_csv_env("ALLOWED_HOSTS", "localhost")
+_internal_allowed_hosts = ["localhost", "127.0.0.1", "backend"]
+ALLOWED_HOSTS = list(
+    dict.fromkeys(
+        _parse_csv_env("ALLOWED_HOSTS", "localhost") + _internal_allowed_hosts
+    )
+)
 CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "http://localhost")
 
 # CSRF Trusted origins (needed if using admin behind proxy/https)
