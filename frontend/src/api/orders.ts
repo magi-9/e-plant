@@ -184,3 +184,23 @@ export const adminInterventionDeleteOrder = async (
 };
 
 
+
+export const downloadAdminInvoice = async (orderId: number, orderNumber: string): Promise<void> => {
+    const response = await client.get(`/orders/admin/orders/${orderId}/invoice/`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${orderNumber}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+};
+
+export const downloadMyInvoice = async (orderNumber: string): Promise<void> => {
+    const response = await client.get(`/orders/my/${orderNumber}/invoice/`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${orderNumber}.pdf`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+};

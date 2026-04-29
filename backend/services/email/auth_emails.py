@@ -14,6 +14,9 @@ from .base import BaseEmailService
 from .branding import get_company_name
 from .templates import password_reset_email_html, verification_email_html
 
+VERIFICATION_BRAND_NAME = "Dynamic Abutment"
+VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
+
 
 class AuthEmailService(BaseEmailService):
     """Service for sending authentication-related emails."""
@@ -50,14 +53,14 @@ class AuthEmailService(BaseEmailService):
         verify_url = f"{self._get_frontend_url()}/verify-email/{uid}/{token}/"
         company_name = get_company_name()
 
-        subject = f"Overenie e-mailovej adresy - {company_name}"
+        subject = f"Overenie e-mailovej adresy - {VERIFICATION_BRAND_NAME}"
         text_body = (
             "Dobrý deň,\n\n"
-            f"Ďakujeme za vašu registráciu na {company_name}.\n"
+            f"Ďakujeme za vašu registráciu na {VERIFICATION_BRAND_NAME}.\n"
             "Pre dokončenie registrácie a aktiváciu vášho účtu kliknite na nasledujúci odkaz:\n\n"
             f"{verify_url}\n\n"
             "Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.\n\n"
-            f"S pozdravom,\n{company_name} Tím"
+            f"S pozdravom,\n{VERIFICATION_SIGNATURE_NAME}"
         )
         html_body = verification_email_html(verify_url, company_name)
 

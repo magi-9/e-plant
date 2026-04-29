@@ -5,6 +5,7 @@ from .views import (
     AdminUserDeleteView,
     AdminUsersListView,
     AdminUserUpdateView,
+    ChangePasswordView,
     GlobalSettingsView,
     MeView,
     PasswordResetConfirmView,
@@ -35,6 +36,7 @@ urlpatterns = [
         name="password_reset_confirm",
     ),
     path("me/", MeView.as_view(), name="me"),
+    path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("admin/users/", AdminUsersListView.as_view(), name="admin_users_list"),
     path(
         "admin/users/create/", AdminUserCreateView.as_view(), name="admin_user_create"

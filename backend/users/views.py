@@ -30,6 +30,8 @@ def _perform_user_registration(serializer):
         email=serializer.validated_data["email"],
         password=serializer.validated_data["password"],
         title=serializer.validated_data.get("title", ""),
+        first_name=serializer.validated_data["first_name"],
+        last_name=serializer.validated_data["last_name"],
         is_active=False,
         send_verification_email=True,
     )
@@ -191,6 +193,39 @@ class PasswordResetConfirmView(views.APIView):
         return Response(
             {"success": "Heslo bolo úspešne zmenené. Teraz sa môžete prihlásiť."}
         )
+
+
+class ChangePasswordView(views.APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        current_password = request.data.get("current_password", "")
+        new_password = request.data.get("new_password", "")
+
+        if not current_password or not new_password:
+            return Response(
+                {"error": "Zadajte aktuálne aj nové heslo."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        if not user.check_password(current_password):
+            return Response(
+                {"error": "Aktuálne heslo je nesprávne."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return Response(
+                {"error": _translate_password_errors(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save()
+        return Response({"success": "Heslo bolo úspešne zmenené."})
 
 
 class MeView(generics.RetrieveUpdateDestroyAPIView):

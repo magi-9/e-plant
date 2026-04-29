@@ -119,6 +119,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         .filter(Boolean);
     const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
     const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
+    const compatibilityCodes = (activeVariant?.compatibility_codes && activeVariant.compatibility_codes.length ? activeVariant.compatibility_codes : product.compatibility_codes) || [];
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
     const effectiveStockQuantity = (() => {
@@ -177,80 +178,83 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             <Dialog as="div" className="relative z-50" onClose={setOpen}>
                 <Transition.Child
                     as={Fragment}
-                    enter="ease-out duration-300"
+                    enter="ease-out duration-200"
                     enterFrom="opacity-0"
                     enterTo="opacity-100"
-                    leave="ease-in duration-200"
+                    leave="ease-in duration-150"
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+                    <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity" />
                 </Transition.Child>
 
-                <div className="fixed inset-0 z-10 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
+                {/* Mobile: bottom sheet | Desktop: right-side panel */}
+                <div className="fixed inset-0 z-10 flex items-end lg:items-stretch lg:justify-end overflow-hidden">
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
-                        enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                        enterTo="opacity-100 translate-y-0 sm:scale-100"
+                        enterFrom="opacity-0 translate-y-full lg:translate-y-0 lg:translate-x-full"
+                        enterTo="opacity-100 translate-y-0 lg:translate-x-0"
                         leave="ease-in duration-200"
-                        leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                        leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                        leaveFrom="opacity-100 translate-y-0 lg:translate-x-0"
+                        leaveTo="opacity-0 translate-y-full lg:translate-y-0 lg:translate-x-full"
                     >
-                        <Dialog.Panel className="relative transform overflow-hidden rounded-t-2xl sm:rounded-lg bg-white text-left shadow-xl transition-all w-full h-[95vh] sm:h-auto sm:max-w-5xl lg:max-w-6xl sm:max-h-[92dvh] flex flex-col">
-                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10 flex items-center gap-2">
-                                    {onEdit && product && (
-                                        <button
-                                            type="button"
-                                            className="inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2.5 py-1.5 text-sm font-medium shadow-sm transition-colors"
-                                            onClick={() => { setOpen(false); onEdit(product); }}
-                                        >
-                                            <PencilIcon className="h-4 w-4" />
-                                            Upraviť
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        className="rounded-full bg-white/90 backdrop-blur-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 p-1.5 shadow-sm"
-                                        onClick={() => setOpen(false)}
-                                    >
-                                        <span className="sr-only">Zavrieť</span>
-                                        <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-                                    </button>
+                        <Dialog.Panel className="relative bg-white text-left shadow-xl transition-all w-full rounded-t-[22px] lg:rounded-none max-h-[88vh] lg:max-h-none lg:h-full lg:w-[460px] flex flex-col overflow-hidden">
+                                {/* Mobile drag handle */}
+                                <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 lg:hidden">
+                                    <div className="w-9 h-1 rounded-full bg-slate-200" />
                                 </div>
 
-                                <div className="bg-white flex flex-col min-h-0 flex-1 overflow-hidden">
-                                    <div className="px-4 pt-5 sm:p-6 overflow-y-auto overflow-x-hidden flex-1">
-                                        {/* Full Scrollable Content */}
-                                        <div className="w-full min-w-0">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 min-w-0">
-                                            {/* Image Section */}
-                                            <div className="relative aspect-square w-full rounded-lg bg-gray-100 overflow-hidden">
-                                                {effectiveImage ? (
-                                                    <img
-                                                        src={effectiveImage}
-                                                        alt={effectiveName}
-                                                        className="h-full w-full object-cover object-center"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-full items-center justify-center bg-blue-50 text-blue-200">
-                                                        <svg className="h-24 w-24" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                            </div>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">Detail produktu</p>
+                                    <div className="flex items-center gap-2">
+                                        {onEdit && product && (
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-700 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                                                onClick={() => { setOpen(false); onEdit(product); }}
+                                            >
+                                                <PencilIcon className="h-3.5 w-3.5" />
+                                                Upraviť
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            style={{ background: '#f8fafc' }}
+                                            onClick={() => setOpen(false)}
+                                            aria-label="Zavrieť"
+                                        >
+                                            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                                            {/* Content Section */}
-                                            <div className="flex flex-col h-full min-w-0">
-                                                <div className="min-w-0">
+                                <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
+                                    {/* Image */}
+                                    <div className="mx-4 mb-4 rounded-2xl overflow-hidden flex-shrink-0" style={{ height: 200, background: '#f0fdfe' }}>
+                                        {effectiveImage ? (
+                                            <img src={effectiveImage} alt={effectiveName} className="h-full w-full object-contain object-center p-3" />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdfe, #ecfdf5)' }}>
+                                                <svg className="h-16 w-16 text-slate-300" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="px-4 pb-8">
+                                        <div className="min-w-0">
                                                     <Dialog.Title as="h3" className="text-2xl font-bold leading-tight text-gray-900 mb-1 break-words">
                                                         {effectiveName}
                                                     </Dialog.Title>
                                                     {effectiveProductCode && (
                                                         <p className="text-sm text-gray-500 font-medium mb-2 break-words">{effectiveProductCode}</p>
                                                     )}
-                                                    <div className="flex items-start gap-1.5 mb-4 flex-wrap">
+                                                    <div className="flex items-start gap-1.5 mb-3 flex-wrap">
                                                         <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
                                                         <p className="text-sm text-cyan-700 font-medium break-words">
                                                             {visibleCategories.join(', ') || effectiveCategory}
@@ -259,6 +263,16 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                             )}
                                                         </p>
                                                     </div>
+                                                    {compatibilityCodes.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 mb-4">
+                                                            {compatibilityCodes.map((code: string) => (
+                                                                <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
+                                                                    style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                    ⬡ {code}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     {hasVariants && (
                                                         <div className="mb-5">
                                                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -323,7 +337,26 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {effectivePrice && (() => {
+                                                        {(() => {
+                                                            if (!effectivePrice) {
+                                                                if (!isLoggedIn) {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                navigate('/login');
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
+                                                                        >
+                                                                            Prihlásiť sa
+                                                                        </button>
+                                                                    );
+                                                                }
+
+                                                                return null;
+                                                            }
+
                                                             const cartItem = items.find(
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
@@ -360,6 +393,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 return (
                                                                     <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 w-48 shadow-sm">
                                                                         <button
+                                                                            type="button"
+                                                                            aria-label="Znížiť množstvo"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 if (cartItem.quantity > 1) {
@@ -376,6 +411,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                             {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
                                                                         </span>
                                                                         <button
+                                                                            type="button"
+                                                                            aria-label="Zvýšiť množstvo"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 if (cartItem.quantity >= effectiveStockQuantity) {
@@ -435,8 +472,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
 
                                     {/* Scrollable Description Section */}
                                     {(descriptionParts.length > 0 || hiddenCategories.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
@@ -464,7 +499,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                         </div>
                                     )}
                                     </div>
-                                </div>
                             </Dialog.Panel>
                         </Transition.Child>
                 </div>

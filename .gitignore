@@ -41,3 +41,4 @@ data/new/
 data/__pycache__/
 # Added by code-review-graph
 .code-review-graph/
+.claude/

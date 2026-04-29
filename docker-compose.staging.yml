@@ -112,31 +112,6 @@ services:
         delay: 5s
         order: stop-first
 
-  dokploy-webhook-relay:
-    image: alpine/socat:1.8.0.3
-    command: "TCP-LISTEN:8080,fork,reuseaddr TCP:${DOKPLOY_INTERNAL_HOST:-192.168.0.15}:${DOKPLOY_INTERNAL_PORT:-3000}"
-    expose:
-      - "8080"
-    networks:
-      - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.eplant-staging-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
-      - "traefik.http.routers.eplant-staging-dokploy-webhook.entrypoints=web,websecure"
-      - "traefik.http.routers.eplant-staging-dokploy-webhook.priority=100"
-      - "traefik.http.routers.eplant-staging-dokploy-webhook.service=eplant-staging-dokploy-webhook"
-      - "traefik.http.services.eplant-staging-dokploy-webhook.loadbalancer.server.port=8080"
-    deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.eplant-staging-dokploy-webhook.rule=Path(`/api/deploy/compose/${DOKPLOY_WEBHOOK_TOKEN:-replace_with_dokploy_token}`)"
-        - "traefik.http.routers.eplant-staging-dokploy-webhook.entrypoints=web,websecure"
-        - "traefik.http.routers.eplant-staging-dokploy-webhook.priority=100"
-        - "traefik.http.routers.eplant-staging-dokploy-webhook.service=eplant-staging-dokploy-webhook"
-        - "traefik.http.services.eplant-staging-dokploy-webhook.loadbalancer.server.port=8080"
-      restart_policy:
-        condition: on-failure
-
 volumes:
   static_volume:
   media_volume:

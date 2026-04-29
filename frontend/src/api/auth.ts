@@ -14,6 +14,8 @@ export interface RegisterData {
     email: string;
     password: string;
     title?: string;
+    first_name: string;
+    last_name: string;
 }
 
 export const register = async (userData: RegisterData) => {
@@ -56,6 +58,7 @@ export interface MeResponse {
     company_name?: string;
     ico?: string;
     dic?: string;
+    dic_dph?: string;
 }
 
 export const getMe = async (): Promise<MeResponse> => {
@@ -66,6 +69,10 @@ export const deleteMe = async () => {
     const response = await client.delete('/auth/me/');
     return response.data;
 }
+
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    await client.post('/auth/change-password/', { current_password: currentPassword, new_password: newPassword });
+};
 
 export const isAdmin = (): boolean => {
     try {

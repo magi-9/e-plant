@@ -4,8 +4,11 @@ import { getGlobalSettings, updateGlobalSettings } from '../api/settings';
 import type { GlobalSettings } from '../api/settings';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 export default function AdminSettings() {
+    const canAccess = useAdminPageGuard();
+
     const fallbackEmailDomain = import.meta.env.VITE_EMAIL_DOMAIN || 'example.com';
     const queryClient = useQueryClient();
     const { data: currentSettings, isLoading } = useQuery({ queryKey: ['global-settings'], queryFn: getGlobalSettings });
@@ -57,6 +60,7 @@ export default function AdminSettings() {
         mutation.mutate(formData);
     };
 
+    if (!canAccess) return null;
     if (isLoading) return <div className="p-8 text-center text-gray-500">Načítavam nastavenia...</div>;
 
     return (

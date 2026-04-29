@@ -14,6 +14,9 @@ from .views import (
     AdminWildcardGroupProductsView,
     AdminWildcardGroupRemoveProductsView,
     AdminWildcardGroupSyncView,
+    CategoryCountsView,
+    CompatibilityCountsView,
+    CompatibilityOptionsView,
     ProductCategoriesView,
     ProductCountView,
     ProductGroupListView,
@@ -24,6 +27,21 @@ from .views import (
 urlpatterns = [
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
     path("categories/", ProductCategoriesView.as_view(), name="product_categories"),
+    path(
+        "compatibility-options/",
+        CompatibilityOptionsView.as_view(),
+        name="compatibility_options",
+    ),
+    path(
+        "compatibility-counts/",
+        CompatibilityCountsView.as_view(),
+        name="compatibility_counts",
+    ),
+    path(
+        "category-counts/",
+        CategoryCountsView.as_view(),
+        name="category_counts",
+    ),
     path("count/", ProductCountView.as_view(), name="product_count"),
     path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),

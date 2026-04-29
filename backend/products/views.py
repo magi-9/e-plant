@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count, Sum
@@ -27,6 +28,11 @@ from .serializers import (
     ProductGroupSerializer,
     ProductSerializer,
     WildcardGroupSerializer,
+)
+from .compatibility import (
+    get_compatibility_counts,
+    get_compatibility_options,
+    get_ref_prefixes_for_code,
 )
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
@@ -93,6 +99,19 @@ def _apply_product_filters(queryset, request):
         qs = qs.filter(stock_quantity__gt=0)
     elif stock_param == "out":
         qs = qs.filter(stock_quantity=0)
+
+    compat_code = request.query_params.get("compatibility_code", "").strip()
+    if compat_code:
+        # Look up all reference family prefixes for this code across all sections.
+        # Section param is accepted but ignored — filtering is code-only.
+        prefixes = get_ref_prefixes_for_code(compat_code)
+        if prefixes:
+            prefix_filter = models.Q()
+            for prefix in prefixes:
+                prefix_filter |= models.Q(reference__startswith=prefix + ".")
+            qs = qs.filter(prefix_filter)
+        else:
+            qs = qs.none()
 
     return qs
 
@@ -689,6 +708,68 @@ class ProductCategoriesView(APIView):
                         categories.add(part)
 
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
+
+
+class CompatibilityOptionsView(APIView):
+    """Public endpoint: return distinct compatibility codes with representative section metadata."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"options": get_compatibility_options()})
+
+
+class CompatibilityCountsView(APIView):
+    """Public endpoint: return product count per compatibility_code (cached)."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": get_compatibility_counts()})
+
+
+# Cached category counts
+
+
+def _get_category_counts():
+    """Return dict of {category: count} for visible storefront products.
+
+    Counts include values from `category` field and semi-colon separated
+    `parameters.all_categories` entries. Cached with TTL.
+    """
+    cache_key = "category_counts"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    from products.models import Product
+
+    qs = Product.objects.filter(is_visible=True).values_list(
+        "category", "parameters__all_categories"
+    )
+    counts: dict[str, int] = {}
+    for cat, params_all in qs:
+        if cat:
+            key = cat.strip()
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+        if params_all:
+            for part in str(params_all).split(";"):
+                part = part.strip()
+                if part:
+                    counts[part] = counts.get(part, 0) + 1
+    # Cache for 1 hour (3600 seconds)
+    cache.set(cache_key, counts, 3600)
+    return counts
+
+
+class CategoryCountsView(APIView):
+    """Public endpoint: return cached counts per category."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": _get_category_counts()})
 
 
 class AdminProductImport(APIView):

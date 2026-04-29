@@ -23,7 +23,7 @@ export default function ShopLayout() {
         <Outlet />
       </main>
 
-      <footer className={`bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 border-t border-cyan-500/20 mt-auto text-slate-300 ${isProductsPage ? 'lg:ml-56' : ''}`}>
+      <footer className={`bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 border-t border-cyan-500/20 mt-auto text-slate-300 ${isProductsPage ? 'lg:ml-60' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 pb-8 border-b border-slate-800/70">
             <div className="flex items-center gap-3">

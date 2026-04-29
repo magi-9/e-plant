@@ -10,13 +10,20 @@ User = get_user_model()
 def test_register_login_and_access_me_flow(api_client):
     register_response = api_client.post(
         reverse("register"),
-        {"email": "integration.auth@example.com", "password": "Xk7#mPqZ92"},
+        {
+            "email": "integration.auth@example.com",
+            "password": "Xk7#mPqZ92",
+            "first_name": "Integration",
+            "last_name": "User",
+        },
         format="json",
     )
     assert register_response.status_code == status.HTTP_201_CREATED
     assert User.objects.filter(email="integration.auth@example.com").exists()
 
     registered_user = User.objects.get(email="integration.auth@example.com")
+    assert registered_user.first_name == "Integration"
+    assert registered_user.last_name == "User"
     registered_user.is_active = True
     registered_user.save(update_fields=["is_active"])
 

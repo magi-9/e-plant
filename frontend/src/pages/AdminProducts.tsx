@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ConfirmModal from '../components/ConfirmModal';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 const PAGE_SIZE = 50;
 
@@ -35,7 +36,7 @@ export default function AdminProducts() {
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
 
     // Form states
-    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
+    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true, compatibility_code: '' });
     const [isUploadingCSV, setIsUploadingCSV] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -217,6 +218,9 @@ export default function AdminProducts() {
         }
 
         payload.append('is_visible', (formData.is_visible ?? true).toString());
+        if (formData.compatibility_code !== undefined) {
+            payload.append('compatibility_code', formData.compatibility_code || '');
+        }
 
         if (editingProduct) {
             updateMutation.mutate({ id: editingProduct.id, data: payload }, {
@@ -254,6 +258,9 @@ export default function AdminProducts() {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
+
+    const canAccess = useAdminPageGuard();
+    if (!canAccess) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -616,6 +623,16 @@ export default function AdminProducts() {
                                                         <p className="mt-1 text-xs text-gray-400">Produkt už obsahuje obrázok. Nový ho prepíše.</p>
                                                     )}
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Kód kompatibility</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.compatibility_code || ''}
+                                                    onChange={(e) => setFormData({ ...formData, compatibility_code: e.target.value })}
+                                                    placeholder="napr. 0001"
+                                                    className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                                />
                                             </div>
                                             <div className="pt-1">
                                                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">

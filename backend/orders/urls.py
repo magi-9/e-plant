@@ -3,11 +3,13 @@ from django.urls import path
 from .views import (
     AdminOrderInterventionDeleteView,
     AdminOrderInterventionUpdateView,
+    AdminOrderInvoiceView,
     AdminOrdersListView,
     AdminStatsView,
     AdminStockIssueView,
     AdminOrderUpdateView,
     AdminStockReceiptView,
+    MyOrderInvoiceView,
     MyOrdersView,
     OrderCreateView,
     OrderDetailView,
@@ -46,6 +48,16 @@ urlpatterns = [
         "admin/stats/",
         AdminStatsView.as_view(),
         name="admin_stats",
+    ),
+    path(
+        "admin/orders/<int:pk>/invoice/",
+        AdminOrderInvoiceView.as_view(),
+        name="admin_order_invoice",
+    ),
+    path(
+        "my/<str:order_number>/invoice/",
+        MyOrderInvoiceView.as_view(),
+        name="my_order_invoice",
     ),
     path("<str:order_number>/", OrderDetailView.as_view(), name="order_detail"),
 ]

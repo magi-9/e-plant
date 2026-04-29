@@ -15,6 +15,7 @@ import { getProducts } from '../api/products';
 import { getAdminOrders, type Order } from '../api/orders';
 import { getAdminUsers, type User } from '../api/users';
 import { getOrderStats } from '../api/settings';
+import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 const menuItems = [
     {
@@ -62,6 +63,8 @@ const menuItems = [
 ];
 
 export default function AdminDashboard() {
+    const canAccess = useAdminPageGuard();
+
     const [activeTab, setActiveTab] = useState<'overview' | 'stats'>('overview');
     const [statsPeriod, setStatsPeriod] = useState<7 | 30 | 90>(30);
 
@@ -90,6 +93,8 @@ export default function AdminDashboard() {
         queryFn: () => getOrderStats(statsPeriod),
         enabled: activeTab === 'stats',
     });
+
+    if (!canAccess) return null;
 
     const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
         return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);

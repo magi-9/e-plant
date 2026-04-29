@@ -7,8 +7,7 @@ import ShopLayout from './components/ShopLayout';
 import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import AuthPage from './pages/AuthPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
@@ -29,6 +28,7 @@ import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConstructionPage from './pages/ConstructionPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { parseBooleanEnv } from './utils/env';
 
 import { Toaster } from 'react-hot-toast';
@@ -37,7 +37,7 @@ const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const COOKIE_CONSENT_KEY = 'cookie_consent';
 const CONSENT_EVENT = 'cookie-consent-changed';
 const LANDING_HOST = (import.meta.env.VITE_LANDING_HOST as string | undefined) || 'ebringer.sk';
-const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'digitalabutment.ebringer.sk';
+const SHOP_HOST = (import.meta.env.VITE_SHOP_HOST as string | undefined) || 'dynamicabutment.ebringer.sk';
 const HOME_PAGE_READY = import.meta.env.DEV || parseBooleanEnv(import.meta.env.VITE_HOME_PAGE_READY, true);
 let sentryInitialized = false;
 
@@ -131,8 +131,8 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/register" element={<AuthPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/users" element={<AdminUsers />} />
@@ -147,7 +147,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/complaints" element={<ComplaintsPage />} />
             <Route path="/withdrawal" element={<WithdrawalPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
