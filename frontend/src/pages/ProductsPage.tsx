@@ -223,8 +223,8 @@ export default function ProductsPage() {
     }, []);
 
     const scrollToFilters = useCallback(() => {
-        // Use getElementById for reliable scroll targeting across all breakpoints
-        const element = document.getElementById('product-filters');
+        const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+        const element = document.getElementById(isDesktop ? 'product-filters' : 'product-filters-mobile');
         element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
@@ -557,7 +557,14 @@ export default function ProductsPage() {
                             className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 placeholder:text-slate-400 min-w-0"
                         />
                         {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600 text-base leading-none flex-shrink-0">×</button>
+                            <button
+                                type="button"
+                                aria-label="Vymazať vyhľadávanie"
+                                onClick={() => setSearchQuery('')}
+                                className="text-slate-400 hover:text-slate-600 text-base leading-none flex-shrink-0"
+                            >
+                                ×
+                            </button>
                         )}
                     </div>
                     <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
@@ -678,7 +685,15 @@ export default function ProductsPage() {
                                 style={{ color: '#fff', fontFamily: 'inherit' }}
                             />
                             {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="text-base leading-none" style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>×</button>
+                                <button
+                                    type="button"
+                                    aria-label="Vymazať vyhľadávanie"
+                                    onClick={() => setSearchQuery('')}
+                                    className="text-base leading-none"
+                                    style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                >
+                                    ×
+                                </button>
                             )}
                         </div>
                         <button
@@ -892,7 +907,8 @@ export default function ProductsPage() {
                                                 </div>
                                             ) : (
                                                 <span className="text-[10px] sm:text-xs font-semibold text-cyan-700 bg-cyan-50 px-1.5 sm:px-2.5 py-0.5 rounded-full">
-                                                    Člen.
+                                                            <span className="sm:hidden">Člen.</span>
+                                                            <span className="hidden sm:inline">Členská cena</span>
                                                 </span>
                                             )}
                                         </div>
@@ -909,6 +925,8 @@ export default function ProductsPage() {
                                                         <div className="inline-flex items-center rounded-full overflow-hidden border-[1.5px] border-cyan-400"
                                                             style={{ background: '#e0f7fa' }}>
                                                             <button
+                                                                type="button"
+                                                                aria-label="Znížiť množstvo"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (cartItem.quantity > 1) {
@@ -921,6 +939,8 @@ export default function ProductsPage() {
                                                             >−</button>
                                                             <span className="text-xs font-bold text-cyan-600 px-1.5">{cartItem.quantity}</span>
                                                             <button
+                                                                type="button"
+                                                                aria-label="Zvýšiť množstvo"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     if (cartItem.quantity >= product.stock_quantity) {
@@ -954,6 +974,9 @@ export default function ProductsPage() {
 
                                                 return (
                                                     <button
+                                                            type="button"
+                                                            aria-label="Pridať do košíka"
+                                                            title="Pridať do košíka"
                                                         onClick={(e) => handleAddToCart(e, product)}
                                                         disabled={addingId === product.id}
                                                         className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"

@@ -711,7 +711,7 @@ class ProductCategoriesView(APIView):
 
 
 class CompatibilityOptionsView(APIView):
-    """Public endpoint: return unique section+compatibility_code combos from CSV."""
+    """Public endpoint: return distinct compatibility codes with representative section metadata."""
 
     permission_classes = (permissions.AllowAny,)
 

@@ -231,6 +231,7 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
                     style={{ color: sc.color, background: sc.bg }}
                 >
                     <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc.dot }} />
+                    <span className="sr-only">{sc.label}</span>
                     <span className="hidden xs:inline">{sc.label}</span>
                 </span>
 

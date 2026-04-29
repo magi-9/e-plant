@@ -337,7 +337,26 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {effectivePrice && (() => {
+                                                        {(() => {
+                                                            if (!effectivePrice) {
+                                                                if (!isLoggedIn) {
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                navigate('/login');
+                                                                            }}
+                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
+                                                                        >
+                                                                            Prihlásiť sa
+                                                                        </button>
+                                                                    );
+                                                                }
+
+                                                                return null;
+                                                            }
+
                                                             const cartItem = items.find(
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
@@ -374,6 +393,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 return (
                                                                     <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 w-48 shadow-sm">
                                                                         <button
+                                                                            type="button"
+                                                                            aria-label="Znížiť množstvo"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 if (cartItem.quantity > 1) {
@@ -390,6 +411,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                             {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
                                                                         </span>
                                                                         <button
+                                                                            type="button"
+                                                                            aria-label="Zvýšiť množstvo"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 if (cartItem.quantity >= effectiveStockQuantity) {
