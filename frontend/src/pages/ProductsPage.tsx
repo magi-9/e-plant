@@ -12,7 +12,8 @@ import toast from 'react-hot-toast';
 
 function StockDot({ stock }: { stock: number }) {
     const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} />;
+    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
+    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
 }
 
 const getCategoryList = (product: Product): string[] => {
@@ -55,7 +56,6 @@ const getVariantWord = (count: number): string => {
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
-    const filtersRef = useRef<HTMLDivElement>(null);
     const isLoggedIn = !!localStorage.getItem('access_token');
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
@@ -166,17 +166,20 @@ export default function ProductsPage() {
         staleTime: 30 * 60 * 1000,
     });
 
-    // Group compatibility options by section for the dropdown
-    const compatibilityBySection = compatibilityOptions.reduce<Record<string, string[]>>((acc, opt) => {
-        if (!acc[opt.section]) acc[opt.section] = [];
-        acc[opt.section].push(opt.compatibility_code);
-        return acc;
-    }, {});
-
-    
+    // Keep only one option per compatibility code for storefront filters.
+    // API options can include duplicate codes across different sections.
+    const uniqueCompatibilityOptions = useMemo(() => {
+        const byCode = new Map<string, CompatibilityOption>();
+        for (const option of compatibilityOptions) {
+            if (!byCode.has(option.compatibility_code)) {
+                byCode.set(option.compatibility_code, option);
+            }
+        }
+        return Array.from(byCode.values());
+    }, [compatibilityOptions]);
 
     // Sort compatibility options numerically (smallest to largest)
-    const sortedCompatibilityOptions = [...compatibilityOptions].slice().sort((a, b) => {
+    const sortedCompatibilityOptions = [...uniqueCompatibilityOptions].slice().sort((a, b) => {
         const numA = parseFloat(a.compatibility_code.replace(/[^\d.]/g, ''));
         const numB = parseFloat(b.compatibility_code.replace(/[^\d.]/g, ''));
         if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
@@ -220,7 +223,9 @@ export default function ProductsPage() {
     }, []);
 
     const scrollToFilters = useCallback(() => {
-        filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Use getElementById for reliable scroll targeting across all breakpoints
+        const element = document.getElementById('product-filters');
+        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, []);
 
     const handleProductClick = (product: Product) => {
@@ -376,7 +381,7 @@ export default function ProductsPage() {
             
             {/* Left Sidebar - Categories & Filters (Desktop only) */}
             <aside className="hidden lg:block w-60 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
-                <div className="p-5 py-5">
+                <div className="px-3 py-4">
                     {/* Categories */}
                     <button
                         onClick={() => setCategoriesOpen(o => !o)}
@@ -473,7 +478,7 @@ export default function ProductsPage() {
 
                     {/* In-Stock Toggle */}
                     <div className="mt-4 pt-4 border-t border-slate-100">
-                        <div onClick={() => setInStockOnly(!inStockOnly)} className="flex items-center justify-between cursor-pointer">
+                        <button type="button" onClick={() => setInStockOnly(!inStockOnly)} className="w-full flex items-center justify-between cursor-pointer text-left" aria-pressed={inStockOnly}>
                             <div>
                                 <p className="text-sm font-medium text-slate-800">Len skladom</p>
                                 <p className="text-xs text-slate-400">Skryť vypredané</p>
@@ -483,7 +488,7 @@ export default function ProductsPage() {
                                 <div className="absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-all"
                                     style={{ left: inStockOnly ? 21 : 3 }} />
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -540,7 +545,7 @@ export default function ProductsPage() {
             <div className="py-10 px-4 sm:py-16 sm:px-6 lg:px-10 xl:px-12 lg:py-20 lg:ml-60 flex flex-col">
 
                 {/* Desktop: unified search + sort + view card */}
-                <div ref={filtersRef} id="product-filters" className="hidden lg:flex scroll-mt-24 items-center gap-3 mb-4 bg-white border border-slate-200 rounded-2xl px-4 py-2.5">
+                <div id="product-filters" className="hidden lg:flex scroll-mt-24 items-center gap-3 mb-4 bg-white border border-slate-200 rounded-2xl px-4 py-2.5">
                     {/* Search */}
                     <div className="flex flex-1 items-center gap-2 min-w-0">
                         <MagnifyingGlassIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
@@ -721,8 +726,8 @@ export default function ProductsPage() {
                     </div>
                 </div>
 
-                {/* Mobile: also need the search ref for desktop */}
-                <div ref={filtersRef} id="product-filters" className="scroll-mt-24 lg:hidden" />
+                {/* Mobile: keep a scroll anchor here */}
+                <div id="product-filters-mobile" className="scroll-mt-24 lg:hidden" />
 
                 <div className="mb-5 hidden lg:block">
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-none">Naše produkty</h1>
@@ -1084,7 +1089,7 @@ export default function ProductsPage() {
                         </div>
 
                         {/* Compatibility */}
-                        {compatibilityOptions.length > 0 && (
+                        {sortedCompatibilityOptions.length > 0 && (
                             <div className="mb-6 pt-5 border-t border-slate-100">
                                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Kompatibilita</h3>
                                 <div className="space-y-1.5">
@@ -1097,25 +1102,21 @@ export default function ProductsPage() {
                                     >
                                         Všetky
                                     </button>
-                                    {Object.entries(compatibilityBySection).map(([section, codes]) =>
-                                        codes.map((code) => {
-                                            const opt = compatibilityOptions.find(o => o.section === section && o.compatibility_code === code);
-                                            if (!opt) return null;
-                                            const isActive = selectedCompatibility?.section === section && selectedCompatibility?.compatibility_code === code;
-                                            return (
-                                                <button
-                                                    key={`${section}-${code}`}
-                                                    onClick={() => setSelectedCompatibility(isActive ? null : opt)}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
-                                                        isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
-                                                    }`}
-                                                    style={isActive ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
-                                                >
-                                                    {code}
-                                                </button>
-                                            );
-                                        })
-                                    )}
+                                    {sortedCompatibilityOptions.map((opt) => {
+                                        const isActive = selectedCompatibility?.compatibility_code === opt.compatibility_code;
+                                        return (
+                                            <button
+                                                key={opt.compatibility_code}
+                                                onClick={() => setSelectedCompatibility(isActive ? null : opt)}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
+                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
+                                                }`}
+                                                style={isActive ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
+                                            >
+                                                {opt.compatibility_code}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

@@ -2,10 +2,10 @@ import csv
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
-from functools import lru_cache
 from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count, Sum
@@ -731,13 +731,17 @@ class CompatibilityCountsView(APIView):
 # Cached category counts
 
 
-@lru_cache(maxsize=1)
 def _get_category_counts():
     """Return dict of {category: count} for visible storefront products.
 
     Counts include values from `category` field and semi-colon separated
-    `parameters.all_categories` entries. Cached per-process via lru_cache.
+    `parameters.all_categories` entries. Cached with TTL.
     """
+    cache_key = "category_counts"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     from products.models import Product
 
     qs = Product.objects.filter(is_visible=True).values_list(
@@ -754,6 +758,8 @@ def _get_category_counts():
                 part = part.strip()
                 if part:
                     counts[part] = counts.get(part, 0) + 1
+    # Cache for 1 hour (3600 seconds)
+    cache.set(cache_key, counts, 3600)
     return counts
 
 

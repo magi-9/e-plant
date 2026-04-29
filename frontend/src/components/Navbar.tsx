@@ -73,7 +73,7 @@ export default function Navbar() {
             className="fixed top-0 left-0 right-0 z-50 h-16"
             style={{ background: '#020617', borderBottom: '1px solid rgba(6,182,212,0.18)' }}
         >
-            <div className="max-w-[1440px] mx-auto px-6 h-full flex items-center justify-between">
+            <div className="w-full h-full px-2 sm:px-3 flex items-center justify-between">
 
                 {/* Left: logo + nav links */}
                 <div className="flex items-center gap-8">

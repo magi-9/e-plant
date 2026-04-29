@@ -111,9 +111,11 @@ function ToggleRow({ checked, onChange, label, desc }: {
     checked: boolean; onChange: (v: boolean) => void; label: string; desc?: string;
 }) {
     return (
-        <div
+        <button
+            type="button"
             onClick={() => onChange(!checked)}
-            className="flex items-center gap-3 cursor-pointer transition-all"
+            aria-pressed={checked}
+            className="w-full flex items-center gap-3 cursor-pointer transition-all text-left"
             style={{
                 padding: '14px 16px',
                 background: checked ? '#e0f7fa' : '#fff',
@@ -134,7 +136,7 @@ function ToggleRow({ checked, onChange, label, desc }: {
                 <p className="text-sm font-semibold text-slate-900">{label}</p>
                 {desc && <p className="text-xs text-slate-400">{desc}</p>}
             </div>
-        </div>
+        </button>
     );
 }
 
@@ -308,8 +310,6 @@ export default function CheckoutPage() {
         payment_method: 'bank_transfer' as 'bank_transfer' | 'card',
         shipping_method: 'courier' as 'courier' | 'pickup',
         notes: '',
-        diff_delivery: false,
-        del_street: '', del_city: '', del_postal: '', del_country: 'SK',
     });
 
     useEffect(() => {
@@ -610,31 +610,12 @@ export default function CheckoutPage() {
                                                 <Field label="DIČ" name="dic" value={formData.dic} onChange={set('dic')} half placeholder="SK1234567890" />
                                                 <Field label="IČ DPH" name="dic_dph" value={formData.dic_dph} onChange={set('dic_dph')} half placeholder="SK1234567890" />
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mb-4">
-                                    <ToggleRow
-                                        checked={formData.diff_delivery}
-                                        onChange={v => setFormData(p => ({ ...p, diff_delivery: v }))}
-                                        label="Dodacia adresa iná ako fakturačná"
-                                        desc="Zadajte adresu doručenia"
-                                    />
-                                    {formData.diff_delivery && (
-                                        <div className="px-5 py-5 space-y-4 border-x border-b border-cyan-400"
-                                            style={{ borderRadius: '0 0 14px 14px', background: '#f8fafc' }}>
-                                            <div className="flex gap-4">
-                                                <Field label="Ulica a číslo" name="del_street" value={formData.del_street} onChange={set('del_street')} half required={formData.diff_delivery} placeholder="Hlavná 12" />
-                                                <Field label="Mesto" name="del_city" value={formData.del_city} onChange={set('del_city')} half required={formData.diff_delivery} />
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <Field label="PSČ" name="del_postal" value={formData.del_postal} onChange={set('del_postal')} half required={formData.diff_delivery} placeholder="811 01" />
-                                                <Field label="Krajina" name="del_country" value={formData.del_country} onChange={set('del_country')} half as="select">
-                                                    <option value="SK">Slovensko</option>
-                                                    <option value="CZ">Česká republika</option>
-                                                </Field>
-                                            </div>
+                                            <label className="flex items-center gap-3 pt-2">
+                                                <input type="checkbox" checked={formData.is_vat_payer}
+                                                    onChange={e => setFormData(p => ({ ...p, is_vat_payer: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                                                <span className="text-sm text-slate-600">Som platiteľ DPH</span>
+                                            </label>
                                         </div>
                                     )}
                                 </div>

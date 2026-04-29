@@ -139,30 +139,31 @@ class TestCompatibilityFilter:
 
 @pytest.mark.django_db
 class TestCompatibilityOptionsEndpoint:
-    def test_returns_section_code_combos(self, api_client, compat_csv):
+    def test_returns_distinct_codes(self, api_client, compat_csv):
         import products.compatibility as compat_module
 
         with patch.object(compat_module, "_CSV_PATH", compat_csv):
             compat_module._load.cache_clear()
+            compat_module.get_compatibility_options.cache_clear()
             response = api_client.get(reverse("compatibility_options"))
 
         assert response.status_code == status.HTTP_200_OK
         options = response.data["options"]
-        codes = {(o["section"], o["compatibility_code"]) for o in options}
-        assert ("SCREWDRIVER", "0022") in codes
-        assert ("TIBASE", "0022") in codes
-        assert ("TIBASE", "0001") in codes
+        codes = [o["compatibility_code"] for o in options]
+        assert set(codes) == {"0001", "0022"}
+        assert len(codes) == 2
 
     def test_sorted(self, api_client, compat_csv):
         import products.compatibility as compat_module
 
         with patch.object(compat_module, "_CSV_PATH", compat_csv):
             compat_module._load.cache_clear()
+            compat_module.get_compatibility_options.cache_clear()
             response = api_client.get(reverse("compatibility_options"))
 
         options = response.data["options"]
-        keys = [(o["section"], o["compatibility_code"]) for o in options]
-        assert keys == sorted(keys)
+        codes = [o["compatibility_code"] for o in options]
+        assert codes == sorted(codes)
 
 
 @pytest.mark.django_db
@@ -199,3 +200,97 @@ class TestCompatibilityCodeSerializer:
         assert response.status_code == status.HTTP_200_OK
         product.refresh_from_db()
         assert product.parameters["compatibility_code"] == "099"
+
+
+@pytest.mark.django_db
+class TestCompatibilityCountsEndpoint:
+    def test_returns_compatibility_counts(
+        self, api_client, product_factory, compat_csv
+    ):
+        """CompatibilityCountsView returns product counts per compatibility code."""
+        import products.compatibility as compat_module
+        from django.core.cache import cache
+
+        cache.clear()
+        # Create products with references that match compatibility codes
+        product_factory(reference="50.313.022.01-2", is_visible=True)
+        product_factory(reference="50.313.022.02-2", is_visible=True)
+        product_factory(reference="31.322.022.05-2", is_visible=True)
+        product_factory(reference="UNRELATED-REF", is_visible=True)
+
+        with patch.object(compat_module, "_CSV_PATH", compat_csv):
+            compat_module._load.cache_clear()
+            response = api_client.get(reverse("compatibility_counts"))
+
+        assert response.status_code == status.HTTP_200_OK
+        counts = response.data["counts"]
+        assert counts.get("0022") == 3  # 3 products match code 0022
+        assert counts.get("0001") == 0  # 0 products match code 0001
+
+    def test_respects_is_visible_filter(self, api_client, product_factory, compat_csv):
+        """Only visible products are counted."""
+        import products.compatibility as compat_module
+        from django.core.cache import cache
+
+        cache.clear()
+        product_factory(reference="50.313.022.01-2", is_visible=True)
+        product_factory(reference="50.313.022.02-2", is_visible=False)
+
+        with patch.object(compat_module, "_CSV_PATH", compat_csv):
+            compat_module._load.cache_clear()
+            response = api_client.get(reverse("compatibility_counts"))
+
+        assert response.status_code == status.HTTP_200_OK
+        counts = response.data["counts"]
+        assert counts.get("0022") == 1
+
+    def test_endpoint_is_public(self, api_client, product_factory):
+        """Endpoint doesn't require authentication."""
+        product_factory(reference="TEST-01", is_visible=True)
+        response = api_client.get(reverse("compatibility_counts"))
+        assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestCategoryCountsEndpoint:
+    def test_returns_category_counts(self, api_client, product_factory):
+        """CategoryCountsView returns product counts per category."""
+        from django.core.cache import cache
+
+        cache.clear()
+        product_factory(category="Power Tools", is_visible=True)
+        product_factory(category="Power Tools", is_visible=True)
+        product_factory(category="Hand Tools", is_visible=True)
+        product_factory(category="Power Tools", is_visible=False)  # Not visible
+
+        response = api_client.get(reverse("category_counts"))
+
+        assert response.status_code == status.HTTP_200_OK
+        counts = response.data["counts"]
+        assert counts.get("Power Tools") == 2
+        assert counts.get("Hand Tools") == 1
+
+    def test_includes_parameters_all_categories(self, api_client, product_factory):
+        """Counts include categories from parameters.all_categories field."""
+        from django.core.cache import cache
+
+        cache.clear()
+        product_factory(
+            category="Main",
+            parameters={"all_categories": "Sub1; Sub2"},
+            is_visible=True,
+        )
+
+        response = api_client.get(reverse("category_counts"))
+
+        assert response.status_code == status.HTTP_200_OK
+        counts = response.data["counts"]
+        assert counts.get("Main") == 1
+        assert counts.get("Sub1") == 1
+        assert counts.get("Sub2") == 1
+
+    def test_endpoint_is_public(self, api_client, product_factory):
+        """Endpoint doesn't require authentication."""
+        product_factory(category="Test", is_visible=True)
+        response = api_client.get(reverse("category_counts"))
+        assert response.status_code == status.HTTP_200_OK

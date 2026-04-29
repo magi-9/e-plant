@@ -2,6 +2,8 @@ import csv
 import os
 from functools import lru_cache
 
+from django.core.cache import cache
+
 _CSV_PATH = os.path.join(
     os.path.dirname(__file__), "../../data/csv/compatibility_options.csv"
 )
@@ -27,20 +29,20 @@ def _load():
     return {k: frozenset(v) for k, v in raw.items()}
 
 
+@lru_cache(maxsize=1)
 def get_compatibility_options():
-    """Return sorted list of unique {section, compatibility_code} dicts (for UI)."""
+    """Return sorted list of distinct compatibility codes with a representative section."""
     if not os.path.exists(_CSV_PATH):
         return []
-    options = []
-    seen = set()
+    by_code = {}
     with open(_CSV_PATH, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             section = row.get("section", "").strip()
             code = row.get("compatibility_code", "").strip()
-            if section and code and (section, code) not in seen:
-                seen.add((section, code))
-                options.append({"section": section, "compatibility_code": code})
-    return sorted(options, key=lambda o: (o["section"], o["compatibility_code"]))
+            if section and code and code not in by_code:
+                # Keep first section encountered for a code as representative metadata.
+                by_code[code] = {"section": section, "compatibility_code": code}
+    return sorted(by_code.values(), key=lambda o: o["compatibility_code"])
 
 
 def get_ref_prefixes_for_code(code):
@@ -60,9 +62,13 @@ def get_compatibility_codes_for_ref(ref):
     return sorted(code for code, prefixes in data.items() if family in prefixes)
 
 
-@lru_cache(maxsize=1)
 def get_compatibility_counts():
-    """Return {compatibility_code: product_count} dict. Cached for process lifetime."""
+    """Return {compatibility_code: product_count} dict. Cached with TTL."""
+    cache_key = "compatibility_counts"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     from django.db import connection  # noqa: F401 – ensure DB is ready
     from products.models import Product
 
@@ -80,7 +86,10 @@ def get_compatibility_counts():
             family_count[fam] = family_count.get(fam, 0) + 1
 
     data = _load()
-    return {
+    result = {
         code: sum(family_count.get(p, 0) for p in prefixes)
         for code, prefixes in data.items()
     }
+    # Cache for 1 hour (3600 seconds)
+    cache.set(cache_key, result, 3600)
+    return result

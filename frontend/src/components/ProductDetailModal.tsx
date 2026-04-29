@@ -224,6 +224,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
                                             style={{ background: '#f8fafc' }}
                                             onClick={() => setOpen(false)}
+                                            aria-label="Zavrieť"
                                         >
                                             <XMarkIcon className="h-4 w-4" aria-hidden="true" />
                                         </button>
