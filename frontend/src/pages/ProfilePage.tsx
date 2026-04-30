@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMe, deleteMe, changePassword, isAdmin } from '../api/auth';
+import { authService } from '../api/authService';
 import { Link, useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import toast from 'react-hot-toast';
@@ -156,8 +157,7 @@ export default function ProfilePage() {
     const deleteMutation = useMutation({
         mutationFn: deleteMe,
         onSuccess: () => {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
+            authService.clearUserMeta();
             queryClient.clear();
             toast.success('Váš účet bol úspešne a natrvalo vymazaný.');
             navigate('/');

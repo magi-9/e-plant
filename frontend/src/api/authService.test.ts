@@ -34,10 +34,9 @@ describe('AuthService', () => {
     });
 
     it('queues concurrent refresh calls and performs a single refresh request', async () => {
-        const deferred = createDeferred<{ data: { access: string } }>();
+        const deferred = createDeferred<{ data: object }>();
         mockedAxios.post.mockReturnValueOnce(deferred.promise);
 
-        localStorage.setItem('refresh_token', 'refresh-token-1');
         const service = new AuthService();
 
         const firstCall = service.refreshAccessToken();
@@ -45,19 +44,17 @@ describe('AuthService', () => {
 
         expect(mockedAxios.post).toHaveBeenCalledTimes(1);
 
-        deferred.resolve({ data: { access: 'new-access-token' } });
+        deferred.resolve({ data: {} });
 
-        await expect(firstCall).resolves.toBe('new-access-token');
-        await expect(secondCall).resolves.toBe('new-access-token');
-        expect(localStorage.getItem('access_token')).toBe('new-access-token');
+        await expect(firstCall).resolves.toBeUndefined();
+        await expect(secondCall).resolves.toBeUndefined();
     });
 
-    it('rejects queued requests and clears tokens when refresh fails', async () => {
+    it('rejects queued requests and clears user_meta when refresh fails', async () => {
         const deferred = createDeferred<never>();
         mockedAxios.post.mockReturnValueOnce(deferred.promise);
 
-        localStorage.setItem('refresh_token', 'refresh-token-2');
-        localStorage.setItem('access_token', 'old-access-token');
+        localStorage.setItem('user_meta', JSON.stringify({ is_staff: false, email: 'test@test.com' }));
         const service = new AuthService();
 
         const firstCall = service.refreshAccessToken();
@@ -68,7 +65,21 @@ describe('AuthService', () => {
 
         await expect(firstCall).rejects.toThrow('refresh failed');
         await expect(secondCall).rejects.toThrow('refresh failed');
-        expect(localStorage.getItem('access_token')).toBeNull();
-        expect(localStorage.getItem('refresh_token')).toBeNull();
+        expect(localStorage.getItem('user_meta')).toBeNull();
+    });
+
+    it('returns user meta from localStorage', () => {
+        const service = new AuthService();
+        service.setUserMeta({ is_staff: true, email: 'admin@test.com' });
+        expect(service.getUserMeta()).toEqual({ is_staff: true, email: 'admin@test.com' });
+        expect(service.isAuthenticated()).toBe(true);
+    });
+
+    it('clearUserMeta removes user_meta from localStorage', () => {
+        const service = new AuthService();
+        service.setUserMeta({ is_staff: false, email: 'user@test.com' });
+        service.clearUserMeta();
+        expect(service.getUserMeta()).toBeNull();
+        expect(service.isAuthenticated()).toBe(false);
     });
 });

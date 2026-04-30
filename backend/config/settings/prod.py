@@ -35,12 +35,24 @@ def _parse_csv_env(var_name: str, default: str) -> list[str]:
     ]
 
 
-ALLOWED_HOSTS = _parse_csv_env("ALLOWED_HOSTS", "localhost")
-CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "http://localhost")
+_internal_allowed_hosts = ["localhost", "127.0.0.1", "backend"]
+ALLOWED_HOSTS = list(
+    dict.fromkeys(
+        _parse_csv_env("ALLOWED_HOSTS", "localhost") + _internal_allowed_hosts
+    )
+)
 
-# CSRF Trusted origins (needed if using admin behind proxy/https)
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "https://localhost")
-CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)
+if not os.environ.get("CORS_ALLOWED_ORIGINS"):
+    raise ImproperlyConfigured(
+        "CORS_ALLOWED_ORIGINS must be set in production (comma-separated list of allowed origins)."
+    )
+CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "")
+
+if not os.environ.get("CSRF_TRUSTED_ORIGINS"):
+    raise ImproperlyConfigured(
+        "CSRF_TRUSTED_ORIGINS must be set in production (comma-separated list of trusted origins)."
+    )
+CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS", "")
 
 # Database
 DATABASES = {

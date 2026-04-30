@@ -7,6 +7,7 @@ import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
+import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
 import toast from 'react-hot-toast';
 
@@ -56,7 +57,7 @@ const getVariantWord = (count: number): string => {
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     

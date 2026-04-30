@@ -68,19 +68,22 @@ fi
 # collect static files
 python manage.py collectstatic --noinput
 
-# Create/update default users for staging and production
-if [ "${CREATE_DEFAULT_USERS:-true}" = "true" ]; then
-    echo "Ensuring default admin and user accounts exist"
+# Create default admin account only when explicitly opted in.
+# Requires both DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD — no fallback passwords.
+if [ "${CREATE_DEFAULT_USERS:-false}" = "true" ]; then
+    if [ -z "${DJANGO_SUPERUSER_EMAIL:-}" ] || [ -z "${DJANGO_SUPERUSER_PASSWORD:-}" ]; then
+        echo "ERROR: CREATE_DEFAULT_USERS=true requires DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD to be set."
+        exit 1
+    fi
+    echo "Ensuring default admin account exists"
     python manage.py shell << 'PYTHON_EOF'
 import os
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-admin_email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
-admin_password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin123')
-default_user_email = os.environ.get('DJANGO_DEFAULT_USER_EMAIL', 'user@example.com')
-default_user_password = os.environ.get('DJANGO_DEFAULT_USER_PASSWORD', 'user123')
+admin_email = os.environ['DJANGO_SUPERUSER_EMAIL']
+admin_password = os.environ['DJANGO_SUPERUSER_PASSWORD']
 
 
 def ensure_admin(email, password):
@@ -94,22 +97,10 @@ def ensure_admin(email, password):
     print(f"✓ Default admin {action}: {email}")
 
 
-def ensure_user(email, password):
-    user, created = User.objects.get_or_create(email=email)
-    user.is_staff = False
-    user.is_superuser = False
-    user.is_active = True
-    user.set_password(password)
-    user.save()
-    action = "created" if created else "updated"
-    print(f"✓ Default user {action}: {email}")
-
-
 ensure_admin(admin_email, admin_password)
-ensure_user(default_user_email, default_user_password)
 PYTHON_EOF
 else
-    echo "Skipping default user creation (CREATE_DEFAULT_USERS=${CREATE_DEFAULT_USERS})"
+    echo "Skipping default user creation (CREATE_DEFAULT_USERS=${CREATE_DEFAULT_USERS:-false})"
 fi
 
 # Ensure prometheus multiprocess dir exists and is empty (stale data from previous

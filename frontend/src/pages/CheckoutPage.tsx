@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { createOrder } from '../api/orders';
 import type { CreateOrderData } from '../api/orders';
 import { getMe, isAdmin } from '../api/auth';
+import { authService } from '../api/authService';
 import { getGlobalSettings } from '../api/settings';
 import client from '../api/client';
 import { isAxiosError } from 'axios';
@@ -293,7 +294,7 @@ export default function CheckoutPage() {
     const [orderTotal, setOrderTotal] = useState<number>(0);
     const [saveToProfile, setSaveToProfile] = useState(false);
     const [agreementsAccepted, setAgreementsAccepted] = useState(false);
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
 
     const { data: userProfile } = useQuery({ queryKey: ['me'], queryFn: getMe, enabled: isLoggedIn });
     const { data: globalSettings } = useQuery({ queryKey: ['global-settings'], queryFn: getGlobalSettings });
