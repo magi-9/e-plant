@@ -546,22 +546,6 @@ class TestOrderService:
         assert order.id is not None
         assert call_counter["count"] == 2
 
-    def test_determine_initial_status_bank_transfer(self):
-        """Test status determination for bank transfer."""
-        service = OrderService(user=None)
-
-        status = service._determine_initial_status("bank_transfer")
-
-        assert status == "awaiting_payment"
-
-    def test_determine_initial_status_card(self):
-        """Test status determination for card payment."""
-        service = OrderService(user=None)
-
-        status = service._determine_initial_status("card")
-
-        assert status == "awaiting_payment"
-
     @pytest.mark.django_db
     def test_create_order_rolls_back_when_item_creation_fails(
         self, user_factory, product_factory

@@ -5,7 +5,7 @@ from typing import Optional
 
 from django.conf import settings
 
-from orders.invoice import generate_invoice_pdf
+from orders.invoice import generate_invoice_pdf, skonto_amount, skonto_date
 from orders.models import Order
 from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 
@@ -184,8 +184,6 @@ class OrderEmailService(BaseEmailService):
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
-            from orders.invoice import skonto_amount, skonto_date
-
             sk_date = skonto_date(self.order.created_at.date())
             sk_amount = skonto_amount(self.order.total_price)
             payment_info = f"""

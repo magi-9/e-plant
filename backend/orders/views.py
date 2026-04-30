@@ -299,7 +299,7 @@ class AdminOrderInvoiceView(APIView):
     def get(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
         shop_settings = GlobalSettings.objects.get_settings()
-        is_pre_invoice = order.status in ("new", "awaiting_payment")
+        is_pre_invoice = order.status == "awaiting_payment"
         pdf_bytes = generate_invoice_pdf(
             order, shop_settings, pre_invoice=is_pre_invoice
         )
@@ -318,7 +318,7 @@ class MyOrderInvoiceView(APIView):
     def get(self, request, order_number):
         order = get_object_or_404(Order, order_number=order_number, user=request.user)
         shop_settings = GlobalSettings.objects.get_settings()
-        is_pre_invoice = order.status in ("new", "awaiting_payment")
+        is_pre_invoice = order.status == "awaiting_payment"
         pdf_bytes = generate_invoice_pdf(
             order, shop_settings, pre_invoice=is_pre_invoice
         )
