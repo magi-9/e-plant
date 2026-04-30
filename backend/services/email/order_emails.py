@@ -246,7 +246,9 @@ Tím {company_name}
             batch_line = ""
             batches = item.batch_allocations.all()
             if batches:
-                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                batch_str = ", ".join(
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+                )
                 batch_line = f"\n    Šarža: {batch_str}"
             item_lines.append(
                 f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"

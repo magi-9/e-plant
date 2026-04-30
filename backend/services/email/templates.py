@@ -380,11 +380,13 @@ def order_notification_warehouse_html(
         )
         qty_color = "#dc2626" if is_low else "#374151"
         batches = item.batch_allocations.all()
-        batch_cell = (
-            escape(", ".join(ba.batch_lot.batch_number for ba in batches))
-            if batches
-            else '<span style="color:#94a3b8;">—</span>'
-        )
+        if batches:
+            batch_str = ", ".join(
+                f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+            )
+            batch_cell = escape(batch_str)
+        else:
+            batch_cell = '<span style="color:#94a3b8;">—</span>'
         row_parts.append(
             f'<tr style="background:{bg};">'
             f'<td style="padding:10px 12px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">'

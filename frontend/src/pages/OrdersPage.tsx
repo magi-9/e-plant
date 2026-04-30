@@ -96,6 +96,14 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
         };
     }, []);
 
+    // Toggle a body class while this modal is mounted so print CSS only applies
+    useEffect(() => {
+        document.body.classList.add('print-invoice-active');
+        return () => {
+            document.body.classList.remove('print-invoice-active');
+        };
+    }, []);
+
     const sellerLines = [
         globalSettings?.company_name,
         globalSettings?.company_street,
