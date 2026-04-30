@@ -10,6 +10,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, isAdmin } from '../api/auth';
+import { authService } from '../api/authService';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
 import ConfirmModal from './ConfirmModal';
@@ -18,7 +19,7 @@ export default function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
     const totalItems = useCartStore((state: CartState) => state.getTotalItems());
     const items = useCartStore((state: CartState) => state.items);
@@ -51,10 +52,8 @@ export default function Navbar() {
     const confirmLogout = () => {
         queryClient.clear();
         useCartStore.getState().clearCart();
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
         setShowLogoutConfirm(false);
-        navigate('/login', { replace: true });
+        authService.logout().finally(() => navigate('/login', { replace: true }));
     };
 
     const isActive = (href: string) =>

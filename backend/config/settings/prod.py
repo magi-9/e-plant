@@ -41,11 +41,18 @@ ALLOWED_HOSTS = list(
         _parse_csv_env("ALLOWED_HOSTS", "localhost") + _internal_allowed_hosts
     )
 )
-CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "http://localhost")
 
-# CSRF Trusted origins (needed if using admin behind proxy/https)
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "https://localhost")
-CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)
+if not os.environ.get("CORS_ALLOWED_ORIGINS"):
+    raise ImproperlyConfigured(
+        "CORS_ALLOWED_ORIGINS must be set in production (comma-separated list of allowed origins)."
+    )
+CORS_ALLOWED_ORIGINS = _parse_csv_env("CORS_ALLOWED_ORIGINS", "")
+
+if not os.environ.get("CSRF_TRUSTED_ORIGINS"):
+    raise ImproperlyConfigured(
+        "CSRF_TRUSTED_ORIGINS must be set in production (comma-separated list of trusted origins)."
+    )
+CSRF_TRUSTED_ORIGINS = _parse_csv_env("CSRF_TRUSTED_ORIGINS", "")
 
 # Database
 DATABASES = {
@@ -61,6 +68,12 @@ DATABASES = {
             or "postgres"
         ),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        "OPTIONS": {
+            # Use DB_SSLMODE=require when Postgres has TLS enabled (recommended).
+            # Defaults to "prefer" (try TLS, fall back to plaintext) so the app
+            # starts even when the managed Postgres has no TLS configured yet.
+            "sslmode": os.environ.get("DB_SSLMODE", "prefer"),
+        },
     }
 }
 

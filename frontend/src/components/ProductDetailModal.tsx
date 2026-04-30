@@ -8,6 +8,7 @@ import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
 import toast from 'react-hot-toast';
+import { authService } from '../api/authService';
 
 const VISIBLE_CATEGORIES_COUNT = 6;
 
@@ -20,7 +21,7 @@ interface ProductDetailModalProps {
 
 export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
     const navigate = useNavigate();
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [showActionButtons, setShowActionButtons] = useState(false);

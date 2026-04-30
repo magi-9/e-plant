@@ -11,6 +11,7 @@ const client = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,
 });
 
 type ErrorWithConfig = AxiosError & {
@@ -18,7 +19,6 @@ type ErrorWithConfig = AxiosError & {
         url?: string;
         _retry?: boolean;
         _skipAuthRefresh?: boolean;
-        headers?: Record<string, string>;
     };
 };
 
@@ -56,27 +56,13 @@ export const createAuthRefreshErrorHandler = (
 
     try {
         originalRequest._retry = true;
-        const accessToken = await refreshService.refreshAccessToken();
-
-        originalRequest.headers = originalRequest.headers ?? {};
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        await refreshService.refreshAccessToken();
         return apiClient(originalRequest);
     } catch (refreshError) {
         refreshService.redirectToLogin('/login');
         return Promise.reject(refreshError);
     }
 };
-
-client.interceptors.request.use(
-    (config) => {
-        const token = authService.getAccessToken();
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
 
 client.interceptors.response.use(
     (response) => response,

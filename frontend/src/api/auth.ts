@@ -1,8 +1,8 @@
 import client from './client';
 
 export interface LoginResponse {
-    access: string;
-    refresh: string;
+    is_staff: boolean;
+    email: string;
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
@@ -76,12 +76,9 @@ export const changePassword = async (currentPassword: string, newPassword: strin
 
 export const isAdmin = (): boolean => {
     try {
-        const token = localStorage.getItem('access_token');
-        if (!token) return false;
-
-        // Decode JWT token to check if user is staff
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.is_staff === true;
+        const raw = localStorage.getItem('user_meta');
+        if (!raw) return false;
+        return (JSON.parse(raw) as { is_staff?: boolean }).is_staff === true;
     } catch {
         return false;
     }

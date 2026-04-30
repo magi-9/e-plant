@@ -4,8 +4,12 @@ const API_URL =
     import.meta.env.VITE_API_URL ||
     (import.meta.env.DEV ? 'http://localhost:5002/api' : '/api');
 
+const USER_META_KEY = 'user_meta';
+
+export type UserMeta = { is_staff: boolean; email: string };
+
 type PendingRefreshRequest = {
-    resolve: (token: string) => void;
+    resolve: () => void;
     reject: (reason?: unknown) => void;
 };
 
@@ -13,34 +17,32 @@ export class AuthService {
     private isRefreshing = false;
     private pendingRefreshRequests: PendingRefreshRequest[] = [];
 
-    getAccessToken(): string | null {
-        return localStorage.getItem('access_token');
+    getUserMeta(): UserMeta | null {
+        try {
+            const raw = localStorage.getItem(USER_META_KEY);
+            return raw ? (JSON.parse(raw) as UserMeta) : null;
+        } catch {
+            return null;
+        }
     }
 
-    getRefreshToken(): string | null {
-        return localStorage.getItem('refresh_token');
+    setUserMeta(meta: UserMeta): void {
+        localStorage.setItem(USER_META_KEY, JSON.stringify(meta));
     }
 
-    setAccessToken(token: string): void {
-        localStorage.setItem('access_token', token);
+    clearUserMeta(): void {
+        localStorage.removeItem(USER_META_KEY);
     }
 
-    clearTokens(): void {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+    isAuthenticated(): boolean {
+        return this.getUserMeta() !== null;
     }
 
     redirectToLogin(path = '/login'): void {
         window.location.href = path;
     }
 
-    async refreshAccessToken(): Promise<string> {
-        const refreshToken = this.getRefreshToken();
-
-        if (!refreshToken) {
-            throw new Error('No refresh token available');
-        }
-
+    async refreshAccessToken(): Promise<void> {
         if (this.isRefreshing) {
             return new Promise((resolve, reject) => {
                 this.pendingRefreshRequests.push({ resolve, reject });
@@ -50,22 +52,14 @@ export class AuthService {
         this.isRefreshing = true;
 
         try {
-            const response = await axios.post(
+            await axios.post(
                 `${API_URL}/auth/refresh/`,
-                { refresh: refreshToken },
-                { _skipAuthRefresh: true }
+                {},
+                { withCredentials: true, _skipAuthRefresh: true } as object
             );
-
-            const accessToken = response.data?.access;
-            if (!accessToken) {
-                throw new Error('Refresh endpoint did not return access token');
-            }
-
-            this.setAccessToken(accessToken);
-            this.resolvePendingQueue(accessToken);
-            return accessToken;
+            this.resolvePendingQueue();
         } catch (error) {
-            this.clearTokens();
+            this.clearUserMeta();
             this.rejectPendingQueue(error);
             throw error;
         } finally {
@@ -73,8 +67,17 @@ export class AuthService {
         }
     }
 
-    private resolvePendingQueue(token: string): void {
-        this.pendingRefreshRequests.forEach(({ resolve }) => resolve(token));
+    async logout(): Promise<void> {
+        try {
+            await axios.post(`${API_URL}/auth/logout/`, {}, { withCredentials: true });
+        } catch {
+            // ignore errors — cookies will expire naturally
+        }
+        this.clearUserMeta();
+    }
+
+    private resolvePendingQueue(): void {
+        this.pendingRefreshRequests.forEach(({ resolve }) => resolve());
         this.pendingRefreshRequests = [];
     }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { login, register } from '../api/auth';
+import { authService } from '../api/authService';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowPathIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import logoUrl from '../assets/dynamicabutment-logo.png';
@@ -146,8 +147,7 @@ function LoginForm() {
     const mutation = useMutation({
         mutationFn: () => login(email, password),
         onSuccess: (data) => {
-            localStorage.setItem('access_token', data.access);
-            localStorage.setItem('refresh_token', data.refresh);
+            authService.setUserMeta({ is_staff: data.is_staff, email: data.email });
             navigate('/products');
         },
         onError: () => setErrorMsg('Nesprávny email alebo heslo'),

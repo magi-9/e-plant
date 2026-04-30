@@ -4,7 +4,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: /app/entrypoint.prod.sh
-    user: "0:0"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
@@ -24,7 +23,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')\" || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -89,6 +88,7 @@ volumes:
     driver_opts:
       type: tmpfs
       device: tmpfs
+      o: uid=1000,gid=1000
 
 networks:
   dokploy-network:

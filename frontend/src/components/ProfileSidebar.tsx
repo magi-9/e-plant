@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { getMe } from '../api/auth';
+import { authService } from '../api/authService';
 
 export function ProfileSidebar({ active }: { active: 'profile' | 'orders' }) {
     const navigate = useNavigate();
@@ -9,9 +10,7 @@ export function ProfileSidebar({ active }: { active: 'profile' | 'orders' }) {
 
     const handleLogout = () => {
         queryClient.clear();
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        navigate('/login', { replace: true });
+        authService.logout().finally(() => navigate('/login', { replace: true }));
     };
 
     return (

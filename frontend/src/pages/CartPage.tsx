@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { isAdmin } from '../api/auth';
 import { getMe } from '../api/auth';
+import { authService } from '../api/authService';
 import { getProduct } from '../api/products';
 import { getGlobalSettings } from '../api/settings';
 import toast from 'react-hot-toast';
@@ -69,7 +70,7 @@ export default function CartPage() {
     }, [navigate]);
 
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
     const [showStockIssueBox, setShowStockIssueBox] = useState(false);
     const [contactFullName, setContactFullName] = useState('');
     const [contactMessage, setContactMessage] = useState('');
