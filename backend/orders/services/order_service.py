@@ -233,9 +233,7 @@ class OrderService:
         Returns:
             Initial order status
         """
-        if payment_method == "bank_transfer":
-            return "awaiting_payment"
-        return "new"
+        return "awaiting_payment"
 
     def _create_order_instance(
         self,

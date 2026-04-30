@@ -34,45 +34,64 @@ class OrderEmailService(BaseEmailService):
         self.order = order
 
     def send_confirmation_emails(self) -> bool:
-        """
-        Send confirmation emails to customer and warehouse.
-
-        Generates PDF invoice and attaches it to both customer and warehouse emails.
-        Loads GlobalSettings once and reuses for all email operations.
-        Logs any failures but does not raise exceptions.
-
-        Returns:
-            True if at least one email was sent successfully
-        """
+        """Send confirmation emails with a pre-invoice (not a tax document) attached."""
         shop = GlobalSettings.objects.get_settings()
         try:
-            pdf_bytes = self._generate_invoice_pdf(shop)
+            pdf_bytes = self._generate_invoice_pdf(shop, pre_invoice=True)
         except Exception:
             logger.exception(
-                "Failed to generate invoice PDF for order %s", self.order.order_number
+                "Failed to generate pre-invoice PDF for order %s",
+                self.order.order_number,
             )
             pdf_bytes = None
 
-        customer_sent = self._send_customer_confirmation(shop, pdf_bytes)
+        customer_sent = self._send_customer_confirmation(
+            shop, pdf_bytes, pre_invoice=True
+        )
         warehouse_sent = self._send_warehouse_notification(shop, pdf_bytes)
 
         return customer_sent or warehouse_sent
 
-    def _generate_invoice_pdf(self, shop) -> Optional[bytes]:
+    def send_final_invoice_email(self) -> bool:
+        """Send the real (tax document) invoice once, when order is paid/shipped/completed."""
+        shop = GlobalSettings.objects.get_settings()
+        try:
+            pdf_bytes = self._generate_invoice_pdf(shop, pre_invoice=False)
+        except Exception:
+            logger.exception(
+                "Failed to generate final invoice PDF for order %s",
+                self.order.order_number,
+            )
+            pdf_bytes = None
+
+        subject = f"Faktúra k objednávke #{self.order.order_number}"
+        status_label = get_order_status_label(
+            self.order.status, self.order.get_status_display()
+        )
+        text_body = self._build_customer_email_text(shop, status_label)
+
+        attachments = []
+        if pdf_bytes:
+            filename = f"faktura_{self.order.order_number}.pdf"
+            attachments.append((filename, pdf_bytes, "application/pdf"))
+
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            to_email=self.order.email,
+            attachments=attachments,
+            fail_silently=True,
+        )
+        return sent_count > 0
+
+    def _generate_invoice_pdf(self, shop, pre_invoice: bool = False) -> Optional[bytes]:
         """Generate invoice PDF for the order."""
-        return generate_invoice_pdf(self.order, shop)
+        return generate_invoice_pdf(self.order, shop, pre_invoice=pre_invoice)
 
-    def _send_customer_confirmation(self, shop, pdf_bytes: Optional[bytes]) -> bool:
-        """
-        Send order confirmation email to customer.
-
-        Args:
-            shop: GlobalSettings instance (pre-loaded to avoid extra queries)
-            pdf_bytes: Optional PDF invoice bytes to attach
-
-        Returns:
-            True if email was sent successfully
-        """
+    def _send_customer_confirmation(
+        self, shop, pdf_bytes: Optional[bytes], pre_invoice: bool = False
+    ) -> bool:
+        """Send order confirmation email to customer with optional pre-invoice attachment."""
         subject = f"Potvrdenie objednávky #{self.order.order_number}"
         status_label = get_order_status_label(
             self.order.status, self.order.get_status_display()
@@ -82,7 +101,8 @@ class OrderEmailService(BaseEmailService):
 
         attachments = []
         if pdf_bytes:
-            filename = f"faktura_{self.order.order_number}.pdf"
+            prefix = "predfaktura" if pre_invoice else "faktura"
+            filename = f"{prefix}_{self.order.order_number}.pdf"
             attachments.append((filename, pdf_bytes, "application/pdf"))
 
         sent_count = self.send_email(

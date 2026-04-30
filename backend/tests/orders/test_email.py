@@ -48,10 +48,12 @@ def test_customer_email_sent_after_order(api_client, user_factory, product_facto
     )
     assert response.data["order_number"] in customer_email.body
 
-    # Check PDF attachment
+    # Check PDF attachment (pre-invoice on order creation)
     assert len(customer_email.attachments) == 1
     filename, content, mime_type = customer_email.attachments[0]
-    assert filename.startswith("faktura_") and filename.endswith(".pdf")
+    assert (
+        filename.startswith("faktura_") or filename.startswith("predfaktura_")
+    ) and filename.endswith(".pdf")
     assert mime_type == "application/pdf"
     assert len(content) > 0
 
@@ -104,11 +106,13 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
     ]
     assert len(warehouse_emails) >= 1
 
-    # Check PDF attachment on warehouse email
+    # Check PDF attachment on warehouse email (pre-invoice on order creation)
     warehouse_email = warehouse_emails[0]
     assert len(warehouse_email.attachments) == 1
     filename, content, mime_type = warehouse_email.attachments[0]
-    assert filename.startswith("faktura_") and filename.endswith(".pdf")
+    assert (
+        filename.startswith("faktura_") or filename.startswith("predfaktura_")
+    ) and filename.endswith(".pdf")
     assert mime_type == "application/pdf"
     assert len(content) > 0
 

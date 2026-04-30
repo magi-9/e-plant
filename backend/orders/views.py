@@ -1,5 +1,7 @@
+import logging
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Avg, DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -10,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from products.models import Product
+from services.email import OrderEmailService
 from users.models import GlobalSettings
 
 from .invoice import generate_invoice_pdf
@@ -24,9 +27,11 @@ from .serializers import (
     StockIssueInputSerializer,
     StockReceiptInputSerializer,
 )
-from .services.stock_issue_service import StockIssueService
 from .services.order_service import OrderService
+from .services.stock_issue_service import StockIssueService
 from .services.stock_receipt_service import StockReceiptService
+
+logger = logging.getLogger(__name__)
 
 
 class OrderCreateView(generics.CreateAPIView):
@@ -142,6 +147,9 @@ class AdminStockIssueView(APIView):
         )
 
 
+_INVOICE_TRIGGER_STATUSES = {"paid", "shipped", "completed"}
+
+
 class AdminOrderUpdateView(generics.UpdateAPIView):
     """Admin endpoint to update order status"""
 
@@ -153,11 +161,33 @@ class AdminOrderUpdateView(generics.UpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", True)
         instance = self.get_object()
+        old_status = instance.status
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        output_serializer = OrderSerializer(instance=serializer.instance)
+        order = serializer.instance
+        new_status = order.status
+
+        if (
+            old_status not in _INVOICE_TRIGGER_STATUSES
+            and new_status in _INVOICE_TRIGGER_STATUSES
+            and not order.invoice_sent
+        ):
+            order.invoice_sent = True
+            order.save(update_fields=["invoice_sent"])
+            transaction.on_commit(lambda: self._send_final_invoice(order))
+
+        output_serializer = OrderSerializer(instance=order)
         return Response(output_serializer.data)
+
+    def _send_final_invoice(self, order: Order) -> None:
+        try:
+            OrderEmailService(order).send_final_invoice_email()
+            logger.info("Final invoice sent for order %s", order.order_number)
+        except Exception:
+            logger.exception(
+                "Failed to send final invoice for order %s", order.order_number
+            )
 
 
 class AdminOrderInterventionUpdateView(APIView):
@@ -217,7 +247,7 @@ class AdminStatsView(APIView):
         orders = Order.objects.filter(created_at__gte=since)
 
         total_orders = orders.count()
-        paid_orders_qs = orders.filter(status__in=["paid", "shipped"])
+        paid_orders_qs = orders.filter(status__in=["paid", "shipped", "completed"])
         paid_orders = paid_orders_qs.count()
         unpaid_orders = total_orders - paid_orders
 
@@ -226,7 +256,7 @@ class AdminStatsView(APIView):
         top_products = (
             OrderItem.objects.filter(
                 order__created_at__gte=since,
-                order__status__in=["paid", "shipped"],
+                order__status__in=["paid", "shipped", "completed"],
             )
             .values("product_id", "product__name")
             .annotate(

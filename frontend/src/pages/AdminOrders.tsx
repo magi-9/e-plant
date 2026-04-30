@@ -16,20 +16,22 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 const STATUS_LABELS: Record<string, string> = {
-    new: 'Nová',
     awaiting_payment: 'Čaká na platbu',
     paid: 'Zaplatená',
     shipped: 'Odoslaná',
+    completed: 'Ukončená',
     cancelled: 'Zrušená',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-    new: 'bg-blue-100 text-blue-800 border-blue-200',
     awaiting_payment: 'bg-amber-100 text-amber-800 border-amber-200',
     paid: 'bg-green-100 text-green-800 border-green-200',
     shipped: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    completed: 'bg-slate-100 text-slate-700 border-slate-200',
     cancelled: 'bg-red-100 text-red-800 border-red-200',
 };
+
+const INVOICE_TRIGGER_STATUSES = new Set(['paid', 'shipped', 'completed']);
 
 const PAYMENT_LABELS: Record<string, string> = {
     bank_transfer: 'Bankový prevod',
@@ -97,6 +99,13 @@ type PendingAction = {
     step: 1 | 2;
 };
 
+type PendingStatusChange = {
+    orderId: number;
+    orderNumber: string;
+    newStatus: string;
+    currentStatus: string;
+};
+
 export default function AdminOrders() {
     const canAccess = useAdminPageGuard();
 
@@ -105,6 +114,7 @@ export default function AdminOrders() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [drafts, setDrafts] = useState<Record<number, InterventionDraft>>({});
     const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+    const [pendingStatusChange, setPendingStatusChange] = useState<PendingStatusChange | null>(null);
 
     const { data: orders, isLoading, error } = useQuery({
         queryKey: ['adminOrders'],
@@ -377,7 +387,22 @@ export default function AdminOrders() {
                                                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1.5">Zmeniť stav</p>
                                                 <select
                                                     value={order.status}
-                                                    onChange={(e) => statusMutation.mutate({ id: order.id, status: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const newStatus = e.target.value;
+                                                        if (
+                                                            !INVOICE_TRIGGER_STATUSES.has(order.status) &&
+                                                            INVOICE_TRIGGER_STATUSES.has(newStatus)
+                                                        ) {
+                                                            setPendingStatusChange({
+                                                                orderId: order.id,
+                                                                orderNumber: order.order_number,
+                                                                newStatus,
+                                                                currentStatus: order.status,
+                                                            });
+                                                        } else {
+                                                            statusMutation.mutate({ id: order.id, status: newStatus });
+                                                        }
+                                                    }}
                                                     disabled={statusMutation.isPending}
                                                     className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 disabled:opacity-50"
                                                 >
@@ -561,6 +586,21 @@ export default function AdminOrders() {
                 onConfirm={handleModalStep2Confirm}
                 onCancel={() => setPendingAction(null)}
                 isPending={interventionUpdateMutation.isPending || interventionDeleteMutation.isPending}
+            />
+        )}
+
+        {pendingStatusChange && (
+            <ConfirmModal
+                open
+                title="Zmena stavu objednávky"
+                message={`Ste si istý? Zákazníkovi bude odoslaná faktúra. (Objednávka #${pendingStatusChange.orderNumber})`}
+                confirmLabel="Áno, zmeniť stav a odoslať faktúru"
+                onConfirm={() => {
+                    statusMutation.mutate({ id: pendingStatusChange.orderId, status: pendingStatusChange.newStatus });
+                    setPendingStatusChange(null);
+                }}
+                onCancel={() => setPendingStatusChange(null)}
+                isPending={statusMutation.isPending}
             />
         )}
         </>

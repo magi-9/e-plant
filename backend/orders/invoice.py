@@ -272,9 +272,27 @@ def _bysquare_qr_image(
         return None
 
 
+def _pre_invoice_watermark(canvas, doc):
+    """Draw a diagonal 'PREDFAKTÚRA' watermark on every page."""
+    from reportlab.lib.pagesizes import A4 as _A4
+
+    canvas.saveState()
+    canvas.setFont(_FONT_BOLD, 72)
+    canvas.setFillColorRGB(0.88, 0.88, 0.88)
+    w, h = _A4
+    canvas.translate(w / 2, h / 2)
+    canvas.rotate(45)
+    canvas.drawCentredString(0, 0, "PREDFAKTÚRA")
+    canvas.restoreState()
+
+
 # ── Main generator ────────────────────────────────────────────────────────────
-def generate_invoice_pdf(order, shop_settings) -> bytes:
-    """Return raw PDF bytes for *order* using *shop_settings* as the seller."""
+def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> bytes:
+    """Return raw PDF bytes for *order* using *shop_settings* as the seller.
+
+    pre_invoice=True renders a pre-invoice (no accounting document) with a
+    watermark and a disclaimer footer instead of a tax document.
+    """
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -347,9 +365,15 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         )
 
     created_date = order.created_at.strftime("%d.%m.%Y")
+    if pre_invoice:
+        doc_title = "PREDFAKTÚRA"
+        doc_subtitle = "Nie je daňovým dokladom"
+    else:
+        doc_title = "FAKTÚRA"
+        doc_subtitle = "Daňový doklad"
     meta_cell = [
-        Paragraph("FAKTÚRA", s_title),
-        Paragraph("Daňový doklad", s_subtitle),
+        Paragraph(doc_title, s_title),
+        Paragraph(doc_subtitle, s_subtitle),
         Spacer(1, 3 * mm),
         Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", s_r),
         Paragraph(f"Dátum vystavenia: {created_date}", s_r_small),
@@ -664,7 +688,23 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         story.append(Spacer(1, 1 * mm))
         story.append(Paragraph(esc(order.notes), s_normal))
 
-    doc.build(story)
+    if pre_invoice:
+        story.append(Spacer(1, 6 * mm))
+        story.append(HRFlowable(width="100%", thickness=1, color=_GRAY))
+        story.append(Spacer(1, 2 * mm))
+        story.append(
+            Paragraph(
+                "Toto nie je účtovný doklad. Predfaktúra nenahrádza daňový doklad.",
+                _s("pre_invoice_footer", size=8, color=_GRAY, align=TA_CENTER),
+            )
+        )
+        doc.build(
+            story,
+            onFirstPage=_pre_invoice_watermark,
+            onLaterPages=_pre_invoice_watermark,
+        )
+    else:
+        doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
     return pdf
