@@ -1,0 +1,59 @@
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Version control
+.git
+.gitignore
+.github
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+
+# Build artifacts & cache
+dist/
+build/
+*.log
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+.vite-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.test-cache/
+.nyc_output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs & notes
+*.md
+*.txt
+notes/
+doc/
+
+# CI/CD
+.github/
+
+# Development-only
+README.md
+TASKS.md
+CLAUDE.md
+AGENTS.md
+Makefile
+check-all.sh
+rebuild-dev.sh
+docker-compose*.yml
