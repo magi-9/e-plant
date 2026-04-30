@@ -68,12 +68,6 @@ DATABASES = {
             or "postgres"
         ),
         "PORT": os.environ.get("DB_PORT", "5432"),
-        "OPTIONS": {
-            # Use DB_SSLMODE=require when Postgres has TLS enabled (recommended).
-            # Defaults to "prefer" (try TLS, fall back to plaintext) so the app
-            # starts even when the managed Postgres has no TLS configured yet.
-            "sslmode": os.environ.get("DB_SSLMODE", "prefer"),
-        },
     }
 }
 
