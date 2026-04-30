@@ -151,7 +151,9 @@ class OrderEmailService(BaseEmailService):
             line = f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
             batches = item.batch_allocations.all()
             if batches:
-                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                batch_str = ", ".join(
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+                )
                 line += f"\n    Šarža: {batch_str}"
             item_lines.append(line)
         items_text = "\n".join(item_lines)

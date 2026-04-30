@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isAdmin } from '../api/auth';
 import { getMyOrders, type Order } from '../api/orders';
+import { getGlobalSettings } from '../api/settings';
 import { useNavigate, Link } from 'react-router-dom';
 import { ProfileSidebar } from '../components/ProfileSidebar';
 import MobileProfileOrdersTabs from '../components/MobileProfileOrdersTabs';
@@ -70,9 +71,41 @@ interface InvoiceModalProps {
 }
 
 function InvoiceModal({ order, onClose }: InvoiceModalProps) {
+    const [globalSettings, setGlobalSettings] = useState<Awaited<ReturnType<typeof getGlobalSettings>> | null>(null);
     const subtotal = order.items.reduce((s, it) => s + parseFloat(it.subtotal), 0);
     const shippingCost = parseFloat(order.shipping_cost || '0');
     const invoiceNo = `FAK-${order.order_number}`;
+
+    useEffect(() => {
+        let active = true;
+
+        getGlobalSettings()
+            .then(settings => {
+                if (active) {
+                    setGlobalSettings(settings);
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setGlobalSettings(null);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const sellerLines = [
+        globalSettings?.company_name,
+        globalSettings?.company_street,
+        [globalSettings?.company_postal_code, globalSettings?.company_city, globalSettings?.company_state].filter(Boolean).join(' '),
+        globalSettings?.company_ico && `IČO: ${globalSettings.company_ico}`,
+        globalSettings?.company_dic && `DIČ: ${globalSettings.company_dic}`,
+        globalSettings?.company_vat_id && `IČ DPH: ${globalSettings.company_vat_id}`,
+        globalSettings?.company_email,
+        globalSettings?.company_phone,
+    ].filter(Boolean) as string[];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -84,12 +117,12 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                     <div className="flex justify-between items-start mb-10">
                         <div>
                             <div className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-500 to-emerald-500 bg-clip-text text-transparent mb-1">
-                                DAS e-shop
+                                {globalSettings?.company_name || 'DAS e-shop'}
                             </div>
                             <p className="text-xs text-slate-400 leading-relaxed">
-                                Hlavná 15, 811 01 Bratislava<br />
-                                IČO: 12345678 | DIČ: 2023456789<br />
-                                das@eshop.sk | +421 900 000 000
+                                {sellerLines.length > 0
+                                    ? sellerLines.map((line, index) => <span key={`${line}-${index}`}>{line}{index < sellerLines.length - 1 ? <br /> : null}</span>)
+                                    : 'Fakturačné údaje nie sú dostupné.'}
                             </p>
                         </div>
                         <div className="text-right">
@@ -137,6 +170,11 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                                 <tr key={it.id} className="border-b border-slate-100">
                                     <td className="py-3">
                                         <div className="font-medium text-slate-900">{it.product_name}</div>
+                                        {it.batch_allocations.length > 0 && (
+                                            <div className="mt-0.5 text-[11px] text-slate-400">
+                                                Šarža: {it.batch_allocations.map(batch => `${batch.batch_number} ${batch.quantity}x`).join(', ')}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="py-3 text-right text-slate-500">{it.quantity}×</td>
                                     <td className="py-3 text-right text-slate-500">{parseFloat(it.price_snapshot).toFixed(2)} €</td>
@@ -170,7 +208,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
 
                     {/* Footer note */}
                     <div className="mt-10 pt-5 border-t border-slate-100 text-center text-xs text-slate-400 leading-relaxed">
-                        Faktúra bola vystavená elektronicky a je platná bez podpisu. Ďakujeme za váš nákup.
+                        Faktúra bola vystavená elektronicky a je platná bez podpisu. Nie je to daňový doklad. Ďakujeme za váš nákup.
                     </div>
                 </div>
 

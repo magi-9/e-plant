@@ -8,8 +8,14 @@ VERIFICATION_BRAND_NAME = "Dynamic Abutment"
 VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
 
 
+def _text_or_empty(value) -> str:
+    return value if isinstance(value, str) else ""
+
+
 def _safe_company_name(company_name: str) -> str:
-    cleaned = (company_name or "").strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    cleaned = (
+        _text_or_empty(company_name).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    )
     return escape(cleaned)
 
 
@@ -145,7 +151,9 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
         batches = item.batch_allocations.all()
         batch_line = ""
         if batches:
-            batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+            batch_str = ", ".join(
+                f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+            )
             batch_line = f'<br><span style="font-size:11px;color:#64748b;">Šarža: {escape(batch_str)}</span>'
         row_parts.append(
             f'<tr style="background:{bg};">'
@@ -203,6 +211,52 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
             "</table>"
         )
 
+    seller_details = []
+    company_street = _text_or_empty(getattr(shop, "company_street", "")).strip()
+    if company_street:
+        seller_details.append(escape(company_street))
+
+    city_line = " ".join(
+        filter(
+            None,
+            [
+                _text_or_empty(getattr(shop, "company_postal_code", "")).strip(),
+                _text_or_empty(getattr(shop, "company_city", "")).strip(),
+                _text_or_empty(getattr(shop, "company_state", "")).strip(),
+            ],
+        )
+    )
+    if city_line.strip():
+        seller_details.append(escape(city_line))
+
+    company_ico = _text_or_empty(getattr(shop, "company_ico", "")).strip()
+    company_dic = _text_or_empty(getattr(shop, "company_dic", "")).strip()
+    company_vat_id = _text_or_empty(getattr(shop, "company_vat_id", "")).strip()
+    company_email = _text_or_empty(getattr(shop, "company_email", "")).strip()
+    company_phone = _text_or_empty(getattr(shop, "company_phone", "")).strip()
+    if company_ico:
+        seller_details.append(f"IČO: {escape(company_ico)}")
+    if company_dic:
+        seller_details.append(f"DIČ: {escape(company_dic)}")
+    if company_vat_id:
+        seller_details.append(f"IČ DPH: {escape(company_vat_id)}")
+    if company_email:
+        seller_details.append(escape(company_email))
+    if company_phone:
+        seller_details.append(escape(company_phone))
+
+    seller_block = ""
+    if seller_details:
+        seller_body = "<br>".join([company_name_escaped, *seller_details])
+        seller_block = (
+            '<table width="100%" cellpadding="0" cellspacing="0"'
+            ' style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:16px;border-collapse:collapse;">'
+            '<tr><td style="padding:14px 16px 8px;font-size:11px;font-weight:700;color:#374151;'
+            'text-transform:uppercase;letter-spacing:0.8px;">Údaje o predajcovi</td></tr>'
+            f'<tr><td style="padding:4px 16px 14px;font-size:13px;color:#475569;line-height:1.7;">{seller_body}</td></tr>'
+            "</table>"
+        )
+
     # Notes block
     notes_block = (
         '<table width="100%" cellpadding="0" cellspacing="0"'
@@ -245,6 +299,7 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
                 </td>
               </tr>
             </table>
+            {seller_block}
             <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.8px;">Objednané produkty</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:24px;">
               <thead>

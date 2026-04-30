@@ -915,7 +915,7 @@ export default function ProductsPage() {
                                         </div>
 
                                         {!userIsAdmin && (
-                                        <div className="mt-2 sm:mt-4 flex justify-end">
+                                        <div className="mt-3 sm:mt-4 flex justify-end sm:min-h-[2.25rem]">
                                             {product.price ? (() => {
                                                 const cartItem = items.find(
                                                     item => item.productId === product.id && !item.variantReference
@@ -923,7 +923,7 @@ export default function ProductsPage() {
 
                                                 if (cartItem) {
                                                     return (
-                                                        <div className="inline-flex items-center rounded-full overflow-hidden border-[1.5px] border-cyan-400"
+                                                        <div className="inline-flex items-center rounded-full overflow-hidden border-[1.5px] border-cyan-400 shrink-0"
                                                             style={{ background: '#e0f7fa' }}>
                                                             <button
                                                                 type="button"
@@ -980,7 +980,7 @@ export default function ProductsPage() {
                                                             title="Pridať do košíka"
                                                         onClick={(e) => handleAddToCart(e, product)}
                                                         disabled={addingId === product.id}
-                                                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+                                                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 mt-auto"
                                                         style={{
                                                             background: addingId === product.id
                                                                 ? '#10b981'

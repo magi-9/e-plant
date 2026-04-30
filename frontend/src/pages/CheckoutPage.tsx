@@ -294,6 +294,8 @@ export default function CheckoutPage() {
     const [orderTotal, setOrderTotal] = useState<number>(0);
     const [saveToProfile, setSaveToProfile] = useState(false);
     const [agreementsAccepted, setAgreementsAccepted] = useState(false);
+    const [agreementsError, setAgreementsError] = useState(false);
+    const agreementsErrorMessage = 'Please accept the terms and conditions to proceed with your order.';
     const isLoggedIn = authService.isAuthenticated();
 
     const { data: userProfile } = useQuery({ queryKey: ['me'], queryFn: getMe, enabled: isLoggedIn });
@@ -366,7 +368,8 @@ export default function CheckoutPage() {
     // ── final submit ──────────────────────────────────────────
     const handleFinalSubmit = async () => {
         if (!agreementsAccepted) {
-            setError('Pre dokončenie objednávky musíte súhlasiť so všeobecnými podmienkami a GDPR.');
+            setError(agreementsErrorMessage);
+            setAgreementsError(true);
             return;
         }
         const normalizedPhone = formData.phone.replace(/[\s-]/g, '');
@@ -702,14 +705,29 @@ export default function CheckoutPage() {
                                 </SectionCard>
 
                                 {/* GDPR agreement */}
-                                <div className="mb-4 bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4">
+                                <div
+                                    className={`mb-4 rounded-2xl border shadow-sm px-5 py-4 ${agreementsError ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'}`}
+                                >
                                     <label className="flex items-start gap-3 cursor-pointer">
                                         <div
-                                            onClick={() => setAgreementsAccepted(!agreementsAccepted)}
+                                            onClick={() => {
+                                                const nextValue = !agreementsAccepted;
+                                                setAgreementsAccepted(nextValue);
+                                                if (nextValue) {
+                                                    setAgreementsError(false);
+                                                    if (error === agreementsErrorMessage) {
+                                                        setError(null);
+                                                    }
+                                                }
+                                            }}
                                             className="mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer"
                                             style={{
-                                                borderColor: agreementsAccepted ? '#0891b2' : '#cbd5e1',
-                                                background: agreementsAccepted ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#fff',
+                                                borderColor: agreementsAccepted ? '#0891b2' : agreementsError ? '#f87171' : '#cbd5e1',
+                                                background: agreementsAccepted
+                                                    ? 'linear-gradient(135deg, #06b6d4, #10b981)'
+                                                    : agreementsError
+                                                        ? '#fff5f5'
+                                                        : '#fff',
                                             }}
                                         >
                                             {agreementsAccepted && (
@@ -735,7 +753,7 @@ export default function CheckoutPage() {
                                     <GBtn outline onClick={() => { setStep(1); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                                         ← Späť
                                     </GBtn>
-                                    <GBtn full onClick={handleFinalSubmit} loading={loading} disabled={!agreementsAccepted}>
+                                    <GBtn full onClick={handleFinalSubmit} loading={loading} disabled={loading}>
                                         {loading ? 'Spracovávam...' : 'Objednať s povinnosťou platby ✓'}
                                     </GBtn>
                                 </div>
@@ -771,7 +789,7 @@ export default function CheckoutPage() {
                         Pokračovať na doručenie & platbu →
                     </GBtn>
                 ) : (
-                    <GBtn full onClick={handleFinalSubmit} loading={loading} disabled={!agreementsAccepted}>
+                    <GBtn full onClick={handleFinalSubmit} loading={loading} disabled={loading}>
                         {loading ? 'Spracovávam...' : 'Objednať s povinnosťou platby ✓'}
                     </GBtn>
                 )}

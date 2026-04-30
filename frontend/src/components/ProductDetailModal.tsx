@@ -275,14 +275,14 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                         </div>
                                                     )}
                                                     {hasVariants && (
-                                                        <div className="mb-5">
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        <div className="mb-5 rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50/80 to-white p-3 shadow-sm">
+                                                            <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-700 mb-2">
                                                                 Vyber variant podľa parametrov
                                                             </label>
                                                             <select
                                                                 value={selectedVariant?.reference || defaultVariantRef}
                                                                 onChange={(e) => setSelectedVariantRef(e.target.value)}
-                                                                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                                                className="w-full rounded-xl border border-cyan-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/25"
                                                             >
                                                                 {variantOptions.map((option) => {
                                                                     const qty = option.stock_quantity ?? null;

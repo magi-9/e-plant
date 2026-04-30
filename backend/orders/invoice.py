@@ -507,11 +507,14 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             ]
         ]
         for item in items_qs:
+            batch_allocations = list(item.batch_allocations.all())
             batch_str = (
                 ", ".join(
-                    ba.batch_lot.batch_number for ba in item.batch_allocations.all()
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x"
+                    for ba in batch_allocations
                 )
-                or "—"
+                if batch_allocations
+                else "—"
             )
             rows.append(
                 [
