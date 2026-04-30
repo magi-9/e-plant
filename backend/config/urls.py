@@ -9,7 +9,11 @@ from orders.views import ShippingRateListView
 from users.jwt_views import CustomTokenObtainPairView
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # Mount Django admin on a non-conflicting path to avoid colliding
+    # with the frontend single-page-app `/admin` routes. This prevents
+    # the Django admin login from being served at `/admin/...` on the
+    # public frontend host.
+    path("django-admin/", admin.site.urls),
     path("api/auth/", include("users.urls")),
     path("api/products/", include("products.urls")),
     path("api/orders/", include("orders.urls")),
