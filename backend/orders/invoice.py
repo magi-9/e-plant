@@ -272,18 +272,21 @@ def _bysquare_qr_image(
         return None
 
 
-def _pre_invoice_watermark(canvas, doc):
-    """Draw a diagonal 'PREDFAKTÚRA' watermark on every page."""
-    from reportlab.lib.pagesizes import A4 as _A4
+class _PreInvoiceDoc(SimpleDocTemplate):
+    """SimpleDocTemplate that stamps a PREDFAKTÚRA overlay on top of every page."""
 
-    canvas.saveState()
-    canvas.setFont(_FONT_BOLD, 72)
-    canvas.setFillColorRGB(0.88, 0.88, 0.88)
-    w, h = _A4
-    canvas.translate(w / 2, h / 2)
-    canvas.rotate(45)
-    canvas.drawCentredString(0, 0, "PREDFAKTÚRA")
-    canvas.restoreState()
+    def handle_pageEnd(self):
+        # Draw watermark BEFORE showPage() so it sits on top of all content.
+        c = self.canv
+        c.saveState()
+        c.setFont(_FONT_BOLD, 68)
+        c.setFillColor(colors.Color(0.72, 0.08, 0.08, alpha=0.28))
+        w, h = A4
+        c.translate(w / 2, h / 2)
+        c.rotate(45)
+        c.drawCentredString(0, 0, "PREDFAKTÚRA")
+        c.restoreState()
+        super().handle_pageEnd()
 
 
 # ── Main generator ────────────────────────────────────────────────────────────
@@ -291,10 +294,11 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     """Return raw PDF bytes for *order* using *shop_settings* as the seller.
 
     pre_invoice=True renders a pre-invoice (no accounting document) with a
-    watermark and a disclaimer footer instead of a tax document.
+    watermark overlay and a disclaimer footer instead of a tax document.
     """
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
+    doc_class = _PreInvoiceDoc if pre_invoice else SimpleDocTemplate
+    doc = doc_class(
         buffer,
         pagesize=A4,
         rightMargin=20 * mm,
@@ -311,7 +315,8 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     s_r = _s("r", align=TA_RIGHT)
     s_r_small = _s("r_small", size=8, align=TA_RIGHT)
     s_r_bold = _s("r_bold", bold=True, align=TA_RIGHT)
-    s_title = _s("title", bold=True, size=22, color=_BLUE)
+    title_size = 16 if pre_invoice else 22
+    s_title = _s("title", bold=True, size=title_size, color=_BLUE)
     s_subtitle = _s("subtitle", bold=True, size=10, color=_BLUE_MID)
     s_th = _s("th", bold=True, size=9, color=colors.white)
     s_th_r = _s("th_r", bold=True, size=9, color=colors.white, align=TA_RIGHT)
@@ -698,13 +703,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 _s("pre_invoice_footer", size=8, color=_GRAY, align=TA_CENTER),
             )
         )
-        doc.build(
-            story,
-            onFirstPage=_pre_invoice_watermark,
-            onLaterPages=_pre_invoice_watermark,
-        )
-    else:
-        doc.build(story)
+    doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
     return pdf

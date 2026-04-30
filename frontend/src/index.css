@@ -70,27 +70,30 @@ body {
 
 /* Print media queries for invoice PDF export */
 @media print {
-  /* Only apply invoice print rules when the invoice modal has toggled the body class.
-     This prevents hiding other pages if user prints from a different view. */
-  body.print-invoice-active * {
-    visibility: hidden;
-    position: absolute;
-    top: 0;
-    left: 0;
+  /* Only show the invoice modal content when printing. */
+  body.print-invoice-active > * {
+    display: none !important;
   }
 
-  body.print-invoice-active #invoice-print-area,
-  body.print-invoice-active #invoice-print-area * {
-    visibility: visible;
-    position: static;
+  body.print-invoice-active #root {
+    display: block !important;
+  }
+
+  body.print-invoice-active .invoice-print-wrapper {
+    display: block !important;
+  }
+
+  body.print-invoice-active .invoice-print-wrapper > *:not(#invoice-print-area) {
+    display: none !important;
   }
 
   body.print-invoice-active #invoice-print-area {
+    display: block !important;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    max-height: 100%;
+    min-height: 100%;
     border: none;
     box-shadow: none;
     margin: 0;
@@ -106,10 +109,7 @@ body {
   }
 
   /* Optimize table and text for print */
-  table {
-    page-break-inside: avoid;
-  }
-
+  table,
   tr {
     page-break-inside: avoid;
   }

@@ -12,6 +12,7 @@ from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 from .base import BaseEmailService
 from .branding import get_company_name, get_order_status_label
 from .templates import (
+    final_invoice_customer_html,
     order_confirmation_customer_html,
     order_notification_warehouse_html,
 )
@@ -69,6 +70,7 @@ class OrderEmailService(BaseEmailService):
             self.order.status, self.order.get_status_display()
         )
         text_body = self._build_customer_email_text(shop, status_label)
+        html_body = final_invoice_customer_html(self.order, shop, status_label)
 
         attachments = []
         if pdf_bytes:
@@ -78,6 +80,7 @@ class OrderEmailService(BaseEmailService):
         sent_count = self.send_email(
             subject=subject,
             text_body=text_body,
+            html_body=html_body,
             to_email=self.order.email,
             attachments=attachments,
             fail_silently=True,

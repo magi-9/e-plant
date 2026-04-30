@@ -276,15 +276,16 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                             <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-2">
                                                                 Vyber variant podľa parametrov
                                                             </label>
-                                                                                                                        <select
+                                                            <select
                                                                 value={selectedVariant?.reference || defaultVariantRef}
                                                                 onChange={(e) => setSelectedVariantRef(e.target.value)}
-                                                                className="w-full rounded-lg border-2 border-cyan-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-md focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 appearance-none cursor-pointer transition-all hover:border-cyan-400 hover:shadow-lg"
+                                                                className="w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 appearance-none cursor-pointer transition-all border-2 border-cyan-500 shadow-md hover:shadow-lg focus:shadow-lg"
                                                                 style={{
-                                                                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230891b2' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                                                                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230891b2' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
                                                                   backgroundRepeat: 'no-repeat',
-                                                                  backgroundPosition: 'right 8px center',
-                                                                  paddingRight: '28px'
+                                                                  backgroundPosition: 'right 0.5rem center',
+                                                                  backgroundSize: '1.25rem',
+                                                                  paddingRight: '2.75rem'
                                                                 }}
                                                             >
                                                                 {variantOptions.map((option) => {

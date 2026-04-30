@@ -137,9 +137,21 @@ def password_reset_email_html(
 </html>"""
 
 
-def order_confirmation_customer_html(order, shop, status_label: str) -> str:
+def order_confirmation_customer_html(
+    order,
+    shop,
+    status_label: str,
+    header_subtitle: str = "Potvrdenie objednávky",
+    intro_text: str = None,
+) -> str:
     """Build HTML version of customer order confirmation email."""
     company_name_escaped = _safe_company_name(getattr(shop, "company_name", ""))
+    if intro_text is None:
+        intro_text = (
+            f"Ďakujeme za Vašu objednávku v {company_name_escaped}! "
+            "Nižšie nájdete jej kompletný prehľad. "
+            "Predfaktúra vo formáte PDF je priložená k tomuto e-mailu."
+        )
     # Build item rows
     row_parts = []
     for i, item in enumerate(
@@ -272,7 +284,7 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Potvrdenie objednávky</title>
+  <title>{header_subtitle}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:30px 16px;">
@@ -281,13 +293,13 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
             <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
-            <p style="color:#bfdbfe;margin:8px 0 0;font-size:14px;">Potvrdenie objednávky</p>
+            <p style="color:#bfdbfe;margin:8px 0 0;font-size:14px;">{header_subtitle}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:32px 40px;">
             <p style="font-size:16px;color:#1e293b;margin:0 0 6px;">Dobrý deň, <strong>{escape(order.customer_name)}</strong>,</p>
-            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">Ďakujeme za Vašu objednávku v {company_name_escaped}! Nižšie nájdete jej kompletný prehľad. Faktúra vo formáte PDF je priložená k tomuto e-mailu.</p>
+            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">{intro_text}</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 6px 6px 0;margin-bottom:28px;">
               <tr>
                 <td style="padding:14px 18px;">
@@ -356,6 +368,22 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
   </table>
 </body>
 </html>"""
+
+
+def final_invoice_customer_html(order, shop, status_label: str) -> str:
+    """Build HTML version of the final (tax-document) invoice email."""
+    company_name_escaped = _safe_company_name(getattr(shop, "company_name", ""))
+    intro = (
+        f"Faktúra k Vašej objednávke v {company_name_escaped} je priložená k tomuto "
+        "e-mailu. Nižšie nájdete prehľad objednávky."
+    )
+    return order_confirmation_customer_html(
+        order,
+        shop,
+        status_label,
+        header_subtitle="Faktúra / Daňový doklad",
+        intro_text=intro,
+    )
 
 
 def order_notification_warehouse_html(

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { isAdmin } from '../api/auth';
-import { getMyOrders, type Order } from '../api/orders';
+import { downloadMyInvoice, getMyOrders, type Order } from '../api/orders';
 import { getGlobalSettings } from '../api/settings';
 import { useNavigate, Link } from 'react-router-dom';
 import { ProfileSidebar } from '../components/ProfileSidebar';
@@ -42,16 +43,18 @@ const formatDate = (iso: string) =>
 // ── gradient button ──────────────────────────────────────────
 
 function GBtn({
-    children, onClick, outline, sm, icon,
+    children, onClick, outline, sm, icon, disabled,
 }: {
-    children: React.ReactNode; onClick?: () => void; outline?: boolean; sm?: boolean; icon?: React.ReactNode;
+    children: React.ReactNode; onClick?: () => void; outline?: boolean; sm?: boolean; icon?: React.ReactNode; disabled?: boolean;
 }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex items-center gap-1.5 rounded-full font-semibold transition-all cursor-pointer
+            disabled={disabled}
+            className={`inline-flex items-center gap-1.5 rounded-full font-semibold transition-all
                 ${sm ? 'px-3.5 py-1.5 text-xs' : 'px-4 py-2 text-sm'}
+                ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
                 ${outline
                     ? 'border border-cyan-500 text-cyan-600 bg-transparent hover:bg-cyan-50'
                     : 'text-white shadow-[0_4px_14px_rgba(6,182,212,0.22)] hover:shadow-[0_6px_20px_rgba(6,182,212,0.35)]'
@@ -72,6 +75,7 @@ interface InvoiceModalProps {
 
 function InvoiceModal({ order, onClose }: InvoiceModalProps) {
     const [globalSettings, setGlobalSettings] = useState<Awaited<ReturnType<typeof getGlobalSettings>> | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
     const subtotal = order.items.reduce((s, it) => s + parseFloat(it.subtotal), 0);
     const shippingCost = parseFloat(order.shipping_cost || '0');
     const invoiceNo = `FAK-${order.order_number}`;
@@ -104,6 +108,17 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
         };
     }, []);
 
+    const handleDownloadInvoice = async () => {
+        setIsDownloading(true);
+        try {
+            await downloadMyInvoice(order.order_number);
+        } catch {
+            toast.error('Chyba pri generovaní faktúry.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const sellerLines = [
         globalSettings?.company_name,
         globalSettings?.company_street,
@@ -116,7 +131,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
     ].filter(Boolean) as string[];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div className="invoice-print-wrapper fixed inset-0 z-50 flex items-center justify-center p-6">
             <div className="fixed inset-0 bg-slate-950/70" onClick={onClose} />
             <div id="invoice-print-area" className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Invoice content */}
@@ -224,9 +239,10 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                 <div className="px-10 py-5 border-t border-slate-100 flex justify-end gap-3">
                     <GBtn outline onClick={onClose}>Zavrieť</GBtn>
                     <GBtn
-                        onClick={() => window.print()}
+                        onClick={handleDownloadInvoice}
+                        disabled={isDownloading}
                         icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>}
-                    >Exportovať PDF</GBtn>
+                    >{isDownloading ? 'Stahujem...' : 'Exportovať PDF'}</GBtn>
                 </div>
             </div>
         </div>
@@ -363,14 +379,6 @@ export default function OrdersPage() {
 
     return (
         <>
-            {/* Print styles for invoice */}
-            <style>{`
-                @media print {
-                    body > * { display: none !important; }
-                    #invoice-print-area { display: block !important; position: fixed; inset: 0; background: #fff; padding: 48px; z-index: 9999; }
-                }
-            `}</style>
-
             {invoiceOrder && (
                 <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
             )}

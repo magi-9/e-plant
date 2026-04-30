@@ -299,7 +299,10 @@ class AdminOrderInvoiceView(APIView):
     def get(self, request, pk):
         order = get_object_or_404(Order, pk=pk)
         shop_settings = GlobalSettings.objects.get_settings()
-        pdf_bytes = generate_invoice_pdf(order, shop_settings)
+        is_pre_invoice = order.status in ("new", "awaiting_payment")
+        pdf_bytes = generate_invoice_pdf(
+            order, shop_settings, pre_invoice=is_pre_invoice
+        )
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = (
             f'attachment; filename="invoice-{order.order_number}.pdf"'
@@ -315,7 +318,10 @@ class MyOrderInvoiceView(APIView):
     def get(self, request, order_number):
         order = get_object_or_404(Order, order_number=order_number, user=request.user)
         shop_settings = GlobalSettings.objects.get_settings()
-        pdf_bytes = generate_invoice_pdf(order, shop_settings)
+        is_pre_invoice = order.status in ("new", "awaiting_payment")
+        pdf_bytes = generate_invoice_pdf(
+            order, shop_settings, pre_invoice=is_pre_invoice
+        )
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = (
             f'attachment; filename="invoice-{order.order_number}.pdf"'
