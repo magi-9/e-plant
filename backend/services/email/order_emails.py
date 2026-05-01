@@ -5,13 +5,14 @@ from typing import Optional
 
 from django.conf import settings
 
-from orders.invoice import generate_invoice_pdf
+from orders.invoice import generate_invoice_pdf, skonto_amount, skonto_date
 from orders.models import Order
 from users.models import DEFAULT_COMPANY_PROFILE, GlobalSettings
 
 from .base import BaseEmailService
 from .branding import get_company_name, get_order_status_label
 from .templates import (
+    final_invoice_customer_html,
     order_confirmation_customer_html,
     order_notification_warehouse_html,
 )
@@ -34,45 +35,66 @@ class OrderEmailService(BaseEmailService):
         self.order = order
 
     def send_confirmation_emails(self) -> bool:
-        """
-        Send confirmation emails to customer and warehouse.
-
-        Generates PDF invoice and attaches it to both customer and warehouse emails.
-        Loads GlobalSettings once and reuses for all email operations.
-        Logs any failures but does not raise exceptions.
-
-        Returns:
-            True if at least one email was sent successfully
-        """
+        """Send confirmation emails with a pre-invoice (not a tax document) attached."""
         shop = GlobalSettings.objects.get_settings()
         try:
-            pdf_bytes = self._generate_invoice_pdf(shop)
+            pdf_bytes = self._generate_invoice_pdf(shop, pre_invoice=True)
         except Exception:
             logger.exception(
-                "Failed to generate invoice PDF for order %s", self.order.order_number
+                "Failed to generate pre-invoice PDF for order %s",
+                self.order.order_number,
             )
             pdf_bytes = None
 
-        customer_sent = self._send_customer_confirmation(shop, pdf_bytes)
+        customer_sent = self._send_customer_confirmation(
+            shop, pdf_bytes, pre_invoice=True
+        )
         warehouse_sent = self._send_warehouse_notification(shop, pdf_bytes)
 
         return customer_sent or warehouse_sent
 
-    def _generate_invoice_pdf(self, shop) -> Optional[bytes]:
+    def send_final_invoice_email(self) -> bool:
+        """Send the real (tax document) invoice once, when order is paid/shipped/completed."""
+        shop = GlobalSettings.objects.get_settings()
+        try:
+            pdf_bytes = self._generate_invoice_pdf(shop, pre_invoice=False)
+        except Exception:
+            logger.exception(
+                "Failed to generate final invoice PDF for order %s",
+                self.order.order_number,
+            )
+            pdf_bytes = None
+
+        subject = f"Faktúra k objednávke #{self.order.order_number}"
+        status_label = get_order_status_label(
+            self.order.status, self.order.get_status_display()
+        )
+        text_body = self._build_customer_email_text(shop, status_label)
+        html_body = final_invoice_customer_html(self.order, shop, status_label)
+
+        attachments = []
+        if pdf_bytes:
+            filename = f"faktura_{self.order.order_number}.pdf"
+            attachments.append((filename, pdf_bytes, "application/pdf"))
+
+        sent_count = self.send_email(
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            to_email=self.order.email,
+            attachments=attachments,
+            fail_silently=True,
+        )
+        return sent_count > 0
+
+    def _generate_invoice_pdf(self, shop, pre_invoice: bool = False) -> Optional[bytes]:
         """Generate invoice PDF for the order."""
-        return generate_invoice_pdf(self.order, shop)
+        return generate_invoice_pdf(self.order, shop, pre_invoice=pre_invoice)
 
-    def _send_customer_confirmation(self, shop, pdf_bytes: Optional[bytes]) -> bool:
-        """
-        Send order confirmation email to customer.
-
-        Args:
-            shop: GlobalSettings instance (pre-loaded to avoid extra queries)
-            pdf_bytes: Optional PDF invoice bytes to attach
-
-        Returns:
-            True if email was sent successfully
-        """
+    def _send_customer_confirmation(
+        self, shop, pdf_bytes: Optional[bytes], pre_invoice: bool = False
+    ) -> bool:
+        """Send order confirmation email to customer with optional pre-invoice attachment."""
         subject = f"Potvrdenie objednávky #{self.order.order_number}"
         status_label = get_order_status_label(
             self.order.status, self.order.get_status_display()
@@ -82,7 +104,8 @@ class OrderEmailService(BaseEmailService):
 
         attachments = []
         if pdf_bytes:
-            filename = f"faktura_{self.order.order_number}.pdf"
+            prefix = "predfaktura" if pre_invoice else "faktura"
+            filename = f"{prefix}_{self.order.order_number}.pdf"
             attachments.append((filename, pdf_bytes, "application/pdf"))
 
         sent_count = self.send_email(
@@ -151,16 +174,23 @@ class OrderEmailService(BaseEmailService):
             line = f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
             batches = item.batch_allocations.all()
             if batches:
-                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                batch_str = ", ".join(
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+                )
                 line += f"\n    Šarža: {batch_str}"
             item_lines.append(line)
         items_text = "\n".join(item_lines)
 
+        shipping_cost_display = (
+            "Zadarmo"
+            if self.order.shipping_method == "pickup"
+            else f"{self.order.shipping_cost}€"
+        )
+        shipping_info = f"\nDOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display}"
+
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
-            from orders.invoice import skonto_amount, skonto_date
-
             sk_date = skonto_date(self.order.created_at.date())
             sk_amount = skonto_amount(self.order.total_price)
             payment_info = f"""
@@ -191,7 +221,7 @@ DIČ: {self.order.dic}{dic_dph_line}
 Stav: {status_label}
 
 OBJEDNANÉ PRODUKTY:
-{items_text}
+{items_text}{shipping_info}
 
 CELKOVÁ SUMA: {self.order.total_price}€
 
@@ -224,7 +254,9 @@ Tím {company_name}
             batch_line = ""
             batches = item.batch_allocations.all()
             if batches:
-                batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+                batch_str = ", ".join(
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+                )
                 batch_line = f"\n    Šarža: {batch_str}"
             item_lines.append(
                 f"  - {item.product.name} (ID: {item.product.id}) x {item.quantity}"
@@ -232,6 +264,12 @@ Tím {company_name}
                 f"    →  zostatok na sklade: {remaining} ks{warning}"
             )
         items_text = "\n".join(item_lines)
+
+        shipping_cost_display_wh = (
+            "Zadarmo"
+            if self.order.shipping_method == "pickup"
+            else f"{self.order.shipping_cost}€"
+        )
 
         company_info = ""
         if self.order.is_company:
@@ -258,6 +296,7 @@ Dodacia adresa:
 PRODUKTY NA VYSKLADNENIE:
 {items_text}
 
+DOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display_wh}
 Celková suma: {self.order.total_price}€
 Platba: {self.order.get_payment_method_display()}
 Stav: {status_label}

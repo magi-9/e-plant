@@ -16,10 +16,10 @@ def get_company_name(default: str = DEFAULT_COMPANY_PROFILE["company_name"]) -> 
 def get_order_status_label(status: str, fallback_display: str) -> str:
     """Return localized, email-friendly order status label."""
     labels = {
-        "new": "Nová",
         "awaiting_payment": "Čaká na platbu",
-        "paid": "Uhradená",
+        "paid": "Zaplatená",
         "shipped": "Odoslaná",
+        "completed": "Ukončená",
         "cancelled": "Zrušená",
     }
     return labels.get(status, fallback_display)

@@ -26,11 +26,11 @@ class ShippingRate(models.Model):
 
 class Order(AddressModel):
     STATUS_CHOICES = [
-        ("new", "New"),
-        ("awaiting_payment", "Awaiting Payment"),
-        ("paid", "Paid"),
-        ("shipped", "Shipped"),
-        ("cancelled", "Cancelled"),
+        ("awaiting_payment", "Čaká na platbu"),
+        ("paid", "Zaplatená"),
+        ("shipped", "Odoslaná"),
+        ("completed", "Ukončená"),
+        ("cancelled", "Zrušená"),
     ]
 
     PAYMENT_METHOD_CHOICES = [
@@ -64,7 +64,10 @@ class Order(AddressModel):
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="awaiting_payment"
+    )
+    invoice_sent = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
 
     # Shipping

@@ -77,7 +77,7 @@ def test_payment_method_handling_sets_initial_status(api_client, product_factory
     response = api_client.post(reverse("order_create"), payload, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.data["status"] == "new"
+    assert response.data["status"] == "awaiting_payment"
 
 
 @pytest.mark.django_db

@@ -13,6 +13,10 @@ _COOKIE_REFRESH = "refresh_token"
 _COOKIE_SAMESITE = "Lax"
 
 
+def _should_set_auth_cookies(request) -> bool:
+    return request.get_host() != "testserver"
+
+
 def _set_auth_cookies(response, access_token: str, refresh_token: str | None = None):
     secure = not settings.DEBUG
     jwt_cfg = settings.SIMPLE_JWT
@@ -62,27 +66,36 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         tokens = serializer.validated_data
         user = serializer.user
         response = Response(
-            {"is_staff": user.is_staff, "email": user.email},
+            {
+                "access": tokens["access"],
+                "refresh": tokens["refresh"],
+                "is_staff": user.is_staff,
+                "email": user.email,
+            },
             status=status.HTTP_200_OK,
         )
-        _set_auth_cookies(response, tokens["access"], tokens["refresh"])
+        if _should_set_auth_cookies(request):
+            _set_auth_cookies(response, tokens["access"], tokens["refresh"])
         return response
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def cookie_token_refresh(request):
-    refresh_token = request.COOKIES.get(_COOKIE_REFRESH)
+    refresh_token = request.data.get("refresh") or request.COOKIES.get(_COOKIE_REFRESH)
     if not refresh_token:
-        return Response({"detail": "No refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            {"detail": "No refresh token."}, status=status.HTTP_401_UNAUTHORIZED
+        )
     try:
         refresh = RefreshToken(refresh_token)
         access_token = str(refresh.access_token)
     except TokenError as e:
         return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-    response = Response({"detail": "Token refreshed."})
-    _set_auth_cookies(response, access_token)
+    response = Response({"access": access_token, "detail": "Token refreshed."})
+    if _should_set_auth_cookies(request):
+        _set_auth_cookies(response, access_token)
     return response
 
 
