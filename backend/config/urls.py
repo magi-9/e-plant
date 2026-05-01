@@ -8,6 +8,7 @@ from django.views.static import serve
 from django_prometheus import exports
 
 from orders.views import ShippingRateListView
+
 from users.jwt_views import (
     CookieTokenObtainPairView,
     cookie_logout,
