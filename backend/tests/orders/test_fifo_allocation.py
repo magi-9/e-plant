@@ -114,7 +114,7 @@ class TestFifoAllocation:
                 "ico": "",
                 "dic": "",
                 "dic_dph": "",
-                "payment_method": "card",
+                "payment_method": "bank_transfer",
                 "notes": "",
                 "items": [{"product_id": product.pk, "quantity": 2}],
             }

@@ -79,7 +79,7 @@ def test_warehouse_email_sent_after_order(api_client, user_factory, product_fact
         "company_name": "Dental Clinic s.r.o.",
         "ico": "12345678",
         "dic": "SK1234567890",
-        "payment_method": "card",
+        "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 1},
         ],

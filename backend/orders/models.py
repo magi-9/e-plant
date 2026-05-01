@@ -35,7 +35,6 @@ class Order(AddressModel):
 
     PAYMENT_METHOD_CHOICES = [
         ("bank_transfer", "Bankový prevod"),
-        ("card", "Karta"),
     ]
 
     # Customer info

@@ -310,7 +310,7 @@ export default function CheckoutPage() {
         street_name: '', street_number: '', address_line2: '',
         city: '', postal_code: '', country: 'SK',
         is_company: false, company_name: '', ico: '', dic: '', dic_dph: '', is_vat_payer: false,
-        payment_method: 'bank_transfer' as 'bank_transfer' | 'card',
+        payment_method: 'bank_transfer' as const,
         shipping_method: 'courier' as 'courier' | 'pickup',
         notes: '',
     });

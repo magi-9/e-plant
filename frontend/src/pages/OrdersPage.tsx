@@ -34,7 +34,6 @@ const SHIP_LABELS: Record<string, string> = {
 };
 const PAY_LABELS: Record<string, string> = {
     bank_transfer: 'Bankový prevod',
-    card: 'Karta',
 };
 
 const formatDate = (iso: string) =>

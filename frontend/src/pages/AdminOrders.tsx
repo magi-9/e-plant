@@ -35,7 +35,6 @@ const INVOICE_TRIGGER_STATUSES = new Set(['paid', 'shipped', 'completed']);
 
 const PAYMENT_LABELS: Record<string, string> = {
     bank_transfer: 'Bankový prevod',
-    card: 'Karta',
 };
 
 const formatDate = (iso: string) =>
@@ -64,7 +63,7 @@ type InterventionDraft = {
     dic: string;
     dic_dph: string;
     is_vat_payer: boolean;
-    payment_method: 'bank_transfer' | 'card';
+    payment_method: 'bank_transfer';
     items: DraftItem[];
 };
 
@@ -85,7 +84,7 @@ const createDraftFromOrder = (order: Order): InterventionDraft => ({
     dic: order.dic ?? '',
     dic_dph: order.dic_dph ?? '',
     is_vat_payer: order.is_vat_payer,
-    payment_method: order.payment_method === 'card' ? 'card' : 'bank_transfer',
+    payment_method: 'bank_transfer',
     items: order.items.map((item) => ({
         product_id: item.product,
         product_name: item.product_name,
@@ -496,11 +495,10 @@ export default function AdminOrders() {
                                                     <label className="text-xs font-medium text-slate-600">Spôsob platby</label>
                                                     <select
                                                         value={draft.payment_method}
-                                                        onChange={(e) => updateDraft(order.id, { payment_method: e.target.value as 'bank_transfer' | 'card' })}
+                                                        onChange={(e) => updateDraft(order.id, { payment_method: e.target.value as 'bank_transfer' })}
                                                         className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                                                     >
                                                         <option value="bank_transfer">Bankový prevod</option>
-                                                        <option value="card">Karta</option>
                                                     </select>
                                                 </div>
                                             </div>

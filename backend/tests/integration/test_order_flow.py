@@ -70,7 +70,7 @@ def test_payment_method_handling_sets_initial_status(api_client, product_factory
         "city": "Kosice",
         "postal_code": "04001",
         "is_company": False,
-        "payment_method": "card",
+        "payment_method": "bank_transfer",
         "items": [{"product_id": product.id, "quantity": 1}],
     }
 

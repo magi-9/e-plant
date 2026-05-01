@@ -38,10 +38,10 @@ def test_bank_transfer_status_awaiting_payment(
 
 
 @pytest.mark.django_db
-def test_card_payment_status_awaiting_payment(
+def test_bank_transfer_status_awaiting_payment_for_second_order(
     api_client, user_factory, product_factory
 ):
-    """Test that card payment orders initially have status awaiting_payment"""
+    """Test that bank transfer orders initially have status awaiting_payment"""
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
@@ -55,7 +55,7 @@ def test_card_payment_status_awaiting_payment(
         "city": "Bratislava",
         "postal_code": "811 02",
         "is_company": False,
-        "payment_method": "card",
+        "payment_method": "bank_transfer",
         "items": [
             {"product_id": product.id, "quantity": 1},
         ],
@@ -66,7 +66,7 @@ def test_card_payment_status_awaiting_payment(
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["status"] == "awaiting_payment"
-    assert response.data["payment_method"] == "card"
+    assert response.data["payment_method"] == "bank_transfer"
 
 
 @pytest.mark.django_db

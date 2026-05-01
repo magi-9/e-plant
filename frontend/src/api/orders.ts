@@ -30,7 +30,7 @@ export interface CreateOrderData {
     dic?: string;
     dic_dph?: string;
     is_vat_payer: boolean;
-    payment_method: 'bank_transfer' | 'card';
+    payment_method: 'bank_transfer';
     shipping_method: 'courier' | 'pickup';
     notes?: string;
     items: OrderItem[];
@@ -162,7 +162,7 @@ export interface AdminOrderInterventionUpdateData {
     dic: string;
     dic_dph: string;
     is_vat_payer: boolean;
-    payment_method: 'bank_transfer' | 'card';
+    payment_method: 'bank_transfer';
     items: AdminInterventionOrderItem[];
 }
 

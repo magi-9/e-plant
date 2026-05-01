@@ -328,7 +328,7 @@ class TestOrderService:
             "city": "Kosice",
             "postal_code": "040 01",
             "is_company": False,
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [
                 {"product_id": product.id, "quantity": 1},
             ],
@@ -352,7 +352,7 @@ class TestOrderService:
             "customer_name": "Test User",
             "email": "test@example.com",
             "phone": "+421900111222",
-            "payment_method": "card",  # Not bank_transfer
+            "payment_method": "bank_transfer",  # Not bank_transfer
             "items": [
                 {"product_id": product.id, "quantity": 1},
             ],
@@ -426,7 +426,7 @@ class TestOrderService:
             "customer_name": "Test User",
             "email": "test@example.com",
             "phone": "+421900000000",
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [
                 {"product_id": product.id, "quantity": 1},
             ],
@@ -455,7 +455,7 @@ class TestOrderService:
             "customer_name": "Test User",
             "email": "test@example.com",
             "phone": "+421900000000",
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [
                 {"product_id": product.id, "quantity": 10},  # More than available
             ],
@@ -522,7 +522,7 @@ class TestOrderService:
             "city": "Bratislava",
             "postal_code": "81101",
             "is_company": False,
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [{"product_id": product.id, "quantity": 1}],
         }
 
@@ -557,7 +557,7 @@ class TestOrderService:
             "customer_name": "Rollback User",
             "email": "rollback@example.com",
             "phone": "+421900555555",
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [{"product_id": product.id, "quantity": 3}],
         }
 
@@ -587,7 +587,7 @@ class TestOrderService:
             "customer_name": "Notify User",
             "email": "notify@example.com",
             "phone": "+421900666666",
-            "payment_method": "card",
+            "payment_method": "bank_transfer",
             "items": [{"product_id": product.id, "quantity": 1}],
         }
 
