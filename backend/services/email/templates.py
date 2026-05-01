@@ -257,6 +257,11 @@ def order_confirmation_customer_html(
     if company_phone:
         seller_details.append(escape(company_phone))
 
+    # Shipping display
+    shipping_display = (
+        "Zadarmo" if order.shipping_method == "pickup" else f"{order.shipping_cost}€"
+    )
+
     seller_block = ""
     if seller_details:
         seller_body = "<br>".join([company_name_escaped, *seller_details])
@@ -324,9 +329,13 @@ def order_confirmation_customer_html(
               </thead>
               <tbody>{item_rows}</tbody>
               <tfoot>
+                <tr style="background:#f9fafb;">
+                  <td colspan="3" style="padding:12px;text-align:right;font-weight:600;color:#475569;font-size:13px;border-top:1px solid #f1f5f9;">Doprava:</td>
+                  <td style="padding:12px;text-align:right;font-weight:600;color:#475569;font-size:13px;border-top:1px solid #f1f5f9;">{order.get_shipping_method_display()} • {shipping_display}</td>
+                </tr>
                 <tr style="background:#f8fafc;">
-                  <td colspan="3" style="padding:12px;text-align:right;font-weight:700;color:#1e293b;font-size:14px;border-top:2px solid #e2e8f0;">Celková suma:</td>
-                  <td style="padding:12px;text-align:right;font-weight:700;color:#1d4ed8;font-size:16px;border-top:2px solid #e2e8f0;">{order.total_price}&nbsp;&euro;</td>
+                  <td colspan="3" style="padding:12px;text-align:right;font-weight:700;color:#1e293b;font-size:14px;">Celková suma:</td>
+                  <td style="padding:12px;text-align:right;font-weight:700;color:#1d4ed8;font-size:16px;border-bottom:2px solid #e2e8f0;">{order.total_price}&nbsp;&euro;</td>
                 </tr>
               </tfoot>
             </table>
@@ -460,6 +469,11 @@ def order_notification_warehouse_html(
         else ""
     )
 
+    # Shipping display for warehouse
+    shipping_display_wh = (
+        "Zadarmo" if order.shipping_method == "pickup" else f"{order.shipping_cost}€"
+    )
+
     return f"""<!DOCTYPE html>
 <html lang="sk">
 <head>
@@ -541,6 +555,18 @@ def order_notification_warehouse_html(
                 </tr>
               </thead>
               <tbody>{item_rows}</tbody>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
+              <tr>
+                <td width="50%" style="padding:14px 16px;border-right:1px solid #e2e8f0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Doprava</p>
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{order.get_shipping_method_display()} • {shipping_display_wh}</p>
+                </td>
+                <td width="50%" style="padding:14px 16px;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Celková suma</p>
+                  <p style="margin:0;font-size:16px;font-weight:700;color:#1d4ed8;">{order.total_price}&nbsp;&euro;</p>
+                </td>
+              </tr>
             </table>
             {notes_block}
           </td>

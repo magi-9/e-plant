@@ -152,7 +152,7 @@ export default function ProductsPage() {
     const { data: compatibilityCounts = {} } = useQuery({
         queryKey: ['compatibility-counts'],
         queryFn: getCompatibilityCounts,
-        staleTime: 30 * 60 * 1000,
+        staleTime: Infinity,
     });
 
     // Collect all products from all pages.
@@ -164,7 +164,7 @@ export default function ProductsPage() {
     const { data: categoryCounts = {} } = useQuery({
         queryKey: ['category-counts'],
         queryFn: getCategoryCounts,
-        staleTime: 30 * 60 * 1000,
+        staleTime: Infinity,
     });
 
     // Keep only one option per compatibility code for storefront filters.

@@ -29,7 +29,7 @@ function getStatusCfg(order: Order) {
 }
 
 const SHIP_LABELS: Record<string, string> = {
-    courier: 'DPD Kuriér',
+    courier: 'Kuriér',
     pickup: 'Osobný odber',
 };
 const PAY_LABELS: Record<string, string> = {

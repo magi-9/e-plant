@@ -181,6 +181,13 @@ class OrderEmailService(BaseEmailService):
             item_lines.append(line)
         items_text = "\n".join(item_lines)
 
+        shipping_cost_display = (
+            "Zadarmo"
+            if self.order.shipping_method == "pickup"
+            else f"{self.order.shipping_cost}€"
+        )
+        shipping_info = f"\nDOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display}"
+
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
@@ -214,7 +221,7 @@ DIČ: {self.order.dic}{dic_dph_line}
 Stav: {status_label}
 
 OBJEDNANÉ PRODUKTY:
-{items_text}
+{items_text}{shipping_info}
 
 CELKOVÁ SUMA: {self.order.total_price}€
 
@@ -258,6 +265,12 @@ Tím {company_name}
             )
         items_text = "\n".join(item_lines)
 
+        shipping_cost_display_wh = (
+            "Zadarmo"
+            if self.order.shipping_method == "pickup"
+            else f"{self.order.shipping_cost}€"
+        )
+
         company_info = ""
         if self.order.is_company:
             dic_dph_line = (
@@ -283,6 +296,7 @@ Dodacia adresa:
 PRODUKTY NA VYSKLADNENIE:
 {items_text}
 
+DOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display_wh}
 Celková suma: {self.order.total_price}€
 Platba: {self.order.get_payment_method_display()}
 Stav: {status_label}
