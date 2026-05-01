@@ -8,8 +8,14 @@ VERIFICATION_BRAND_NAME = "Dynamic Abutment"
 VERIFICATION_SIGNATURE_NAME = "Martin Ebringer s.r.o."
 
 
+def _text_or_empty(value) -> str:
+    return value if isinstance(value, str) else ""
+
+
 def _safe_company_name(company_name: str) -> str:
-    cleaned = (company_name or "").strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    cleaned = (
+        _text_or_empty(company_name).strip() or DEFAULT_COMPANY_PROFILE["company_name"]
+    )
     return escape(cleaned)
 
 
@@ -131,9 +137,21 @@ def password_reset_email_html(
 </html>"""
 
 
-def order_confirmation_customer_html(order, shop, status_label: str) -> str:
+def order_confirmation_customer_html(
+    order,
+    shop,
+    status_label: str,
+    header_subtitle: str = "Potvrdenie objednávky",
+    intro_text: str = None,
+) -> str:
     """Build HTML version of customer order confirmation email."""
     company_name_escaped = _safe_company_name(getattr(shop, "company_name", ""))
+    if intro_text is None:
+        intro_text = (
+            f"Ďakujeme za Vašu objednávku v {company_name_escaped}! "
+            "Nižšie nájdete jej kompletný prehľad. "
+            "Predfaktúra vo formáte PDF je priložená k tomuto e-mailu."
+        )
     # Build item rows
     row_parts = []
     for i, item in enumerate(
@@ -145,7 +163,9 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
         batches = item.batch_allocations.all()
         batch_line = ""
         if batches:
-            batch_str = ", ".join(ba.batch_lot.batch_number for ba in batches)
+            batch_str = ", ".join(
+                f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+            )
             batch_line = f'<br><span style="font-size:11px;color:#64748b;">Šarža: {escape(batch_str)}</span>'
         row_parts.append(
             f'<tr style="background:{bg};">'
@@ -203,6 +223,57 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
             "</table>"
         )
 
+    seller_details = []
+    company_street = _text_or_empty(getattr(shop, "company_street", "")).strip()
+    if company_street:
+        seller_details.append(escape(company_street))
+
+    city_line = " ".join(
+        filter(
+            None,
+            [
+                _text_or_empty(getattr(shop, "company_postal_code", "")).strip(),
+                _text_or_empty(getattr(shop, "company_city", "")).strip(),
+                _text_or_empty(getattr(shop, "company_state", "")).strip(),
+            ],
+        )
+    )
+    if city_line.strip():
+        seller_details.append(escape(city_line))
+
+    company_ico = _text_or_empty(getattr(shop, "company_ico", "")).strip()
+    company_dic = _text_or_empty(getattr(shop, "company_dic", "")).strip()
+    company_vat_id = _text_or_empty(getattr(shop, "company_vat_id", "")).strip()
+    company_email = _text_or_empty(getattr(shop, "company_email", "")).strip()
+    company_phone = _text_or_empty(getattr(shop, "company_phone", "")).strip()
+    if company_ico:
+        seller_details.append(f"IČO: {escape(company_ico)}")
+    if company_dic:
+        seller_details.append(f"DIČ: {escape(company_dic)}")
+    if company_vat_id:
+        seller_details.append(f"IČ DPH: {escape(company_vat_id)}")
+    if company_email:
+        seller_details.append(escape(company_email))
+    if company_phone:
+        seller_details.append(escape(company_phone))
+
+    # Shipping display
+    shipping_display = (
+        "Zadarmo" if order.shipping_method == "pickup" else f"{order.shipping_cost}€"
+    )
+
+    seller_block = ""
+    if seller_details:
+        seller_body = "<br>".join([company_name_escaped, *seller_details])
+        seller_block = (
+            '<table width="100%" cellpadding="0" cellspacing="0"'
+            ' style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:16px;border-collapse:collapse;">'
+            '<tr><td style="padding:14px 16px 8px;font-size:11px;font-weight:700;color:#374151;'
+            'text-transform:uppercase;letter-spacing:0.8px;">Údaje o predajcovi</td></tr>'
+            f'<tr><td style="padding:4px 16px 14px;font-size:13px;color:#475569;line-height:1.7;">{seller_body}</td></tr>'
+            "</table>"
+        )
+
     # Notes block
     notes_block = (
         '<table width="100%" cellpadding="0" cellspacing="0"'
@@ -218,7 +289,7 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Potvrdenie objednávky</title>
+  <title>{header_subtitle}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:30px 16px;">
@@ -227,13 +298,13 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
         <tr>
           <td style="background:#2563eb;padding:28px 40px;text-align:center;">
             <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;">{company_name_escaped}</h1>
-            <p style="color:#bfdbfe;margin:8px 0 0;font-size:14px;">Potvrdenie objednávky</p>
+            <p style="color:#bfdbfe;margin:8px 0 0;font-size:14px;">{header_subtitle}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:32px 40px;">
             <p style="font-size:16px;color:#1e293b;margin:0 0 6px;">Dobrý deň, <strong>{escape(order.customer_name)}</strong>,</p>
-            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">Ďakujeme za Vašu objednávku v {company_name_escaped}! Nižšie nájdete jej kompletný prehľad. Faktúra vo formáte PDF je priložená k tomuto e-mailu.</p>
+            <p style="color:#475569;margin:0 0 28px;font-size:14px;line-height:1.7;">{intro_text}</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 6px 6px 0;margin-bottom:28px;">
               <tr>
                 <td style="padding:14px 18px;">
@@ -245,6 +316,7 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
                 </td>
               </tr>
             </table>
+            {seller_block}
             <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.8px;">Objednané produkty</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:24px;">
               <thead>
@@ -257,9 +329,13 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
               </thead>
               <tbody>{item_rows}</tbody>
               <tfoot>
+                <tr style="background:#f9fafb;">
+                  <td colspan="3" style="padding:12px;text-align:right;font-weight:600;color:#475569;font-size:13px;border-top:1px solid #f1f5f9;">Doprava:</td>
+                  <td style="padding:12px;text-align:right;font-weight:600;color:#475569;font-size:13px;border-top:1px solid #f1f5f9;">{order.get_shipping_method_display()} • {shipping_display}</td>
+                </tr>
                 <tr style="background:#f8fafc;">
-                  <td colspan="3" style="padding:12px;text-align:right;font-weight:700;color:#1e293b;font-size:14px;border-top:2px solid #e2e8f0;">Celková suma:</td>
-                  <td style="padding:12px;text-align:right;font-weight:700;color:#1d4ed8;font-size:16px;border-top:2px solid #e2e8f0;">{order.total_price}&nbsp;&euro;</td>
+                  <td colspan="3" style="padding:12px;text-align:right;font-weight:700;color:#1e293b;font-size:14px;">Celková suma:</td>
+                  <td style="padding:12px;text-align:right;font-weight:700;color:#1d4ed8;font-size:16px;border-bottom:2px solid #e2e8f0;">{order.total_price}&nbsp;&euro;</td>
                 </tr>
               </tfoot>
             </table>
@@ -303,6 +379,22 @@ def order_confirmation_customer_html(order, shop, status_label: str) -> str:
 </html>"""
 
 
+def final_invoice_customer_html(order, shop, status_label: str) -> str:
+    """Build HTML version of the final (tax-document) invoice email."""
+    company_name_escaped = _safe_company_name(getattr(shop, "company_name", ""))
+    intro = (
+        f"Faktúra k Vašej objednávke v {company_name_escaped} je priložená k tomuto "
+        "e-mailu. Nižšie nájdete prehľad objednávky."
+    )
+    return order_confirmation_customer_html(
+        order,
+        shop,
+        status_label,
+        header_subtitle="Faktúra / Daňový doklad",
+        intro_text=intro,
+    )
+
+
 def order_notification_warehouse_html(
     order, company_name: str, status_label: str
 ) -> str:
@@ -325,11 +417,13 @@ def order_notification_warehouse_html(
         )
         qty_color = "#dc2626" if is_low else "#374151"
         batches = item.batch_allocations.all()
-        batch_cell = (
-            escape(", ".join(ba.batch_lot.batch_number for ba in batches))
-            if batches
-            else '<span style="color:#94a3b8;">—</span>'
-        )
+        if batches:
+            batch_str = ", ".join(
+                f"{ba.batch_lot.batch_number} {ba.quantity}x" for ba in batches
+            )
+            batch_cell = escape(batch_str)
+        else:
+            batch_cell = '<span style="color:#94a3b8;">—</span>'
         row_parts.append(
             f'<tr style="background:{bg};">'
             f'<td style="padding:10px 12px;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;">'
@@ -373,6 +467,11 @@ def order_notification_warehouse_html(
         "</td></tr></table>"
         if order.notes
         else ""
+    )
+
+    # Shipping display for warehouse
+    shipping_display_wh = (
+        "Zadarmo" if order.shipping_method == "pickup" else f"{order.shipping_cost}€"
     )
 
     return f"""<!DOCTYPE html>
@@ -456,6 +555,18 @@ def order_notification_warehouse_html(
                 </tr>
               </thead>
               <tbody>{item_rows}</tbody>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
+              <tr>
+                <td width="50%" style="padding:14px 16px;border-right:1px solid #e2e8f0;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Doprava</p>
+                  <p style="margin:0;font-size:14px;font-weight:600;color:#1e293b;">{order.get_shipping_method_display()} • {shipping_display_wh}</p>
+                </td>
+                <td width="50%" style="padding:14px 16px;">
+                  <p style="margin:0 0 3px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Celková suma</p>
+                  <p style="margin:0;font-size:16px;font-weight:700;color:#1d4ed8;">{order.total_price}&nbsp;&euro;</p>
+                </td>
+              </tr>
             </table>
             {notes_block}
           </td>

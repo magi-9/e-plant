@@ -272,11 +272,33 @@ def _bysquare_qr_image(
         return None
 
 
+class _PreInvoiceDoc(SimpleDocTemplate):
+    """SimpleDocTemplate that stamps a PREDFAKTÚRA overlay on top of every page."""
+
+    def handle_pageEnd(self):
+        # Draw watermark BEFORE showPage() so it sits on top of all content.
+        c = self.canv
+        c.saveState()
+        c.setFont(_FONT_BOLD, 68)
+        c.setFillColor(colors.Color(0.72, 0.08, 0.08, alpha=0.28))
+        w, h = A4
+        c.translate(w / 2, h / 2)
+        c.rotate(45)
+        c.drawCentredString(0, 0, "PREDFAKTÚRA")
+        c.restoreState()
+        super().handle_pageEnd()
+
+
 # ── Main generator ────────────────────────────────────────────────────────────
-def generate_invoice_pdf(order, shop_settings) -> bytes:
-    """Return raw PDF bytes for *order* using *shop_settings* as the seller."""
+def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> bytes:
+    """Return raw PDF bytes for *order* using *shop_settings* as the seller.
+
+    pre_invoice=True renders a pre-invoice (no accounting document) with a
+    watermark overlay and a disclaimer footer instead of a tax document.
+    """
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
+    doc_class = _PreInvoiceDoc if pre_invoice else SimpleDocTemplate
+    doc = doc_class(
         buffer,
         pagesize=A4,
         rightMargin=20 * mm,
@@ -293,7 +315,8 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
     s_r = _s("r", align=TA_RIGHT)
     s_r_small = _s("r_small", size=8, align=TA_RIGHT)
     s_r_bold = _s("r_bold", bold=True, align=TA_RIGHT)
-    s_title = _s("title", bold=True, size=22, color=_BLUE)
+    title_size = 16 if pre_invoice else 22
+    s_title = _s("title", bold=True, size=title_size, color=_BLUE)
     s_subtitle = _s("subtitle", bold=True, size=10, color=_BLUE_MID)
     s_th = _s("th", bold=True, size=9, color=colors.white)
     s_th_r = _s("th_r", bold=True, size=9, color=colors.white, align=TA_RIGHT)
@@ -347,9 +370,15 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         )
 
     created_date = order.created_at.strftime("%d.%m.%Y")
+    if pre_invoice:
+        doc_title = "PREDFAKTÚRA"
+        doc_subtitle = "Nie je daňovým dokladom"
+    else:
+        doc_title = "FAKTÚRA"
+        doc_subtitle = "Daňový doklad"
     meta_cell = [
-        Paragraph("FAKTÚRA", s_title),
-        Paragraph("Daňový doklad", s_subtitle),
+        Paragraph(doc_title, s_title),
+        Paragraph(doc_subtitle, s_subtitle),
         Spacer(1, 3 * mm),
         Paragraph(f"Číslo: <b>{esc(order.order_number)}</b>", s_r),
         Paragraph(f"Dátum vystavenia: {created_date}", s_r_small),
@@ -507,11 +536,14 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
             ]
         ]
         for item in items_qs:
+            batch_allocations = list(item.batch_allocations.all())
             batch_str = (
                 ", ".join(
-                    ba.batch_lot.batch_number for ba in item.batch_allocations.all()
+                    f"{ba.batch_lot.batch_number} {ba.quantity}x"
+                    for ba in batch_allocations
                 )
-                or "—"
+                if batch_allocations
+                else "—"
             )
             rows.append(
                 [
@@ -661,6 +693,16 @@ def generate_invoice_pdf(order, shop_settings) -> bytes:
         story.append(Spacer(1, 1 * mm))
         story.append(Paragraph(esc(order.notes), s_normal))
 
+    if pre_invoice:
+        story.append(Spacer(1, 6 * mm))
+        story.append(HRFlowable(width="100%", thickness=1, color=_GRAY))
+        story.append(Spacer(1, 2 * mm))
+        story.append(
+            Paragraph(
+                "Toto nie je účtovný doklad. Predfaktúra nenahrádza daňový doklad.",
+                _s("pre_invoice_footer", size=8, color=_GRAY, align=TA_CENTER),
+            )
+        )
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()

@@ -67,3 +67,56 @@ body {
     transform: translateY(-6px);
   }
 }
+
+/* Print media queries for invoice PDF export */
+@media print {
+  /* Only show the invoice modal content when printing. */
+  body.print-invoice-active > * {
+    display: none !important;
+  }
+
+  body.print-invoice-active #root {
+    display: block !important;
+  }
+
+  body.print-invoice-active .invoice-print-wrapper {
+    display: block !important;
+  }
+
+  body.print-invoice-active .invoice-print-wrapper > *:not(#invoice-print-area) {
+    display: none !important;
+  }
+
+  body.print-invoice-active #invoice-print-area {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100%;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+    background: white;
+    overflow: visible;
+  }
+
+  /* Ensure content is visible and properly sized for printing */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Optimize table and text for print */
+  table,
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure colors and borders print properly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

@@ -24,7 +24,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     const isLoggedIn = authService.isAuthenticated();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
-    const [showActionButtons, setShowActionButtons] = useState(false);
     const [openRequestModal, setOpenRequestModal] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
@@ -38,7 +37,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
     // Reset UI states when product changes; auto-select first in-stock variant
     useEffect(() => {
         setIsAdding(false);
-        setShowActionButtons(false);
         if (isGroupType) {
             const options = product?.parameters?.options || [];
             const firstInStockWithImage = options.find(
@@ -169,7 +167,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         // Show action buttons after adding
         setTimeout(() => {
             setIsAdding(false);
-            setShowActionButtons(true);
         }, 300);
     };
 
@@ -276,13 +273,20 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     )}
                                                     {hasVariants && (
                                                         <div className="mb-5">
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-2">
                                                                 Vyber variant podľa parametrov
                                                             </label>
                                                             <select
                                                                 value={selectedVariant?.reference || defaultVariantRef}
                                                                 onChange={(e) => setSelectedVariantRef(e.target.value)}
-                                                                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                                                className="w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 appearance-none cursor-pointer transition-all border-2 border-cyan-500 shadow-md hover:shadow-lg focus:shadow-lg"
+                                                                style={{
+                                                                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230891b2' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                                                                  backgroundRepeat: 'no-repeat',
+                                                                  backgroundPosition: 'right 0.5rem center',
+                                                                  backgroundSize: '1.25rem',
+                                                                  paddingRight: '2.75rem'
+                                                                }}
                                                             >
                                                                 {variantOptions.map((option) => {
                                                                     const qty = option.stock_quantity ?? null;
@@ -323,21 +327,24 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     )}
                                                 </div>
 
-                                                <div className="mt-auto pt-4 border-t border-gray-100">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            {effectivePrice ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                                                                    <p className="text-3xl font-bold text-cyan-700">{effectivePrice} €</p>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
-                                                                    <SparklesIcon className="h-3.5 w-3.5" />
-                                                                    Členská cena
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                <div className="mt-auto pt-4 border-t border-gray-100 space-y-4">
+                                                    {/* Price section */}
+                                                    <div>
+                                                        {effectivePrice ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                                                                <p className="text-3xl font-bold text-cyan-700">{effectivePrice} €</p>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
+                                                                <SparklesIcon className="h-3.5 w-3.5" />
+                                                                Členská cena
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Action buttons section */}
+                                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                                         {(() => {
                                                             if (!effectivePrice) {
                                                                 if (!isLoggedIn) {
@@ -348,7 +355,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                                 setOpen(false);
                                                                                 navigate('/login');
                                                                             }}
-                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
+                                                                            className="w-full sm:w-auto inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
                                                                         >
                                                                             Prihlásiť sa
                                                                         </button>
@@ -362,38 +369,11 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                 item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
                                                             );
 
-                                                            if (showActionButtons) {
-                                                                return (
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                navigate('/cart');
-                                                                                setOpen(false);
-                                                                                setShowActionButtons(false);
-                                                                            }}
-                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-all sm:w-auto"
-                                                                        >
-                                                                            Prejsť do košíka
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setOpen(false);
-                                                                                setShowActionButtons(false);
-                                                                            }}
-                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 shadow-sm transition-all sm:w-auto"
-                                                                        >
-                                                                            Pokračovať v nákupe
-                                                                        </button>
-                                                                    </div>
-                                                                );
-                                                            }
-
+                                                            // Prefer showing quantity controls when an item exists in cart
                                                             if (cartItem) {
                                                                 return (
-                                                                    <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 w-48 shadow-sm">
-                                                                        <button
+                                                                    <div className="w-full flex items-center justify-center bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 shadow-sm">
+                                                                                        <button
                                                                             type="button"
                                                                             aria-label="Znížiť množstvo"
                                                                             onClick={(e) => {
@@ -436,7 +416,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setOpenRequestModal(true)}
-                                                                        className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-slate-500 hover:bg-slate-600 transition-all duration-300"
+                                                                        className="w-full inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-slate-500 hover:bg-slate-600 transition-all duration-300"
                                                                     >
                                                                         Požiadať produkt
                                                                     </button>
@@ -448,7 +428,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                     type="button"
                                                                     onClick={handleAddToCart}
                                                                     disabled={isAdding}
-                                                                    className={`inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto transition-all duration-300 ${isAdding
+                                                                    className={`w-full inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm transition-all duration-300 ${isAdding
                                                                         ? 'bg-emerald-500 scale-105 cursor-not-allowed opacity-60'
                                                                         : 'bg-cyan-600 hover:bg-cyan-700'
                                                                         }`}

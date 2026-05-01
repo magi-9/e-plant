@@ -1,5 +1,27 @@
 import client from './client';
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function readLocalCache<T>(key: string): T | null {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const { value, ts } = JSON.parse(raw) as { value: T; ts: number };
+        if (Date.now() - ts > CACHE_TTL_MS) return null;
+        return value;
+    } catch {
+        return null;
+    }
+}
+
+function writeLocalCache<T>(key: string, value: T): void {
+    try {
+        localStorage.setItem(key, JSON.stringify({ value, ts: Date.now() }));
+    } catch {
+        // ignore quota errors
+    }
+}
+
 const API_URL =
     import.meta.env.VITE_API_URL ||
     (import.meta.env.DEV ? 'http://localhost:5002/api' : '/api');
@@ -150,12 +172,18 @@ export const getCompatibilityOptions = async (): Promise<CompatibilityOption[]> 
 };
 
 export const getCompatibilityCounts = async (): Promise<Record<string, number>> => {
+    const cached = readLocalCache<Record<string, number>>('compat_counts_v1');
+    if (cached) return cached;
     const response = await client.get<{ counts: Record<string, number> }>('/products/compatibility-counts/');
+    writeLocalCache('compat_counts_v1', response.data.counts);
     return response.data.counts;
 };
 
 export const getCategoryCounts = async (): Promise<Record<string, number>> => {
+    const cached = readLocalCache<Record<string, number>>('category_counts_v1');
+    if (cached) return cached;
     const response = await client.get<{ counts: Record<string, number> }>('/products/category-counts/');
+    writeLocalCache('category_counts_v1', response.data.counts);
     return response.data.counts;
 };
 

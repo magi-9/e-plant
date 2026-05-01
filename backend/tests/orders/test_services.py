@@ -344,7 +344,7 @@ class TestOrderService:
 
     @pytest.mark.django_db
     def test_create_order_card_payment_status(self, user_factory, product_factory):
-        """Test that card payment creates order with 'new' status."""
+        """Test that card payment creates order with 'awaiting_payment' status."""
         user = user_factory()
         product = product_factory(price=Decimal("50.00"), stock_quantity=5)
 
@@ -361,7 +361,7 @@ class TestOrderService:
         service = OrderService(user=user)
         order = service.create_order(order_data)
 
-        assert order.status == "new"  # Card payment gets 'new' status
+        assert order.status == "awaiting_payment"
 
     @pytest.mark.django_db
     def test_create_order_bank_transfer_status(self, user_factory, product_factory):
@@ -497,7 +497,7 @@ class TestOrderService:
             postal_code="81101",
             is_company=False,
             payment_method="card",
-            status="new",
+            status="awaiting_payment",
             total_price=Decimal("1.00"),
             order_number=f"{year}XABCD",
         )
@@ -545,22 +545,6 @@ class TestOrderService:
 
         assert order.id is not None
         assert call_counter["count"] == 2
-
-    def test_determine_initial_status_bank_transfer(self):
-        """Test status determination for bank transfer."""
-        service = OrderService(user=None)
-
-        status = service._determine_initial_status("bank_transfer")
-
-        assert status == "awaiting_payment"
-
-    def test_determine_initial_status_card(self):
-        """Test status determination for card payment."""
-        service = OrderService(user=None)
-
-        status = service._determine_initial_status("card")
-
-        assert status == "new"
 
     @pytest.mark.django_db
     def test_create_order_rolls_back_when_item_creation_fails(

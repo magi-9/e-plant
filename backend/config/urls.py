@@ -8,7 +8,12 @@ from django.views.static import serve
 from django_prometheus import exports
 
 from orders.views import ShippingRateListView
-from users.jwt_views import CookieTokenObtainPairView, cookie_logout, cookie_token_refresh
+
+from users.jwt_views import (
+    CookieTokenObtainPairView,
+    cookie_logout,
+    cookie_token_refresh,
+)
 
 _PRIVATE_NETS = [
     ipaddress.ip_network("10.0.0.0/8"),
@@ -51,7 +56,9 @@ urlpatterns = [
     path("api/products/", include("products.urls")),
     path("api/orders/", include("orders.urls")),
     path("api/shipping-rates/", ShippingRateListView.as_view(), name="shipping_rates"),
-    path("api/auth/login/", CookieTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path(
+        "api/auth/login/", CookieTokenObtainPairView.as_view(), name="token_obtain_pair"
+    ),
     path("api/auth/refresh/", cookie_token_refresh, name="token_refresh"),
     path("api/auth/logout/", cookie_logout, name="logout"),
     path("api/health/", _health_view, name="health"),

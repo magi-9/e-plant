@@ -120,10 +120,8 @@ class OrderService:
 
             total_price = items_total + shipping_cost
 
-            # Determine order status based on payment method
-            status = self._determine_initial_status(
-                validated_data.get("payment_method", "bank_transfer")
-            )
+            # All new orders start in awaiting_payment status
+            status = "awaiting_payment"
 
             order = None
             for attempt in range(1, MAX_ORDER_NUMBER_RETRIES + 1):
@@ -222,20 +220,6 @@ class OrderService:
     def _is_order_number_collision(exc: IntegrityError) -> bool:
         message = str(exc).lower()
         return "order_number" in message and "unique" in message
-
-    def _determine_initial_status(self, payment_method: str) -> str:
-        """
-        Determine the initial order status based on payment method.
-
-        Args:
-            payment_method: Payment method chosen by customer
-
-        Returns:
-            Initial order status
-        """
-        if payment_method == "bank_transfer":
-            return "awaiting_payment"
-        return "new"
 
     def _create_order_instance(
         self,

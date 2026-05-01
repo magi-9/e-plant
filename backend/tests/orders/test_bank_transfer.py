@@ -38,8 +38,10 @@ def test_bank_transfer_status_awaiting_payment(
 
 
 @pytest.mark.django_db
-def test_card_payment_status_new(api_client, user_factory, product_factory):
-    """Test that card payment orders initially have status new"""
+def test_card_payment_status_awaiting_payment(
+    api_client, user_factory, product_factory
+):
+    """Test that card payment orders initially have status awaiting_payment"""
     user = user_factory()
     product = product_factory(price=Decimal("100.00"), stock_quantity=10)
 
@@ -63,7 +65,7 @@ def test_card_payment_status_new(api_client, user_factory, product_factory):
     response = api_client.post(url, order_data, format="json")
 
     assert response.status_code == status.HTTP_201_CREATED
-    assert response.data["status"] == "new"
+    assert response.data["status"] == "awaiting_payment"
     assert response.data["payment_method"] == "card"
 
 
