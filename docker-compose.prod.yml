@@ -13,7 +13,6 @@ services:
       - path: .env.prod
         required: false
     volumes:
-      - static_volume:/app/staticfiles
       - media_volume:/app/media
       - /root/eplant-data:/data:ro
       - prometheus_multiproc:/tmp/prometheus_multiproc
@@ -81,7 +80,6 @@ services:
         order: stop-first
 
 volumes:
-  static_volume:
   media_volume:
   prometheus_multiproc:
     driver: local
