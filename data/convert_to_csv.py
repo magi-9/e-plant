@@ -520,7 +520,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
                     match_type,
                     price_payload["reference"],
                     retail_name,
-                    family_code,
+                    padded_family,
                     parts["segment_1"],
                     parts["segment_2"],
                     parts["segment_3"],
@@ -539,6 +539,20 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
     print(f"import_all_merged.csv: {count} rows → {MERGED_IMPORT_CSV}")
 
 
+# Known OCR/parsing errors in PDF system names → correct canonical name
+_SYSTEM_NAME_CORRECTIONS = {
+    "ANKLYOS": "ANKYLOS",
+}
+
+
+def _apply_system_name_corrections(code_to_systems):
+    """Fix known misspellings produced by PDF text extraction."""
+    return {
+        code: [_SYSTEM_NAME_CORRECTIONS.get(s, s) for s in systems]
+        for code, systems in code_to_systems.items()
+    }
+
+
 def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
     pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
@@ -551,6 +565,7 @@ def convert_catalog_pdf_options():
 
     rows = parse_pdf_compatibility_rows(pdf_text)
     code_to_systems = parse_code_to_systems_map(pdf_text)
+    code_to_systems = _apply_system_name_corrections(code_to_systems)
     write_compatibility_options_csv(rows)
     option_map = build_option_map(rows)
     build_merged_import_csv(option_map, code_to_systems, active_categories)

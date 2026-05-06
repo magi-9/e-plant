@@ -10,16 +10,17 @@ import RequestProductModal from './RequestProductModal';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 
-const VISIBLE_CATEGORIES_COUNT = 6;
+const HEADER_CATEGORIES = 3;
 
 interface ProductDetailModalProps {
     open: boolean;
     setOpen: (open: boolean) => void;
     product: Product | null;
     onEdit?: (product: Product) => void;
+    selectedCategories?: string[];
 }
 
-export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
+export default function ProductDetailModal({ open, setOpen, product, onEdit, selectedCategories = [] }: ProductDetailModalProps) {
     const navigate = useNavigate();
     const isLoggedIn = authService.isAuthenticated();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
@@ -95,29 +96,38 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         };
     }, [hasVariants, selectedVariantId]);
 
-    if (!product) return null;
-
     const activeVariant = hydratedVariant || selectedVariant;
 
     const variantImageFallback =
-        variantOptions.find((opt) => !!opt.image)?.image || product.image;
+        variantOptions.find((opt) => !!opt.image)?.image || product?.image;
 
-    const effectiveName = activeVariant?.name || product.name;
-    const effectiveDescription = activeVariant?.description || product.description;
-    const effectiveCategory = activeVariant?.category || product.category;
-    const effectiveAllCategories = activeVariant?.all_categories || product.all_categories || product.parameters?.all_categories || effectiveCategory || '';
-    const effectiveImage = activeVariant?.image || variantImageFallback || product.image;
-    const effectivePrice = activeVariant?.price ?? product.price;
+    const effectiveName = activeVariant?.name || product?.name || '';
+    const effectiveDescription = activeVariant?.description || product?.description || '';
+    const effectiveCategory = activeVariant?.category || product?.category || '';
+    const effectiveAllCategories = activeVariant?.all_categories || product?.all_categories || product?.parameters?.all_categories || effectiveCategory || '';
+    const effectiveImage = activeVariant?.image || variantImageFallback || product?.image;
+    const effectivePrice = activeVariant?.price ?? product?.price;
     const effectiveVariantRef = activeVariant?.reference || '';
-    const effectiveProductCode = effectiveVariantRef || product.reference || '';
+    const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
 
     const categoryList = effectiveAllCategories
         .split(';')
         .map((value) => value.trim())
         .filter(Boolean);
-    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
-    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
+
+    // Sort so active filter categories appear first, then the rest.
+    const sortedCategoryList = useMemo(() => {
+        if (!selectedCategories.length) return categoryList;
+        const active = selectedCategories.filter((c) => categoryList.includes(c));
+        const rest = categoryList.filter((c) => !active.includes(c));
+        return [...active, ...rest];
+    }, [categoryList, selectedCategories]);
+
+    if (!product) return null;
+
+    const visibleCategories = sortedCategoryList.slice(0, HEADER_CATEGORIES);
+    const extraCategoryCount = Math.max(0, sortedCategoryList.length - HEADER_CATEGORIES);
     const compatibilityCodes = (activeVariant?.compatibility_codes && activeVariant.compatibility_codes.length ? activeVariant.compatibility_codes : product.compatibility_codes) || [];
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
@@ -256,8 +266,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                         <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
                                                         <p className="text-sm text-cyan-700 font-medium break-words">
                                                             {visibleCategories.join(', ') || effectiveCategory}
-                                                            {hiddenCategories.length > 0 && (
-                                                                <span className="text-slate-400"> {`+${hiddenCategories.length} ďalších`}</span>
+                                                            {extraCategoryCount > 0 && (
+                                                                <span className="text-slate-400"> {`+${extraCategoryCount} ďalších`}</span>
                                                             )}
                                                         </p>
                                                     </div>
@@ -455,9 +465,22 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                             </div>
 
                                     {/* Scrollable Description Section */}
-                                    {(descriptionParts.length > 0 || hiddenCategories.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
+                                    {(descriptionParts.length > 0 || sortedCategoryList.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
                                         <div className="mt-6 rounded-md border border-gray-100 bg-gray-50/70 p-3 sm:p-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
                                             <dl className="space-y-1.5 min-w-0">
+                                                {sortedCategoryList.length > 0 && (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
+                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Systémy:</dt>
+                                                        <dd className="text-gray-700 break-words text-sm min-w-0">
+                                                            {sortedCategoryList.map((cat, i) => (
+                                                                <span key={cat}>
+                                                                    <span className={selectedCategories.includes(cat) ? 'font-semibold text-cyan-700' : ''}>{cat}</span>
+                                                                    {i < sortedCategoryList.length - 1 && <span className="text-gray-400">, </span>}
+                                                                </span>
+                                                            ))}
+                                                        </dd>
+                                                    </div>
+                                                )}
                                                 {descriptionParts.map((p, i) => (
                                                     <div key={i} className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
                                                         {p.key && <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">{p.key}:</dt>}
@@ -468,12 +491,6 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                     <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
                                                         <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Parametre:</dt>
                                                         <dd className="text-gray-700 break-all text-sm min-w-0">{selectedVariant.option_tokens}</dd>
-                                                    </div>
-                                                )}
-                                                {hiddenCategories.length > 0 && (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Ďalšie kategórie:</dt>
-                                                        <dd className="text-gray-700 break-all text-sm min-w-0">{hiddenCategories.join(', ')}</dd>
                                                     </div>
                                                 )}
                                             </dl>

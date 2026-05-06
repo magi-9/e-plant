@@ -1,4 +1,5 @@
 import csv
+import json
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
@@ -9,6 +10,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count, Sum
+from django.http import HttpResponse
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -966,6 +968,182 @@ class AdminProductImport(APIView):
                 {"error": f"Error processing file: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class AdminProductExport(APIView):
+    """Admin endpoint: export all products as a downloadable JSON file."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request, *args, **kwargs):
+        products = Product.objects.select_related("wildcard_group").all().order_by("id")
+        data = [
+            {
+                "name": p.name,
+                "reference": p.reference or "",
+                "description": p.description,
+                "category": p.category,
+                "price": str(p.price),
+                "stock_quantity": p.stock_quantity,
+                "low_stock_threshold": p.low_stock_threshold,
+                "low_stock_alert_sent": p.low_stock_alert_sent,
+                "is_visible": p.is_visible,
+                "parameters": p.parameters,
+                "wildcard_group_id": p.wildcard_group_id,
+                "wildcard_group_name": (
+                    p.wildcard_group.name if p.wildcard_group else None
+                ),
+            }
+            for p in products
+        ]
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        response = HttpResponse(content, content_type="application/json")
+        response["Content-Disposition"] = 'attachment; filename="products_export.json"'
+        return response
+
+
+class AdminProductFullImport(APIView):
+    """Admin endpoint: import products from JSON exported by AdminProductExport.
+
+    Matches by reference (creates new if no match, updates if found).
+    Products without a reference are always created.
+    """
+
+    permission_classes = (permissions.IsAdminUser,)
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.FILES.get("file")
+        if not file_obj:
+            return Response(
+                {"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if not file_obj.name.endswith(".json"):
+            return Response(
+                {"error": "File must be a JSON file"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            data = json.loads(file_obj.read().decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return Response(
+                {"error": f"Invalid JSON: {exc}"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(data, list):
+            return Response(
+                {"error": "JSON must be a list of products"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(data) > 50000:
+            return Response(
+                {"error": "File too large. Maximum 50,000 products."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        all_refs = [
+            row.get("reference", "").strip()
+            for row in data
+            if isinstance(row, dict) and row.get("reference", "").strip()
+        ]
+        existing_by_ref = {
+            p.reference: p for p in Product.objects.filter(reference__in=all_refs)
+        }
+
+        # Build wildcard group lookup so we can restore group assignments.
+        wc_ids_in_data = {
+            int(row["wildcard_group_id"])
+            for row in data
+            if isinstance(row, dict) and row.get("wildcard_group_id") is not None
+        }
+        existing_wc_groups = {
+            wg.id: wg for wg in WildcardGroup.objects.filter(id__in=wc_ids_in_data)
+        }
+
+        to_create = []
+        to_update = []
+
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            name = (row.get("name") or "").strip()
+            if not name:
+                continue
+
+            ref = (row.get("reference") or "").strip() or None
+
+            price_str = row.get("price", "0") or "0"
+            try:
+                price = Decimal(str(price_str))
+            except (InvalidOperation, TypeError):
+                price = Decimal("0.00")
+
+            params = row.get("parameters") or {}
+            if not isinstance(params, dict):
+                params = {}
+
+            wc_id = row.get("wildcard_group_id")
+            wildcard_group = existing_wc_groups.get(int(wc_id)) if wc_id else None
+
+            fields = {
+                "name": name,
+                "reference": ref,
+                "description": row.get("description") or "",
+                "category": row.get("category") or "",
+                "price": price,
+                "stock_quantity": int(row.get("stock_quantity") or 0),
+                "low_stock_threshold": int(row.get("low_stock_threshold") or 5),
+                "low_stock_alert_sent": bool(row.get("low_stock_alert_sent", False)),
+                "is_visible": bool(row.get("is_visible", True)),
+                "parameters": params,
+                "wildcard_group": wildcard_group,
+            }
+
+            existing = existing_by_ref.get(ref) if ref else None
+            if existing:
+                for attr, val in fields.items():
+                    setattr(existing, attr, val)
+                to_update.append(existing)
+            else:
+                to_create.append(Product(**fields))
+
+        all_groups = list(ProductGroup.objects.only("id", "prefix"))
+        for p in to_create:
+            p._auto_assign_group(groups=all_groups)
+        for p in to_update:
+            p._auto_assign_group(groups=all_groups)
+
+        update_fields = [
+            "name",
+            "reference",
+            "description",
+            "category",
+            "price",
+            "stock_quantity",
+            "low_stock_threshold",
+            "low_stock_alert_sent",
+            "is_visible",
+            "parameters",
+            "group",
+            "wildcard_group",
+        ]
+
+        with transaction.atomic():
+            if to_create:
+                Product.objects.bulk_create(to_create, batch_size=200)
+            if to_update:
+                Product.objects.bulk_update(to_update, update_fields, batch_size=200)
+
+        return Response(
+            {
+                "message": f"Import dokončený. Vytvorených: {len(to_create)}, aktualizovaných: {len(to_update)}.",
+                "created": len(to_create),
+                "updated": len(to_update),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ProductInquiryView(APIView):

@@ -294,3 +294,390 @@ class TestCategoryCountsEndpoint:
         product_factory(category="Test", is_visible=True)
         response = api_client.get(reverse("category_counts"))
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestCatalogIntegrity:
+    """Tests verify data matches the physical PDF catalog (PRODUCT-REFERENCE-0326_01.pdf).
+
+    These tests read the real compatibility_options.csv — no mocking.
+    Each assertion maps to a specific page and section in the PDF.
+    """
+
+    # ── Code 0001 · BIOMET 3L · pages 43-46 ──────────────────────────────────
+
+    def test_0001_tibase_families_present(self):
+        """PDF p.43: STANDARD DYNAMIC TIBASE for 0001 has NE family 31.322.001 and E family 31.312.001."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0001")
+        assert "31.322.001" in prefixes, "NE TIBASE family missing for code 0001"
+        assert "31.312.001" in prefixes, "E TIBASE family missing for code 0001"
+
+    def test_0001_3tibase_families_present(self):
+        """PDF p.43: DYNAMIC 3TIBASE for 0001 has 31.322.001 (NE) and 31.312.001 (E)."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0001")
+        # 3TIBASE refs 31.322.001.21-2 and 31.312.001.21-2 share the same family as TIBASE
+        assert "31.322.001" in prefixes
+        assert "31.312.001" in prefixes
+
+    def test_0001_scanbody_adaptor_screwdriver_families(self):
+        """PDF p.43: DYNAMIC SCANBODY section for 0001 contains scanbody, adaptor, screwdriver families."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0001")
+        assert "52.410.103" in prefixes, "Scanbody 52.410.103 missing"  # H=10 scanbody
+        assert "50.312.001" in prefixes, "Adaptor 50.312.001 missing"
+        assert "43.621.410" in prefixes, "Screwdriver 43.621.410 missing"
+
+    def test_0001_milling_tool_analog_families(self):
+        """PDF p.44: DYNAMIC MILLING TOOL and ANALOG for 0001."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0001")
+        assert "33.390.754" in prefixes, "Milling tool shank 3 missing"
+        assert "33.490.754" in prefixes, "Milling tool shank 4 missing"
+        assert "22.612.001" in prefixes, "Analog missing"
+
+    def test_0001_screw_families(self):
+        """PDF p.44: SCREWS section for 0001 — dynamic screw 41.316.084, straight screw 40.316.003."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0001")
+        assert "41.316.084" in prefixes, "Dynamic screw 41.316.084 missing"
+        assert "40.316.003" in prefixes, "Straight screw 40.316.003 missing"
+
+    # ── Code 0022 · ADIN / HI-TEC / NOBEL BIOCARE / etc. · pages 93-96 ──────
+
+    def test_0022_tibase_ne_family(self):
+        """PDF p.93: NE TIBASE family 31.323.022 present for code 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "31.323.022" in get_ref_prefixes_for_code("0022")
+
+    def test_0022_tibase_e_family(self):
+        """PDF p.93: E TIBASE family 31.313.022 present for code 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "31.313.022" in get_ref_prefixes_for_code("0022")
+
+    def test_0022_scanbody_and_adaptor(self):
+        """PDF p.93: SCANBODY 52.408.106, adaptor 50.313.022 present for code 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0022")
+        assert "52.408.106" in prefixes, "Scanbody H=8 missing for 0022"
+        assert "50.313.022" in prefixes, "Adaptor missing for 0022"
+
+    def test_0022_multi_unit_families(self):
+        """PDF p.95: STRAIGHT MULTI-UNIT family 42.303.022 and ANGULATED 48.312.022 for 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0022")
+        assert "42.303.022" in prefixes, "Straight multi-unit family missing for 0022"
+        assert "48.312.022" in prefixes, "Angulated multi-unit family missing for 0022"
+        assert "62.303.022" in prefixes, "Internal multi-unit family missing for 0022"
+
+    def test_0022_dynamic_screw(self):
+        """PDF p.94: Dynamic screw 41.320.075 and straight screw 40.320.008 for code 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0022")
+        assert "41.320.075" in prefixes, "Dynamic screw missing for 0022"
+        assert "40.320.008" in prefixes, "Straight screw missing for 0022"
+
+    def test_0022_scanbody_op(self):
+        """PDF p.94: SCANBODY OP 54.315.022 present for code 0022."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "54.315.022" in get_ref_prefixes_for_code("0022")
+
+    # ── Code 0030 · DENTIS / OSSTEM / NEOBIOTECH · pages 112-115 ─────────────
+
+    def test_0030_is_padded_code(self):
+        """Bug fix: code must be stored as '0030', not '030' (zero-padding fix)."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert len(get_ref_prefixes_for_code("0030")) > 0, "Code 0030 has no entries"
+        assert (
+            len(get_ref_prefixes_for_code("030")) == 0
+        ), "Non-padded code 030 must return nothing"
+
+    def test_0030_tibase_families(self):
+        """PDF p.112: TIBASE NE family 31.323.030 and E family 31.313.030 for 0030 (DENTIS)."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0030")
+        assert "31.323.030" in prefixes, "NE TIBASE family missing for 0030"
+        assert "31.313.030" in prefixes, "E TIBASE family missing for 0030"
+
+    def test_0030_3tibase_families(self):
+        """PDF p.112: 3TIBASE for 0030 — refs .21, .22, .23 in families 31.323.030 / 31.313.030."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0030")
+        assert "31.323.030" in prefixes
+        assert "31.313.030" in prefixes
+
+    def test_0030_multi_unit_families(self):
+        """PDF p.113-115: MULTI-UNIT families for 0030 — straight, angulated, internal."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0030")
+        assert "42.303.030" in prefixes, "Straight MU missing for 0030"
+        assert "48.312.030" in prefixes, "Angulated MU missing for 0030"
+        assert "62.303.030" in prefixes, "Internal MU missing for 0030"
+
+    def test_0030_scanbody_and_adaptor(self):
+        """PDF p.112: Scanbody and adaptor families for 0030."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0030")
+        assert (
+            "52.410.101" in prefixes or "52.408.101" in prefixes
+        ), "Scanbody missing for 0030"
+        assert "50.313.030" in prefixes, "Adaptor missing for 0030"
+
+    # ── Code 0075 · ANKYLOS · pages 171-173 ──────────────────────────────────
+
+    def test_0075_is_padded_code(self):
+        """Bug fix: code must be stored as '0075', not '075' (zero-padding fix)."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert len(get_ref_prefixes_for_code("0075")) > 0, "Code 0075 has no entries"
+        assert (
+            len(get_ref_prefixes_for_code("075")) == 0
+        ), "Non-padded code 075 must return nothing"
+
+    def test_0075_tibase_ne_family(self):
+        """PDF p.172: NE TIBASE family 31.322.075 present for 0075 (ANKYLOS)."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "31.322.075" in get_ref_prefixes_for_code("0075")
+
+    def test_0075_tibase_e_family(self):
+        """PDF p.172: E TIBASE family 31.312.075 present for 0075 (ANKYLOS).
+        Note: GH=1 has no E variant, but GH=2,3,4 do — so family must exist."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "31.312.075" in get_ref_prefixes_for_code("0075")
+
+    def test_0075_3tibase_family(self):
+        """PDF p.172: 3TIBASE ref 31.322.075.21-2 (NE only, no E) present for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "31.322.075" in get_ref_prefixes_for_code("0075")
+
+    def test_0075_milling_tool_family(self):
+        """PDF p.172: Milling tool family 33.330.734 / 33.430.734 / 33.630.734 for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0075")
+        assert "33.330.734" in prefixes, "Milling shank 3 missing for 0075"
+        assert "33.430.734" in prefixes, "Milling shank 4 missing for 0075"
+        assert "33.630.734" in prefixes, "Milling shank 6 missing for 0075"
+
+    def test_0075_dynamic_screw(self):
+        """PDF p.172: Dynamic screw 41.318.077 and straight screw 40.318.013 for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0075")
+        assert "41.318.077" in prefixes, "Dynamic screw missing for 0075"
+        assert "40.318.013" in prefixes, "Straight screw missing for 0075"
+
+    def test_0075_multi_unit_engaging(self):
+        """PDF p.173: STRAIGHT MULTI-UNIT family 42.302.075 (ENGAGING only) for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "42.302.075" in get_ref_prefixes_for_code("0075")
+
+    def test_0075_scanbody_op(self):
+        """PDF p.172: SCANBODY OP 54.315.075 present for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "54.315.075" in get_ref_prefixes_for_code("0075")
+
+    def test_0075_analog_family(self):
+        """PDF p.172: ANALOG family 22.612.075 and DIGITAL ANALOG 34.612.075 for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        prefixes = get_ref_prefixes_for_code("0075")
+        assert "22.612.075" in prefixes, "Analog missing for 0075"
+        assert "34.612.075" in prefixes, "Digital analog missing for 0075"
+
+    def test_0075_adaptor_family(self):
+        """PDF p.172: Adaptor 50.312.075 present for 0075."""
+        from products.compatibility import _load, get_ref_prefixes_for_code
+
+        _load.cache_clear()
+        assert "50.312.075" in get_ref_prefixes_for_code("0075")
+
+    # ── Cross-code integrity ──────────────────────────────────────────────────
+
+    def test_all_codes_are_4_digit_padded(self):
+        """Every compatibility code in the CSV must be exactly 4 digits (zero-padded)."""
+        import csv as csv_mod
+        import os
+
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "../../../data/csv/compatibility_options.csv"
+        )
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            bad = [
+                row["compatibility_code"]
+                for row in csv_mod.DictReader(f)
+                if row["compatibility_code"]
+                and not (
+                    len(row["compatibility_code"]) == 4
+                    and row["compatibility_code"].isdigit()
+                )
+            ]
+        assert bad == [], f"Non-padded codes found: {bad[:10]}"
+
+    def test_141_distinct_codes_in_csv(self):
+        """CSV must contain exactly 141 distinct compatibility codes matching the PDF catalog."""
+        import csv as csv_mod
+        import os
+
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "../../../data/csv/compatibility_options.csv"
+        )
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            codes = {
+                row["compatibility_code"]
+                for row in csv_mod.DictReader(f)
+                if row["compatibility_code"]
+            }
+        assert (
+            len(codes) == 141
+        ), f"Expected 141 codes, got {len(codes)}: {sorted(codes)}"
+
+    def test_no_ankylos_typo_in_csv(self):
+        """ANKLYOS typo (transposed letters) must not appear in compatibility_options.csv sections."""
+        import csv as csv_mod
+        import os
+
+        csv_path = os.path.join(
+            os.path.dirname(__file__), "../../../data/csv/compatibility_options.csv"
+        )
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            typos = [
+                row["section"]
+                for row in csv_mod.DictReader(f)
+                if "ANKLYOS" in row.get("section", "").upper()
+            ]
+        assert typos == [], f"ANKLYOS typo still present in {len(typos)} rows"
+
+
+class TestCompatibilityCodePadding:
+    """Verify that compatibility codes are always 4-digit padded (e.g. '0075', not '075').
+
+    These tests guard against the bug where convert_to_csv.py wrote the non-padded
+    segment_3 value ('075', '030') instead of the padded 4-digit code ('0075', '0030').
+    """
+
+    def test_get_ref_prefixes_uses_padded_code(self, tmp_path):
+        """get_ref_prefixes_for_code must find prefixes when queried with 4-digit code."""
+        from unittest.mock import patch
+        import products.compatibility as compat_module
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0075",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.322.075.01-2",
+            },
+            {
+                "compatibility_code": "0075",
+                "section": "SCREWDRIVER",
+                "reference": "43.621.410.01-2",
+            },
+            {
+                "compatibility_code": "0075",
+                "section": "SCREW",
+                "reference": "40.318.013.01-2",
+            },
+            {
+                "compatibility_code": "0030",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.323.030.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            prefixes_0075 = compat_module.get_ref_prefixes_for_code("0075")
+            prefixes_075 = compat_module.get_ref_prefixes_for_code("075")
+
+        # 4-digit padded code must return all 3 cross-family prefixes
+        assert "31.322.075" in prefixes_0075
+        assert "43.621.410" in prefixes_0075
+        assert "40.318.013" in prefixes_0075
+        # Non-padded 3-digit code must return nothing (it's not in the CSV)
+        assert len(prefixes_075) == 0
+
+    def test_get_compatibility_codes_for_ref_returns_padded(self, tmp_path):
+        """get_compatibility_codes_for_ref must return 4-digit codes like '0075', not '075'."""
+        from unittest.mock import patch
+        import products.compatibility as compat_module
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0075",
+                "section": "TIBASE",
+                "reference": "31.322.075.01-2",
+            },
+            {
+                "compatibility_code": "0030",
+                "section": "TIBASE",
+                "reference": "31.323.030.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            codes_075 = compat_module.get_compatibility_codes_for_ref("31.322.075.02-2")
+            codes_030 = compat_module.get_compatibility_codes_for_ref("31.323.030.02-2")
+
+        assert codes_075 == ["0075"], f"Expected ['0075'], got {codes_075}"
+        assert codes_030 == ["0030"], f"Expected ['0030'], got {codes_030}"
