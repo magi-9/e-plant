@@ -356,12 +356,14 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
 
             is_visible = bool(name and category and price is not None)
 
+            all_categories = row.get("system_categories", "").strip()
             params = {
                 "type": "single",
                 "reference_num": reference_num,
                 "parameter_code": row.get("ref_segment_4", "").strip(),
                 "option_tokens": row.get("options", "").strip(),
                 "compatibility_code": row.get("compatibility_code", "").strip(),
+                "all_categories": all_categories,
             }
 
             products.append(
