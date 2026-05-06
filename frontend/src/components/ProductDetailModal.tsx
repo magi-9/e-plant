@@ -111,18 +111,17 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
     const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
 
-    const categoryList = effectiveAllCategories
-        .split(';')
-        .map((value) => value.trim())
-        .filter(Boolean);
-
     // Sort so active filter categories appear first, then the rest.
     const sortedCategoryList = useMemo(() => {
-        if (!selectedCategories.length) return categoryList;
-        const active = selectedCategories.filter((c) => categoryList.includes(c));
-        const rest = categoryList.filter((c) => !active.includes(c));
+        const list = effectiveAllCategories
+            .split(';')
+            .map((value) => value.trim())
+            .filter(Boolean);
+        if (!selectedCategories.length) return list;
+        const active = selectedCategories.filter((c) => list.includes(c));
+        const rest = list.filter((c) => !active.includes(c));
         return [...active, ...rest];
-    }, [categoryList, selectedCategories]);
+    }, [effectiveAllCategories, selectedCategories]);
 
     if (!product) return null;
 

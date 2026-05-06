@@ -1056,7 +1056,7 @@ class AdminProductFullImport(APIView):
         wc_ids_in_data = {
             int(row["wildcard_group_id"])
             for row in data
-            if isinstance(row, dict) and row.get("wildcard_group_id") is not None
+            if isinstance(row, dict) and isinstance(row.get("wildcard_group_id"), int)
         }
         existing_wc_groups = {
             wg.id: wg for wg in WildcardGroup.objects.filter(id__in=wc_ids_in_data)
