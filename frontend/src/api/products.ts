@@ -292,6 +292,27 @@ export const addProductsToWildcardGroup = async (groupId: number, productIds: nu
     return response.data;
 };
 
+export const exportProducts = async (): Promise<void> => {
+    const response = await client.get('/products/admin/export/', { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'products_export.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+export const fullImportProducts = async (file: File): Promise<{ created: number; updated: number; message: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await client.post('/products/admin/full-import/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};
+
 export const removeProductsFromWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {
     const response = await client.post(`/products/admin/wildcard-groups/${groupId}/remove-products/`, { product_ids: productIds });
     return response.data;

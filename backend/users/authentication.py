@@ -1,4 +1,5 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 
 class CookieJWTAuthentication(JWTAuthentication):
@@ -10,5 +11,10 @@ class CookieJWTAuthentication(JWTAuthentication):
         raw_token = request.COOKIES.get(self.COOKIE_NAME)
         if raw_token is None:
             return None
-        validated_token = self.get_validated_token(raw_token)
+        try:
+            validated_token = self.get_validated_token(raw_token)
+        except (InvalidToken, TokenError):
+            # Expired or invalid cookie — treat as anonymous so AllowAny endpoints still work.
+            # The frontend refresh interceptor handles token renewal for authenticated routes.
+            return None
         return self.get_user(validated_token), validated_token
