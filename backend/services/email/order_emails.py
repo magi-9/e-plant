@@ -190,12 +190,12 @@ class OrderEmailService(BaseEmailService):
         shipping_info = f"\nDOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display}"
 
         if self.order.shipping_method == "pickup":
-            pickup_address = (getattr(shop, "pickup_address", "") or "").strip() or "Osobný odber"
+            pickup_address = (
+                getattr(shop, "pickup_address", "") or ""
+            ).strip() or "Osobný odber"
             delivery_info = f"\nMIESTO ODBERU:\n{pickup_address}"
         else:
-            delivery_info = (
-                f"\nDODACIA ADRESA:\n{self.order.street}\n{self.order.city}, {self.order.postal_code}"
-            )
+            delivery_info = f"\nDODACIA ADRESA:\n{self.order.street}\n{self.order.city}, {self.order.postal_code}"
 
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
