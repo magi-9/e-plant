@@ -90,7 +90,7 @@ export default function AdminProducts() {
     const products = useMemo(() => paginatedData?.results || [], [paginatedData]);
     const totalCount = paginatedData?.count || 0;
 
-    const categories = adminCategories || [];
+    const categories = useMemo(() => adminCategories || [], [adminCategories]);
     const categoryOptions = useMemo(() => {
         const merged = [...categories];
         selectedCategories.forEach((category) => {
@@ -237,6 +237,10 @@ export default function AdminProducts() {
                 detailsPayload = JSON.parse(detailsJson);
             } catch {
                 toast.error('Detaily musia byť platný JSON.');
+                return;
+            }
+            if (typeof detailsPayload !== 'object' || detailsPayload === null || Array.isArray(detailsPayload)) {
+                toast.error('Detaily musia byť JSON objekt {}.');
                 return;
             }
         }

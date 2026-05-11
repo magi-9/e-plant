@@ -24,7 +24,7 @@ PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
-VISIBLE_VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
+VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
 
 REFERENCE_PATTERN = re.compile(r"(?<!\d)(\d{2}\.\d{3}\.\d{3}\.\d{2}-\d)(?!\d)")
 
@@ -220,9 +220,6 @@ def extract_option_tokens(line_text, section="", ch_vals=None):
     number_tokens = re.findall(r"\b\d+(?:[\.,]\d+)?\b", cleaned)
 
     seen: set = set()
-    unique_angles = [t for t in angle_tokens if not (seen.add(t) or t in seen - {t})]  # preserve order
-    # rebuild properly
-    seen = set()
     unique_angles = []
     for t in angle_tokens:
         if t not in seen:
