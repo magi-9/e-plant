@@ -792,7 +792,7 @@ export default function ProductsPage() {
                         <div className={`${
                             viewMode === 'list'
                                 ? 'flex flex-col gap-4'
-                                : 'grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6'
+                                : 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6'
                         } transition-opacity duration-200 ${isFetching && !isFetchingNextPage ? 'opacity-50' : 'opacity-100'}`}>
                             {filteredProducts.map((product: Product, index: number) => (
                                 (() => {
@@ -806,11 +806,11 @@ export default function ProductsPage() {
                                     }}
                                     className={`group relative bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-300 cursor-pointer flex flex-col ${
                                         viewMode === 'list'
-                                            ? 'flex-row hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60'
+                                            ? 'flex-col sm:flex-row hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60'
                                             : 'hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60 hover:-translate-y-0.5'
                                     }`}
                                 >
-                                    <div className={`${viewMode === 'list' ? 'w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0' : 'w-full h-28 sm:h-40 lg:h-48'} overflow-hidden bg-slate-100`}>
+                                    <div className={`${viewMode === 'list' ? 'w-full h-40 sm:w-28 sm:h-28 sm:flex-shrink-0' : 'w-full h-28 sm:h-40 lg:h-48'} overflow-hidden bg-slate-100`}>
                                         {previewImage ? (
                                             <img
                                                 src={previewImage}

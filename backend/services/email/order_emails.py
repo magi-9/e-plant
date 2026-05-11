@@ -143,6 +143,7 @@ class OrderEmailService(BaseEmailService):
         text_body = self._build_warehouse_email_text(company_name, status_label)
         html_body = order_notification_warehouse_html(
             self.order,
+            shop,
             company_name,
             status_label,
         )
@@ -188,6 +189,14 @@ class OrderEmailService(BaseEmailService):
         )
         shipping_info = f"\nDOPRAVA: {self.order.get_shipping_method_display()} • {shipping_cost_display}"
 
+        if self.order.shipping_method == "pickup":
+            pickup_address = (
+                getattr(shop, "pickup_address", "") or ""
+            ).strip() or "Osobný odber"
+            delivery_info = f"\nMIESTO ODBERU:\n{pickup_address}"
+        else:
+            delivery_info = f"\nDODACIA ADRESA:\n{self.order.street}\n{self.order.city}, {self.order.postal_code}"
+
         payment_info = ""
         if self.order.payment_method == "bank_transfer":
             iban_line = f"\nIBAN: {shop.iban}" if shop.iban else ""
@@ -221,13 +230,9 @@ DIČ: {self.order.dic}{dic_dph_line}
 Stav: {status_label}
 
 OBJEDNANÉ PRODUKTY:
-{items_text}{shipping_info}
+{items_text}{shipping_info}{delivery_info}
 
 CELKOVÁ SUMA: {self.order.total_price}€
-
-DODACIA ADRESA:
-{self.order.street}
-{self.order.city}, {self.order.postal_code}
 {company_info}
 Telefón: {self.order.phone}
 Email: {self.order.email}

@@ -107,7 +107,7 @@ export default function HomePage() {
               </h1>
 
               <p className="mt-6 text-base sm:text-lg text-slate-700 max-w-2xl leading-relaxed">
-                <span className="font-semibold text-cyan-700">Dynamic Abutment Solutions</span> – Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu. Komplexné riešenia od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM individuálne suprakonstrukcie.
+                <span className="font-semibold text-cyan-700">Dynamic Abutment Solutions</span> – Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu. Komplexné riešenia od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM individuálne suprakonštrukcie.
               </p>
 
               <p className="mt-4 text-sm text-slate-600 max-w-2xl">
@@ -476,7 +476,7 @@ export default function HomePage() {
                   práce. Konzultácie pred zákrokom, návrh konštrukcie a dlhoveké materiály.
                 </p>
                 <ul className="mt-4 space-y-1.5 text-xs text-slate-600">
-                  <li>• Individuálne abutmenty &amp; suprakonstrukcie</li>
+                  <li>• Individuálne abutmenty &amp; suprakonštrukcie</li>
                   <li>• Dočasné aj definitívne riešenia</li>
                   <li>• Digitálne plánovanie a komunikácia</li>
                 </ul>
@@ -539,7 +539,12 @@ export default function HomePage() {
                   </dt>
                   <dd>
                     <p className="font-medium text-slate-900">E‑mail</p>
-                    <p className="text-slate-700">{company.companyEmail}</p>
+                    <a
+                      href={`mailto:${company.companyEmail}`}
+                      className="text-slate-700 hover:text-cyan-700 underline-offset-2 hover:underline"
+                    >
+                      {company.companyEmail}
+                    </a>
                   </dd>
                 </div>
                 <div className="flex items-start gap-3">

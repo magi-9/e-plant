@@ -19,6 +19,11 @@ def _safe_company_name(company_name: str) -> str:
     return escape(cleaned)
 
 
+def _pickup_address_or_default(shop) -> str:
+    pickup_address = _text_or_empty(getattr(shop, "pickup_address", "")).strip()
+    return escape(pickup_address) if pickup_address else "Osobný odber"
+
+
 def verification_email_html(
     verify_url: str, company_name: str = DEFAULT_COMPANY_PROFILE["company_name"]
 ) -> str:
@@ -342,12 +347,11 @@ def order_confirmation_customer_html(
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
               <tr>
                 <td width="48%" valign="top" style="padding-right:10px;">
-                  <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">Dodacia adresa</p>
+                  <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">{"Miesto odberu" if order.shipping_method == "pickup" else "Dodacia adresa"}</p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
                       <strong style="color:#1e293b;">{escape(order.customer_name)}</strong><br>
-                      {escape(order.street)}<br>
-                      {escape(order.city)}, {escape(order.postal_code)}<br>
+                      {(f'{_pickup_address_or_default(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}<br>')}
                       <span style="color:#64748b;">Tel: {escape(order.phone)}</span>
                     </td></tr>
                   </table>
@@ -396,7 +400,7 @@ def final_invoice_customer_html(order, shop, status_label: str) -> str:
 
 
 def order_notification_warehouse_html(
-    order, company_name: str, status_label: str
+    order, shop, company_name: str, status_label: str
 ) -> str:
     """Build HTML version of warehouse order notification email."""
     company_name_escaped = _safe_company_name(company_name)
@@ -523,10 +527,10 @@ def order_notification_warehouse_html(
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
               <tr>
                 <td width="48%" valign="top" style="padding-right:10px;">
-                  <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">Dodacia adresa</p>
+                  <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">{"Miesto odberu" if order.shipping_method == "pickup" else "Dodacia adresa"}</p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
-                      {escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}
+                      {(f'{_pickup_address_or_default(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}')}
                     </td></tr>
                   </table>
                 </td>
