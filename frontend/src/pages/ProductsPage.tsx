@@ -25,6 +25,23 @@ const getCategoryList = (product: Product): string[] => {
         .filter(Boolean);
 };
 
+const CARD_VISIBLE_CATEGORIES = 2;
+
+const getCardCategories = (
+    product: Product,
+    activeCats: string[]
+): { visible: string[]; extra: number } => {
+    const list = getCategoryList(product);
+    if (!list.length) return { visible: product.category ? [product.category] : [], extra: 0 };
+    const active = activeCats.filter((c) => list.includes(c));
+    const rest = list.filter((c) => !active.includes(c));
+    const ordered = [...active, ...rest];
+    return {
+        visible: ordered.slice(0, CARD_VISIBLE_CATEGORIES),
+        extra: Math.max(0, ordered.length - CARD_VISIBLE_CATEGORIES),
+    };
+};
+
 const getProductPreviewImage = (product: Product): string | null => {
     if (product.image) return product.image;
 
@@ -886,12 +903,20 @@ export default function ProductsPage() {
                                                 ) : product.reference && (
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
-                                                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                                                    <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
-                                                    <p className="text-xs text-cyan-700 font-medium line-clamp-1">
-                                                        {getCategoryList(product).join(', ') || product.category}
-                                                    </p>
-                                                </div>
+                                                {(() => {
+                                                    const { visible, extra } = getCardCategories(product, selectedCategories);
+                                                    return (
+                                                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                            <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
+                                                            <p className="text-xs text-cyan-700 font-medium line-clamp-1">
+                                                                {visible.join(', ')}
+                                                                {extra > 0 && (
+                                                                    <span className="text-slate-400 ml-1">+{extra}</span>
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
 
@@ -1031,6 +1056,7 @@ export default function ProductsPage() {
                 open={openModal}
                 setOpen={setOpenModal}
                 product={selectedProduct}
+                selectedCategories={selectedCategories}
             />
 
             {/* Mobile Filters Bottom Sheet */}

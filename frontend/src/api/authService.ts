@@ -39,6 +39,7 @@ export class AuthService {
     }
 
     redirectToLogin(path = '/login'): void {
+        if (window.location.pathname === path) return;
         window.location.href = path;
     }
 
