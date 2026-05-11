@@ -36,6 +36,7 @@ from .compatibility import (
     get_compatibility_options,
     get_ref_prefixes_for_code,
 )
+from .cache_utils import invalidate_product_stats_cache
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
 
@@ -405,6 +406,7 @@ class AdminSeedView(APIView):
             out = StringIO()
             call_command("import_product_data", master=True, update=True, stdout=out)
             messages.append(out.getvalue())
+            invalidate_product_stats_cache()
         except Exception as e:
             return Response(
                 {
@@ -634,6 +636,8 @@ class AdminBulkSetVisibleView(APIView):
         updated_count = Product.objects.filter(pk__in=ids).update(
             is_visible=bool(is_visible)
         )
+        if updated_count:
+            invalidate_product_stats_cache()
         return Response({"updated": updated_count}, status=status.HTTP_200_OK)
 
 
@@ -998,6 +1002,9 @@ class AdminProductImport(APIView):
                         products_to_update.values(), fields_to_update
                     )
 
+            if processed_count:
+                invalidate_product_stats_cache()
+
             return Response(
                 {"message": f"Successfully processed {processed_count} products."},
                 status=status.HTTP_200_OK,
@@ -1177,6 +1184,9 @@ class AdminProductFullImport(APIView):
                 Product.objects.bulk_create(to_create, batch_size=200)
             if to_update:
                 Product.objects.bulk_update(to_update, update_fields, batch_size=200)
+
+        if to_create or to_update:
+            invalidate_product_stats_cache()
 
         return Response(
             {

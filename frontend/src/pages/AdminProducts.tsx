@@ -63,6 +63,10 @@ export default function AdminProducts() {
     const invalidateProductQueries = () => {
         queryClient.invalidateQueries({ queryKey: ['products'], exact: false });
         queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['products-count'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['category-counts'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['compatibility-counts'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['products-categories'], exact: false });
     };
 
     const adminQueryParams = useMemo<ProductListParams>(() => ({

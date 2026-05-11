@@ -1,6 +1,21 @@
 import client from './client';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CATEGORY_COUNTS_CACHE_KEY = 'category_counts_v1';
+const COMPAT_COUNTS_CACHE_KEY = 'compat_counts_v1';
+
+export const PRODUCT_STATS_CACHE_INVALIDATED_EVENT = 'products:stats-cache-invalidated';
+
+export function invalidateProductStatsClientCache(): void {
+    try {
+        localStorage.removeItem(CATEGORY_COUNTS_CACHE_KEY);
+        localStorage.removeItem(COMPAT_COUNTS_CACHE_KEY);
+    } catch {
+        // ignore storage access issues
+    }
+
+    window.dispatchEvent(new Event(PRODUCT_STATS_CACHE_INVALIDATED_EVENT));
+}
 
 function readLocalCache<T>(key: string): T | null {
     try {
@@ -141,6 +156,11 @@ interface ProductCategoriesResponse {
 
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
+
+    if (params?.admin_view === '1') {
+        invalidateProductStatsClientCache();
+    }
+
     return {
         ...response.data,
         results: response.data.results.map(normalizeProductImages),
@@ -173,18 +193,18 @@ export const getCompatibilityOptions = async (): Promise<CompatibilityOption[]> 
 };
 
 export const getCompatibilityCounts = async (): Promise<Record<string, number>> => {
-    const cached = readLocalCache<Record<string, number>>('compat_counts_v1');
+    const cached = readLocalCache<Record<string, number>>(COMPAT_COUNTS_CACHE_KEY);
     if (cached) return cached;
     const response = await client.get<{ counts: Record<string, number> }>('/products/compatibility-counts/');
-    writeLocalCache('compat_counts_v1', response.data.counts);
+    writeLocalCache(COMPAT_COUNTS_CACHE_KEY, response.data.counts);
     return response.data.counts;
 };
 
 export const getCategoryCounts = async (): Promise<Record<string, number>> => {
-    const cached = readLocalCache<Record<string, number>>('category_counts_v1');
+    const cached = readLocalCache<Record<string, number>>(CATEGORY_COUNTS_CACHE_KEY);
     if (cached) return cached;
     const response = await client.get<{ counts: Record<string, number> }>('/products/category-counts/');
-    writeLocalCache('category_counts_v1', response.data.counts);
+    writeLocalCache(CATEGORY_COUNTS_CACHE_KEY, response.data.counts);
     return response.data.counts;
 };
 
@@ -192,11 +212,13 @@ export const updateProduct = async (id: number, data: FormData): Promise<Product
     const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
+    invalidateProductStatsClientCache();
     return normalizeProductImages(response.data);
 };
 
 export const deleteProduct = async (id: number): Promise<void> => {
     await client.delete(`/products/admin/${id}/delete/`);
+    invalidateProductStatsClientCache();
 };
 
 export const sendProductInquiry = async (productId: number, message: string): Promise<{ success: boolean; message: string }> => {
@@ -216,16 +238,19 @@ export const createProduct = async (data: FormData): Promise<Product> => {
     const response = await client.post<Product>('/products/admin/create/', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
+    invalidateProductStatsClientCache();
     return normalizeProductImages(response.data);
 };
 
 export const seedDemoData = async (): Promise<{ message: string }> => {
     const response = await client.post('/products/admin/seed/');
+    invalidateProductStatsClientCache();
     return response.data;
 };
 
 export const bulkDeleteProducts = async (ids: number[]): Promise<{ deleted: number }> => {
     const response = await client.post('/products/admin/bulk-delete/', { ids });
+    invalidateProductStatsClientCache();
     return response.data;
 };
 
@@ -238,21 +263,25 @@ export const importProductsCsv = async (file: File): Promise<{ message: string, 
             'Content-Type': 'multipart/form-data',
         },
     });
+    invalidateProductStatsClientCache();
     return response.data;
 };
 
 export const bulkSetVisibleProducts = async (ids: number[], is_visible: boolean): Promise<{ updated: number }> => {
     const response = await client.post('/products/admin/bulk-set-visible/', { ids, is_visible });
+    invalidateProductStatsClientCache();
     return response.data;
 };
 
 export const getAdminProductIds = async (params?: Omit<ProductListParams, 'limit' | 'offset'>): Promise<number[]> => {
     const response = await client.get<{ ids: number[] }>('/products/admin/all-ids/', { params });
+    invalidateProductStatsClientCache();
     return response.data.ids;
 };
 
 export const getAdminCategories = async (): Promise<string[]> => {
     const response = await client.get<{ categories: string[] }>('/products/admin/categories/');
+    invalidateProductStatsClientCache();
     return response.data.categories;
 };
 
@@ -311,6 +340,7 @@ export const fullImportProducts = async (file: File): Promise<{ created: number;
     const response = await client.post('/products/admin/full-import/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
+    invalidateProductStatsClientCache();
     return response.data;
 };
 
