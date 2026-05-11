@@ -24,7 +24,7 @@ PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
-CATEGORIES_TXT = os.path.join(RAW_DIR, "categories.txt")
+VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
 
 REFERENCE_PATTERN = re.compile(r"(?<!\d)(\d{2}\.\d{3}\.\d{3}\.\d{2}-\d)(?!\d)")
 
@@ -203,8 +203,13 @@ def load_pdf_text(pdf_path):
             return ""
 
 
-def extract_option_tokens(line_text):
-    """Extract compact option tokens (A-E, lengths, angles) from a line."""
+def extract_option_tokens(line_text, section="", ch_vals=None):
+    """Extract labeled key:value option tokens from a catalog line.
+
+    Returns pipe-separated pairs like ``αS:43º|αC:29º|GH(mm):0.3``.
+    For DYNAMIC 3TIBASE sections, ``ch_vals`` (e.g. ["5","7","9"]) produces
+    ``αS(CH=5mm):25º|αS(CH=7mm):20º|αS(CH=9mm):10º`` labels instead.
+    """
     cleaned = REFERENCE_PATTERN.sub(" ", line_text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if not cleaned:
@@ -214,12 +219,53 @@ def extract_option_tokens(line_text):
     angle_tokens = re.findall(r"\b\d{1,2}º\b", cleaned)
     number_tokens = re.findall(r"\b\d+(?:[\.,]\d+)?\b", cleaned)
 
-    merged_tokens = []
-    for token in letter_tokens + angle_tokens + number_tokens:
-        if token not in merged_tokens:
-            merged_tokens.append(token)
+    seen: set = set()
+    unique_angles = []
+    for t in angle_tokens:
+        if t not in seen:
+            seen.add(t)
+            unique_angles.append(t)
 
-    return "|".join(merged_tokens[:8])
+    angle_nums = {t.rstrip("º°") for t in unique_angles}
+    unique_letters = []
+    for t in letter_tokens:
+        if t not in seen:
+            seen.add(t)
+            unique_letters.append(t)
+
+    unique_numbers = []
+    for t in number_tokens:
+        if t not in seen and t not in angle_nums and not re.fullmatch(r"\d{4}", t):
+            seen.add(t)
+            unique_numbers.append(t)
+
+    sec_upper = section.upper() if section else ""
+    is_3tibase = "3TIBASE" in sec_upper
+    is_screw = "SCREW" in sec_upper
+    is_scanbody = "SCANBODY" in sec_upper and "OP" not in sec_upper
+    is_scanbody_op = "SCANBODY OP" in sec_upper
+
+    labeled = []
+    if is_3tibase and ch_vals:
+        for i, at in enumerate(unique_angles[: len(ch_vals)]):
+            labeled.append(f"αS(CH={ch_vals[i]}mm):{at}")
+    else:
+        angle_field_names = ["αS", "αC", "αdi"]
+        for i, at in enumerate(unique_angles[:3]):
+            name = angle_field_names[i] if i < len(angle_field_names) else f"α{i + 1}"
+            labeled.append(f"{name}:{at}")
+    for lt in unique_letters[:2]:
+        labeled.append(f"Typ:{lt}")
+    for nt in unique_numbers[:3]:
+        val = nt.replace(",", ".")
+        if is_screw:
+            labeled.append(f"L(mm):{val}")
+        elif is_scanbody or is_scanbody_op:
+            labeled.append(f"H(mm):{val}")
+        else:
+            labeled.append(f"GH(mm):{val}")
+
+    return "|".join(labeled[:8])
 
 
 def parse_pdf_compatibility_rows(pdf_text):
@@ -227,6 +273,7 @@ def parse_pdf_compatibility_rows(pdf_text):
     rows = []
     current_code = ""
     current_section = ""
+    current_ch_vals: list = []
     expect_code_next_line = False
 
     for raw_line in pdf_text.splitlines():
@@ -250,14 +297,25 @@ def parse_pdf_compatibility_rows(pdf_text):
 
         expect_code_next_line = False
 
-        if re.fullmatch(r"[A-Z][A-Z\s\-/()]{2,60}", line) and "PRODUCT REFERENCES" not in line:
+        # Section header: allow digits so "DYNAMIC 3TIBASE" is captured correctly.
+        if (
+            re.fullmatch(r"[A-Z][A-Z0-9\s\-/()]{2,60}", line)
+            and "PRODUCT REFERENCES" not in line
+        ):
             current_section = line
+            current_ch_vals = []  # reset CH values on every section change
+
+        # CH= header line for DYNAMIC 3TIBASE (e.g. "CH=5mm   CH=7mm   CH=9mm")
+        ch_header = re.findall(r"CH=(\d+)mm", line, re.IGNORECASE)
+        if ch_header and not REFERENCE_PATTERN.search(line):
+            current_ch_vals = ch_header
+            continue
 
         refs = REFERENCE_PATTERN.findall(line)
         if not refs:
             continue
 
-        option_tokens = extract_option_tokens(line)
+        option_tokens = extract_option_tokens(line, current_section, current_ch_vals)
         for ref in refs:
             parts = parse_reference_parts(ref)
             rows.append(
@@ -390,17 +448,16 @@ def write_compatibility_options_csv(rows):
 
 
 def build_option_map(parsed_rows):
-    """Map compatibility family number to aggregated option token string."""
-    by_family = {}
+    """Map exact reference SKU to its option token string from the source line."""
+    by_ref = {}
     for row in parsed_rows:
-        family = row.get("reference_family")
-        if not family:
+        ref = row.get("reference")
+        if not ref:
             continue
-        by_family.setdefault(family, [])
         token = row.get("options", "")
-        if token and token not in by_family[family]:
-            by_family[family].append(token)
-    return {family: ";".join(tokens[:12]) for family, tokens in by_family.items()}
+        if token and ref not in by_ref:
+            by_ref[ref] = token
+    return by_ref
 
 
 def build_price_lookup():
@@ -503,7 +560,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
                 price_payload["detail"],
                 f"Referenčný kód: {ref}",
                 f"Systém: {primary_system}" if primary_system else "",
-                f"Parametre: {option_map.get(family_code, '')}" if option_map.get(family_code, "") else "",
+                f"Parametre: {option_map.get(ref, '')}" if option_map.get(ref, "") else "",
             ]
             generated_description = " | ".join([p for p in description_parts if p])
 
@@ -526,7 +583,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
                     parts["segment_3"],
                     parts["segment_4"],
                     parts["check_digit"],
-                    option_map.get(family_code, ""),
+                    option_map.get(ref, ""),
                     generated_description,
                     ";".join(systems),
                     ";".join(active_systems),
@@ -557,7 +614,7 @@ def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
     pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
     pdf_text = load_pdf_text(pdf_path)
-    active_categories = load_active_categories(CATEGORIES_TXT)
+    active_categories = load_active_categories(VISIBLE_CATEGORIES_TXT)
     if not pdf_text:
         print("compatibility_options.csv: skipped (could not parse PDF text)")
         build_merged_import_csv({}, {}, active_categories)

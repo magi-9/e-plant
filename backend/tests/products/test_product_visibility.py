@@ -2,6 +2,8 @@
 Tests for Product is_visible field and API filtering (Issue #88).
 """
 
+from unittest.mock import patch
+
 import pytest
 
 from products.factories import ProductFactory
@@ -249,7 +251,8 @@ class TestProductCategoriesEndpoint:
             is_visible=False,
         )
 
-        response = client.get("/api/products/categories/")
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            response = client.get("/api/products/categories/")
         assert response.status_code == 200
         categories = response.json()["categories"]
         assert "Category A" in categories

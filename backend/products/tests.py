@@ -35,6 +35,70 @@ def admin_client():
     return client
 
 
+@pytest.mark.django_db
+def test_admin_create_accepts_parameters_json_string():
+    client = admin_client()
+    response = client.post(
+        "/api/products/admin/create/",
+        data={
+            "name": "Json Product",
+            "description": "",
+            "category": "CatA",
+            "price": "12.50",
+            "stock_quantity": 5,
+            "is_visible": "true",
+            "parameters": '{"all_categories": "CatA; CatB", "details": {"key": "value"}}',
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["parameters"]["details"]["key"] == "value"
+    assert response.data["parameters"]["all_categories"] == "CatA; CatB"
+
+
+@pytest.mark.django_db
+def test_admin_create_rejects_invalid_parameters_json():
+    client = admin_client()
+    response = client.post(
+        "/api/products/admin/create/",
+        data={
+            "name": "Bad Json",
+            "description": "",
+            "category": "CatA",
+            "price": "12.50",
+            "stock_quantity": 5,
+            "is_visible": "true",
+            "parameters": "{bad json",
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "parameters" in response.data
+
+
+@pytest.mark.django_db
+def test_admin_create_rejects_non_object_details():
+    client = admin_client()
+    response = client.post(
+        "/api/products/admin/create/",
+        data={
+            "name": "Bad Details",
+            "description": "",
+            "category": "CatA",
+            "price": "12.50",
+            "stock_quantity": 5,
+            "is_visible": "true",
+            "parameters": '{"details": ["nope"]}',
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "parameters" in response.data
+
+
 # ─── existing visibility tests ─────────────────────────────────────────────────
 
 

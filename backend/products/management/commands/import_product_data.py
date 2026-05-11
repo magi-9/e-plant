@@ -14,9 +14,8 @@ Usage:
 
 Rules:
   - Every row with a reference is imported (1 ref = 1 product = 1 row).
-  - Products missing name, category, or price are stored with is_visible=False.
-  - Products with complete data are stored with is_visible=True.
-  - is_active is not used anywhere.
+  - Products visible only when name + price present and system is in visible_categories.txt.
+  - All other products are stored with is_visible=False.
 """
 
 import csv
@@ -301,7 +300,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
     - Duplicate references: first occurrence wins.
     - Price fallback: if no price in merged CSV, look up via retail_prices_path
       (exact match on reference_num/reference, then wildcard pattern match).
-    - is_visible = True only when name, category, and a valid price are all present.
+    - is_visible = True only when name, valid price, and an active system category are all present.
     - Missing name falls back to the reference string.
     - Missing category falls back to 'Uncategorized'.
     - Missing price is stored as 0.00 with is_visible = False.
@@ -354,7 +353,8 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     if not category:
                         category = matched_section
 
-            is_visible = bool(name and category and price is not None)
+            is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
+            is_visible = bool(name and price is not None and is_active)
 
             all_categories = row.get("system_categories", "").strip()
             params = {
