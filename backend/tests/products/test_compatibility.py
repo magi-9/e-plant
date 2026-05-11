@@ -263,7 +263,8 @@ class TestCategoryCountsEndpoint:
         product_factory(category="Hand Tools", is_visible=True)
         product_factory(category="Power Tools", is_visible=False)  # Not visible
 
-        response = api_client.get(reverse("category_counts"))
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            response = api_client.get(reverse("category_counts"))
 
         assert response.status_code == status.HTTP_200_OK
         counts = response.data["counts"]
@@ -281,7 +282,8 @@ class TestCategoryCountsEndpoint:
             is_visible=True,
         )
 
-        response = api_client.get(reverse("category_counts"))
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            response = api_client.get(reverse("category_counts"))
 
         assert response.status_code == status.HTTP_200_OK
         counts = response.data["counts"]

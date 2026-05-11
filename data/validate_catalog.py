@@ -20,7 +20,7 @@ RAW_DIR = os.path.join(BASE_DIR, "raw")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
-CATEGORIES_TXT = os.path.join(RAW_DIR, "categories.txt")
+VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
 
 
 def load_catalog_refs():
@@ -67,10 +67,10 @@ def load_merged_data():
 
 
 def load_active_categories():
-    """Return set of canonical system names from categories.txt."""
-    if not os.path.exists(CATEGORIES_TXT):
+    """Return set of canonical system names from visible_categories.txt."""
+    if not os.path.exists(VISIBLE_CATEGORIES_TXT):
         return set()
-    with open(CATEGORIES_TXT, encoding="utf-8") as f:
+    with open(VISIBLE_CATEGORIES_TXT, encoding="utf-8") as f:
         raw = f.read()
     return {t.strip() for t in re.split(r"[,\n]+", raw) if t.strip()}
 

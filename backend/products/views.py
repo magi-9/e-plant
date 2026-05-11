@@ -681,6 +681,29 @@ class AdminCategoriesView(APIView):
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
 
+def _load_allowed_categories() -> set[str]:
+    """Return normalized keys of categories allowed by data/raw/visible_categories.txt."""
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "data"
+        / "raw"
+        / "visible_categories.txt"
+    )
+    if not path.exists():
+        return set()
+    import re as _re
+
+    raw = path.read_text(encoding="utf-8")
+    allowed = set()
+    for part in _re.split(r"[,\n]+", raw):
+        token = part.strip()
+        if token:
+            allowed.add(_re.sub(r"[^A-Z0-9]", "", token.upper()))
+    return allowed
+
+
 class ProductCategoriesView(APIView):
     """Public endpoint: return all unique categories for visible storefront products."""
 
@@ -688,7 +711,8 @@ class ProductCategoriesView(APIView):
 
     def get(self, request, *args, **kwargs):
         qs = Product.objects.all()
-        if not _is_admin_view(request):
+        is_admin = _is_admin_view(request)
+        if not is_admin:
             qs = qs.filter(is_visible=True)
 
         raw_cats = qs.exclude(category="").values_list("category", flat=True).distinct()
@@ -708,6 +732,17 @@ class ProductCategoriesView(APIView):
                     part = part.strip()
                     if part:
                         categories.add(part)
+
+        if not is_admin:
+            import re as _re
+
+            allowed = _load_allowed_categories()
+            if allowed:
+                categories = {
+                    c
+                    for c in categories
+                    if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
+                }
 
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
@@ -749,16 +784,23 @@ def _get_category_counts():
     qs = Product.objects.filter(is_visible=True).values_list(
         "category", "parameters__all_categories"
     )
+    import re as _re
+
+    allowed = _load_allowed_categories()
+
+    def _allowed(name: str) -> bool:
+        return not allowed or _re.sub(r"[^A-Z0-9]", "", name.upper()) in allowed
+
     counts: dict[str, int] = {}
     for cat, params_all in qs:
         if cat:
             key = cat.strip()
-            if key:
+            if key and _allowed(key):
                 counts[key] = counts.get(key, 0) + 1
         if params_all:
             for part in str(params_all).split(";"):
                 part = part.strip()
-                if part:
+                if part and _allowed(part):
                     counts[part] = counts.get(part, 0) + 1
     # Cache for 1 hour (3600 seconds)
     cache.set(cache_key, counts, 3600)
