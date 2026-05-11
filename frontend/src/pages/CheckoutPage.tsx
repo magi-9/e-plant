@@ -499,30 +499,30 @@ export default function CheckoutPage() {
                             <div className="mt-4 pt-4 border-t border-slate-100">
                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Platobné inštrukcie</p>
                                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 space-y-2 text-sm">
-                                    <div className="flex justify-between">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                                         <span className="text-slate-500">Suma</span>
-                                        <span className="font-bold text-slate-900">{orderTotal.toFixed(2)} €</span>
+                                        <span className="font-bold text-slate-900 break-words sm:text-right">{orderTotal.toFixed(2)} €</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                                         <span className="text-slate-500">Variabilný symbol</span>
-                                        <span className="font-mono font-bold text-slate-900">{orderNumber}</span>
+                                        <span className="font-mono font-bold text-slate-900 break-all sm:text-right">{orderNumber}</span>
                                     </div>
                                     {globalSettings?.iban && (
-                                        <div className="flex justify-between">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                                             <span className="text-slate-500">IBAN</span>
-                                            <span className="font-mono font-bold text-slate-900">{globalSettings.iban}</span>
+                                            <span className="font-mono font-bold text-slate-900 break-all text-left sm:text-right">{globalSettings.iban}</span>
                                         </div>
                                     )}
                                     {globalSettings?.bank_name && (
-                                        <div className="flex justify-between">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                                             <span className="text-slate-500">Banka</span>
-                                            <span className="text-slate-900">{globalSettings.bank_name}</span>
+                                            <span className="text-slate-900 break-words sm:text-right">{globalSettings.bank_name}</span>
                                         </div>
                                     )}
                                     {globalSettings?.bank_swift && (
-                                        <div className="flex justify-between">
+                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4">
                                             <span className="text-slate-500">SWIFT/BIC</span>
-                                            <span className="font-mono text-slate-900">{globalSettings.bank_swift}</span>
+                                            <span className="font-mono text-slate-900 break-all sm:text-right">{globalSettings.bank_swift}</span>
                                         </div>
                                     )}
                                     <p className="pt-2 border-t border-amber-200 text-xs text-slate-400">
@@ -567,12 +567,12 @@ export default function CheckoutPage() {
 
                                 <SectionCard title="Kontaktné údaje">
                                     <div className="space-y-4">
-                                        <div className="flex gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <Field label="Titul" name="title" value={formData.title} onChange={set('title')} half placeholder="MUDr., Ing." />
                                             <Field label="Meno" name="first_name" value={formData.first_name} onChange={set('first_name')} half required />
                                             <Field label="Priezvisko" name="last_name" value={formData.last_name} onChange={set('last_name')} half required />
                                         </div>
-                                        <div className="flex gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="E-mail" name="email" type="email" value={formData.email} onChange={set('email')} half required autoComplete="email" />
                                             <Field label="Telefón" name="phone" type="tel" value={formData.phone} onChange={set('phone')} half required placeholder="+421 900 123 456" autoComplete="tel" />
                                         </div>
@@ -581,12 +581,12 @@ export default function CheckoutPage() {
 
                                 <SectionCard title="Adresa">
                                     <div className="space-y-4">
-                                        <div className="flex gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Ulica" name="street_name" value={formData.street_name} onChange={set('street_name')} half required placeholder="Hlavná" />
                                             <Field label="Číslo" name="street_number" value={formData.street_number} onChange={set('street_number')} half required placeholder="123" />
                                         </div>
                                         <Field label="Adresa 2 (nepovinné)" name="address_line2" value={formData.address_line2} onChange={set('address_line2')} placeholder="Poschodie, byt..." />
-                                        <div className="flex gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field label="Mesto" name="city" value={formData.city} onChange={set('city')} half required />
                                             <Field label="PSČ" name="postal_code" value={formData.postal_code} onChange={set('postal_code')} half required placeholder="811 01" />
                                         </div>
@@ -609,7 +609,7 @@ export default function CheckoutPage() {
                                             style={{ borderRadius: '0 0 14px 14px', background: '#f8fafc' }}>
                                             <Field label="Názov firmy" name="company_name" value={formData.company_name}
                                                 onChange={set('company_name')} required={formData.is_company} />
-                                            <div className="flex gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <Field label="IČO" name="ico" value={formData.ico} onChange={set('ico')} half required={formData.is_company} placeholder="12345678" />
                                                 <Field label="DIČ" name="dic" value={formData.dic} onChange={set('dic')} half placeholder="SK1234567890" />
                                                 <Field label="IČ DPH" name="dic_dph" value={formData.dic_dph} onChange={set('dic_dph')} half placeholder="SK1234567890" />

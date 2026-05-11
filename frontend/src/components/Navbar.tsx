@@ -110,6 +110,14 @@ export default function Navbar() {
                 {/* Right: cart + user/login */}
                 <div className="flex items-center gap-3">
 
+                    <Link
+                        to="/about"
+                        className="sm:hidden inline-flex items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
+                        style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: 'rgba(255,255,255,0.04)' }}
+                    >
+                        Kontakt
+                    </Link>
+
                     {/* Cart – only for non-admins */}
                     {!userIsAdmin && (
                         <div className="relative group/cart">
