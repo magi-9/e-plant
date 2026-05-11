@@ -682,14 +682,14 @@ class AdminCategoriesView(APIView):
 
 
 def _load_allowed_categories() -> set[str]:
-    """Return normalized keys of categories allowed by data/raw/categories.txt."""
+    """Return normalized keys of categories allowed by data/raw/visible_categories.txt."""
     from pathlib import Path
 
     path = (
         Path(__file__).resolve().parent.parent.parent
         / "data"
         / "raw"
-        / "categories.txt"
+        / "visible_categories.txt"
     )
     if not path.exists():
         return set()

@@ -354,7 +354,8 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     if not category:
                         category = matched_section
 
-            is_visible = bool(name and category and price is not None)
+            is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
+            is_visible = bool(name and price is not None and is_active)
 
             all_categories = row.get("system_categories", "").strip()
             params = {

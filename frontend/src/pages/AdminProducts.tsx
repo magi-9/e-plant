@@ -37,6 +37,9 @@ export default function AdminProducts() {
 
     // Form states
     const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true, compatibility_code: '' });
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [newCategory, setNewCategory] = useState('');
+    const [detailsJson, setDetailsJson] = useState('');
     const [isUploadingCSV, setIsUploadingCSV] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -88,6 +91,13 @@ export default function AdminProducts() {
     const totalCount = paginatedData?.count || 0;
 
     const categories = adminCategories || [];
+    const categoryOptions = useMemo(() => {
+        const merged = [...categories];
+        selectedCategories.forEach((category) => {
+            if (!merged.includes(category)) merged.push(category);
+        });
+        return merged;
+    }, [categories, selectedCategories]);
 
     const displayedCount = products.length;
 
@@ -189,6 +199,10 @@ export default function AdminProducts() {
         setEditingProduct(product);
         setFormData(product);
         setImageFile(null);
+        setSelectedCategories(getCategoryList(product));
+        setNewCategory('');
+        const details = product.parameters?.details;
+        setDetailsJson(details ? JSON.stringify(details, null, 2) : '');
         setIsModalOpen(true);
     };
 
@@ -196,16 +210,52 @@ export default function AdminProducts() {
         setEditingProduct(null);
         setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
         setImageFile(null);
+        setSelectedCategories([]);
+        setNewCategory('');
+        setDetailsJson('');
         setIsModalOpen(true);
+    };
+
+    const addNewCategory = () => {
+        const next = newCategory.trim();
+        if (!next) return;
+        setSelectedCategories((prev) => (prev.includes(next) ? prev : [...prev, next]));
+        setNewCategory('');
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!selectedCategories.length) {
+            toast.error('Vyberte aspoň jednu kategóriu.');
+            return;
+        }
+
+        let detailsPayload: unknown = null;
+        if (detailsJson.trim()) {
+            try {
+                detailsPayload = JSON.parse(detailsJson);
+            } catch {
+                toast.error('Detaily musia byť platný JSON.');
+                return;
+            }
+        }
+
+        const parameters = {
+            ...(editingProduct?.parameters || {}),
+            ...(formData.parameters || {}),
+            all_categories: selectedCategories.join('; '),
+        };
+        if (detailsPayload === null) {
+            delete parameters.details;
+        } else {
+            parameters.details = detailsPayload;
+        }
+
         const payload = new FormData();
         payload.append('name', formData.name || '');
         payload.append('description', formData.description || '');
-        payload.append('category', formData.category || '');
+        payload.append('category', selectedCategories[0]);
         payload.append('stock_quantity', (formData.stock_quantity || 0).toString());
 
         const priceStr = formData.price?.toString().replace(',', '.');
@@ -221,6 +271,7 @@ export default function AdminProducts() {
         if (formData.compatibility_code !== undefined) {
             payload.append('compatibility_code', formData.compatibility_code || '');
         }
+        payload.append('parameters', JSON.stringify(parameters));
 
         if (editingProduct) {
             updateMutation.mutate({ id: editingProduct.id, data: payload }, {
@@ -604,7 +655,39 @@ export default function AdminProducts() {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700">Kategória *</label>
-                                                    <input type="text" required value={formData.category || ''} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500" />
+                                                    <select
+                                                        multiple
+                                                        required
+                                                        value={selectedCategories}
+                                                        onChange={(e) => setSelectedCategories(Array.from(e.target.selectedOptions).map((opt) => opt.value))}
+                                                        className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                                    >
+                                                        {categoryOptions.map((category) => (
+                                                            <option key={category} value={category}>{category}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="mt-2 flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={newCategory}
+                                                            onChange={(e) => setNewCategory(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    addNewCategory();
+                                                                }
+                                                            }}
+                                                            placeholder="Pridať novú kategóriu"
+                                                            className="w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={addNewCategory}
+                                                            className="px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            Pridať
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700">Cena (€) *</label>
@@ -632,6 +715,16 @@ export default function AdminProducts() {
                                                     onChange={(e) => setFormData({ ...formData, compatibility_code: e.target.value })}
                                                     placeholder="napr. 0001"
                                                     className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Detaily (JSON)</label>
+                                                <textarea
+                                                    value={detailsJson}
+                                                    onChange={(e) => setDetailsJson(e.target.value)}
+                                                    rows={6}
+                                                    placeholder='{"key": "value"}'
+                                                    className="mt-1 w-full px-3 py-2 border rounded font-mono text-sm focus:ring-blue-500 focus:border-blue-500"
                                                 />
                                             </div>
                                             <div className="pt-1">
