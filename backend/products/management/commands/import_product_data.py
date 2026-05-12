@@ -312,6 +312,11 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
     if retail_prices_path and os.path.exists(retail_prices_path):
         exact_prices, wildcard_prices = _build_price_lookup(retail_prices_path)
 
+    from products.compatibility import _load as _load_compat
+
+    compat_data = _load_compat()
+    all_compat_families = {f for prefixes in compat_data.values() for f in prefixes}
+
     seen_refs = set()
     products = []
 
@@ -354,7 +359,10 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                         category = matched_section
 
             is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
-            is_visible = bool(name and price is not None and is_active)
+            ref_parts = ref.split(".")
+            ref_family = ".".join(ref_parts[:3]) if len(ref_parts) >= 3 else ""
+            has_compat = bool(all_compat_families) and ref_family in all_compat_families
+            is_visible = bool(name and price is not None and is_active and has_compat)
 
             all_categories = row.get("system_categories", "").strip()
             engaging_raw = row.get("engaging", "").strip()

@@ -149,6 +149,7 @@ def _option_entry(m):
         "label": option_label,
         "parameter_code": (m.parameters or {}).get("parameter_code", ""),
         "option_tokens": (m.parameters or {}).get("option_tokens", ""),
+        "engaging": (m.parameters or {}).get("engaging"),
     }
 
 

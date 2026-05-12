@@ -660,22 +660,77 @@ def _apply_system_name_corrections(code_to_systems):
     }
 
 
+def _row_to_option_tokens(row: dict) -> str:
+    """Convert a parse_catalog.py structured product row to pipe-separated key:value tokens."""
+    parts = []
+    if row.get("GH_mm"):
+        parts.append(f"GH(mm):{row['GH_mm']}")
+    alpha_s = row.get("alpha_S")
+    if alpha_s:
+        if "CH=" in str(alpha_s):
+            for segment in str(alpha_s).split(" / "):
+                m = re.match(r"CH=(\d+)mm:(.+)", segment.strip())
+                if m:
+                    parts.append(f"αS(CH={m.group(1)}mm):{m.group(2)}")
+        else:
+            parts.append(f"αS:{alpha_s}")
+    if row.get("alpha_C"):
+        parts.append(f"αC:{row['alpha_C']}")
+    if row.get("alpha_di"):
+        parts.append(f"αdi:{row['alpha_di']}")
+    if row.get("H_mm"):
+        parts.append(f"H(mm):{row['H_mm']}")
+    if row.get("length_mm"):
+        parts.append(f"L(mm):{row['length_mm']}")
+    if row.get("height_mm"):
+        parts.append(f"H(mm):{row['height_mm']}")
+    if row.get("type_label"):
+        parts.append(f"Typ:{row['type_label']}")
+    return "|".join(parts[:8])
+
+
 def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
+    import sys
     pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
-    pdf_text = load_pdf_text(pdf_path)
     active_categories = load_active_categories(VISIBLE_CATEGORIES_TXT)
-    if not pdf_text:
-        print("compatibility_options.csv: skipped (could not parse PDF text)")
-        build_merged_import_csv({}, {}, active_categories)
-        return
 
-    rows = parse_pdf_compatibility_rows(pdf_text)
-    code_to_systems = parse_code_to_systems_map(pdf_text)
+    # Use the layout-aware parse_catalog.py parser for structured, accurate data
+    try:
+        if BASE_DIR not in sys.path:
+            sys.path.insert(0, BASE_DIR)
+        from parse_catalog import extract_text as _extract_text, parse_products as _parse_products
+        product_text = _extract_text(pdf_path, first_page=43, last_page=329)
+        catalog_rows = _parse_products(product_text, pdf_first_page=43)
+        option_map = {
+            row["sku"]: _row_to_option_tokens(row)
+            for row in catalog_rows
+            if row.get("sku")
+        }
+        engaging_map = {
+            row["sku"]: row["engaging"]
+            for row in catalog_rows
+            if row.get("sku") and row.get("engaging") is not None
+        }
+        print(f"parse_catalog: {len(catalog_rows)} rows, {len(option_map)} option tokens, "
+              f"{len(engaging_map)} engaging values")
+    except Exception as exc:
+        print(f"Warning: parse_catalog failed ({exc}), falling back to legacy parser")
+        pdf_text = load_pdf_text(pdf_path)
+        if not pdf_text:
+            print("compatibility_options.csv: skipped (could not parse PDF text)")
+            build_merged_import_csv({}, {}, active_categories)
+            return
+        rows = parse_pdf_compatibility_rows(pdf_text)
+        write_compatibility_options_csv(rows)
+        option_map = build_option_map(rows)
+        engaging_map = build_engaging_map(rows)
+        pdf_text_for_systems = pdf_text
+    else:
+        pdf_text_for_systems = load_pdf_text(pdf_path)
+
+    code_to_systems = parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
     code_to_systems = _apply_system_name_corrections(code_to_systems)
-    write_compatibility_options_csv(rows)
-    option_map = build_option_map(rows)
-    engaging_map = build_engaging_map(rows)
     build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map)
 
 

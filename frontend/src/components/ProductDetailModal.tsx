@@ -496,7 +496,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     </div>
                                                 )}
                                                 {(() => {
-                                                    const eng = (product?.parameters as Record<string, unknown> | undefined)?.engaging;
+                                                    const variantEng = hasVariants ? (activeVariant as Record<string, unknown> | null | undefined)?.engaging : undefined;
+                                                    const eng = variantEng !== undefined ? variantEng : (product?.parameters as Record<string, unknown> | undefined)?.engaging;
                                                     if (eng === 0 || eng === 1) {
                                                         return (
                                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">

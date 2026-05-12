@@ -254,6 +254,7 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
     current_gh: str | None = None     # GH (mm) value
     current_length: str | None = None # LENGTH for screws
     pending_line_prefix: str = ""     # For multi-line headers: "DYNAMIC", "STRAIGHT", "LAB"
+    scanbody_pending: list[dict] = [] # ADAPTOR/SCREWDRIVER rows waiting for next H value
 
     lines = text.splitlines()
 
@@ -294,7 +295,9 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
             if new_code == code and after_back_to_index:
                 after_back_to_index = False
                 continue
-            # New code
+            # New code — flush pending SCANBODY adaptors first
+            products.extend(scanbody_pending)
+            scanbody_pending = []
             code = new_code
             section = ""
             subsection = ""
@@ -325,6 +328,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         if expect_4digit_code and four_m:
             new_code = four_m.group(1)  # just the 4 digits, letter suffix stripped
             if not (new_code == code and after_back_to_index):
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 code = new_code
                 section = ""
                 subsection = ""
@@ -381,6 +386,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     detected = ptype
                     break
             if detected:
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 section = detected
                 subsection = ""
                 engaging_cols = None
@@ -420,6 +427,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     detected_section = ptype
                     break
             if detected_section:
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 section = detected_section
                 subsection = ""
                 engaging_cols = None
@@ -469,7 +478,11 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         if section == "DYNAMIC SCANBODY" and not scanbody_cols and not SKU_RE.search(stripped):
             if "SCANBODY" in upper and "H" in upper:
                 scanbody_cols = col_positions(line, "SCANBODY", "ADAPTOR", "SCREWDRIVER")
-                # SCANBODY column is for actual scanbody SKUs; ADAPTOR + SCREWDRIVER → SCREWDRIVER type
+                # If SCREWDRIVER isn't on this line but two ADAPTOR columns exist, second = SCREWDRIVER
+                if "SCREWDRIVER" not in scanbody_cols:
+                    adaptor_matches = list(re.finditer(r"\bADAPTOR\b", line, re.IGNORECASE))
+                    if len(adaptor_matches) >= 2:
+                        scanbody_cols["SCREWDRIVER"] = adaptor_matches[-1].start()
                 continue
 
         # SCREWS: detect subsection and column header
@@ -591,12 +604,21 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
 
         # == DYNAMIC SCANBODY: column-classified ========================
         if section == "DYNAMIC SCANBODY":
-            # Try to pick up H value from this line
+            # H value appears in the left margin (first ~30 chars) on SCANBODY rows
             h_candidates = [n for n in NUM_RE.findall(line[:30])
                             if not re.fullmatch(r"\d{4}", n)
                             and not SKU_RE.search(n)]
-            if h_candidates:
-                current_h = h_candidates[0].replace(",", ".")
+            new_h = h_candidates[0].replace(",", ".") if h_candidates else None
+            if new_h and new_h != current_h:
+                # Finalize pending ADAPTOR/SCREWDRIVER rows now that next H is known
+                for item in scanbody_pending:
+                    if item["H_mm"] and item["H_mm"] != new_h:
+                        item["H_mm"] = f"{item['H_mm']}/{new_h}"
+                    elif not item["H_mm"]:
+                        item["H_mm"] = new_h
+                    products.append(item)
+                scanbody_pending.clear()
+                current_h = new_h
 
             for sm in skus:
                 mid = sku_column(line, sm)
@@ -604,13 +626,18 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     col_label = nearest_col(mid, scanbody_cols)
                     if col_label == "SCANBODY":
                         ptype = "DYNAMIC SCANBODY"
+                    elif col_label == "ADAPTOR":
+                        ptype = "ADAPTOR"
                     else:
                         ptype = "SCREWDRIVER"
                 else:
                     ptype = "DYNAMIC SCANBODY"
                 base = _make_base(code, ptype, brands, page)
                 base["H_mm"] = current_h
-                products.append({**base, "sku": sm.group(1)})
+                if ptype == "DYNAMIC SCANBODY":
+                    products.append({**base, "sku": sm.group(1)})
+                else:
+                    scanbody_pending.append({**base, "sku": sm.group(1)})
             continue
 
         # == LAB SCANBODY + SCANALOG: use saved column position from header ==
@@ -714,6 +741,7 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         for sm in skus:
             products.append({**base, "sku": sm.group(1)})
 
+    products.extend(scanbody_pending)
     return products
 
 # ---------------------------------------------------------------------------
