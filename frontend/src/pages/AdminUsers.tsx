@@ -74,9 +74,9 @@ export default function AdminUsers() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-gray-50 py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <AdminNav />
+            <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+                <AdminNav />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="mt-6 rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500" aria-live="polite">
                         Načítavam používateľov...
                     </div>
@@ -151,9 +151,9 @@ export default function AdminUsers() {
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <AdminNav />
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+            <AdminNav />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">Správa používateľov</h1>
                     <p className="mt-2 text-sm text-gray-700">Administrátori a klienti sú spravovaní oddelene</p>
