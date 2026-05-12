@@ -816,7 +816,6 @@ def load_grouped_retail_products(
 
             description_parts = [
                 detail,
-                f"Referenčný kód: {ref}",
                 f"Parametre: {meta.get('options', '')}" if meta.get("options") else "",
                 (
                     f"Počet variantov: {len(parameters.get('options', []))}"

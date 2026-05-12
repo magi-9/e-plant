@@ -21,8 +21,8 @@ const fieldNameMap: Record<string, string> = {
     'Sections': 'Sections', // Hidden
 };
 
-// Fields to hide from description display (original English names)
-const hiddenFields = new Set(['Retail name', 'Raw systems', 'Sections', 'Categories']);
+// Fields to hide from description display (original English names + Slovak legacy fields)
+const hiddenFields = new Set(['Retail name', 'Raw systems', 'Sections', 'Categories', 'Referenčný kód']);
 
 /**
  * Parses a product description string ("Key: Value | Key: Value | ...") into
@@ -40,7 +40,7 @@ export function buildDescriptionParts(
     selectedVariant?: VariantOverride | null,
     productCode?: string
 ): DescriptionPart[] {
-    return description
+    const result = description
         .split(' | ')
         .map((p) => {
             const idx = p.indexOf(': ');
@@ -49,7 +49,6 @@ export function buildDescriptionParts(
             const key = p.slice(0, idx).trim();
             let value = p.slice(idx + 2).trim();
 
-            // Check if this field should be hidden before processing
             if (hiddenFields.has(key)) {
                 return { key: '__HIDDEN__', value: '' };
             }
@@ -69,7 +68,6 @@ export function buildDescriptionParts(
                 }
             }
 
-            // Translate key to Slovak
             const translatedKey = fieldNameMap[key] || finalKey;
 
             return { key: translatedKey, value };
@@ -81,9 +79,16 @@ export function buildDescriptionParts(
                 (hasVariants ? p.key !== 'Parametre' : true)
         )
         .sort((a, b) => {
-            // 'Názov produktu' always first; other fields keep their original order
             if (a.key === 'Názov produktu') return -1;
             if (b.key === 'Názov produktu') return 1;
             return 0;
         });
+
+    // Inject reference code derived from product.reference field (always second, after name)
+    if (productCode) {
+        const nameIdx = result.findIndex(p => p.key === 'Názov produktu');
+        result.splice(nameIdx + 1, 0, { key: 'Referenčný kód', value: productCode });
+    }
+
+    return result;
 }

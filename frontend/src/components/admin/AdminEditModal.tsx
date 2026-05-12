@@ -44,7 +44,7 @@ function normalize(p: Product | null): Draft {
         cats,
         compat,
         details,
-        description: p?.description ?? '',
+        description: (p?.description ?? '').split(' | ').filter(part => !part.trim().startsWith('Referenčný kód:')).join(' | '),
         visible: p?.is_visible ?? true,
     };
 }
