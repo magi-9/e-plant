@@ -275,6 +275,8 @@ def parse_pdf_compatibility_rows(pdf_text):
     current_section = ""
     current_ch_vals: list = []
     expect_code_next_line = False
+    current_engaging: int | None = None   # 0=non-engaging, 1=engaging (single-column sections)
+    engaging_col_positions = None         # (ne_col, e_col) char positions for two-column tables
 
     for raw_line in pdf_text.splitlines():
         line = raw_line.strip()
@@ -303,12 +305,33 @@ def parse_pdf_compatibility_rows(pdf_text):
             and "PRODUCT REFERENCES" not in line
         ):
             current_section = line
-            current_ch_vals = []  # reset CH values on every section change
+            current_ch_vals = []
+            current_engaging = None
+            engaging_col_positions = None
 
         # CH= header line for DYNAMIC 3TIBASE (e.g. "CH=5mm   CH=7mm   CH=9mm")
         ch_header = re.findall(r"CH=(\d+)mm", line, re.IGNORECASE)
         if ch_header and not REFERENCE_PATTERN.search(line):
             current_ch_vals = ch_header
+            continue
+
+        # ENGAGING / NON ENGAGING header detection (uses raw_line to preserve column positions)
+        if "ENGAGING" in raw_line.upper() and not REFERENCE_PATTERN.search(raw_line):
+            ne_m = re.search(r"NON\s+ENGAGING", raw_line, re.IGNORECASE)
+            e_candidates = list(re.finditer(r"\bENGAGING\b", raw_line, re.IGNORECASE))
+            e_m = next(
+                (m for m in e_candidates if ne_m is None or m.start() > ne_m.end()),
+                None,
+            )
+            if ne_m and e_m:
+                # Two-column table: NON ENGAGING left, ENGAGING right
+                engaging_col_positions = (ne_m.start(), e_m.start())
+            elif ne_m:
+                current_engaging = 0
+                engaging_col_positions = None
+            elif e_m:
+                current_engaging = 1
+                engaging_col_positions = None
             continue
 
         refs = REFERENCE_PATTERN.findall(line)
@@ -317,6 +340,18 @@ def parse_pdf_compatibility_rows(pdf_text):
 
         option_tokens = extract_option_tokens(line, current_section, current_ch_vals)
         for ref in refs:
+            # Determine engaging: use column position for two-column tables, else current state
+            if engaging_col_positions is not None:
+                ne_col, e_col = engaging_col_positions
+                ref_m = re.search(re.escape(ref), raw_line)
+                if ref_m:
+                    ref_mid = (ref_m.start() + ref_m.end()) // 2
+                    engaging = 0 if abs(ref_mid - ne_col) <= abs(ref_mid - e_col) else 1
+                else:
+                    engaging = current_engaging
+            else:
+                engaging = current_engaging
+
             parts = parse_reference_parts(ref)
             rows.append(
                 {
@@ -330,6 +365,7 @@ def parse_pdf_compatibility_rows(pdf_text):
                     "reference_variant": parts["check_digit"],
                     "options": option_tokens,
                     "source_line": line,
+                    "engaging": engaging,
                 }
             )
 
@@ -460,6 +496,17 @@ def build_option_map(parsed_rows):
     return by_ref
 
 
+def build_engaging_map(parsed_rows):
+    """Map reference SKU to engaging value (0=non-engaging, 1=engaging, absent=unknown)."""
+    by_ref = {}
+    for row in parsed_rows:
+        ref = row.get("reference")
+        engaging = row.get("engaging")
+        if ref and ref not in by_ref and engaging is not None:
+            by_ref[ref] = engaging
+    return by_ref
+
+
 def build_price_lookup():
     """Build exact + wildcard pricing lookups from retail prices CSV."""
     exact = {}
@@ -501,7 +548,7 @@ def match_price(reference_num, exact, patterns):
     return {"price": "", "section": "", "detail": "", "reference": ""}, "none"
 
 
-def build_merged_import_csv(option_map, code_to_systems, active_categories):
+def build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map=None):
     """Merge products, prices and parsed PDF option families into one import-ready CSV."""
     exact, patterns = build_price_lookup()
 
@@ -536,6 +583,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
                 "active_system_categories",
                 "primary_system_category",
                 "is_active_from_categories",
+                "engaging",
             ]
         )
 
@@ -558,11 +606,12 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
             retail_name = price_payload.get("name", "")
             description_parts = [
                 price_payload["detail"],
-                f"Referenčný kód: {ref}",
                 f"Systém: {primary_system}" if primary_system else "",
                 f"Parametre: {option_map.get(ref, '')}" if option_map.get(ref, "") else "",
             ]
             generated_description = " | ".join([p for p in description_parts if p])
+            engaging_val = (engaging_map or {}).get(ref, "")
+            engaging_str = "" if engaging_val == "" else str(engaging_val)
 
             writer.writerow(
                 [
@@ -589,6 +638,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories):
                     ";".join(active_systems),
                     primary_system,
                     is_active,
+                    engaging_str,
                 ]
             )
             count += 1
@@ -625,7 +675,8 @@ def convert_catalog_pdf_options():
     code_to_systems = _apply_system_name_corrections(code_to_systems)
     write_compatibility_options_csv(rows)
     option_map = build_option_map(rows)
-    build_merged_import_csv(option_map, code_to_systems, active_categories)
+    engaging_map = build_engaging_map(rows)
+    build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map)
 
 
 if __name__ == "__main__":

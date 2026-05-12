@@ -357,6 +357,8 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
             is_visible = bool(name and price is not None and is_active)
 
             all_categories = row.get("system_categories", "").strip()
+            engaging_raw = row.get("engaging", "").strip()
+            engaging = int(engaging_raw) if engaging_raw in ("0", "1") else None
             params = {
                 "type": "single",
                 "reference_num": reference_num,
@@ -364,6 +366,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                 "option_tokens": row.get("options", "").strip(),
                 "compatibility_code": row.get("compatibility_code", "").strip(),
                 "all_categories": all_categories,
+                "engaging": engaging,
             }
 
             products.append(

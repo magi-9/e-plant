@@ -495,6 +495,18 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                         </dd>
                                                     </div>
                                                 )}
+                                                {(() => {
+                                                    const eng = (product?.parameters as Record<string, unknown> | undefined)?.engaging;
+                                                    if (eng === 0 || eng === 1) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ spojenia:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{eng === 1 ? 'Engaging' : 'Non-engaging'}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                                 {descriptionParts.map((p, i) => {
                                                     if (p.key === 'Parametre' && p.value.includes(':')) {
                                                         return (
