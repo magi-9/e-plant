@@ -367,6 +367,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
             all_categories = row.get("system_categories", "").strip()
             engaging_raw = row.get("engaging", "").strip()
             engaging = int(engaging_raw) if engaging_raw in ("0", "1") else None
+            catalog_section = row.get("catalog_section", "").strip()
             params = {
                 "type": "single",
                 "reference_num": reference_num,
@@ -375,6 +376,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                 "compatibility_code": row.get("compatibility_code", "").strip(),
                 "all_categories": all_categories,
                 "engaging": engaging,
+                "catalog_section": catalog_section,
             }
 
             products.append(
@@ -456,6 +458,12 @@ def load_merged_products(merged_csv_path):
                 "type": "single",
                 "parameter_code": row.get("ref_segment_4", "").strip(),
                 "option_tokens": row.get("options", "").strip(),
+                "engaging": (
+                    int(row.get("engaging", ""))
+                    if row.get("engaging", "").strip() in ("0", "1")
+                    else None
+                ),
+                "catalog_section": row.get("catalog_section", "").strip(),
             },
         }
 
@@ -492,6 +500,7 @@ def load_merged_products(merged_csv_path):
             label_parts = [code, token]
             label_suffix = ", ".join([p for p in label_parts if p])
             label = f"{name} ({label_suffix})" if label_suffix else f"{name} ({ref})"
+            engaging_raw = row.get("engaging", "").strip()
             options.append(
                 {
                     "reference": ref,
@@ -500,6 +509,10 @@ def load_merged_products(merged_csv_path):
                     "parameter_code": code,
                     "option_tokens": token,
                     "label": label,
+                    "engaging": (
+                        int(engaging_raw) if engaging_raw in ("0", "1") else None
+                    ),
+                    "catalog_section": row.get("catalog_section", "").strip(),
                 }
             )
 

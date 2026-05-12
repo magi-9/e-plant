@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { PRODUCT_STATS_CACHE_INVALIDATED_EVENT, getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
+import DropdownSelect from '../components/DropdownSelect';
+import { Listbox, Transition } from '@headlessui/react';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
@@ -102,6 +104,7 @@ export default function ProductsPage() {
     // This avoids triggering setState synchronously within an effect body.
     const effectiveCategoriesOpen = categoriesOpen || selectedCategories.length > 0;
     const effectiveCompatOpen = compatOpen || !!selectedCompatibility;
+    const selectedCompatibilityKey = selectedCompatibility ? `${selectedCompatibility.section}::${selectedCompatibility.compatibility_code}` : '';
 
     // Debounce search to avoid re-fetching on every keystroke
     useEffect(() => {
@@ -604,37 +607,95 @@ export default function ProductsPage() {
                     {/* Compatibility filter */}
                     {sortedCompatibilityOptions.length > 0 && (
                         <>
-                            <select
-                                value={selectedCompatibility ? `${selectedCompatibility.section}::${selectedCompatibility.compatibility_code}` : ''}
-                                onChange={(e) => {
-                                    if (!e.target.value) { setSelectedCompatibility(null); return; }
-                                    const [section, code] = e.target.value.split('::');
-                                    const opt = sortedCompatibilityOptions.find(o => o.section === section && o.compatibility_code === code);
+                            <Listbox
+                                value={selectedCompatibilityKey}
+                                onChange={(value: string) => {
+                                    if (!value) {
+                                        setSelectedCompatibility(null);
+                                        return;
+                                    }
+                                    const [section, code] = value.split('::');
+                                    const opt = sortedCompatibilityOptions.find((o) => o.section === section && o.compatibility_code === code);
                                     setSelectedCompatibility(opt ?? null);
                                 }}
-                                className="border-none bg-transparent outline-none text-sm font-medium cursor-pointer"
-                                style={{ color: selectedCompatibility ? '#7c3aed' : '#64748b' }}
                             >
-                                <option value="">Kompatibilita</option>
-                                {sortedCompatibilityOptions.map(opt => (
-                                    <option key={`${opt.section}::${opt.compatibility_code}`} value={`${opt.section}::${opt.compatibility_code}`}>
-                                        {opt.compatibility_code}
-                                    </option>
-                                ))}
-                            </select>
+                                {({ open }) => (
+                                    <div className="relative">
+                                        <Listbox.Button
+                                            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-sm font-medium transition-all focus:outline-none ${selectedCompatibility ? 'bg-violet-50 border-violet-200 text-violet-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}
+                                        >
+                                            <span className="truncate max-w-[10rem]">
+                                                {selectedCompatibility ? selectedCompatibility.compatibility_code : 'Kompatibilita'}
+                                            </span>
+                                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                                        </Listbox.Button>
+
+                                        <Transition
+                                            as={Fragment}
+                                            enter="transition ease-out duration-120"
+                                            enterFrom="opacity-0 scale-95 translate-y-1"
+                                            enterTo="opacity-100 scale-100 translate-y-0"
+                                            leave="transition ease-in duration-90"
+                                            leaveFrom="opacity-100 scale-100 translate-y-0"
+                                            leaveTo="opacity-0 scale-95 translate-y-1"
+                                        >
+                                            <Listbox.Options className="absolute left-0 top-full z-30 mt-2 w-[18rem] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_rgba(15,23,42,0.12)] py-2 focus:outline-none">
+                                                <Listbox.Option value="" as={Fragment}>
+                                                    {({ active, selected }) => (
+                                                        <button
+                                                            type="button"
+                                                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-violet-50 text-violet-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                        >
+                                                            <span className="font-medium">Všetky</span>
+                                                            {!selectedCompatibility && <span className="text-xs font-semibold text-violet-600">Filter</span>}
+                                                        </button>
+                                                    )}
+                                                </Listbox.Option>
+                                                {sortedCompatibilityOptions.map((opt) => {
+                                                    const optionKey = `${opt.section}::${opt.compatibility_code}`;
+                                                    const count = compatibilityCounts[opt.compatibility_code];
+                                                    return (
+                                                        <Listbox.Option key={optionKey} value={optionKey} as={Fragment}>
+                                                            {({ active, selected }) => (
+                                                                <button
+                                                                    type="button"
+                                                                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                                                                >
+                                                                    <div className="flex min-w-0 items-center gap-2">
+                                                                        <span className={`h-2 w-2 flex-shrink-0 rounded-sm ${selected ? 'bg-violet-600' : 'bg-violet-300'}`} />
+                                                                        <span className="truncate font-medium">{opt.compatibility_code}</span>
+                                                                    </div>
+                                                                    {count != null && (
+                                                                        <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${selected ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                            {count}
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            )}
+                                                        </Listbox.Option>
+                                                    );
+                                                })}
+                                            </Listbox.Options>
+                                        </Transition>
+                                    </div>
+                                )}
+                            </Listbox>
                             <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
                         </>
                     )}
                     {/* Sort */}
-                    <select
+                    <DropdownSelect
                         value={priceSortOrder}
-                        onChange={(e) => setPriceSortOrder(e.target.value as 'asc' | 'desc' | 'none')}
-                        className="border-none bg-transparent outline-none text-sm text-slate-500 font-medium cursor-pointer"
-                    >
-                        <option value="none">Zoradiť</option>
-                        <option value="asc">Cena: vzostupne</option>
-                        <option value="desc">Cena: zostupne</option>
-                    </select>
+                        onChange={(value) => setPriceSortOrder(value as 'asc' | 'desc' | 'none')}
+                        placeholder="Zoradiť"
+                        neutralValues={['none']}
+                        wrapperClassName="w-44"
+                        options={[
+                            { value: 'none', label: 'Predvolené' },
+                            { value: 'asc', label: 'Cena: vzostupne' },
+                            { value: 'desc', label: 'Cena: zostupne' },
+                        ]}
+                    />
                     <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
                     {/* View toggle */}
                     {(['grid', 'list'] as const).map((mode) => (

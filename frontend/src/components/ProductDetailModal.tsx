@@ -496,6 +496,18 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     </div>
                                                 )}
                                                 {(() => {
+                                                    const section = (product?.parameters as Record<string, unknown> | undefined)?.catalog_section as string | undefined;
+                                                    if (section) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{section}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {(() => {
                                                     const variantEng = hasVariants
                                                         ? hydratedVariant
                                                             ? (hydratedVariant.parameters as Record<string, unknown> | undefined)?.engaging

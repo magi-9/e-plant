@@ -548,9 +548,62 @@ def match_price(reference_num, exact, patterns):
     return {"price": "", "section": "", "detail": "", "reference": ""}, "none"
 
 
+_PRIMARY_CATALOG_SECTIONS = (
+    "STANDARD DYNAMIC TIBASE",
+    "DYNAMIC 3TIBASE",
+    "DYNAMIC SCANBODY (LAB/CLIN)",
+    "DYNAMIC MILLING TOOL",
+    "DYNAMIC SCREWDRIVERS",
+    "ANALOG",
+    "STRAIGHT MULTI-UNIT",
+    "STRAIGHT",
+    "INTERNAL MULTI-UNIT",
+    "MULTI-UNIT",
+    "SCANBODY OP",
+    "SCANBODY",
+    "DAS MU SYSTEM COMPONENTS",
+    "COMPLEMENTS",
+    "DIRECTO IMPLANTE",
+)
+
+
+def _build_ref_lookups(code_to_systems):
+    """Build {ref: [systems]} and {ref: section} from compatibility_options.csv.
+
+    Used to assign categories to products whose segment_3 doesn't match any
+    'COMPATIBLE WITH XXXX' block in the PDF (e.g. universal accessories).
+    """
+    ref_to_systems: dict[str, list[str]] = {}
+    ref_to_section: dict[str, str] = {}
+    section_priority = {s: i for i, s in enumerate(_PRIMARY_CATALOG_SECTIONS)}
+
+    if not os.path.exists(COMPATIBILITY_OPTIONS_CSV):
+        return ref_to_systems, ref_to_section
+
+    with open(COMPATIBILITY_OPTIONS_CSV, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            ref = row.get("reference", "").strip()
+            code = row.get("compatibility_code", "").strip()
+            section = row.get("section", "").strip()
+            if not ref or not code:
+                continue
+            for system in code_to_systems.get(code, []):
+                if system not in ref_to_systems.get(ref, []):
+                    ref_to_systems.setdefault(ref, []).append(system)
+            # Keep the highest-priority (lowest index) section seen for this ref
+            current = ref_to_section.get(ref, "")
+            current_pri = section_priority.get(current, len(_PRIMARY_CATALOG_SECTIONS))
+            new_pri = section_priority.get(section, len(_PRIMARY_CATALOG_SECTIONS))
+            if not current or new_pri < current_pri:
+                ref_to_section[ref] = section
+
+    return ref_to_systems, ref_to_section
+
+
 def build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map=None):
     """Merge products, prices and parsed PDF option families into one import-ready CSV."""
     exact, patterns = build_price_lookup()
+    ref_to_systems, ref_to_section = _build_ref_lookups(code_to_systems)
 
     count = 0
     with open(PRODUCTS_CSV, newline="", encoding="utf-8") as src, open(
@@ -584,6 +637,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
                 "primary_system_category",
                 "is_active_from_categories",
                 "engaging",
+                "catalog_section",
             ]
         )
 
@@ -595,7 +649,9 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
             price_payload, match_type = match_price(ref_num, exact, patterns)
             family_code = parts["segment_3"]
             padded_family = family_code.zfill(4) if family_code else ""
-            systems = code_to_systems.get(padded_family, [])
+            # Use segment_3 lookup first; fall back to per-ref compat lookup for
+            # products (e.g. accessories) whose segment_3 has no PDF compat block.
+            systems = code_to_systems.get(padded_family) or ref_to_systems.get(ref, [])
             active_systems = [
                 active_categories[normalize_system_name(system)]
                 for system in systems
@@ -603,6 +659,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
             ]
             primary_system = active_systems[0] if active_systems else (systems[0] if systems else "")
             is_active = 1 if active_systems else 0
+            catalog_section = ref_to_section.get(ref, "")
             retail_name = price_payload.get("name", "")
             description_parts = [
                 price_payload["detail"],
@@ -639,6 +696,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
                     primary_system,
                     is_active,
                     engaging_str,
+                    catalog_section,
                 ]
             )
             count += 1
