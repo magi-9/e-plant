@@ -496,7 +496,11 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     </div>
                                                 )}
                                                 {(() => {
-                                                    const variantEng = hasVariants ? (activeVariant as Record<string, unknown> | null | undefined)?.engaging : undefined;
+                                                    const variantEng = hasVariants
+                                                        ? hydratedVariant
+                                                            ? (hydratedVariant.parameters as Record<string, unknown> | undefined)?.engaging
+                                                            : (selectedVariant as Record<string, unknown> | null | undefined)?.engaging
+                                                        : undefined;
                                                     const eng = variantEng !== undefined ? variantEng : (product?.parameters as Record<string, unknown> | undefined)?.engaging;
                                                     if (eng === 0 || eng === 1) {
                                                         return (

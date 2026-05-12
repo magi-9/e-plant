@@ -551,7 +551,7 @@ export default function ProductsPage() {
                         <p className="text-lg text-slate-700 mb-6">
                             Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu.
                             Komplexné riešenia – od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM
-                            individuálne suprakonstrukcie.
+                            individuálne suprakonštrukcie.
                         </p>
                         <p className="text-sm text-slate-600">
                             Všetky produkty sú originálne zo{' '}
@@ -825,13 +825,13 @@ export default function ProductsPage() {
                                             : 'hover:shadow-[0_8px_32px_rgba(0,0,0,0.1),0_2px_8px_rgba(6,182,212,0.08)] hover:border-cyan-300/60 hover:-translate-y-0.5'
                                     }`}
                                 >
-                                    <div className={`${viewMode === 'list' ? 'w-full h-40 sm:w-28 sm:h-28 sm:flex-shrink-0' : 'w-full h-28 sm:h-40 lg:h-48'} overflow-hidden bg-slate-100`}>
+                                    <div className={`${viewMode === 'list' ? 'w-full h-40 sm:w-28 sm:h-28 sm:flex-shrink-0' : 'w-full h-36 sm:h-44 lg:h-48'} overflow-hidden bg-slate-100`}>
                                         {previewImage ? (
                                             <img
                                                 src={previewImage}
                                                 alt={product.name}
                                                 loading="lazy"
-                                                className="h-full w-full object-contain object-center p-3 group-hover:scale-105 transition-transform duration-500 ease-in-out"
+                                                className="h-full w-full object-contain object-center p-2.5 sm:p-3 group-hover:scale-105 transition-transform duration-500 ease-in-out"
                                             />
                                         ) : (
                                             <div className="h-full w-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-200 transition-colors">
