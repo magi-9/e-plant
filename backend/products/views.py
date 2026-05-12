@@ -3,6 +3,7 @@ import json
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -685,6 +686,7 @@ class AdminCategoriesView(APIView):
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
 
+@lru_cache(maxsize=1)
 def _load_allowed_categories() -> set[str]:
     """Return normalized keys of categories allowed by data/raw/visible_categories.txt."""
     from pathlib import Path

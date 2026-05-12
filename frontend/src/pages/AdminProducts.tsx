@@ -246,10 +246,14 @@ export default function AdminProducts() {
         fd.append('name', payload.name);
         fd.append('description', payload.description);
         fd.append('category', payload.cats[0] || '');
-        if (payload.price) fd.append('price', payload.price);
+        fd.append('price', payload.price);
         fd.append('is_visible', payload.visible.toString());
-        if (editingProduct) fd.append('reference', payload.ref);
-        if (payload.imageFile) fd.append('image', payload.imageFile);
+        fd.append('reference', payload.ref);
+        if (payload.imageFile) {
+            fd.append('image', payload.imageFile);
+        } else if (payload.removeImage) {
+            fd.append('remove_image', 'true');
+        }
         fd.append('parameters', JSON.stringify(parameters));
 
         if (editingProduct) {

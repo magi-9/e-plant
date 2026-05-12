@@ -157,10 +157,6 @@ interface ProductCategoriesResponse {
 export const getProducts = async (params?: ProductListParams): Promise<PaginatedResponse<Product>> => {
     const response = await client.get<PaginatedResponse<Product>>('/products/', { params });
 
-    if (params?.admin_view === '1') {
-        invalidateProductStatsClientCache();
-    }
-
     return {
         ...response.data,
         results: response.data.results.map(normalizeProductImages),
@@ -275,13 +271,11 @@ export const bulkSetVisibleProducts = async (ids: number[], is_visible: boolean)
 
 export const getAdminProductIds = async (params?: Omit<ProductListParams, 'limit' | 'offset'>): Promise<number[]> => {
     const response = await client.get<{ ids: number[] }>('/products/admin/all-ids/', { params });
-    invalidateProductStatsClientCache();
     return response.data.ids;
 };
 
 export const getAdminCategories = async (): Promise<string[]> => {
     const response = await client.get<{ categories: string[] }>('/products/admin/categories/');
-    invalidateProductStatsClientCache();
     return response.data.categories;
 };
 

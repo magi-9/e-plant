@@ -119,7 +119,15 @@ function PhotoSlot({
     onRemove: () => void;
 }) {
     const [hover, setHover] = useState(false);
-    const preview = imageFile ? URL.createObjectURL(imageFile) : imageUrl;
+    const objectUrl = useMemo(() => (imageFile ? URL.createObjectURL(imageFile) : null), [imageFile]);
+
+    useEffect(() => {
+        return () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [objectUrl]);
+
+    const preview = objectUrl ?? imageUrl;
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
@@ -243,6 +251,10 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
     function trySave() {
         if (!draft.name.trim()) { toast.error('Doplň názov produktu.'); return; }
         if (!draft.ref.trim()) { toast.error('Doplň referenčné číslo.'); return; }
+        const priceValue = draft.price.trim();
+        if (!priceValue) { toast.error('Doplň cenu produktu.'); return; }
+        if (Number.isNaN(Number(priceValue))) { toast.error('Cena musí byť číslo.'); return; }
+        if (!draft.cats[0]) { toast.error('Vyber kategóriu produktu.'); return; }
         if (refConflict === 'duplicate') { toast.error('Toto referenčné číslo už existuje.'); return; }
         if (refChanged && !refConflict && !showRefWarn) { setShowRefWarn(true); return; }
         onSave({
@@ -266,7 +278,16 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
         ? 'Potvrdiť zmenu ref. čísla a uložiť'
         : isNew ? 'Vytvoriť produkt' : 'Uložiť zmeny';
 
-    const canSave = !!(draft.name.trim() && draft.ref.trim() && refConflict !== 'duplicate');
+    const priceValue = draft.price.trim();
+    const hasValidPrice = !!priceValue && !Number.isNaN(Number(priceValue));
+    const hasCategory = !!draft.cats[0];
+    const canSave = !!(
+        draft.name.trim()
+        && draft.ref.trim()
+        && refConflict !== 'duplicate'
+        && hasValidPrice
+        && hasCategory
+    );
 
     return (
         <div style={{

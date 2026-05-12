@@ -85,9 +85,10 @@ export function buildDescriptionParts(
         });
 
     // Inject reference code derived from product.reference field (always second, after name)
-    if (productCode) {
+    if (productCode && !result.some(p => p.key === 'Referenčný kód')) {
         const nameIdx = result.findIndex(p => p.key === 'Názov produktu');
-        result.splice(nameIdx + 1, 0, { key: 'Referenčný kód', value: productCode });
+        const insertIdx = nameIdx === -1 ? result.length : nameIdx + 1;
+        result.splice(insertIdx, 0, { key: 'Referenčný kód', value: productCode });
     }
 
     return result;
