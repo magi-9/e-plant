@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, type ComponentType, type SVGProps } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
     UsersIcon,
@@ -16,6 +16,25 @@ import { getAdminOrders, type Order } from '../api/orders';
 import { getAdminUsers, type User } from '../api/users';
 import { getOrderStats } from '../api/settings';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
+
+type StatIcon = ComponentType<SVGProps<SVGSVGElement>>;
+
+type BaseStat = {
+    label: string;
+    value: number | string;
+    icon: StatIcon;
+    iconColor: string;
+    bg: string;
+    href: string;
+};
+
+type ProductStat = BaseStat & {
+    isProductCard: true;
+    subValue: number | string;
+    subLabel: string;
+};
+
+type DashboardStat = BaseStat | ProductStat;
 
 const menuItems = [
     {
@@ -68,14 +87,16 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'overview' | 'stats'>('overview');
     const [statsPeriod, setStatsPeriod] = useState<7 | 30 | 90>(30);
 
-    const { data: allProductsData } = useQuery({
-        queryKey: ['admin-products-count', { admin_view: '1', limit: 1, offset: 0 }],
-        queryFn: () => getProducts({ admin_view: '1', limit: 1, offset: 0 }),
+    // Visible products raw count (without grouping)
+    const { data: visibleProductsRawData } = useQuery({
+        queryKey: ['admin-products-count-raw', { admin_view: '1', is_visible: true, limit: 1, offset: 0 }],
+        queryFn: () => getProducts({ admin_view: '1', is_visible: true, limit: 1, offset: 0 }),
     });
 
-    const { data: visibleProductsData } = useQuery({
-        queryKey: ['admin-products-count', { admin_view: '1', is_visible: true, limit: 1, offset: 0 }],
-        queryFn: () => getProducts({ admin_view: '1', is_visible: true, limit: 1, offset: 0 }),
+    // Visible products with grouping applied (as shown on storefront)
+    const { data: visibleProductsGroupedData } = useQuery({
+        queryKey: ['admin-products-count-grouped', { is_visible: true, limit: 1, offset: 0 }],
+        queryFn: () => getProducts({ is_visible: true, limit: 1, offset: 0 }),
     });
 
     const { data: orders } = useQuery({
@@ -115,30 +136,25 @@ export default function AdminDashboard() {
             ? usersData.results
             : [];
 
-    const totalProducts = allProductsData?.count ?? '—';
-    const visibleProducts = visibleProductsData?.count ?? '—';
+    const visibleProductsRaw = visibleProductsRawData?.count ?? '—';
+    const visibleProductsGrouped = visibleProductsGroupedData?.count ?? '—';
     const totalUsers = users === undefined ? '—' : usersList.length;
     const pendingOrders = orders === undefined
         ? '—'
         : ordersList.filter((o) => o.status === 'new' || o.status === 'awaiting_payment').length;
     const totalOrders = orders === undefined ? '—' : ordersList.length;
 
-    const stats = [
+    const stats: DashboardStat[] = [
         {
-            label: 'Produkty (všetky)',
-            value: totalProducts,
+            label: 'Aktívne produkty',
+            value: visibleProductsRaw,
+            subValue: visibleProductsGrouped,
+            subLabel: 'Po grupovaní',
             icon: CubeIcon,
             iconColor: 'text-cyan-500',
             bg: 'bg-cyan-50',
             href: '/admin/products',
-        },
-        {
-            label: 'Produkty (viditeľné)',
-            value: visibleProducts,
-            icon: CubeIcon,
-            iconColor: 'text-sky-500',
-            bg: 'bg-sky-50',
-            href: '/admin/products',
+            isProductCard: true,
         },
         {
             label: 'Celkom používateľov',
@@ -240,22 +256,43 @@ export default function AdminDashboard() {
 
                 {activeTab === 'overview' ? (
                     <>
-                        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 mb-8">
+                        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-8">
                             {stats.map((stat) => (
                                 <Link
                                     key={stat.label}
                                     to={stat.href}
                                     className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group"
                                 >
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <p className="text-xs font-medium text-slate-500 mb-1">{stat.label}</p>
-                                            <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                                    {'subLabel' in stat ? (
+                                        <div className="flex flex-col justify-between h-full">
+                                            <div>
+                                                <p className="text-xs font-medium text-slate-500 mb-3">{stat.label}</p>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <p className="text-sm text-slate-600 mb-1">Viditeľné</p>
+                                                        <p className="text-3xl font-bold text-cyan-600">{stat.value}</p>
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-100">
+                                                        <p className="text-sm text-slate-600 mb-1">{stat.subLabel}</p>
+                                                        <p className="text-3xl font-bold text-sky-600">{stat.subValue}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className={`${stat.bg} p-2.5 rounded-lg mt-4 w-fit`}>
+                                                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                                            </div>
                                         </div>
-                                        <div className={`${stat.bg} p-2.5 rounded-lg`}>
-                                            <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                                    ) : (
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <p className="text-xs font-medium text-slate-500 mb-1">{stat.label}</p>
+                                                <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                                            </div>
+                                            <div className={`${stat.bg} p-2.5 rounded-lg`}>
+                                                <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </Link>
                             ))}
                         </div>

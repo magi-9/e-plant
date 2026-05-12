@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useInfiniteQuery, useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
+import { PRODUCT_STATS_CACHE_INVALIDATED_EVENT, getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import { useCartStore } from '../store/cartStore';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -74,6 +74,7 @@ const getVariantWord = (count: number): string => {
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const queryClient = useQueryClient();
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isAdmin();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
@@ -232,6 +233,20 @@ export default function ProductsPage() {
 
         return () => observer.disconnect();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    useEffect(() => {
+        const handleStatsInvalidated = () => {
+            void queryClient.invalidateQueries({ queryKey: ['category-counts'] });
+            void queryClient.invalidateQueries({ queryKey: ['compatibility-counts'] });
+            void queryClient.invalidateQueries({ queryKey: ['products-categories'] });
+            void queryClient.invalidateQueries({ queryKey: ['products-count'] });
+        };
+
+        window.addEventListener(PRODUCT_STATS_CACHE_INVALIDATED_EVENT, handleStatsInvalidated);
+        return () => {
+            window.removeEventListener(PRODUCT_STATS_CACHE_INVALIDATED_EVENT, handleStatsInvalidated);
+        };
+    }, [queryClient]);
 
     // Scroll to top
     useEffect(() => {

@@ -1,6 +1,7 @@
 from django.core.files.images import get_image_dimensions
 from django.core.validators import FileExtensionValidator
 from django.conf import settings
+import json
 import os
 from urllib.parse import urlparse
 from rest_framework import serializers
@@ -127,9 +128,31 @@ class ProductSerializer(serializers.ModelSerializer):
     all_categories = serializers.SerializerMethodField()
     compatibility_codes = serializers.SerializerMethodField()
     image = ProductImageField(required=False, allow_null=True)
+    remove_image = serializers.BooleanField(
+        write_only=True, required=False, default=False
+    )
     compatibility_code = serializers.CharField(
         allow_blank=True, required=False, default=""
     )
+
+    def validate_parameters(self, value):
+        if value is None or value == "":
+            return {}
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError(
+                    f"parameters must be valid JSON: {exc}"
+                )
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("parameters must be a JSON object")
+        details = value.get("details")
+        if details is not None and not isinstance(details, dict):
+            raise serializers.ValidationError(
+                "parameters.details must be a JSON object"
+            )
+        return value
 
     def get_all_categories(self, obj):
         categories = obj.parameters.get("all_categories") if obj.parameters else ""
@@ -155,6 +178,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return instance
 
     def create(self, validated_data):
+        validated_data.pop("remove_image", None)
         compat_code = validated_data.pop("compatibility_code", None)
         instance = super().create(validated_data)
         if compat_code is not None:
@@ -162,7 +186,12 @@ class ProductSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        remove_image = validated_data.pop("remove_image", False)
         compat_code = validated_data.pop("compatibility_code", None)
+        if remove_image:
+            if instance.image:
+                instance.image.delete(save=False)
+            instance.image = None
         instance = super().update(instance, validated_data)
         if compat_code is not None:
             self._save_compatibility_code(instance, compat_code)
@@ -179,6 +208,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "price",
             "stock_quantity",
             "image",
+            "remove_image",
             "group",
             "group_name",
             "wildcard_group_id",

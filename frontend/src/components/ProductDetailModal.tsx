@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 
 const HEADER_CATEGORIES = 3;
+const HEADER_COMPAT_CODES = 3;
 
 interface ProductDetailModalProps {
     open: boolean;
@@ -128,6 +129,8 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
     const visibleCategories = sortedCategoryList.slice(0, HEADER_CATEGORIES);
     const extraCategoryCount = Math.max(0, sortedCategoryList.length - HEADER_CATEGORIES);
     const compatibilityCodes = (activeVariant?.compatibility_codes && activeVariant.compatibility_codes.length ? activeVariant.compatibility_codes : product.compatibility_codes) || [];
+    const visibleCompatCodes = compatibilityCodes.slice(0, HEADER_COMPAT_CODES);
+    const extraCompatCount = Math.max(0, compatibilityCodes.length - HEADER_COMPAT_CODES);
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
     const effectiveStockQuantity = (() => {
@@ -206,7 +209,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                         leaveFrom="opacity-100 translate-y-0 lg:translate-x-0"
                         leaveTo="opacity-0 translate-y-full lg:translate-y-0 lg:translate-x-full"
                     >
-                        <Dialog.Panel className="relative bg-white text-left shadow-xl transition-all w-full rounded-t-[22px] lg:rounded-none max-h-[88vh] lg:max-h-none lg:h-full lg:w-[460px] flex flex-col overflow-hidden">
+                        <Dialog.Panel className="relative bg-white text-left shadow-xl transition-all w-full rounded-t-[22px] lg:rounded-none max-h-[88vh] lg:max-h-none lg:h-full lg:w-[580px] flex flex-col overflow-hidden">
                                 {/* Mobile drag handle */}
                                 <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 lg:hidden">
                                     <div className="w-9 h-1 rounded-full bg-slate-200" />
@@ -259,7 +262,23 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                         {effectiveName}
                                                     </Dialog.Title>
                                                     {effectiveProductCode && (
-                                                        <p className="text-sm text-gray-500 font-medium mb-2 break-words">{effectiveProductCode}</p>
+                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                            <p className="text-sm text-gray-500 font-medium break-words">{effectiveProductCode}</p>
+                                                            {isLoggedIn && (
+                                                                <>
+                                                                    {effectiveStockQuantity >= 5 ? (
+                                                                        <span className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                                    ) : effectiveStockQuantity >= 1 ? (
+                                                                        <span className="h-2 w-2 rounded-full bg-amber-500 flex-shrink-0" />
+                                                                    ) : (
+                                                                        <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                                                                    )}
+                                                                    <span className="text-xs text-slate-500">
+                                                                        {effectiveStockQuantity > 0 ? `${effectiveStockQuantity} ks` : 'Vypredané'}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     )}
                                                     <div className="flex items-start gap-1.5 mb-3 flex-wrap">
                                                         <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
@@ -270,21 +289,21 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                             )}
                                                         </p>
                                                     </div>
-                                                    {compatibilityCodes.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5 mb-4">
-                                                            {compatibilityCodes.map((code: string) => (
+                                                    {visibleCompatCodes.length > 0 && (
+                                                        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                                                            {visibleCompatCodes.map((code: string) => (
                                                                 <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
                                                                     style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
                                                                     ⬡ {code}
                                                                 </span>
                                                             ))}
+                                                            {extraCompatCount > 0 && (
+                                                                <span className="text-xs text-slate-400">+{extraCompatCount} ďalších</span>
+                                                            )}
                                                         </div>
                                                     )}
                                                     {hasVariants && (
                                                         <div className="mb-5">
-                                                            <label className="block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600 mb-2">
-                                                                Vyber variant podľa parametrov
-                                                            </label>
                                                             <select
                                                                 value={selectedVariant?.reference || defaultVariantRef}
                                                                 onChange={(e) => setSelectedVariantRef(e.target.value)}
@@ -318,42 +337,28 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                             </select>
                                                         </div>
                                                     )}
-                                                    {isLoggedIn && (
-                                                        <div className="flex items-center gap-2 mt-3">
-                                                            {effectiveStockQuantity >= 5 ? (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                                                            ) : effectiveStockQuantity >= 1 ? (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0" />
-                                                            ) : (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
-                                                            )}
-                                                            <span className="text-sm text-slate-600">
-                                                                {effectiveStockQuantity > 0
-                                                                    ? `${effectiveStockQuantity} ks skladom`
-                                                                    : 'Vypredané'}
-                                                            </span>
-                                                        </div>
-                                                    )}
                                                 </div>
 
-                                                <div className="mt-auto pt-4 border-t border-gray-100 space-y-4">
-                                                    {/* Price section */}
-                                                    <div>
+                                                <div className="mt-auto pt-4 border-t border-gray-100">
+                                                    <div className="flex items-center gap-3">
+                                                    {/* Price */}
+                                                    <div className="flex-shrink-0">
                                                         {effectivePrice ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                                                                <p className="text-3xl font-bold text-cyan-700">{effectivePrice} €</p>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                                <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} €</p>
                                                             </div>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800 whitespace-nowrap">
                                                                 <SparklesIcon className="h-3.5 w-3.5" />
                                                                 Členská cena
                                                             </span>
                                                         )}
                                                     </div>
 
-                                                    {/* Action buttons section */}
-                                                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                                    {/* Action button */}
+                                                    <div className="flex-1 min-w-0">
+                                                    <div className="flex gap-2">
                                                         {(() => {
                                                             if (!effectivePrice) {
                                                                 if (!isLoggedIn) {
@@ -460,16 +465,18 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                             );
                                                         })()}
                                                     </div>
-                                                </div>
-                                            </div>
+                                                    </div>{/* end action button flex-1 */}
+                                                    </div>{/* end price+button flex row */}
+                                                </div>{/* end mt-auto */}
+                                            </div>{/* end min-w-0 content */}
 
                                     {/* Scrollable Description Section */}
                                     {(descriptionParts.length > 0 || sortedCategoryList.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
-                                        <div className="mt-6 rounded-md border border-gray-100 bg-gray-50/70 p-3 sm:p-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-                                            <dl className="space-y-1.5 min-w-0">
+                                        <div className="mt-6 rounded-md border border-gray-100 bg-gray-50/70 p-3 sm:p-5 overflow-y-auto overflow-x-hidden flex-1 min-h-0" style={{ minHeight: '25%' }}>
+                                            <dl className="space-y-2.5 min-w-0">
                                                 {sortedCategoryList.length > 0 && (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Systémy:</dt>
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                        <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Systémy:</dt>
                                                         <dd className="text-gray-700 break-words text-sm min-w-0">
                                                             {sortedCategoryList.map((cat, i) => (
                                                                 <span key={cat}>
@@ -480,17 +487,63 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                         </dd>
                                                     </div>
                                                 )}
-                                                {descriptionParts.map((p, i) => (
-                                                    <div key={i} className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        {p.key && <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">{p.key}:</dt>}
-                                                        <dd className={`text-gray-700 break-all text-sm min-w-0${!p.key ? ' col-span-2' : ''}`}>{p.value}</dd>
+                                                {compatibilityCodes.length > 0 && (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                        <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Kódy:</dt>
+                                                        <dd className="text-gray-700 break-words text-sm min-w-0">
+                                                            {compatibilityCodes.join(', ')}
+                                                        </dd>
                                                     </div>
-                                                ))}
+                                                )}
+                                                {(() => {
+                                                    const eng = (product?.parameters as Record<string, unknown> | undefined)?.engaging;
+                                                    if (eng === 0 || eng === 1) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ spojenia:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{eng === 1 ? 'Engaging' : 'Non-engaging'}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {descriptionParts.map((p, i) => {
+                                                    if (p.key === 'Parametre' && p.value.includes(':')) {
+                                                        return (
+                                                            <Fragment key={i}>
+                                                                {p.value.split('|').map((token, ti) => {
+                                                                    const ci = token.indexOf(':');
+                                                                    if (ci === -1) return null;
+                                                                    return (
+                                                                        <div key={ti} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                            <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{token.slice(0, ci)}:</dt>
+                                                                            <dd className="text-gray-700 text-sm font-mono min-w-0">{token.slice(ci + 1)}</dd>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </Fragment>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                            {p.key && <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{p.key}:</dt>}
+                                                            <dd className={`text-gray-700 break-words text-sm min-w-0${!p.key ? ' col-span-2' : ''}`}>{p.value}</dd>
+                                                        </div>
+                                                    );
+                                                })}
                                                 {hasVariants && selectedVariant?.option_tokens && (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Parametre:</dt>
-                                                        <dd className="text-gray-700 break-all text-sm min-w-0">{selectedVariant.option_tokens}</dd>
-                                                    </div>
+                                                    <>
+                                                        {selectedVariant.option_tokens.split('|').map((token, ti) => {
+                                                            const ci = token.indexOf(':');
+                                                            if (ci === -1) return null;
+                                                            return (
+                                                                <div key={ti} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                    <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{token.slice(0, ci)}:</dt>
+                                                                    <dd className="text-gray-700 text-sm font-mono min-w-0">{token.slice(ci + 1)}</dd>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </>
                                                 )}
                                             </dl>
                                         </div>

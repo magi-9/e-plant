@@ -263,7 +263,8 @@ class TestCategoryCountsEndpoint:
         product_factory(category="Hand Tools", is_visible=True)
         product_factory(category="Power Tools", is_visible=False)  # Not visible
 
-        response = api_client.get(reverse("category_counts"))
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            response = api_client.get(reverse("category_counts"))
 
         assert response.status_code == status.HTTP_200_OK
         counts = response.data["counts"]
@@ -281,13 +282,69 @@ class TestCategoryCountsEndpoint:
             is_visible=True,
         )
 
-        response = api_client.get(reverse("category_counts"))
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            response = api_client.get(reverse("category_counts"))
 
         assert response.status_code == status.HTTP_200_OK
         counts = response.data["counts"]
         assert counts.get("Main") == 1
         assert counts.get("Sub1") == 1
         assert counts.get("Sub2") == 1
+
+    def test_cache_is_invalidated_after_admin_product_update(
+        self, api_client, user_factory, product_factory
+    ):
+        """Changing product category invalidates cached category counts immediately."""
+        from django.core.cache import cache
+
+        cache.clear()
+        admin = user_factory(is_staff=True, is_superuser=True)
+        api_client.force_authenticate(user=admin)
+        product = product_factory(category="Old", is_visible=True)
+
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            first = api_client.get(reverse("category_counts"))
+            assert first.status_code == status.HTTP_200_OK
+            assert first.data["counts"].get("Old") == 1
+
+            update_response = api_client.patch(
+                reverse("admin_product_update", args=[product.id]),
+                {"category": "New"},
+                format="multipart",
+            )
+            assert update_response.status_code == status.HTTP_200_OK
+
+            second = api_client.get(reverse("category_counts"))
+            assert second.status_code == status.HTTP_200_OK
+            assert second.data["counts"].get("Old", 0) == 0
+            assert second.data["counts"].get("New") == 1
+
+    def test_cache_is_invalidated_after_bulk_visibility_update(
+        self, api_client, user_factory, product_factory
+    ):
+        """Bulk visibility updates must invalidate cached category counts."""
+        from django.core.cache import cache
+
+        cache.clear()
+        admin = user_factory(is_staff=True, is_superuser=True)
+        api_client.force_authenticate(user=admin)
+        product = product_factory(category="VisibleToggle", is_visible=True)
+
+        with patch("products.views._load_allowed_categories", return_value=set()):
+            first = api_client.get(reverse("category_counts"))
+            assert first.status_code == status.HTTP_200_OK
+            assert first.data["counts"].get("VisibleToggle") == 1
+
+            bulk_response = api_client.post(
+                reverse("admin_product_bulk_set_visible"),
+                {"ids": [product.id], "is_visible": False},
+                format="json",
+            )
+            assert bulk_response.status_code == status.HTTP_200_OK
+
+            second = api_client.get(reverse("category_counts"))
+            assert second.status_code == status.HTTP_200_OK
+            assert second.data["counts"].get("VisibleToggle", 0) == 0
 
     def test_endpoint_is_public(self, api_client, product_factory):
         """Endpoint doesn't require authentication."""
