@@ -212,7 +212,11 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
 
     const dirty = useMemo(() => {
         if (isNew) return true;
-        return JSON.stringify(origDraft) !== JSON.stringify(draft) || imageFile !== null || removeImage;
+        // Strip detail IDs before comparing — IDs are UI-only and generated independently
+        // in draft (useState init) and origDraft (useMemo), so they always differ.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const stripIds = (d: Draft) => ({ ...d, details: d.details.map(({ id, ...rest }) => rest) });
+        return JSON.stringify(stripIds(origDraft)) !== JSON.stringify(stripIds(draft)) || imageFile !== null || removeImage;
     }, [draft, origDraft, isNew, imageFile, removeImage]);
 
     const refConflict = useMemo(() => {

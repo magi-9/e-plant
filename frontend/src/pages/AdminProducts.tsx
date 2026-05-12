@@ -239,7 +239,7 @@ export default function AdminProducts() {
             all_categories: payload.cats.join('; '),
             compat_systems: payload.compat,
             details: payload.details,
-            ...(payload.variant ? { variant: payload.variant } : {}),
+            variant: payload.variant,
         };
 
         const fd = new FormData();
