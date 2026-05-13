@@ -39,6 +39,7 @@ CSV_DIR = os.path.join(DATA_DIR, "csv")
 NEW_DIR = os.path.join(DATA_DIR, "new")
 MEDIA_PRODUCTS_DIR = os.path.join(BACKEND_DIR, "media", "products")
 DEFAULT_IMAGES_DIR = os.path.join(DATA_DIR, "images")
+MANUAL_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "photos-manual")
 RAW_ONEDRIVE_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "OneDrive_1_17-3-2026")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
@@ -46,10 +47,26 @@ RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 MASTER_IMPORT_CSV = os.path.join(NEW_DIR, "product_retail_2025_master.csv")
 
+MANUAL_PRICE_OVERRIDES = {
+    "43.620.411.01-2": Decimal("45"),
+    "43.621.415.01-2": Decimal("72"),
+    "43.624.201.01-2": Decimal("60.1"),
+    "43.625.108.01-2": Decimal("50"),
+    "43.632.201.01-2": Decimal("60.1"),
+}
+
 
 def normalize_ref(ref_str):
     """Strip all non-alphanumeric chars, lowercase → used for matching."""
     return re.sub(r"[^a-z0-9]", "", str(ref_str).lower())
+
+
+MANUAL_IMAGE_REFERENCE_FALLBACKS = {
+    normalize_ref("42.303.186.01-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.02-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.03-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.04-2"): normalize_ref("42.303.186.05-2"),
+}
 
 
 def ref_to_regex(ref_str):
@@ -90,9 +107,17 @@ def build_image_index(images_dir):
     index = {}
     for root, _dirs, files in os.walk(images_dir):
         for fname in files:
-            if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+            if fname.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 stem = os.path.splitext(fname)[0]
-                index[stem] = os.path.join(root, fname)
+                path = os.path.join(root, fname)
+                index[stem] = path
+                normalized_stem = normalize_ref(stem)
+                if normalized_stem:
+                    index.setdefault(normalized_stem, path)
+                base_stem = re.split(r"[_-]", stem, maxsplit=1)[0]
+                normalized_base = normalize_ref(base_stem)
+                if normalized_base:
+                    index.setdefault(normalized_base, path)
     return index
 
 
@@ -101,6 +126,7 @@ def get_image_source_dirs():
     env_dir = os.environ.get("PRODUCT_IMAGES_DIR")
     candidates = [
         env_dir,
+        MANUAL_IMAGES_DIR,
         RAW_ONEDRIVE_IMAGES_DIR,
         DEFAULT_IMAGES_DIR,
         MEDIA_PRODUCTS_DIR,
@@ -126,7 +152,12 @@ def find_image_for_ref(ref_str, image_index):
 
     if not has_wildcard:
         norm = normalize_ref(ref_str)
-        return norm if norm in image_index else None
+        if norm in image_index:
+            return norm
+        fallback_norm = MANUAL_IMAGE_REFERENCE_FALLBACKS.get(norm)
+        if fallback_norm and fallback_norm in image_index:
+            return fallback_norm
+        return None
 
     regex = ref_to_regex(ref_str)
     for key in image_index:
@@ -357,6 +388,9 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     price = matched_price
                     if not category:
                         category = matched_section
+
+            if ref in MANUAL_PRICE_OVERRIDES:
+                price = MANUAL_PRICE_OVERRIDES[ref]
 
             is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
             ref_parts = ref.split(".")
