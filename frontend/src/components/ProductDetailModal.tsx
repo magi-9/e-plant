@@ -19,9 +19,21 @@ interface ProductDetailModalProps {
     product: Product | null;
     onEdit?: (product: Product) => void;
     selectedCategories?: string[];
+    onCategoryClick?: (category: string) => void;
+    onCompatibilityCodeClick?: (code: string) => void;
+    onReferenceClick?: (reference: string) => void;
 }
 
-export default function ProductDetailModal({ open, setOpen, product, onEdit, selectedCategories = [] }: ProductDetailModalProps) {
+export default function ProductDetailModal({
+    open,
+    setOpen,
+    product,
+    onEdit,
+    selectedCategories = [],
+    onCategoryClick,
+    onCompatibilityCodeClick,
+    onReferenceClick,
+}: ProductDetailModalProps) {
     const navigate = useNavigate();
     const isLoggedIn = authService.isAuthenticated();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
@@ -263,7 +275,17 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     </Dialog.Title>
                                                     {effectiveProductCode && (
                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                            <p className="text-sm text-gray-500 font-medium break-words">{effectiveProductCode}</p>
+                                                            {onReferenceClick ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => onReferenceClick(effectiveProductCode)}
+                                                                    className="text-sm text-gray-500 font-medium break-words text-left hover:text-cyan-700 transition-colors"
+                                                                >
+                                                                    {effectiveProductCode}
+                                                                </button>
+                                                            ) : (
+                                                                <p className="text-sm text-gray-500 font-medium break-words">{effectiveProductCode}</p>
+                                                            )}
                                                             {isLoggedIn && (
                                                                 <>
                                                                     {effectiveStockQuantity >= 5 ? (
@@ -282,20 +304,40 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     )}
                                                     <div className="flex items-start gap-1.5 mb-3 flex-wrap">
                                                         <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
-                                                        <p className="text-sm text-cyan-700 font-medium break-words">
-                                                            {visibleCategories.join(', ') || effectiveCategory}
+                                                        <div className="flex flex-wrap gap-1 text-sm text-cyan-700 font-medium">
+                                                            {(visibleCategories.length ? visibleCategories : [effectiveCategory]).filter(Boolean).map((category) => (
+                                                                onCategoryClick ? (
+                                                                    <button
+                                                                        key={category}
+                                                                        type="button"
+                                                                        onClick={() => onCategoryClick(category)}
+                                                                        className="hover:text-cyan-900 transition-colors"
+                                                                    >
+                                                                        {category}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span key={category}>{category}</span>
+                                                                )
+                                                            ))}
                                                             {extraCategoryCount > 0 && (
-                                                                <span className="text-slate-400"> {`+${extraCategoryCount} ďalších`}</span>
+                                                                <span className="text-slate-400">+{extraCategoryCount} ďalších</span>
                                                             )}
-                                                        </p>
+                                                        </div>
                                                     </div>
                                                     {visibleCompatCodes.length > 0 && (
                                                         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
                                                             {visibleCompatCodes.map((code: string) => (
-                                                                <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
-                                                                    style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
-                                                                    ⬡ {code}
-                                                                </span>
+                                                                onCompatibilityCodeClick ? (
+                                                                    <button key={code} type="button" onClick={() => onCompatibilityCodeClick(code)} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
+                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        ⬡ {code}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
+                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        ⬡ {code}
+                                                                    </span>
+                                                                )
                                                             ))}
                                                             {extraCompatCount > 0 && (
                                                                 <span className="text-xs text-slate-400">+{extraCompatCount} ďalších</span>
@@ -496,7 +538,24 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit, sel
                                                     </div>
                                                 )}
                                                 {(() => {
-                                                    const eng = (product?.parameters as Record<string, unknown> | undefined)?.engaging;
+                                                    const section = (product?.parameters as Record<string, unknown> | undefined)?.catalog_section as string | undefined;
+                                                    if (section) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{section}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {(() => {
+                                                    const variantEng = hasVariants
+                                                        ? hydratedVariant
+                                                            ? (hydratedVariant.parameters as Record<string, unknown> | undefined)?.engaging
+                                                            : (selectedVariant as Record<string, unknown> | null | undefined)?.engaging
+                                                        : undefined;
+                                                    const eng = variantEng !== undefined ? variantEng : (product?.parameters as Record<string, unknown> | undefined)?.engaging;
                                                     if (eng === 0 || eng === 1) {
                                                         return (
                                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">

@@ -121,11 +121,53 @@ def extract_angles(line: str, right_limit: int) -> list[str]:
 
 def extract_length(line: str) -> str | None:
     """Extract a length value (typically 18, 24, 32 for screws) from a line."""
-    nums = NUM_RE.findall(line)
+    first_sku = SKU_RE.search(line)
+    segment = line[: first_sku.start()] if first_sku else line
+    nums = NUM_RE.findall(segment)
     for n in nums:
         if not SKU_RE.search(n) and not re.fullmatch(r"\d{4}", n):
             return n.replace(",", ".")
     return None
+
+
+def merge_slash_values(values: list[str]) -> str | None:
+    merged: list[str] = []
+    for value in values:
+        for part in str(value or "").split("/"):
+            part = part.strip()
+            if part and part not in merged:
+                merged.append(part)
+    if not merged:
+        return None
+    return "/".join(sorted(merged, key=lambda item: float(item.replace(",", "."))))
+
+
+def _is_screwdriver_adaptor_ref(reference: str) -> bool:
+    return reference in {
+        "43.621.410.01-2",
+        "43.621.415.01-2",
+        "43.624.410.01-2",
+        "43.620.411.01-2",
+    }
+
+
+def _scanbody_screwdriver_adaptor_refs(scanbody_ref: str, candidates: list[dict]) -> str:
+    preferred_segment = ""
+    if ".410." in scanbody_ref:
+        preferred_segment = ".621."
+    elif ".412." in scanbody_ref:
+        preferred_segment = ".624."
+
+    refs = []
+    for candidate in candidates:
+        ref = candidate.get("sku", "")
+        if preferred_segment and preferred_segment not in ref:
+            continue
+        if ref and ref not in refs:
+            refs.append(ref)
+    if not refs and candidates:
+        refs = [candidate["sku"] for candidate in candidates if candidate.get("sku")]
+    return "/".join(refs)
 
 # ---------------------------------------------------------------------------
 # Index parser (pages 9-42)
@@ -254,6 +296,7 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
     current_gh: str | None = None     # GH (mm) value
     current_length: str | None = None # LENGTH for screws
     pending_line_prefix: str = ""     # For multi-line headers: "DYNAMIC", "STRAIGHT", "LAB"
+    scanbody_pending: list[dict] = [] # ADAPTOR/SCREWDRIVER rows waiting for next H value
 
     lines = text.splitlines()
 
@@ -294,7 +337,9 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
             if new_code == code and after_back_to_index:
                 after_back_to_index = False
                 continue
-            # New code
+            # New code — flush pending SCANBODY adaptors first
+            products.extend(scanbody_pending)
+            scanbody_pending = []
             code = new_code
             section = ""
             subsection = ""
@@ -325,6 +370,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         if expect_4digit_code and four_m:
             new_code = four_m.group(1)  # just the 4 digits, letter suffix stripped
             if not (new_code == code and after_back_to_index):
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 code = new_code
                 section = ""
                 subsection = ""
@@ -381,6 +428,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     detected = ptype
                     break
             if detected:
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 section = detected
                 subsection = ""
                 engaging_cols = None
@@ -420,6 +469,8 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     detected_section = ptype
                     break
             if detected_section:
+                products.extend(scanbody_pending)
+                scanbody_pending = []
                 section = detected_section
                 subsection = ""
                 engaging_cols = None
@@ -469,7 +520,11 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         if section == "DYNAMIC SCANBODY" and not scanbody_cols and not SKU_RE.search(stripped):
             if "SCANBODY" in upper and "H" in upper:
                 scanbody_cols = col_positions(line, "SCANBODY", "ADAPTOR", "SCREWDRIVER")
-                # SCANBODY column is for actual scanbody SKUs; ADAPTOR + SCREWDRIVER → SCREWDRIVER type
+                # If SCREWDRIVER isn't on this line but two ADAPTOR columns exist, second = SCREWDRIVER
+                if "SCREWDRIVER" not in scanbody_cols:
+                    adaptor_matches = list(re.finditer(r"\bADAPTOR\b", line, re.IGNORECASE))
+                    if len(adaptor_matches) >= 2:
+                        scanbody_cols["SCREWDRIVER"] = adaptor_matches[-1].start()
                 continue
 
         # SCREWS: detect subsection and column header
@@ -591,12 +646,21 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
 
         # == DYNAMIC SCANBODY: column-classified ========================
         if section == "DYNAMIC SCANBODY":
-            # Try to pick up H value from this line
+            # H value appears in the left margin (first ~30 chars) on SCANBODY rows
             h_candidates = [n for n in NUM_RE.findall(line[:30])
                             if not re.fullmatch(r"\d{4}", n)
                             and not SKU_RE.search(n)]
-            if h_candidates:
-                current_h = h_candidates[0].replace(",", ".")
+            new_h = h_candidates[0].replace(",", ".") if h_candidates else None
+            if new_h and new_h != current_h:
+                # Finalize pending ADAPTOR/SCREWDRIVER rows now that next H is known
+                for item in scanbody_pending:
+                    if item["H_mm"] and item["H_mm"] != new_h:
+                        item["H_mm"] = f"{item['H_mm']}/{new_h}"
+                    elif not item["H_mm"]:
+                        item["H_mm"] = new_h
+                    products.append(item)
+                scanbody_pending.clear()
+                current_h = new_h
 
             for sm in skus:
                 mid = sku_column(line, sm)
@@ -604,13 +668,18 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                     col_label = nearest_col(mid, scanbody_cols)
                     if col_label == "SCANBODY":
                         ptype = "DYNAMIC SCANBODY"
+                    elif col_label == "ADAPTOR":
+                        ptype = "ADAPTOR"
                     else:
                         ptype = "SCREWDRIVER"
                 else:
                     ptype = "DYNAMIC SCANBODY"
                 base = _make_base(code, ptype, brands, page)
                 base["H_mm"] = current_h
-                products.append({**base, "sku": sm.group(1)})
+                if ptype == "DYNAMIC SCANBODY":
+                    products.append({**base, "sku": sm.group(1)})
+                else:
+                    scanbody_pending.append({**base, "sku": sm.group(1)})
             continue
 
         # == LAB SCANBODY + SCANALOG: use saved column position from header ==
@@ -632,6 +701,36 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         # == SCREWS: column-classified ==================================
         if section == "SCREWS":
             effective_sub = subsection or "DYNAMIC SCREW"
+            line_type_m = re.search(
+                r"\b(?:TORX\s*T\d+|Hex\.?\s*[\d.,]+|HEX\s*[\d.,]+)\b",
+                stripped,
+                re.IGNORECASE,
+            )
+            line_type = line_type_m.group(0).upper().replace("HEX", "Hex") if line_type_m else None
+            line_skus = [sm.group(1) for sm in skus]
+            screwdriver_ref = line_skus[-1] if line_type and len(line_skus) > 1 else None
+            if (
+                not screwdriver_ref
+                and len(skus) > 1
+                and screws_cols
+                and "SCREWDRIVER" in nearest_col(sku_column(line, skus[-1]), screws_cols)
+            ):
+                screwdriver_ref = line_skus[-1]
+            if (
+                not screwdriver_ref
+                and len(line_skus) > 1
+                and line_skus[-1].startswith("43.6")
+                and any(ref.startswith("41.") for ref in line_skus[:-1])
+            ):
+                screwdriver_ref = line_skus[-1]
+            screw_refs = line_skus[:-1] if screwdriver_ref else []
+            line_without_refs = SKU_RE.sub(" ", line)
+            row_length = current_length or extract_length(line)
+            if not row_length:
+                for number in NUM_RE.findall(line_without_refs):
+                    if not re.fullmatch(r"\d{4}", number):
+                        row_length = number.replace(",", ".")
+                        break
             for sm in skus:
                 mid = sku_column(line, sm)
                 if screws_cols:
@@ -642,13 +741,29 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
                         ptype = effective_sub
                 else:
                     ptype = effective_sub
+                if screwdriver_ref:
+                    if sm.group(1) == screwdriver_ref:
+                        ptype = "SCREWDRIVER"
+                    else:
+                        ptype = (
+                            "DYNAMIC SCREW"
+                            if effective_sub == "DYNAMIC SCREW"
+                            else "STRAIGHT SCREW"
+                        )
+                elif section == "SCREWS" and sm.group(1).startswith("43.6"):
+                    ptype = "SCREWDRIVER"
 
                 base = _make_base(code, ptype, brands, page)
-                base["length_mm"] = current_length
-                # TYPE label for STRAIGHT SCREW
-                type_m = re.search(r"Hex\.\s*[\d.]+|HEX\s*[\d.]+", stripped, re.IGNORECASE)
-                if type_m:
-                    base["type_label"] = type_m.group(0)
+                base["length_mm"] = row_length
+                if line_type:
+                    base["type_label"] = line_type
+                if screwdriver_ref and sm.group(1) != screwdriver_ref:
+                    base["screwdriver_refs"] = screwdriver_ref
+                if screwdriver_ref and sm.group(1) == screwdriver_ref and screw_refs:
+                    if effective_sub == "DYNAMIC SCREW":
+                        base["dynamic_screw_refs"] = "/".join(screw_refs)
+                    else:
+                        base["straight_screw_refs"] = "/".join(screw_refs)
                 products.append({**base, "sku": sm.group(1)})
             continue
 
@@ -714,6 +829,52 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         for sm in skus:
             products.append({**base, "sku": sm.group(1)})
 
+    products.extend(scanbody_pending)
+    for product in products:
+        if _is_screwdriver_adaptor_ref(product.get("sku", "")):
+            product["product_type"] = "SCREWDRIVER ADAPTOR"
+
+    by_code: dict[str, list[dict]] = defaultdict(list)
+    for product in products:
+        by_code[product.get("code", "")].append(product)
+    for product in products:
+        if product.get("product_type") != "DYNAMIC SCANBODY" or not product.get("H_mm"):
+            continue
+        h_values = set(str(product.get("H_mm", "")).split("/"))
+        siblings = by_code.get(product.get("code", ""), [])
+        adaptor_refs = [
+            sibling.get("sku", "")
+            for sibling in siblings
+            if sibling.get("product_type") == "ADAPTOR"
+            and h_values.intersection(str(sibling.get("H_mm", "")).split("/"))
+        ]
+        screwdriver_adaptors = [
+            sibling
+            for sibling in siblings
+            if sibling.get("product_type") == "SCREWDRIVER ADAPTOR"
+            and h_values.intersection(str(sibling.get("H_mm", "")).split("/"))
+        ]
+        if adaptor_refs:
+            product["adaptor_refs"] = "/".join(dict.fromkeys(adaptor_refs))
+        if screwdriver_adaptors:
+            product["screwdriver_adaptor_refs"] = _scanbody_screwdriver_adaptor_refs(
+                product.get("sku", ""), screwdriver_adaptors
+            )
+
+    scanbody_h_by_code: dict[str, str] = {}
+    for product in products:
+        if product.get("product_type") in {"ADAPTOR", "SCREWDRIVER"} and product.get("H_mm"):
+            key = product.get("code")
+            merged = merge_slash_values(
+                [scanbody_h_by_code.get(key, ""), product.get("H_mm", "")]
+            )
+            if merged:
+                scanbody_h_by_code[key] = merged
+    for product in products:
+        if product.get("product_type") in {"ADAPTOR", "SCREWDRIVER"}:
+            merged = scanbody_h_by_code.get(product.get("code"))
+            if merged:
+                product["H_mm"] = merged
     return products
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ const NAV_ITEMS = [
     { href: '/admin/inventory', label: 'Sklad' },
     { href: '/admin/orders', label: 'Objednávky' },
     { href: '/admin/users', label: 'Zákazníci' },
+    { href: '/admin/categories', label: 'Kategórie' },
     { href: '/admin/grouping', label: 'Grupovanie' },
     { href: '/admin/settings', label: 'Nastavenia' },
 ];

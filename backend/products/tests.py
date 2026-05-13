@@ -1,4 +1,7 @@
+import csv
+
 import pytest
+from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -144,8 +147,216 @@ def test_sync_creates_groups_for_matching_products():
 
 
 @pytest.mark.django_db
+def test_import_product_data_syncs_wildcard_groups_after_upload(monkeypatch):
+    from products.management.commands import import_product_data
+
+    monkeypatch.setattr(import_product_data, "get_image_source_dirs", lambda: [])
+    monkeypatch.setattr(
+        import_product_data,
+        "load_flat_products",
+        lambda *_args, **_kwargs: [
+            {
+                "name": "Implant G1",
+                "reference": "10.001.001.01-2",
+                "reference_num": "10001001012",
+                "category": "Impl",
+                "price": "100.00",
+                "description": "",
+                "is_visible": True,
+                "parameters": {},
+            },
+            {
+                "name": "Implant G2",
+                "reference": "10.001.002.01-2",
+                "reference_num": "10001002012",
+                "category": "Impl",
+                "price": "100.00",
+                "description": "",
+                "is_visible": True,
+                "parameters": {},
+            },
+        ],
+    )
+
+    call_command("import_product_data")
+
+    products = list(Product.objects.order_by("reference"))
+    assert len(products) == 2
+    assert products[0].wildcard_group_id == products[1].wildcard_group_id
+    assert WildcardGroup.objects.count() == 1
+
+
+def test_manual_price_override_applies_before_visibility(monkeypatch, tmp_path):
+    from products import compatibility
+    from products.management.commands import import_product_data
+
+    monkeypatch.setattr(
+        compatibility, "_load", lambda: {"0041": frozenset({"43.620.411"})}
+    )
+
+    merged_csv = tmp_path / "import_all_merged.csv"
+    with merged_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            [
+                "name",
+                "description",
+                "category",
+                "price",
+                "stock_quantity",
+                "reference",
+                "reference_num",
+                "ean13",
+                "price_match_type",
+                "price_reference",
+                "retail_name",
+                "compatibility_code",
+                "ref_segment_1",
+                "ref_segment_2",
+                "ref_segment_3",
+                "ref_segment_4",
+                "ref_check_digit",
+                "options",
+                "generated_description",
+                "system_categories",
+                "active_system_categories",
+                "primary_system_category",
+                "is_active_from_categories",
+                "engaging",
+                "catalog_section",
+            ]
+        )
+        writer.writerow(
+            [
+                "screwdriver Adaptor IO. MB MD L20mm",
+                "",
+                "",
+                "",
+                "0",
+                "43.620.411.01-2",
+                "43620411012",
+                "",
+                "",
+                "",
+                "",
+                "0041",
+                "43",
+                "620",
+                "411",
+                "01",
+                "2",
+                "",
+                "",
+                "MIS",
+                "MIS",
+                "MIS",
+                "1",
+                "",
+                "SCREWDRIVER",
+            ]
+        )
+
+    products = import_product_data.load_flat_products(str(merged_csv))
+
+    assert (
+        products[0]["price"]
+        == import_product_data.MANUAL_PRICE_OVERRIDES["43.620.411.01-2"]
+    )
+    assert products[0]["is_visible"] is True
+
+
+def test_manual_photo_suffix_matches_reference_number(tmp_path):
+    from products.management.commands import import_product_data
+
+    image_dir = tmp_path / "photos-manual"
+    image_dir.mkdir()
+    image_path = image_dir / "22612006012_l.jpg"
+    image_path.write_bytes(b"fake-image")
+
+    image_index = import_product_data.build_image_index(str(image_dir))
+
+    image_key = import_product_data.find_image_for_ref("22612006012", image_index)
+    assert image_key == "22612006012"
+    assert image_index[image_key] == str(image_path)
+
+
+def test_manual_image_fallback_uses_42303186052_for_lower_gh_variants(tmp_path):
+    from products.management.commands import import_product_data
+
+    image_dir = tmp_path / "photos-manual"
+    image_dir.mkdir()
+    image_path = image_dir / "42303186052.jpg"
+    image_path.write_bytes(b"fake-image")
+
+    image_index = import_product_data.build_image_index(str(image_dir))
+
+    image_key = import_product_data.find_image_for_ref("42303186012", image_index)
+    assert image_key == "42303186052"
+    assert image_index[image_key] == str(image_path)
+
+
+@pytest.mark.django_db
 def test_sync_skips_single_product_groups():
     make_product(name="Solo G1", price="20.00", category="X")
+
+    result = sync_wildcard_groups()
+
+    assert result["created"] == 0
+    assert WildcardGroup.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_sync_groups_references_differing_by_one_digit_with_same_price_and_compatibility():
+    products = [
+        make_product(
+            name="DMT Shank 3",
+            reference="33.345.856.01-2",
+            price="88.00",
+            category="A",
+            parameters={"compatibility_code": "0856"},
+        ),
+        make_product(
+            name="DMT Shank 4",
+            reference="33.445.856.01-2",
+            price="88.00",
+            category="B",
+            parameters={"compatibility_code": "0856"},
+        ),
+        make_product(
+            name="DMT Shank 6",
+            reference="33.645.856.01-2",
+            price="88.00",
+            category="C",
+            parameters={"compatibility_code": "0856"},
+        ),
+    ]
+
+    result = sync_wildcard_groups()
+
+    assert result["created"] == 1
+    group_ids = {
+        Product.objects.get(pk=product.pk).wildcard_group_id for product in products
+    }
+    assert len(group_ids) == 1
+    assert None not in group_ids
+
+
+@pytest.mark.django_db
+def test_sync_does_not_group_one_digit_references_with_different_compatibility():
+    make_product(
+        name="Multi unit GH 1",
+        reference="42.303.186.01-2",
+        price="48.00",
+        category="A",
+        parameters={"compatibility_code": "0186"},
+    )
+    make_product(
+        name="Multi unit GH 2",
+        reference="42.303.186.02-2",
+        price="48.00",
+        category="B",
+        parameters={"compatibility_code": "9999"},
+    )
 
     result = sync_wildcard_groups()
 
@@ -462,3 +673,25 @@ def test_filter_active_bypasses_default_ordering():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_reference_search_exact_match_is_first_result():
+    mentioned = make_product(
+        name="AAA Mentioned product",
+        reference="MENTIONED-REF",
+        description="Works with 52.410.132.01-2",
+        stock_quantity=10,
+    )
+    exact = make_product(
+        name="ZZZ Exact product",
+        reference="52.410.132.01-2",
+        description="",
+        stock_quantity=0,
+    )
+
+    response = APIClient().get("/api/products/", {"search": "52.410.132.01-2"})
+
+    assert response.status_code == status.HTTP_200_OK
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids[:2] == [exact.id, mentioned.id]

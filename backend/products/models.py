@@ -44,6 +44,7 @@ class GroupingSettings(models.Model):
     """Singleton that controls which grouping modes are active on the storefront."""
 
     wildcard_grouping_enabled = models.BooleanField(default=True)
+    visible_categories = models.JSONField(default=None, null=True, blank=True)
 
     class Meta:
         verbose_name = "Grouping Settings"

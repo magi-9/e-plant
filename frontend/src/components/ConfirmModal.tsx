@@ -30,7 +30,7 @@ export default function ConfirmModal({ open, title, message, confirmLabel = 'Pot
     const canConfirm = !requireTyped || typed.trim().toUpperCase() === requireTyped.toUpperCase();
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto" onKeyDown={handleKeyDown}>
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ zIndex: 300 }} onKeyDown={handleKeyDown}>
             <div className="flex items-center justify-center min-h-screen px-4">
                 <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onCancel}></div>
                 <div className="relative bg-white rounded-lg shadow-xl w-full max-w-sm z-10 p-6" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">

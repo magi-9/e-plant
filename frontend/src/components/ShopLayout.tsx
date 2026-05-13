@@ -32,7 +32,9 @@ export default function ShopLayout() {
               </svg>
               <div>
                 <p className="text-lg font-bold text-white tracking-wide">{company.companyName}</p>
-                <p className="text-xs text-cyan-300/80 mt-0.5">{company.companyEmail}</p>
+                <a href={`mailto:${company.companyEmail}`} className="text-xs text-cyan-300/80 mt-0.5 hover:text-cyan-200 hover:underline underline-offset-2">
+                  {company.companyEmail}
+                </a>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-sm">

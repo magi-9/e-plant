@@ -10,6 +10,7 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 import AdminEditModal, { type EditSavePayload } from '../components/admin/AdminEditModal';
+import DropdownSelect from '../components/DropdownSelect';
 
 const PAGE_SIZE = 50;
 
@@ -62,7 +63,7 @@ export default function AdminProducts() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('-name');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('visible');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ mode: 'single'; product: Product } | { mode: 'bulk'; count: number } | null>(null);
@@ -378,30 +379,45 @@ export default function AdminProducts() {
                         </div>
                         <div>
                             <label style={filterLabel}>Triedenie</label>
-                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={filterSelect}>
-                                <option value="-name">Názov Z-A</option>
-                                <option value="name">Názov A-Z</option>
-                                <option value="-price">Cena od najvyššej</option>
-                                <option value="price">Cena od najnižšej</option>
-                                <option value="-stock_quantity">Sklad najviac</option>
-                                <option value="stock_quantity">Sklad najmenej</option>
-                                <option value="category">Kategória A-Z</option>
-                            </select>
+                            <DropdownSelect
+                                value={sortBy}
+                                onChange={setSortBy}
+                                placeholder="Triedenie"
+                                neutralValues={['-name']}
+                                options={[
+                                    { value: '-name', label: 'Názov Z-A' },
+                                    { value: 'name', label: 'Názov A-Z' },
+                                    { value: '-price', label: 'Cena od najvyššej' },
+                                    { value: 'price', label: 'Cena od najnižšej' },
+                                    { value: '-stock_quantity', label: 'Sklad najviac' },
+                                    { value: 'stock_quantity', label: 'Sklad najmenej' },
+                                    { value: 'category', label: 'Kategória A-Z' },
+                                ]}
+                            />
                         </div>
                         <div>
                             <label style={filterLabel}>Kategória</label>
-                            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={filterSelect}>
-                                <option value="all">Všetky</option>
-                                {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                            </select>
+                            <DropdownSelect
+                                value={categoryFilter}
+                                onChange={setCategoryFilter}
+                                placeholder="Všetky"
+                                neutralValues={['all']}
+                                options={categories.map((cat) => ({ value: cat, label: cat }))}
+                            />
                         </div>
                         <div>
                             <label style={filterLabel}>Viditeľnosť</label>
-                            <select value={visibleFilter} onChange={(e) => setVisibleFilter(e.target.value as 'all' | 'visible' | 'hidden')} style={filterSelect}>
-                                <option value="all">Všetky</option>
-                                <option value="visible">Viditeľné</option>
-                                <option value="hidden">Skryté</option>
-                            </select>
+                            <DropdownSelect
+                                value={visibleFilter}
+                                onChange={(value) => setVisibleFilter(value as 'all' | 'visible' | 'hidden')}
+                                placeholder="Všetky"
+                                neutralValues={['all']}
+                                options={[
+                                    { value: 'all', label: 'Všetky' },
+                                    { value: 'visible', label: 'Viditeľné' },
+                                    { value: 'hidden', label: 'Skryté' },
+                                ]}
+                            />
                         </div>
                     </div>
                     <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -410,12 +426,18 @@ export default function AdminProducts() {
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <label style={{ ...filterLabel, margin: 0 }}>Sklad</label>
-                            <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as 'all' | 'in' | 'out')}
-                                style={{ padding: '6px 10px', borderRadius: 8, fontSize: 13, border: '1px solid #e2e8f0', color: '#0f172a' }}>
-                                <option value="all">Všetko</option>
-                                <option value="in">Len skladom</option>
-                                <option value="out">Len vypredané</option>
-                            </select>
+                            <DropdownSelect
+                                value={stockFilter}
+                                onChange={(value) => setStockFilter(value as 'all' | 'in' | 'out')}
+                                placeholder="Všetko"
+                                neutralValues={['all']}
+                                wrapperClassName="w-[11.5rem]"
+                                options={[
+                                    { value: 'all', label: 'Všetko' },
+                                    { value: 'in', label: 'Len skladom' },
+                                    { value: 'out', label: 'Len vypredané' },
+                                ]}
+                            />
                             <button type="button"
                                 onClick={() => { setSearchTerm(''); setSortBy('-name'); setCategoryFilter('all'); setVisibleFilter('all'); setStockFilter('all'); }}
                                 style={{ padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
@@ -658,16 +680,15 @@ export default function AdminProducts() {
                                                 {receiptForm.variant_reference}
                                             </div>
                                         ) : (
-                                            <select required value={receiptForm.variant_reference}
-                                                onChange={(e) => setReceiptForm({ ...receiptForm, variant_reference: e.target.value })}
-                                                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 13, border: '1px solid #e2e8f0', color: '#0f172a' }}>
-                                                <option value="">— Vyberte variant —</option>
-                                                {(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => (
-                                                    <option key={opt.reference} value={opt.reference}>
-                                                        {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <DropdownSelect
+                                                value={receiptForm.variant_reference}
+                                                onChange={(value) => setReceiptForm({ ...receiptForm, variant_reference: value })}
+                                                placeholder="— Vyberte variant —"
+                                                options={(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
+                                                    value: opt.reference,
+                                                    label: `${opt.reference}${opt.label ? ` · ${opt.label}` : ''} (teraz: ${opt.stock_quantity ?? 0} ks)`,
+                                                }))}
+                                            />
                                         )}
                                     </FieldGroup>
                                 )}

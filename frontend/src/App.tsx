@@ -17,6 +17,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminSettings from './pages/AdminSettings';
 import AdminGrouping from './pages/AdminGrouping';
+import AdminCategories from './pages/AdminCategories';
 import AdminInventory from './pages/AdminInventory';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
@@ -141,6 +142,7 @@ function App() {
             <Route path="/reset-password/:uid/:token" element={<ResetPasswordPage />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/grouping" element={<AdminGrouping />} />
             <Route path="/admin/inventory" element={<AdminInventory />} />
             <Route path="/terms" element={<TermsPage />} />
