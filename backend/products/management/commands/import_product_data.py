@@ -1092,6 +1092,16 @@ class Command(BaseCommand):
                 ]
                 Product.objects.bulk_update(to_update, update_fields, batch_size=200)
 
+        from products.services.wildcard_sync import sync_wildcard_groups
+
+        group_stats = sync_wildcard_groups()
+        self.stdout.write(
+            "Wildcard groups synced: "
+            f"{group_stats['created']} created, "
+            f"{group_stats['updated']} updated, "
+            f"{group_stats['deleted']} deleted."
+        )
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Done! Created {stats['created']}, updated {stats['updated']} products."

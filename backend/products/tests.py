@@ -1,4 +1,5 @@
 import pytest
+from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -141,6 +142,46 @@ def test_sync_creates_groups_for_matching_products():
     p2.refresh_from_db()
     assert p1.wildcard_group_id == p2.wildcard_group_id
     assert p1.wildcard_group is not None
+
+
+@pytest.mark.django_db
+def test_import_product_data_syncs_wildcard_groups_after_upload(monkeypatch):
+    from products.management.commands import import_product_data
+
+    monkeypatch.setattr(import_product_data, "get_image_source_dirs", lambda: [])
+    monkeypatch.setattr(
+        import_product_data,
+        "load_flat_products",
+        lambda *_args, **_kwargs: [
+            {
+                "name": "Implant G1",
+                "reference": "10.001.001.01-2",
+                "reference_num": "10001001012",
+                "category": "Impl",
+                "price": "100.00",
+                "description": "",
+                "is_visible": True,
+                "parameters": {},
+            },
+            {
+                "name": "Implant G2",
+                "reference": "10.001.002.01-2",
+                "reference_num": "10001002012",
+                "category": "Impl",
+                "price": "100.00",
+                "description": "",
+                "is_visible": True,
+                "parameters": {},
+            },
+        ],
+    )
+
+    call_command("import_product_data")
+
+    products = list(Product.objects.order_by("reference"))
+    assert len(products) == 2
+    assert products[0].wildcard_group_id == products[1].wildcard_group_id
+    assert WildcardGroup.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -462,3 +503,25 @@ def test_filter_active_bypasses_default_ordering():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_reference_search_exact_match_is_first_result():
+    mentioned = make_product(
+        name="AAA Mentioned product",
+        reference="MENTIONED-REF",
+        description="Works with 52.410.132.01-2",
+        stock_quantity=10,
+    )
+    exact = make_product(
+        name="ZZZ Exact product",
+        reference="52.410.132.01-2",
+        description="",
+        stock_quantity=0,
+    )
+
+    response = APIClient().get("/api/products/", {"search": "52.410.132.01-2"})
+
+    assert response.status_code == status.HTTP_200_OK
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids[:2] == [exact.id, mentioned.id]

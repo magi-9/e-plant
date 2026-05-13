@@ -485,16 +485,51 @@ def write_compatibility_options_csv(rows):
 
 
 def build_option_map(parsed_rows):
-    """Map exact reference SKU to its option token string from the source line."""
-    by_ref = {}
+    """Map exact reference SKU to merged option token strings from source rows."""
+    by_ref: dict[str, list[str]] = {}
     for row in parsed_rows:
         ref = row.get("reference")
         if not ref:
             continue
         token = row.get("options", "")
-        if token and ref not in by_ref:
-            by_ref[ref] = token
-    return by_ref
+        if token:
+            by_ref.setdefault(ref, [])
+            for part in token.split("|"):
+                _merge_option_token(by_ref[ref], part)
+    return {ref: "|".join(tokens) for ref, tokens in by_ref.items()}
+
+
+def _merge_option_token(tokens: list[str], token: str) -> None:
+    token = str(token or "").strip()
+    if not token or ":" not in token:
+        return
+
+    key, value = [part.strip() for part in token.split(":", 1)]
+    if not key or not value:
+        return
+
+    for index, existing in enumerate(tokens):
+        if ":" not in existing:
+            continue
+        existing_key, existing_value = [part.strip() for part in existing.split(":", 1)]
+        if existing_key != key:
+            continue
+        merged_values = []
+        for item in re.split(r"/", existing_value):
+            if item and item not in merged_values:
+                merged_values.append(item)
+        for item in re.split(r"/", value):
+            if item and item not in merged_values:
+                merged_values.append(item)
+        if key in {"H(mm)", "GH(mm)", "LENGTH"}:
+            merged_values = sorted(
+                merged_values,
+                key=lambda item: float(item.replace(",", ".")) if re.fullmatch(r"\d+(?:[\.,]\d+)?", item) else 9999,
+            )
+        tokens[index] = f"{key}:{'/'.join(merged_values)}"
+        return
+
+    tokens.append(f"{key}:{value}")
 
 
 def build_engaging_map(parsed_rows):
@@ -601,7 +636,13 @@ def _build_ref_lookups(code_to_systems):
     return ref_to_systems, ref_to_section
 
 
-def build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map=None):
+def build_merged_import_csv(
+    option_map,
+    code_to_systems,
+    active_categories,
+    engaging_map=None,
+    product_type_map=None,
+):
     """Merge products, prices and parsed PDF option families into one import-ready CSV."""
     exact, patterns = build_price_lookup()
     ref_to_systems, ref_to_section = _build_ref_lookups(code_to_systems)
@@ -669,12 +710,25 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
             ]
             primary_system = active_systems[0] if active_systems else (systems[0] if systems else "")
             is_active = 1 if active_systems else 0
-            catalog_section = ref_to_section.get(ref, "")
+            catalog_section = (product_type_map or {}).get(ref) or ref_to_section.get(ref, "")
+            if name.upper().startswith("DMT "):
+                catalog_section = "DYNAMIC MILLING TOOL"
             retail_name = price_payload.get("name", "")
+            row_tokens = []
+            for part in option_map.get(ref, "").split("|"):
+                _merge_option_token(row_tokens, part)
+            _merge_product_name_option_tokens(
+                row_tokens,
+                _product_name_option_tokens(name, reference=ref),
+            )
+            row_tokens, catalog_section = _apply_product_manual_override(
+                ref, row_tokens, catalog_section
+            )
+            option_tokens = "|".join(row_tokens)
+
             description_parts = [
                 price_payload["detail"],
-                f"Systém: {primary_system}" if primary_system else "",
-                f"Parametre: {option_map.get(ref, '')}" if option_map.get(ref, "") else "",
+                f"Parametre: {option_tokens}" if option_tokens else "",
             ]
             generated_description = " | ".join([p for p in description_parts if p])
             engaging_val = (engaging_map or {}).get(ref, "")
@@ -699,7 +753,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
                     parts["segment_3"],
                     parts["segment_4"],
                     parts["check_digit"],
-                    option_map.get(ref, ""),
+                    option_tokens,
                     generated_description,
                     ";".join(systems),
                     ";".join(active_systems),
@@ -731,6 +785,9 @@ def _apply_system_name_corrections(code_to_systems):
 def _row_to_option_tokens(row: dict) -> str:
     """Convert a parse_catalog.py structured product row to pipe-separated key:value tokens."""
     parts = []
+    product_type = row.get("product_type")
+    if product_type in {"ADAPTOR", "SCREWDRIVER ADAPTOR", "DYNAMIC MILLING TOOL"}:
+        parts.append(f"TYPE:{product_type}")
     if row.get("GH_mm"):
         parts.append(f"GH(mm):{row['GH_mm']}")
     alpha_s = row.get("alpha_S")
@@ -747,14 +804,161 @@ def _row_to_option_tokens(row: dict) -> str:
     if row.get("alpha_di"):
         parts.append(f"αdi:{row['alpha_di']}")
     if row.get("H_mm"):
-        parts.append(f"H(mm):{row['H_mm']}")
+        h_values = str(row["H_mm"]).split("/")
+        if row.get("product_type") in {"ADAPTOR", "SCREWDRIVER", "SCREWDRIVER ADAPTOR"}:
+            h_values = [value for value in h_values if value in {"8", "10", "12"}]
+        if h_values:
+            parts.append(f"H(mm):{'/'.join(h_values)}")
     if row.get("length_mm"):
-        parts.append(f"L(mm):{row['length_mm']}")
+        parts.append(f"LENGTH:{row['length_mm']}")
+        if row.get("product_type") == "DYNAMIC SCREW":
+            parts.append(f"DYNAMIC SCREW:{row.get('sku') or row['length_mm']}")
     if row.get("height_mm"):
         parts.append(f"H(mm):{row['height_mm']}")
     if row.get("type_label"):
-        parts.append(f"Typ:{row['type_label']}")
+        if row.get("product_type") in {"DYNAMIC MILLING TOOL", "ANALOG", "DIGITAL ANALOG"}:
+            parts.append(f"SHANK:{row['type_label']}")
+        elif "SCREW" in str(row.get("product_type", "")):
+            parts.append(f"TYPE:{row['type_label']}")
+        else:
+            parts.append(f"Typ:{row['type_label']}")
+    if row.get("screwdriver_refs"):
+        parts.append(f"SCREWDRIVER:{row['screwdriver_refs']}")
+    if row.get("straight_screw_refs"):
+        parts.append(f"STRAIGHT SCREW:{row['straight_screw_refs']}")
+    if row.get("dynamic_screw_refs"):
+        parts.append(f"DYNAMIC SCREW:{row['dynamic_screw_refs']}")
+    if row.get("adaptor_refs"):
+        parts.append(f"ADAPTOR:{row['adaptor_refs']}")
+    if row.get("screwdriver_adaptor_refs"):
+        parts.append(f"SCREWDRIVER ADAPTOR:{row['screwdriver_adaptor_refs']}")
     return "|".join(parts[:8])
+
+
+_PRODUCT_ALPHA_DI_CORRECTIONS = {
+    "33.320.704.01-2": "25",
+    "33.420.704.01-2": "25",
+    "33.620.704.01-2": "25",
+    "33.435.758.01-2": "30",
+}
+
+
+def _product_name_option_tokens(name: str, reference: str = "") -> str:
+    """Extract missing technical dimensions from product names when the PDF table omits them."""
+    parts = []
+    das_multi_unit_m = re.search(
+        r"\bDAS\s+Multi-Unit\s+(\d+(?:[\.,]\d+)?)\s*[º°].*?\bG(\d+(?:[\.,]\d+)?(?:/\d+(?:[\.,]\d+)?)?)",
+        name,
+        re.IGNORECASE,
+    )
+    if das_multi_unit_m:
+        angle = das_multi_unit_m.group(1).replace(",", ".")
+        gh = das_multi_unit_m.group(2).replace(",", ".")
+        parts.append(f"GH(mm):{gh}")
+        parts.append(f"TYPE:ANGULATED MULTI-UNIT {angle}º")
+
+    seat_m = re.search(r"\bSeat\s+(\d+(?:[\.,]\d+)?)\s*[º°]", name, re.IGNORECASE)
+    alpha_di = _PRODUCT_ALPHA_DI_CORRECTIONS.get(reference)
+    if not alpha_di and seat_m:
+        alpha_di = seat_m.group(1).replace(",", ".")
+    if alpha_di:
+        parts.append(f"αdi:{alpha_di}°")
+    shank_m = re.search(r"\bShank\s+(\d+(?:[\.,]\d+)?)\s*mm\b", name, re.IGNORECASE)
+    if shank_m:
+        parts.append(f"SHANK:{shank_m.group(1).replace(',', '.')}")
+    return "|".join(parts)
+
+
+def _merge_product_name_option_tokens(tokens: list[str], token_source: str) -> None:
+    """Merge exact product-name tokens; row-specific GH replaces shared PDF GH."""
+    for part in token_source.split("|"):
+        if part.startswith("GH(mm):"):
+            tokens[:] = [
+                token
+                for token in tokens
+                if ":" not in token or token.split(":", 1)[0].strip() != "GH(mm)"
+            ]
+        _merge_option_token(tokens, part)
+
+
+_PRODUCT_MANUAL_OVERRIDES = {
+    # PDF/source-table overrides that cannot be inferred reliably from a single row.
+    "41.320.117.01-2": {
+        "remove_keys": {"DYNAMIC SCREW", "LENGTH", "SCREWDRIVER"},
+        "set_tokens": [
+            "DYNAMIC SCREW:41.320.075.01-2",
+            "LENGTH:18/24/32",
+            "SCREWDRIVER:43.618.201.01-2/43.624.201.01-2/43.632.201.01-2",
+        ],
+    },
+    "43.618.201.01-2": {
+        "catalog_section": "SCREWDRIVER",
+        "remove_keys": {"H(mm)", "DYNAMIC SCREW"},
+        "set_tokens": ["LENGTH:18", "DYNAMIC SCREW:41.316.080.01-2"],
+    },
+    "43.624.201.01-2": {
+        "catalog_section": "SCREWDRIVER",
+        "remove_keys": {"H(mm)"},
+        "set_tokens": ["LENGTH:24"],
+    },
+    "43.632.201.01-2": {
+        "catalog_section": "SCREWDRIVER",
+        "remove_keys": {"H(mm)", "DYNAMIC SCREW"},
+        "set_tokens": ["LENGTH:32", "DYNAMIC SCREW:41.316.094.01-2"],
+    },
+    "43.625.108.01-2": {
+        "remove_keys": {"H(mm)"},
+    },
+    "23.313.025.01-2": {
+        "remove_keys": {"H(mm)", "GH(mm)"},
+    },
+    "23.413.025.01-2": {
+        "remove_keys": {"H(mm)", "GH(mm)"},
+    },
+}
+
+
+def _apply_product_manual_override(
+    reference: str, row_tokens: list[str], catalog_section: str
+) -> tuple[list[str], str]:
+    override = _PRODUCT_MANUAL_OVERRIDES.get(reference)
+    if not override:
+        return row_tokens, catalog_section
+
+    remove_keys = set(override.get("remove_keys", set()))
+    tokens = [
+        token
+        for token in row_tokens
+        if ":" in token and token.split(":", 1)[0].strip() not in remove_keys
+    ]
+    for token in override.get("set_tokens", []):
+        _merge_option_token(tokens, token)
+
+    return tokens, override.get("catalog_section", catalog_section)
+
+
+def _build_product_type_map(catalog_rows: list[dict]) -> dict[str, str]:
+    """Choose the storefront product type from structured PDF rows."""
+    priority = {
+        "DYNAMIC MILLING TOOL": 1,
+        "ADAPTOR": 2,
+        "SCREWDRIVER ADAPTOR": 3,
+        "DYNAMIC SCANBODY": 4,
+        "DYNAMIC SCREW": 5,
+        "SCREWDRIVER": 6,
+    }
+    by_ref: dict[str, str] = {}
+    best_priority: dict[str, int] = {}
+    for row in catalog_rows:
+        ref = row.get("sku")
+        product_type = row.get("product_type")
+        if not ref or not product_type:
+            continue
+        rank = priority.get(product_type, 100)
+        if ref not in by_ref or rank < best_priority[ref]:
+            by_ref[ref] = product_type
+            best_priority[ref] = rank
+    return by_ref
 
 
 def convert_catalog_pdf_options():
@@ -770,11 +974,14 @@ def convert_catalog_pdf_options():
         from parse_catalog import extract_text as _extract_text, parse_products as _parse_products
         product_text = _extract_text(pdf_path, first_page=43, last_page=329)
         catalog_rows = _parse_products(product_text, pdf_first_page=43)
-        option_map = {
-            row["sku"]: _row_to_option_tokens(row)
-            for row in catalog_rows
-            if row.get("sku")
-        }
+        product_type_map = _build_product_type_map(catalog_rows)
+        option_map = build_option_map(
+            [
+                {"reference": row["sku"], "options": _row_to_option_tokens(row)}
+                for row in catalog_rows
+                if row.get("sku")
+            ]
+        )
         engaging_map = {
             row["sku"]: row["engaging"]
             for row in catalog_rows
@@ -799,7 +1006,13 @@ def convert_catalog_pdf_options():
 
     code_to_systems = parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
     code_to_systems = _apply_system_name_corrections(code_to_systems)
-    build_merged_import_csv(option_map, code_to_systems, active_categories, engaging_map)
+    build_merged_import_csv(
+        option_map,
+        code_to_systems,
+        active_categories,
+        engaging_map,
+        product_type_map if "product_type_map" in locals() else None,
+    )
 
 
 if __name__ == "__main__":

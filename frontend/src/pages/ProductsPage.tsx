@@ -1121,6 +1121,22 @@ export default function ProductsPage() {
                 setOpen={setOpenModal}
                 product={selectedProduct}
                 selectedCategories={selectedCategories}
+                onCategoryClick={(category) => {
+                    setSelectedCategories([category]);
+                    scrollToFilters();
+                }}
+                onCompatibilityCodeClick={(code) => {
+                    const option = sortedCompatibilityOptions.find((opt) => opt.compatibility_code === code);
+                    setSelectedCompatibility(option ?? null);
+                    setSearchQuery('');
+                    scrollToFilters();
+                }}
+                onReferenceClick={(reference) => {
+                    setSelectedCompatibility(null);
+                    setSelectedCategories([]);
+                    setSearchQuery(reference);
+                    scrollToFilters();
+                }}
             />
 
             {/* Mobile Filters Bottom Sheet */}

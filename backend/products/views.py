@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
@@ -11,7 +12,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count, Sum
-from django.http import HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -78,6 +79,14 @@ def _apply_product_filters(queryset, request):
             parameters__options__icontains=search
         )  # catches variant reference numbers
         qs = qs.filter(search_filter)
+        if re.fullmatch(r"\d{2}\.\d{3}\.\d{3}\.\d{2}-\d", search):
+            qs = qs.annotate(
+                exact_reference_match=models.Case(
+                    models.When(reference__iexact=search, then=0),
+                    default=1,
+                    output_field=models.IntegerField(),
+                )
+            ).order_by("exact_reference_match", "name", "id")
 
     categories = _parse_categories(request)
     if categories:
@@ -1379,3 +1388,13 @@ class ProductInquiryView(APIView):
                 {"error": "Došlo k chybe pri odoslaní dotazu."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class CatalogPdfView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        path = "/data/raw/PRODUCT-REFERENCE-0326_01.pdf"
+        if not os.path.exists(path):
+            raise Http404("Catalog PDF not found")
+        return FileResponse(open(path, "rb"), content_type="application/pdf")
