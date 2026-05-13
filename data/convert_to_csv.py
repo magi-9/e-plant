@@ -21,6 +21,7 @@ os.makedirs(CSV_DIR, exist_ok=True)
 RAW_DIR = os.path.join(BASE_DIR, "raw")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
+PRODUCT_STUBS_CSV = os.path.join(CSV_DIR, "product_stubs.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
@@ -605,11 +606,19 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
     exact, patterns = build_price_lookup()
     ref_to_systems, ref_to_section = _build_ref_lookups(code_to_systems)
 
+    # Collect all product rows: main catalog first, then stubs (if file exists).
+    # Yields (row, is_stub) so stubs can be forced hidden.
+    def _iter_product_rows():
+        with open(PRODUCTS_CSV, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                yield row, False
+        if os.path.exists(PRODUCT_STUBS_CSV):
+            with open(PRODUCT_STUBS_CSV, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    yield row, True
+
     count = 0
-    with open(PRODUCTS_CSV, newline="", encoding="utf-8") as src, open(
-        MERGED_IMPORT_CSV, "w", newline="", encoding="utf-8"
-    ) as dst:
-        reader = csv.DictReader(src)
+    with open(MERGED_IMPORT_CSV, "w", newline="", encoding="utf-8") as dst:
         writer = csv.writer(dst)
         writer.writerow(
             [
@@ -641,7 +650,7 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
             ]
         )
 
-        for row in reader:
+        for row, is_stub in _iter_product_rows():
             ref = row["reference"].strip()
             ref_num = row["reference_num"].strip()
             name = row["name"].strip()
@@ -649,9 +658,10 @@ def build_merged_import_csv(option_map, code_to_systems, active_categories, enga
             price_payload, match_type = match_price(ref_num, exact, patterns)
             family_code = parts["segment_3"]
             padded_family = family_code.zfill(4) if family_code else ""
-            # Use segment_3 lookup first; fall back to per-ref compat lookup for
-            # products (e.g. accessories) whose segment_3 has no PDF compat block.
-            systems = code_to_systems.get(padded_family) or ref_to_systems.get(ref, [])
+            # Use only explicit PDF listing (compatibility_options.csv).
+            # segment_3-based heuristic was removed: a product must appear in a
+            # PDF "COMPATIBLE WITH XXXX" section to receive compatibility systems.
+            systems = ref_to_systems.get(ref, [])
             active_systems = [
                 active_categories[normalize_system_name(system)]
                 for system in systems

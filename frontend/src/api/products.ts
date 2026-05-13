@@ -125,6 +125,11 @@ export interface GroupingSettings {
     wildcard_grouping_enabled: boolean;
 }
 
+export interface CategoryVisibilityItem {
+    name: string;
+    visible: boolean;
+}
+
 export interface ProductListParams {
     search?: string;
     ordering?: string;
@@ -137,6 +142,8 @@ export interface ProductListParams {
     admin_view?: '1';
     compatibility_section?: string;
     compatibility_code?: string;
+    min_price?: number;
+    max_price?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -171,6 +178,8 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
     (params?.categories || []).forEach((category) => query.append('categories', category));
     if (params?.compatibility_section) query.set('compatibility_section', params.compatibility_section);
     if (params?.compatibility_code) query.set('compatibility_code', params.compatibility_code);
+    if (typeof params?.min_price === 'number') query.set('min_price', String(params.min_price));
+    if (typeof params?.max_price === 'number') query.set('max_price', String(params.max_price));
 
     const suffix = query.toString();
     const endpoint = suffix ? `/products/count/?${suffix}` : '/products/count/';
@@ -341,4 +350,13 @@ export const fullImportProducts = async (file: File): Promise<{ created: number;
 export const removeProductsFromWildcardGroup = async (groupId: number, productIds: number[]): Promise<{ updated: number }> => {
     const response = await client.post(`/products/admin/wildcard-groups/${groupId}/remove-products/`, { product_ids: productIds });
     return response.data;
+};
+
+export const getCategoryVisibility = async (): Promise<CategoryVisibilityItem[]> => {
+    const response = await client.get('/products/admin/category-visibility/');
+    return response.data.categories;
+};
+
+export const setCategoryVisibility = async (visibleCategories: string[]): Promise<void> => {
+    await client.put('/products/admin/category-visibility/', { visible_categories: visibleCategories });
 };

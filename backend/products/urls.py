@@ -4,6 +4,7 @@ from .views import (
     AdminBulkDeleteView,
     AdminBulkSetVisibleView,
     AdminCategoriesView,
+    AdminCategoryVisibilityView,
     AdminGroupingSettingsView,
     AdminProductExport,
     AdminProductFullImport,
@@ -98,6 +99,11 @@ urlpatterns = [
         "admin/grouping-settings/",
         AdminGroupingSettingsView.as_view(),
         name="admin_grouping_settings",
+    ),
+    path(
+        "admin/category-visibility/",
+        AdminCategoryVisibilityView.as_view(),
+        name="admin_category_visibility",
     ),
     # Wildcard groups
     path(

@@ -373,7 +373,10 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                 "reference_num": reference_num,
                 "parameter_code": row.get("ref_segment_4", "").strip(),
                 "option_tokens": row.get("options", "").strip(),
-                "compatibility_code": row.get("compatibility_code", "").strip(),
+                # Only store compatibility_code when the product has active systems.
+                "compatibility_code": (
+                    row.get("compatibility_code", "").strip() if is_active else ""
+                ),
                 "all_categories": all_categories,
                 "engaging": engaging,
                 "catalog_section": catalog_section,

@@ -18,6 +18,7 @@ export default function AdminInventory() {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('visible');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [currentPage, setCurrentPage] = useState(0);
 
@@ -34,7 +35,7 @@ export default function AdminInventory() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentPage(0);
-    }, [debouncedSearch, categoryFilter, stockFilter]);
+    }, [debouncedSearch, categoryFilter, visibleFilter, stockFilter]);
 
     const queryParams = useMemo<ProductListParams>(() => ({
         search: debouncedSearch || undefined,
@@ -43,8 +44,9 @@ export default function AdminInventory() {
         offset: currentPage * PAGE_SIZE,
         admin_view: '1' as const,
         ...(categoryFilter !== 'all' ? { categories: [categoryFilter] } : {}),
+        ...(visibleFilter === 'visible' ? { is_visible: true } : visibleFilter === 'hidden' ? { is_visible: false } : {}),
         ...(stockFilter !== 'all' ? { stock: stockFilter as 'in' | 'out' } : {}),
-    }), [debouncedSearch, currentPage, categoryFilter, stockFilter]);
+    }), [debouncedSearch, currentPage, categoryFilter, visibleFilter, stockFilter]);
 
     const { data: paginatedData, isLoading, isFetching } = useQuery({
         queryKey: ['inventory-products', queryParams],
@@ -117,7 +119,7 @@ export default function AdminInventory() {
 
                 {/* Filters */}
                 <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Vyhľadávanie</label>
                             <input
@@ -136,6 +138,20 @@ export default function AdminInventory() {
                                 placeholder="Všetky"
                                 neutralValues={['all']}
                                 options={adminCategories.map((c) => ({ value: c, label: c }))}
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Viditeľnosť</label>
+                            <DropdownSelect
+                                value={visibleFilter}
+                                onChange={(value) => setVisibleFilter(value as 'all' | 'visible' | 'hidden')}
+                                placeholder="Viditeľné"
+                                neutralValues={['all']}
+                                options={[
+                                    { value: 'all', label: 'Všetky' },
+                                    { value: 'visible', label: 'Viditeľné' },
+                                    { value: 'hidden', label: 'Skryté' },
+                                ]}
                             />
                         </div>
                         <div>
@@ -159,7 +175,7 @@ export default function AdminInventory() {
                             {isFetching && <span className="ml-2 text-xs text-cyan-600">Aktualizujem...</span>}
                         </span>
                         <button
-                            onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStockFilter('all'); }}
+                            onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setVisibleFilter('visible'); setStockFilter('all'); }}
                             className="text-xs text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline"
                         >
                             Reset filtrov

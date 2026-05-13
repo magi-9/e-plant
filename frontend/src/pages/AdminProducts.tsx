@@ -63,7 +63,7 @@ export default function AdminProducts() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('-name');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('visible');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ mode: 'single'; product: Product } | { mode: 'bulk'; count: number } | null>(null);

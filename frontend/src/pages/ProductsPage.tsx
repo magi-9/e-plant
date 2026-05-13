@@ -121,8 +121,12 @@ export default function ProductsPage() {
             params.compatibility_section = selectedCompatibility.section;
             params.compatibility_code = selectedCompatibility.compatibility_code;
         }
+        if (maxPrice < 500) params.max_price = maxPrice;
+        if (priceSortOrder !== 'none') {
+            params.ordering = priceSortOrder === 'asc' ? 'price' : '-price';
+        }
         return params;
-    }, [debouncedSearch, selectedCategories, selectedCompatibility]);
+    }, [debouncedSearch, selectedCategories, selectedCompatibility, maxPrice, priceSortOrder]);
 
     const {
         data,
@@ -133,7 +137,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', debouncedSearch, selectedCategories, selectedCompatibility],
+        queryKey: ['products', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice, priceSortOrder],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -148,12 +152,13 @@ export default function ProductsPage() {
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility],
+        queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice],
         queryFn: () => getProductCount({
             search: debouncedSearch,
             categories: selectedCategories,
             compatibility_section: selectedCompatibility?.section,
             compatibility_code: selectedCompatibility?.compatibility_code,
+            ...(maxPrice < 500 ? { max_price: maxPrice } : {}),
         }),
         placeholderData: keepPreviousData,
     });
@@ -327,14 +332,6 @@ export default function ProductsPage() {
 
     let filteredProducts = [...allProducts];
 
-    // Apply price filter
-    if (maxPrice < 500) {
-        filteredProducts = filteredProducts.filter(p => {
-            if (!p.price) return true;
-            return parseFloat(p.price) <= maxPrice;
-        });
-    }
-
     // Apply in-stock filter
     if (inStockOnly) {
         filteredProducts = filteredProducts.filter(p => {
@@ -342,15 +339,6 @@ export default function ProductsPage() {
                 return (p.parameters.options || []).some(o => (o.stock_quantity ?? 0) > 0);
             }
             return p.stock_quantity > 0;
-        });
-    }
-
-    // Apply price sort
-    if (priceSortOrder !== 'none') {
-        filteredProducts.sort((a: Product, b: Product) => {
-            const priceA = parseFloat(a.price || '0');
-            const priceB = parseFloat(b.price || '0');
-            return priceSortOrder === 'asc' ? priceA - priceB : priceB - priceA;
         });
     }
 

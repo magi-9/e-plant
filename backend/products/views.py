@@ -104,6 +104,30 @@ def _apply_product_filters(queryset, request):
     elif stock_param == "out":
         qs = qs.filter(stock_quantity=0)
 
+    min_price_raw = request.query_params.get("min_price")
+    max_price_raw = request.query_params.get("max_price")
+    min_price = None
+    max_price = None
+    if min_price_raw not in (None, ""):
+        try:
+            min_price = Decimal(min_price_raw)
+        except (InvalidOperation, TypeError):
+            raise ValidationError({"min_price": "Must be a valid number."})
+    if max_price_raw not in (None, ""):
+        try:
+            max_price = Decimal(max_price_raw)
+        except (InvalidOperation, TypeError):
+            raise ValidationError({"max_price": "Must be a valid number."})
+    if min_price is not None or max_price is not None:
+        price_filter = models.Q()
+        if min_price is not None:
+            price_filter &= models.Q(price__gte=min_price)
+        if max_price is not None:
+            price_filter &= models.Q(price__lte=max_price) | models.Q(
+                price__isnull=True
+            )
+        qs = qs.filter(price_filter)
+
     compat_code = request.query_params.get("compatibility_code", "").strip()
     if compat_code:
         # Look up all reference family prefixes for this code across all sections.
@@ -344,6 +368,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 request.query_params.get("search")
                 or request.query_params.get("group")
                 or request.query_params.get("ordering")
+                or request.query_params.get("min_price")
+                or request.query_params.get("max_price")
                 or _parse_categories(request)
             )
             if not has_filters:
@@ -743,15 +769,83 @@ class ProductCategoriesView(APIView):
         if not is_admin:
             import re as _re
 
-            allowed = _load_allowed_categories()
-            if allowed:
-                categories = {
-                    c
-                    for c in categories
-                    if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
-                }
+            db_visible = GroupingSettings.get().visible_categories
+            if db_visible is not None:
+                visible_set = {c.strip() for c in db_visible if c.strip()}
+                categories = {c for c in categories if c in visible_set}
+            else:
+                allowed = _load_allowed_categories()
+                if allowed:
+                    categories = {
+                        c
+                        for c in categories
+                        if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
+                    }
 
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
+
+
+class AdminCategoryVisibilityView(APIView):
+    """Admin: get all categories with visibility flags; PUT to update visible list."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def _all_categories(self) -> set[str]:
+        raw_cats = (
+            Product.objects.exclude(category="")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        params_cats = (
+            Product.objects.exclude(parameters__all_categories__isnull=True)
+            .exclude(parameters__all_categories="")
+            .values_list("parameters__all_categories", flat=True)
+        )
+        categories: set[str] = set()
+        for cat in raw_cats:
+            if cat:
+                categories.add(cat.strip())
+        for raw in params_cats:
+            if raw:
+                for part in raw.split(";"):
+                    part = part.strip()
+                    if part:
+                        categories.add(part)
+        return categories
+
+    def get(self, request, *args, **kwargs):
+        import re as _re
+
+        all_cats = self._all_categories()
+        settings = GroupingSettings.get()
+
+        if settings.visible_categories is not None:
+            visible_set = {c.strip() for c in settings.visible_categories if c.strip()}
+        else:
+            allowed = _load_allowed_categories()
+            if allowed:
+                visible_set = {
+                    c
+                    for c in all_cats
+                    if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
+                }
+            else:
+                visible_set = set(all_cats)
+
+        result = [{"name": c, "visible": c in visible_set} for c in sorted(all_cats)]
+        return Response({"categories": result})
+
+    def put(self, request, *args, **kwargs):
+        visible = request.data.get("visible_categories")
+        if not isinstance(visible, list):
+            return Response(
+                {"error": "visible_categories must be a list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        settings = GroupingSettings.get()
+        settings.visible_categories = [str(c) for c in visible]
+        settings.save(update_fields=["visible_categories"])
+        return Response({"visible_categories": settings.visible_categories})
 
 
 class CompatibilityOptionsView(APIView):

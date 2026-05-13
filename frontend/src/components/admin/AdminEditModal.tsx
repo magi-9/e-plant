@@ -4,6 +4,7 @@ import type { Product } from '../../api/products';
 import MultiSelectInput from './MultiSelectInput';
 import DetailsTable from './DetailsTable';
 import { type DetailRow, nextDetailId } from './detailTypes';
+import ConfirmModal from '../ConfirmModal';
 
 const CYAN = '#0891b2';
 const CYAN_LITE = '#e0f7fa';
@@ -204,6 +205,7 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [removeImage, setRemoveImage] = useState(false);
     const [showRefWarn, setShowRefWarn] = useState(false);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
     const set = <K extends keyof Draft>(k: K, v: Draft[K]) =>
         setDraft(d => ({ ...d, [k]: v }));
@@ -232,7 +234,7 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
 
     const tryClose = useCallback(() => {
         if (dirty) {
-            toast('Zruš zmeny pred zatvorením, alebo ich ulož.', { icon: '⚠️' });
+            setShowDiscardConfirm(true);
             return;
         }
         onClose();
@@ -612,6 +614,17 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
                     </button>
                 </div>
             </div>
+            <ConfirmModal
+                open={showDiscardConfirm}
+                title="Zrušiť zmeny?"
+                message="Máte neuložené zmeny. Naozaj ich chcete zahodiť?"
+                confirmLabel="Zahodiť zmeny"
+                onConfirm={() => {
+                    setShowDiscardConfirm(false);
+                    onClose();
+                }}
+                onCancel={() => setShowDiscardConfirm(false)}
+            />
         </div>
     );
 }
