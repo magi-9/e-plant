@@ -8,6 +8,7 @@ import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
 import DropdownSelect from './DropdownSelect';
+import CatalogPdfViewer from './CatalogPdfViewer';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 
@@ -40,6 +41,7 @@ export default function ProductDetailModal({
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
     const [openRequestModal, setOpenRequestModal] = useState(false);
+    const [catalogOpen, setCatalogOpen] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const isGroupType = product?.parameters?.type === 'wildcard_group';
@@ -364,6 +366,13 @@ export default function ProductDetailModal({
                                                                     </span>
                                                                 </>
                                                             )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setCatalogOpen(true)}
+                                                                className="text-xs text-cyan-600 underline underline-offset-2 hover:text-cyan-800 flex-shrink-0"
+                                                            >
+                                                                Pozrieť v katalógu
+                                                            </button>
                                                         </div>
                                                     )}
                                                     <div className="flex items-start gap-1.5 mb-3 flex-wrap">
@@ -660,6 +669,11 @@ export default function ProductDetailModal({
             productId={product?.id || 0}
             productName={effectiveName || ''}
             productReference={effectiveProductCode}
+        />
+        <CatalogPdfViewer
+            open={catalogOpen}
+            onClose={() => setCatalogOpen(false)}
+            reference={effectiveProductCode}
         />
         </>
     )
