@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    CatalogPdfView,
+    CatalogPdfPagesView,
     AdminBulkDeleteView,
     AdminBulkSetVisibleView,
     AdminCategoriesView,
@@ -28,6 +30,8 @@ from .views import (
 )
 
 urlpatterns = [
+    path("catalog-pdf/", CatalogPdfView.as_view(), name="catalog_pdf"),
+    path("catalog-pdf/pages/", CatalogPdfPagesView.as_view(), name="catalog_pdf_pages"),
     path("groups/", ProductGroupListView.as_view(), name="product_group_list"),
     path("categories/", ProductCategoriesView.as_view(), name="product_categories"),
     path(
