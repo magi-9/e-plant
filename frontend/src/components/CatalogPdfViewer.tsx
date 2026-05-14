@@ -29,6 +29,27 @@ function catalogDebug(message: string, details?: unknown) {
     }
 }
 
+function waitForContainer(
+    getContainer: () => HTMLDivElement | null,
+    isCancelled: () => boolean,
+): Promise<HTMLDivElement | null> {
+    return new Promise((resolve) => {
+        let attempts = 0
+
+        const check = () => {
+            const container = getContainer()
+            if (container || isCancelled() || attempts >= 20) {
+                resolve(container)
+                return
+            }
+            attempts += 1
+            window.setTimeout(check, 0)
+        }
+
+        check()
+    })
+}
+
 async function fetchMatchPages(reference: string): Promise<number[]> {
     const url = `${CATALOG_PAGES_URL}?reference=${encodeURIComponent(reference)}`
     catalogDebug('fetch match pages', { reference, url })
@@ -72,18 +93,26 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
         let cancelled = false
 
         const run = async () => {
-            const container = containerRef.current
-            if (!container) return
-
+            catalogDebug('open viewer', { reference, pdfUrl: CATALOG_PDF_URL, pagesUrl: CATALOG_PAGES_URL })
             setLoading(true)
             setError(null)
             setMatchPages([])
             setCurrentIdx(0)
             setSearchComplete(false)
-            container.innerHTML = ''
-            pageDivsRef.current = []
 
             try {
+                const container = await waitForContainer(
+                    () => containerRef.current,
+                    () => cancelled,
+                )
+                if (cancelled) return
+                if (!container) {
+                    throw new Error('Catalog PDF container was not mounted')
+                }
+
+                container.innerHTML = ''
+                pageDivsRef.current = []
+
                 const [pdfDoc, apiPages] = await Promise.all([
                     pdfjsLib.getDocument({ url: CATALOG_PDF_URL, withCredentials: true }).promise,
                     fetchMatchPages(reference),
@@ -162,6 +191,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                 }
             } catch {
                 if (!cancelled) {
+                    catalogDebug('viewer failed', { reference })
                     setError('Nepodarilo sa načítať katalóg.')
                     setLoading(false)
                     setSearchComplete(true)
