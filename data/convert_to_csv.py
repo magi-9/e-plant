@@ -513,6 +513,20 @@ def build_option_map(parsed_rows):
     return {ref: "|".join(tokens) for ref, tokens in by_ref.items()}
 
 
+def _merge_option_rows(option_map: dict[str, str], parsed_rows) -> dict[str, str]:
+    """Merge additional parsed option rows into an existing reference option map."""
+    for row in parsed_rows:
+        ref = row.get("reference")
+        options = row.get("options", "")
+        if not ref or not options:
+            continue
+        tokens = [token for token in option_map.get(ref, "").split("|") if token]
+        for part in options.split("|"):
+            _merge_option_token(tokens, part)
+        option_map[ref] = "|".join(tokens)
+    return option_map
+
+
 def _merge_option_token(tokens: list[str], token: str) -> None:
     token = str(token or "").strip()
     if not token or ":" not in token:
@@ -544,6 +558,180 @@ def _merge_option_token(tokens: list[str], token: str) -> None:
         return
 
     tokens.append(f"{key}:{value}")
+
+
+def _normalize_spec_number(value: str) -> str:
+    return value.strip().replace(",", ".")
+
+
+def _parse_dynamic_screw_spec_line(line: str) -> dict | None:
+    m = re.match(
+        r"^\s*(41\.\d{3}\.\d{3}\.\d{2}-\d)\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(\d+)\s*N[·.]?cm\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+"
+        r"(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(straight|conical)\s+"
+        r"(-|\d+\s*[º°])\s+(.+?)\s{2,}(Hexalobular.+?)\s*$",
+        line,
+        re.IGNORECASE,
+    )
+    if not m:
+        return None
+
+    (
+        ref,
+        metric,
+        torque,
+        total_length,
+        thread_length,
+        a_length,
+        b_length,
+        c_length,
+        head_diameter,
+        seat,
+        angle,
+        thread_entry,
+        connection,
+    ) = m.groups()
+
+    specs = [
+        ("METRIC", metric),
+        ("TORQUE", f"{torque} N·cm"),
+        ("TOTAL LENGTH(mm)", total_length),
+        ("THREAD LENGTH(mm)", thread_length),
+        ("A LENGTH(mm)", a_length),
+        ("B LENGTH(mm)", b_length),
+        ("C LENGTH(mm)", c_length),
+        ("HEAD Ø(mm)", head_diameter),
+        ("SEAT", seat.lower()),
+        ("ANGLE", angle.replace(" ", "")),
+        ("THREAD ENTRY", thread_entry.strip()),
+        ("CONNECTION", connection.strip()),
+    ]
+    options = "|".join(
+        f"{key}:{_normalize_spec_number(value) if key != 'TORQUE' else value}"
+        for key, value in specs
+        if value and value != "-"
+    )
+    return {"reference": ref, "options": options}
+
+
+def _parse_straight_screw_spec_line(line: str) -> dict | None:
+    m = re.match(
+        r"^\s*(40\.\d{3}\.\d{3}\.\d{2}-\d)\s+"
+        r"([A-Z]?\d+(?:-\d+|[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+)\s*N[·.]?cm\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+"
+        r"(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(straight|conical)\s+(.+?)\s{2,}(.+?)\s*$",
+        line,
+        re.IGNORECASE,
+    )
+    if not m:
+        return None
+
+    (
+        ref,
+        metric,
+        thread_pitch,
+        torque,
+        total_length,
+        thread_length,
+        a_length,
+        b_length,
+        c_length,
+        head_diameter,
+        seat,
+        thread_entry,
+        connection,
+    ) = m.groups()
+
+    specs = [
+        ("METRIC", metric),
+        ("THREAD PITCH(mm)", thread_pitch),
+        ("TORQUE", f"{torque} N·cm"),
+        ("TOTAL LENGTH(mm)", total_length),
+        ("THREAD LENGTH(mm)", thread_length),
+        ("A LENGTH(mm)", a_length),
+        ("B LENGTH(mm)", b_length),
+        ("C LENGTH(mm)", c_length),
+        ("HEAD Ø(mm)", head_diameter),
+        ("SEAT", seat.lower()),
+        ("THREAD ENTRY", thread_entry.strip()),
+        ("CONNECTION", connection.strip()),
+    ]
+    options = "|".join(
+        f"{key}:{_normalize_spec_number(value) if key != 'TORQUE' else value}"
+        for key, value in specs
+        if value and value != "-"
+    )
+    return {"reference": ref, "options": options}
+
+
+def _parse_dynamic_milling_tool_spec_line(line: str) -> dict | None:
+    m = re.match(
+        r"^\s*.*?(33\.\d{3}\.\d{3}\.\d{2}-\d)\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+"
+        r"(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+"
+        r"(\d+(?:[,.]\d+)?)\s*$",
+        line,
+    )
+    if not m:
+        return None
+
+    (
+        ref,
+        cutting_diameter,
+        seat,
+        cutting_length,
+        useful_length,
+        stem_cutting_diameter,
+        shank,
+        total_length,
+    ) = m.groups()
+    specs = [
+        ("CUTTING Ø(mm)", cutting_diameter),
+        ("SEAT", seat),
+        ("CUTTING LENGTH(mm)", cutting_length),
+        ("USEFUL LENGTH(mm)", useful_length),
+        ("STEM CUTTING Ø(mm)", stem_cutting_diameter),
+        ("SHANK", shank),
+        ("TOTAL LENGTH(mm)", total_length),
+    ]
+    options = "|".join(
+        f"{key}:{_normalize_spec_number(value)}"
+        for key, value in specs
+        if value
+    )
+    return {"reference": ref, "options": options}
+
+
+def parse_pdf_technical_spec_options(pdf_text: str) -> list[dict]:
+    """Parse product technical-spec tables that are separate from compatibility rows."""
+    rows: list[dict] = []
+    section = None
+    for raw_line in pdf_text.splitlines():
+        line = raw_line.strip()
+        if "DYNAMIC SCREWS TECHNICAL SPECIFICATIONS" in line:
+            section = "dynamic_screws"
+            continue
+        if "SCREWS TECHNICAL SPECIFICATIONS" in line and "DYNAMIC" not in line:
+            section = "straight_screws"
+            continue
+        if "DYNAMIC MILLING TOOL SPECIFICATIONS" in line:
+            section = "dynamic_milling_tools"
+            continue
+
+        parsed = None
+        if section == "dynamic_screws":
+            parsed = _parse_dynamic_screw_spec_line(raw_line)
+        elif section == "straight_screws":
+            parsed = _parse_straight_screw_spec_line(raw_line)
+        elif section == "dynamic_milling_tools":
+            parsed = _parse_dynamic_milling_tool_spec_line(raw_line)
+        if parsed:
+            rows.append(parsed)
+
+    return rows
 
 
 def build_engaging_map(parsed_rows):
@@ -947,6 +1135,9 @@ _PRODUCT_MANUAL_OVERRIDES = {
     "23.413.025.01-2": {
         "remove_keys": {"H(mm)", "GH(mm)"},
     },
+    "53.413.025.01-2": {
+        "remove_keys": {"H(mm)"},
+    },
 }
 
 
@@ -1043,6 +1234,10 @@ def convert_catalog_pdf_options():
 
     code_to_systems = parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
     code_to_systems = _apply_system_name_corrections(code_to_systems)
+    if pdf_text_for_systems:
+        technical_spec_rows = parse_pdf_technical_spec_options(pdf_text_for_systems)
+        _merge_option_rows(option_map, technical_spec_rows)
+        print(f"technical specs: {len(technical_spec_rows)} option rows")
     build_merged_import_csv(
         option_map,
         code_to_systems,
