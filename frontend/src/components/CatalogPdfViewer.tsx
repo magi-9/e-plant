@@ -47,6 +47,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
     const [error, setError] = useState<string | null>(null)
     const [matchPages, setMatchPages] = useState<number[]>([])
     const [currentIdx, setCurrentIdx] = useState(0)
+    const [searchComplete, setSearchComplete] = useState(false)
 
     const scrollToPage = useCallback((pageNum: number) => {
         const div = pageDivsRef.current[pageNum - 1]
@@ -66,6 +67,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
             setError(null)
             setMatchPages([])
             setCurrentIdx(0)
+            setSearchComplete(false)
             container.innerHTML = ''
             pageDivsRef.current = []
 
@@ -139,6 +141,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                     setMatchPages(pages)
                     setCurrentIdx(0)
                     setLoading(false)
+                    setSearchComplete(true)
                     if (pages.length > 0) {
                         setTimeout(() => scrollToPage(pages[0]), 80)
                     }
@@ -147,6 +150,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                 if (!cancelled) {
                     setError('Nepodarilo sa načítať katalóg.')
                     setLoading(false)
+                    setSearchComplete(true)
                 }
             }
         }
@@ -199,7 +203,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                                             {reference}
                                         </span>
                                     )}
-                                    {!loading && matchPages.length === 0 && reference && !error && (
+                                    {searchComplete && !loading && matchPages.length === 0 && reference && !error && (
                                         <span className="text-xs text-amber-600 flex-shrink-0">
                                             Žiadna zhoda v katalógu
                                         </span>
