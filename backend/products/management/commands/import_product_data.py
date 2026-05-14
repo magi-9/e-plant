@@ -39,6 +39,7 @@ CSV_DIR = os.path.join(DATA_DIR, "csv")
 NEW_DIR = os.path.join(DATA_DIR, "new")
 MEDIA_PRODUCTS_DIR = os.path.join(BACKEND_DIR, "media", "products")
 DEFAULT_IMAGES_DIR = os.path.join(DATA_DIR, "images")
+MANUAL_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "photos-manual")
 RAW_ONEDRIVE_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "OneDrive_1_17-3-2026")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
@@ -46,10 +47,26 @@ RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 MASTER_IMPORT_CSV = os.path.join(NEW_DIR, "product_retail_2025_master.csv")
 
+MANUAL_PRICE_OVERRIDES = {
+    "43.620.411.01-2": Decimal("45"),
+    "43.621.415.01-2": Decimal("72"),
+    "43.624.201.01-2": Decimal("60.1"),
+    "43.625.108.01-2": Decimal("50"),
+    "43.632.201.01-2": Decimal("60.1"),
+}
+
 
 def normalize_ref(ref_str):
     """Strip all non-alphanumeric chars, lowercase → used for matching."""
     return re.sub(r"[^a-z0-9]", "", str(ref_str).lower())
+
+
+MANUAL_IMAGE_REFERENCE_FALLBACKS = {
+    normalize_ref("42.303.186.01-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.02-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.03-2"): normalize_ref("42.303.186.05-2"),
+    normalize_ref("42.303.186.04-2"): normalize_ref("42.303.186.05-2"),
+}
 
 
 def ref_to_regex(ref_str):
@@ -90,9 +107,17 @@ def build_image_index(images_dir):
     index = {}
     for root, _dirs, files in os.walk(images_dir):
         for fname in files:
-            if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+            if fname.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                 stem = os.path.splitext(fname)[0]
-                index[stem] = os.path.join(root, fname)
+                path = os.path.join(root, fname)
+                index[stem] = path
+                normalized_stem = normalize_ref(stem)
+                if normalized_stem:
+                    index.setdefault(normalized_stem, path)
+                base_stem = re.split(r"[_-]", stem, maxsplit=1)[0]
+                normalized_base = normalize_ref(base_stem)
+                if normalized_base:
+                    index.setdefault(normalized_base, path)
     return index
 
 
@@ -101,6 +126,7 @@ def get_image_source_dirs():
     env_dir = os.environ.get("PRODUCT_IMAGES_DIR")
     candidates = [
         env_dir,
+        MANUAL_IMAGES_DIR,
         RAW_ONEDRIVE_IMAGES_DIR,
         DEFAULT_IMAGES_DIR,
         MEDIA_PRODUCTS_DIR,
@@ -126,7 +152,12 @@ def find_image_for_ref(ref_str, image_index):
 
     if not has_wildcard:
         norm = normalize_ref(ref_str)
-        return norm if norm in image_index else None
+        if norm in image_index:
+            return norm
+        fallback_norm = MANUAL_IMAGE_REFERENCE_FALLBACKS.get(norm)
+        if fallback_norm and fallback_norm in image_index:
+            return fallback_norm
+        return None
 
     regex = ref_to_regex(ref_str)
     for key in image_index:
@@ -312,6 +343,11 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
     if retail_prices_path and os.path.exists(retail_prices_path):
         exact_prices, wildcard_prices = _build_price_lookup(retail_prices_path)
 
+    from products.compatibility import _load as _load_compat
+
+    compat_data = _load_compat()
+    all_compat_families = {f for prefixes in compat_data.values() for f in prefixes}
+
     seen_refs = set()
     products = []
 
@@ -353,17 +389,31 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     if not category:
                         category = matched_section
 
+            if ref in MANUAL_PRICE_OVERRIDES:
+                price = MANUAL_PRICE_OVERRIDES[ref]
+
             is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
-            is_visible = bool(name and price is not None and is_active)
+            ref_parts = ref.split(".")
+            ref_family = ".".join(ref_parts[:3]) if len(ref_parts) >= 3 else ""
+            has_compat = bool(all_compat_families) and ref_family in all_compat_families
+            is_visible = bool(name and price is not None and is_active and has_compat)
 
             all_categories = row.get("system_categories", "").strip()
+            engaging_raw = row.get("engaging", "").strip()
+            engaging = int(engaging_raw) if engaging_raw in ("0", "1") else None
+            catalog_section = row.get("catalog_section", "").strip()
             params = {
                 "type": "single",
                 "reference_num": reference_num,
                 "parameter_code": row.get("ref_segment_4", "").strip(),
                 "option_tokens": row.get("options", "").strip(),
-                "compatibility_code": row.get("compatibility_code", "").strip(),
+                # Only store compatibility_code when the product has active systems.
+                "compatibility_code": (
+                    row.get("compatibility_code", "").strip() if is_active else ""
+                ),
                 "all_categories": all_categories,
+                "engaging": engaging,
+                "catalog_section": catalog_section,
             }
 
             products.append(
@@ -445,6 +495,12 @@ def load_merged_products(merged_csv_path):
                 "type": "single",
                 "parameter_code": row.get("ref_segment_4", "").strip(),
                 "option_tokens": row.get("options", "").strip(),
+                "engaging": (
+                    int(row.get("engaging", ""))
+                    if row.get("engaging", "").strip() in ("0", "1")
+                    else None
+                ),
+                "catalog_section": row.get("catalog_section", "").strip(),
             },
         }
 
@@ -481,6 +537,7 @@ def load_merged_products(merged_csv_path):
             label_parts = [code, token]
             label_suffix = ", ".join([p for p in label_parts if p])
             label = f"{name} ({label_suffix})" if label_suffix else f"{name} ({ref})"
+            engaging_raw = row.get("engaging", "").strip()
             options.append(
                 {
                     "reference": ref,
@@ -489,6 +546,10 @@ def load_merged_products(merged_csv_path):
                     "parameter_code": code,
                     "option_tokens": token,
                     "label": label,
+                    "engaging": (
+                        int(engaging_raw) if engaging_raw in ("0", "1") else None
+                    ),
+                    "catalog_section": row.get("catalog_section", "").strip(),
                 }
             )
 
@@ -816,7 +877,6 @@ def load_grouped_retail_products(
 
             description_parts = [
                 detail,
-                f"Referenčný kód: {ref}",
                 f"Parametre: {meta.get('options', '')}" if meta.get("options") else "",
                 (
                     f"Počet variantov: {len(parameters.get('options', []))}"
@@ -1065,6 +1125,16 @@ class Command(BaseCommand):
                     "parameters",
                 ]
                 Product.objects.bulk_update(to_update, update_fields, batch_size=200)
+
+        from products.services.wildcard_sync import sync_wildcard_groups
+
+        group_stats = sync_wildcard_groups()
+        self.stdout.write(
+            "Wildcard groups synced: "
+            f"{group_stats['created']} created, "
+            f"{group_stats['updated']} updated, "
+            f"{group_stats['deleted']} deleted."
+        )
 
         self.stdout.write(
             self.style.SUCCESS(

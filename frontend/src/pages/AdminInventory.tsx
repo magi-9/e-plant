@@ -7,6 +7,7 @@ import { ArchiveBoxArrowDownIcon, ArchiveBoxXMarkIcon } from '@heroicons/react/2
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
+import DropdownSelect from '../components/DropdownSelect';
 
 const PAGE_SIZE = 50;
 
@@ -17,6 +18,7 @@ export default function AdminInventory() {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('visible');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [currentPage, setCurrentPage] = useState(0);
 
@@ -33,7 +35,7 @@ export default function AdminInventory() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentPage(0);
-    }, [debouncedSearch, categoryFilter, stockFilter]);
+    }, [debouncedSearch, categoryFilter, visibleFilter, stockFilter]);
 
     const queryParams = useMemo<ProductListParams>(() => ({
         search: debouncedSearch || undefined,
@@ -42,8 +44,9 @@ export default function AdminInventory() {
         offset: currentPage * PAGE_SIZE,
         admin_view: '1' as const,
         ...(categoryFilter !== 'all' ? { categories: [categoryFilter] } : {}),
+        ...(visibleFilter === 'visible' ? { is_visible: true } : visibleFilter === 'hidden' ? { is_visible: false } : {}),
         ...(stockFilter !== 'all' ? { stock: stockFilter as 'in' | 'out' } : {}),
-    }), [debouncedSearch, currentPage, categoryFilter, stockFilter]);
+    }), [debouncedSearch, currentPage, categoryFilter, visibleFilter, stockFilter]);
 
     const { data: paginatedData, isLoading, isFetching } = useQuery({
         queryKey: ['inventory-products', queryParams],
@@ -103,9 +106,9 @@ export default function AdminInventory() {
     if (!canAccess) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <AdminNav />
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+            <AdminNav />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold text-slate-900">Naskladňovanie</h1>
@@ -116,7 +119,7 @@ export default function AdminInventory() {
 
                 {/* Filters */}
                 <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <div className="sm:col-span-2">
                             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Vyhľadávanie</label>
                             <input
@@ -129,26 +132,41 @@ export default function AdminInventory() {
                         </div>
                         <div>
                             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Kategória</label>
-                            <select
+                            <DropdownSelect
                                 value={categoryFilter}
-                                onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"
-                            >
-                                <option value="all">Všetky</option>
-                                {adminCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                                onChange={setCategoryFilter}
+                                placeholder="Všetky"
+                                neutralValues={['all']}
+                                options={adminCategories.map((c) => ({ value: c, label: c }))}
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Viditeľnosť</label>
+                            <DropdownSelect
+                                value={visibleFilter}
+                                onChange={(value) => setVisibleFilter(value as 'all' | 'visible' | 'hidden')}
+                                placeholder="Viditeľné"
+                                neutralValues={['all']}
+                                options={[
+                                    { value: 'all', label: 'Všetky' },
+                                    { value: 'visible', label: 'Viditeľné' },
+                                    { value: 'hidden', label: 'Skryté' },
+                                ]}
+                            />
                         </div>
                         <div>
                             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Stav skladu</label>
-                            <select
+                            <DropdownSelect
                                 value={stockFilter}
-                                onChange={(e) => setStockFilter(e.target.value as 'all' | 'in' | 'out')}
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"
-                            >
-                                <option value="all">Všetko</option>
-                                <option value="in">Skladom</option>
-                                <option value="out">Vypredané</option>
-                            </select>
+                                onChange={(value) => setStockFilter(value as 'all' | 'in' | 'out')}
+                                placeholder="Všetko"
+                                neutralValues={['all']}
+                                options={[
+                                    { value: 'all', label: 'Všetko' },
+                                    { value: 'in', label: 'Skladom' },
+                                    { value: 'out', label: 'Vypredané' },
+                                ]}
+                            />
                         </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
@@ -157,7 +175,7 @@ export default function AdminInventory() {
                             {isFetching && <span className="ml-2 text-xs text-cyan-600">Aktualizujem...</span>}
                         </span>
                         <button
-                            onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStockFilter('all'); }}
+                            onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setVisibleFilter('visible'); setStockFilter('all'); }}
                             className="text-xs text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline"
                         >
                             Reset filtrov
@@ -291,19 +309,15 @@ export default function AdminInventory() {
                                 {receiptProduct.parameters?.type === 'wildcard_group' && (
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Variant (ref. číslo)</label>
-                                        <select
-                                            required
+                                        <DropdownSelect
                                             value={receiptForm.variant_reference}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, variant_reference: e.target.value })}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
-                                        >
-                                            <option value="">— Vyberte variant —</option>
-                                            {(receiptProduct.parameters.options ?? []).map((opt) => (
-                                                <option key={opt.reference} value={opt.reference}>
-                                                    {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onChange={(value) => setReceiptForm({ ...receiptForm, variant_reference: value })}
+                                            placeholder="— Vyberte variant —"
+                                            options={(receiptProduct.parameters.options ?? []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
+                                                value: opt.reference,
+                                                label: `${opt.reference}${opt.label ? ` · ${opt.label}` : ''} (teraz: ${opt.stock_quantity ?? 0} ks)`,
+                                            }))}
+                                        />
                                     </div>
                                 )}
                                 <div>
@@ -390,19 +404,15 @@ export default function AdminInventory() {
                                 {issueProduct.parameters?.type === 'wildcard_group' && (
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Variant (ref. číslo)</label>
-                                        <select
-                                            required
+                                        <DropdownSelect
                                             value={issueForm.variant_reference}
-                                            onChange={(e) => setIssueForm({ ...issueForm, variant_reference: e.target.value })}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
-                                        >
-                                            <option value="">— Vyberte variant —</option>
-                                            {(issueProduct.parameters.options ?? []).map((opt) => (
-                                                <option key={opt.reference} value={opt.reference}>
-                                                    {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onChange={(value) => setIssueForm({ ...issueForm, variant_reference: value })}
+                                            placeholder="— Vyberte variant —"
+                                            options={(issueProduct.parameters.options ?? []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
+                                                value: opt.reference,
+                                                label: `${opt.reference}${opt.label ? ` · ${opt.label}` : ''} (teraz: ${opt.stock_quantity ?? 0} ks)`,
+                                            }))}
+                                        />
                                     </div>
                                 )}
                                 <div>

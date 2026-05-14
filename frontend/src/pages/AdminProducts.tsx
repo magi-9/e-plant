@@ -9,8 +9,33 @@ import AdminNav from '../components/AdminNav';
 import ProductDetailModal from '../components/ProductDetailModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
+import AdminEditModal, { type EditSavePayload } from '../components/admin/AdminEditModal';
+import DropdownSelect from '../components/DropdownSelect';
 
 const PAGE_SIZE = 50;
+
+const C = {
+    grad: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+    card: { background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(15,23,42,0.06)' } as React.CSSProperties,
+    input: { width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 13, border: '1px solid #e2e8f0', color: '#0f172a', outline: 'none', boxSizing: 'border-box' } as React.CSSProperties,
+};
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label style={{ display: 'block', marginBottom: 5, fontSize: 12, fontWeight: 600, color: '#374151' }}>{label}</label>
+            {children}
+        </div>
+    );
+}
+
+function StyledInput({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+    return <input {...props} style={{ ...C.input, ...style }} />;
+}
+
+function StyledTextarea({ style, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+    return <textarea {...props} style={{ ...C.input, resize: 'vertical' as const, ...style }} />;
+}
 
 const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
@@ -23,11 +48,9 @@ const getCategoryList = (product: Product): string[] => {
 export default function AdminProducts() {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const imageInputRef = useRef<HTMLInputElement>(null);
     const [currentPage, setCurrentPage] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [imageFile, setImageFile] = useState<File | null>(null);
 
     const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -35,17 +58,12 @@ export default function AdminProducts() {
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
 
-    // Form states
-    const [formData, setFormData] = useState<Partial<Product>>({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true, compatibility_code: '' });
-    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [newCategory, setNewCategory] = useState('');
-    const [detailsJson, setDetailsJson] = useState('');
     const [isUploadingCSV, setIsUploadingCSV] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('-name');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+    const [visibleFilter, setVisibleFilter] = useState<'all' | 'visible' | 'hidden'>('visible');
     const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [confirmDelete, setConfirmDelete] = useState<{ mode: 'single'; product: Product } | { mode: 'bulk'; count: number } | null>(null);
@@ -63,6 +81,10 @@ export default function AdminProducts() {
     const invalidateProductQueries = () => {
         queryClient.invalidateQueries({ queryKey: ['products'], exact: false });
         queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['products-count'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['category-counts'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['compatibility-counts'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['products-categories'], exact: false });
     };
 
     const adminQueryParams = useMemo<ProductListParams>(() => ({
@@ -91,13 +113,20 @@ export default function AdminProducts() {
     const totalCount = paginatedData?.count || 0;
 
     const categories = useMemo(() => adminCategories || [], [adminCategories]);
-    const categoryOptions = useMemo(() => {
-        const merged = [...categories];
-        selectedCategories.forEach((category) => {
-            if (!merged.includes(category)) merged.push(category);
+
+    const allCompat = useMemo(() => {
+        const seen = new Set<string>();
+        products.forEach(p => {
+            const cs = (p.parameters as Record<string, unknown> & { compat_systems?: string[] } | undefined)?.compat_systems;
+            if (Array.isArray(cs)) cs.forEach(c => seen.add(c));
         });
-        return merged;
-    }, [categories, selectedCategories]);
+        return Array.from(seen).sort();
+    }, [products]);
+
+    const allRefs = useMemo(() =>
+        products.map(p => p.reference).filter(Boolean) as string[],
+        [products]);
+
 
     const displayedCount = products.length;
 
@@ -197,95 +226,46 @@ export default function AdminProducts() {
 
     const handleEdit = (product: Product) => {
         setEditingProduct(product);
-        setFormData(product);
-        setImageFile(null);
-        setSelectedCategories(getCategoryList(product));
-        setNewCategory('');
-        const details = product.parameters?.details;
-        setDetailsJson(details ? JSON.stringify(details, null, 2) : '');
         setIsModalOpen(true);
     };
 
     const handleAdd = () => {
         setEditingProduct(null);
-        setFormData({ name: '', description: '', category: '', price: '0.00', stock_quantity: 0, is_visible: true });
-        setImageFile(null);
-        setSelectedCategories([]);
-        setNewCategory('');
-        setDetailsJson('');
         setIsModalOpen(true);
     };
 
-    const addNewCategory = () => {
-        const next = newCategory.trim();
-        if (!next) return;
-        setSelectedCategories((prev) => (prev.includes(next) ? prev : [...prev, next]));
-        setNewCategory('');
-    };
-
-    const handleSave = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!selectedCategories.length) {
-            toast.error('Vyberte aspoň jednu kategóriu.');
-            return;
-        }
-
-        let detailsPayload: unknown = null;
-        if (detailsJson.trim()) {
-            try {
-                detailsPayload = JSON.parse(detailsJson);
-            } catch {
-                toast.error('Detaily musia byť platný JSON.');
-                return;
-            }
-            if (typeof detailsPayload !== 'object' || detailsPayload === null || Array.isArray(detailsPayload)) {
-                toast.error('Detaily musia byť JSON objekt {}.');
-                return;
-            }
-        }
-
+    const handleSave = (payload: EditSavePayload) => {
         const parameters = {
             ...(editingProduct?.parameters || {}),
-            ...(formData.parameters || {}),
-            all_categories: selectedCategories.join('; '),
+            all_categories: payload.cats.join('; '),
+            compat_systems: payload.compat,
+            details: payload.details,
+            variant: payload.variant,
         };
-        if (detailsPayload === null) {
-            delete parameters.details;
-        } else {
-            parameters.details = detailsPayload;
-        }
 
-        const payload = new FormData();
-        payload.append('name', formData.name || '');
-        payload.append('description', formData.description || '');
-        payload.append('category', selectedCategories[0]);
-        payload.append('stock_quantity', (formData.stock_quantity || 0).toString());
-
-        const priceStr = formData.price?.toString().replace(',', '.');
-        if (priceStr) {
-            payload.append('price', priceStr);
+        const fd = new FormData();
+        fd.append('name', payload.name);
+        fd.append('description', payload.description);
+        fd.append('category', payload.cats[0] || '');
+        fd.append('price', payload.price);
+        fd.append('is_visible', payload.visible.toString());
+        fd.append('reference', payload.ref);
+        if (payload.imageFile) {
+            fd.append('image', payload.imageFile);
+        } else if (payload.removeImage) {
+            fd.append('remove_image', 'true');
         }
-
-        if (imageFile) {
-            payload.append('image', imageFile);
-        }
-
-        payload.append('is_visible', (formData.is_visible ?? true).toString());
-        if (formData.compatibility_code !== undefined) {
-            payload.append('compatibility_code', formData.compatibility_code || '');
-        }
-        payload.append('parameters', JSON.stringify(parameters));
+        fd.append('parameters', JSON.stringify(parameters));
 
         if (editingProduct) {
-            updateMutation.mutate({ id: editingProduct.id, data: payload }, {
-                onSuccess: () => toast.success('Produkt bol úspešne upravený!'),
-                onError: () => toast.error('Chyba pri ukladaní produktu.')
+            updateMutation.mutate({ id: editingProduct.id, data: fd }, {
+                onSuccess: () => { toast.success('Produkt bol úspešne upravený!'); setIsModalOpen(false); },
+                onError: () => toast.error('Chyba pri ukladaní produktu.'),
             });
         } else {
-            createMutation.mutate(payload, {
-                onSuccess: () => toast.success('Nový produkt bol úspešne pridaný!'),
-                onError: () => toast.error('Chyba pri vytváraní produktu.')
+            createMutation.mutate(fd, {
+                onSuccess: () => { toast.success('Nový produkt bol úspešne pridaný!'); setIsModalOpen(false); },
+                onError: () => toast.error('Chyba pri vytváraní produktu.'),
             });
         }
     };
@@ -317,317 +297,334 @@ export default function AdminProducts() {
     const canAccess = useAdminPageGuard();
     if (!canAccess) return null;
 
+    const thStyle: React.CSSProperties = {
+        padding: '10px 14px', textAlign: 'left', fontSize: 11,
+        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b',
+    };
+    const filterLabel: React.CSSProperties = {
+        display: 'block', marginBottom: 4, fontSize: 11, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b',
+    };
+    const filterSelect: React.CSSProperties = {
+        width: '100%', padding: '7px 12px', borderRadius: 8, fontSize: 13,
+        border: '1px solid #e2e8f0', color: '#0f172a',
+    };
+    const paginationBtn = (enabled: boolean): React.CSSProperties => ({
+        padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+        border: '1px solid #e2e8f0', background: '#fff',
+        color: enabled ? '#374151' : '#94a3b8',
+        cursor: enabled ? 'pointer' : 'not-allowed',
+    });
+
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <AdminNav />
-                <div className="sm:flex sm:items-center sm:justify-between mb-6">
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+            <AdminNav />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                {/* ── Header ── */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Správa produktov</h1>
-                        <p className="mt-2 text-sm text-gray-700">Vytvárajte, importujte z CSV alebo inak spravujte tovar eshopu.</p>
+                        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', margin: 0 }}>
+                            Produkty
+                        </h1>
+                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13.5, color: '#64748b' }}>Celkom</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 9px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: 'rgba(6,182,212,0.1)', color: '#06b6d4' }}>
+                                {totalCount}
+                            </span>
+                            {isFetching && <span style={{ fontSize: 12, color: '#06b6d4' }}>· Aktualizujem...</span>}
+                        </div>
                     </div>
-                    <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <input type="file" ref={fileInputRef} accept=".csv" className="hidden" onChange={handleFileUpload} />
-                        <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingCSV} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition">
-                            <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploadingCSV}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                                border: '1px solid #e2e8f0', background: '#fff', color: '#374151',
+                                cursor: isUploadingCSV ? 'not-allowed' : 'pointer',
+                                opacity: isUploadingCSV ? 0.6 : 1,
+                            }}
+                        >
+                            <ArrowUpTrayIcon style={{ width: 15, height: 15 }} />
                             {isUploadingCSV ? 'Importujem...' : 'Z CSV'}
                         </button>
-                        <button onClick={handleAdd} className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition">
-                            <PlusIcon className="h-5 w-5 mr-2" /> Pridať produkt
+                        <button
+                            onClick={handleAdd}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                                border: 'none', background: C.grad, color: '#fff', cursor: 'pointer',
+                            }}
+                        >
+                            <PlusIcon style={{ width: 15, height: 15 }} />
+                            Nový produkt
                         </button>
                     </div>
                 </div>
 
-                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-                                <div className="xl:col-span-2">
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Vyhľadávanie</label>
-                                    <input
-                                        type="search"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Názov, ref. číslo, kategória..."
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Triedenie</label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="-name">Názov Z-A</option>
-                                        <option value="name">Názov A-Z</option>
-                                        <option value="-price">Cena od najvyššej</option>
-                                        <option value="price">Cena od najnižšej</option>
-                                        <option value="-stock_quantity">Sklad najviac</option>
-                                        <option value="stock_quantity">Sklad najmenej</option>
-                                        <option value="category">Kategória A-Z</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Kategória</label>
-                                    <select
-                                        value={categoryFilter}
-                                        onChange={(e) => setCategoryFilter(e.target.value)}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="all">Všetky</option>
-                                        {categories.map((category) => (
-                                            <option key={category} value={category}>{category}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Viditeľnosť</label>
-                                    <select
-                                        value={visibleFilter}
-                                        onChange={(e) => setVisibleFilter(e.target.value as 'all' | 'visible' | 'hidden')}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="all">Všetky</option>
-                                        <option value="visible">Viditeľné</option>
-                                        <option value="hidden">Skryté</option>
-                                    </select>
-                                </div>
+                {/* ── Filters ── */}
+                <div style={{ ...C.card, padding: '16px 20px', marginBottom: 14 }}>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+                        <div className="xl:col-span-2">
+                            <label style={filterLabel}>Vyhľadávanie</label>
+                            <input
+                                type="search" value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Názov, ref. číslo, kategória..."
+                                style={filterSelect}
+                            />
+                        </div>
+                        <div>
+                            <label style={filterLabel}>Triedenie</label>
+                            <DropdownSelect
+                                value={sortBy}
+                                onChange={setSortBy}
+                                placeholder="Triedenie"
+                                neutralValues={['-name']}
+                                options={[
+                                    { value: '-name', label: 'Názov Z-A' },
+                                    { value: 'name', label: 'Názov A-Z' },
+                                    { value: '-price', label: 'Cena od najvyššej' },
+                                    { value: 'price', label: 'Cena od najnižšej' },
+                                    { value: '-stock_quantity', label: 'Sklad najviac' },
+                                    { value: 'stock_quantity', label: 'Sklad najmenej' },
+                                    { value: 'category', label: 'Kategória A-Z' },
+                                ]}
+                            />
+                        </div>
+                        <div>
+                            <label style={filterLabel}>Kategória</label>
+                            <DropdownSelect
+                                value={categoryFilter}
+                                onChange={setCategoryFilter}
+                                placeholder="Všetky"
+                                neutralValues={['all']}
+                                options={categories.map((cat) => ({ value: cat, label: cat }))}
+                            />
+                        </div>
+                        <div>
+                            <label style={filterLabel}>Viditeľnosť</label>
+                            <DropdownSelect
+                                value={visibleFilter}
+                                onChange={(value) => setVisibleFilter(value as 'all' | 'visible' | 'hidden')}
+                                placeholder="Všetky"
+                                neutralValues={['all']}
+                                options={[
+                                    { value: 'all', label: 'Všetky' },
+                                    { value: 'visible', label: 'Viditeľné' },
+                                    { value: 'hidden', label: 'Skryté' },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+                            Zobrazené <strong style={{ color: '#0f172a' }}>{displayedCount}</strong> z <strong style={{ color: '#0f172a' }}>{totalCount}</strong>
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <label style={{ ...filterLabel, margin: 0 }}>Sklad</label>
+                            <DropdownSelect
+                                value={stockFilter}
+                                onChange={(value) => setStockFilter(value as 'all' | 'in' | 'out')}
+                                placeholder="Všetko"
+                                neutralValues={['all']}
+                                wrapperClassName="w-[11.5rem]"
+                                options={[
+                                    { value: 'all', label: 'Všetko' },
+                                    { value: 'in', label: 'Len skladom' },
+                                    { value: 'out', label: 'Len vypredané' },
+                                ]}
+                            />
+                            <button type="button"
+                                onClick={() => { setSearchTerm(''); setSortBy('-name'); setCategoryFilter('all'); setVisibleFilter('all'); setStockFilter('all'); }}
+                                style={{ padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                    {totalPages > 1 && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+                                Strana <strong style={{ color: '#0f172a' }}>{displayPage}</strong> z <strong style={{ color: '#0f172a' }}>{totalPages}</strong>
+                            </p>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={goToPreviousPage} disabled={!canGoPrevious || isFetching} style={paginationBtn(canGoPrevious && !isFetching)}>← Predch.</button>
+                                <button onClick={goToNextPage} disabled={!canGoNext || isFetching} style={paginationBtn(canGoNext && !isFetching)}>Ďalšia →</button>
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                                <div className="text-sm text-gray-600">
-                                    Zobrazené <span className="font-semibold text-gray-900">{displayedCount}</span>
-                                    {' '}z{' '}
-                                    <span className="font-semibold text-gray-900">{totalCount}</span> produktov
-                                    {isFetching && <span className="ml-2 text-xs text-blue-600">Aktualizujem...</span>}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sklad</label>
-                                    <select
-                                        value={stockFilter}
-                                        onChange={(e) => setStockFilter(e.target.value as 'all' | 'in' | 'out')}
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="all">Všetko</option>
-                                        <option value="in">Len skladom</option>
-                                        <option value="out">Len vypredané</option>
-                                    </select>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSearchTerm('');
-                                            setSortBy('-name');
-                                            setCategoryFilter('all');
-                                            setVisibleFilter('all');
-                                            setStockFilter('all');
-                                        }}
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        Reset filtrov
-                                    </button>
-                                </div>
-                            </div>
-                            {totalPages > 1 && (
-                                <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-3">
-                                    <p className="text-sm text-gray-600">
-                                        Strana <span className="font-semibold">{displayPage}</span> z <span className="font-semibold">{totalPages}</span>
-                                        <span className="ml-2 text-gray-400">({totalCount} produktov)</span>
-                                    </p>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={goToPreviousPage}
-                                            disabled={!canGoPrevious || isFetching}
-                                            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            ← Predchádzajúca
-                                        </button>
-                                        <button
-                                            onClick={goToNextPage}
-                                            disabled={!canGoNext || isFetching}
-                                            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            Ďalšia →
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                        </div>
+                    )}
                 </div>
 
+                {/* ── Bulk bar ── */}
+                {selectedIds.size > 0 && (
+                    <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, background: '#0f172a', borderRadius: 10, padding: '10px 16px' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                            Vybrané: {selectedIds.size}
+                            {allPagesSelected && <span style={{ marginLeft: 6, fontWeight: 400, color: '#94a3b8' }}>(všetky)</span>}
+                        </span>
+                        <button onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: true })} disabled={bulkSetVisibleMutation.isPending}
+                            style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', opacity: bulkSetVisibleMutation.isPending ? 0.5 : 1 }}>
+                            Zobraziť
+                        </button>
+                        <button onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: false })} disabled={bulkSetVisibleMutation.isPending}
+                            style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: '#f59e0b', color: '#fff', border: 'none', cursor: 'pointer', opacity: bulkSetVisibleMutation.isPending ? 0.5 : 1 }}>
+                            Skryť
+                        </button>
+                        <button onClick={handleBulkDelete} disabled={bulkDeleteMutation.isPending}
+                            style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', opacity: bulkDeleteMutation.isPending ? 0.5 : 1 }}>
+                            Odstrániť
+                        </button>
+                        <button onClick={() => setSelectedIds(new Set())}
+                            style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            Zrušiť výber
+                        </button>
+                    </div>
+                )}
+
+                {/* ── Table ── */}
                 {isLoading && !paginatedData ? (
-                    <div className="bg-white shadow overflow-auto sm:rounded-lg">
-                        <div className="p-8 text-center text-gray-500 animate-pulse">Načítavam produkty...</div>
+                    <div style={{ ...C.card, padding: 48, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                        Načítavam produkty...
                     </div>
                 ) : (
-                    <>
-                        {selectedIds.size > 0 && (
-                            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
-                                <span className="text-sm font-semibold text-blue-800">
-                                    Vybrané: {selectedIds.size}
-                                    {allPagesSelected && <span className="ml-1 font-normal text-blue-600">(všetky)</span>}
-                                </span>
-                                <button
-                                    onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: true })}
-                                    disabled={bulkSetVisibleMutation.isPending}
-                                    className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                                >
-                                    Zobraziť
-                                </button>
-                                <button
-                                    onClick={() => bulkSetVisibleMutation.mutate({ ids: [...selectedIds], is_visible: false })}
-                                    disabled={bulkSetVisibleMutation.isPending}
-                                    className="rounded-md bg-yellow-500 px-3 py-1 text-xs font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
-                                >
-                                    Skryť
-                                </button>
-                                <button
-                                    onClick={handleBulkDelete}
-                                    disabled={bulkDeleteMutation.isPending}
-                                    className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                                >
-                                    Odstrániť
-                                </button>
-                                <button
-                                    onClick={() => setSelectedIds(new Set())}
-                                    className="ml-auto text-xs text-blue-600 hover:underline"
-                                >
-                                    Zrušiť výber
-                                </button>
-                            </div>
-                        )}
-
-                        <div className={`bg-white shadow overflow-auto sm:rounded-lg transition-opacity duration-150 ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={allPagesSelected}
-                                            ref={(el) => { if (el) el.indeterminate = someSelected && !allPagesSelected || selectAllMutation.isPending; }}
-                                            onChange={toggleSelectAll}
-                                            disabled={selectAllMutation.isPending}
-                                            title={`Vybrať všetkých ${totalCount} produktov`}
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer disabled:cursor-wait"
-                                        />
-                                    </th>
-                                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Obr.</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produkt</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. číslo</th>
-                                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategória</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cena</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sklad</th>
-                                    <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stav</th>
-                                    <th className="relative px-4 py-3"><span className="sr-only">Akcie</span></th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {products.map((product) => (
-                                    <tr key={product.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.has(product.id) ? 'bg-blue-50' : ''}`}>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedIds.has(product.id)}
-                                                onChange={() => toggleSelect(product.id)}
-                                                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                    <div style={{ ...C.card, overflow: 'hidden', opacity: isFetching ? 0.65 : 1, transition: 'opacity 0.15s' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <th style={{ ...thStyle, width: 44, paddingLeft: 16 }}>
+                                            <input type="checkbox" checked={allPagesSelected}
+                                                ref={(el) => { if (el) el.indeterminate = (someSelected && !allPagesSelected) || selectAllMutation.isPending; }}
+                                                onChange={toggleSelectAll} disabled={selectAllMutation.isPending}
+                                                title={`Vybrať všetkých ${totalCount} produktov`}
+                                                style={{ width: 15, height: 15, cursor: selectAllMutation.isPending ? 'wait' : 'pointer' }}
                                             />
-                                        </td>
-                                        <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
-                                                className="block"
-                                                title="Zobraziť detail"
-                                            >
-                                                {product.image ? (
-                                                    <img src={product.image} alt={product.name} className="h-10 w-10 rounded-md object-cover hover:ring-2 hover:ring-blue-400 transition" />
-                                                ) : (
-                                                    <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs text-center border hover:bg-gray-300 transition">—</div>
-                                                )}
-                                            </button>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
-                                                className="text-left w-full group"
-                                                title="Zobraziť detail"
-                                            >
-                                                <div className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{product.name}</div>
-                                            </button>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className="text-xs font-mono text-gray-800 select-all">{product.reference || '—'}</span>
-                                        </td>
-                                        <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 max-w-xs">
-                                            <span className="line-clamp-2" title={getCategoryList(product).join(', ')}>
-                                                {getCategoryList(product).join(', ') || product.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">{product.price ? `${product.price} €` : '-'}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.stock_quantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {product.stock_quantity} ks
-                                            </span>
-                                        </td>
-                                        <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.is_visible ? 'bg-emerald-100 text-emerald-800' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                {product.is_visible ? 'Viditeľný' : 'Skrytý'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                            <button
-                                                onClick={() => {
-                                                    setReceiptProduct(product);
-                                                    setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
-                                                }}
-                                                className="text-emerald-600 hover:text-emerald-900 mr-3"
-                                                title="Naskladniť"
-                                            >
-                                                <ArchiveBoxArrowDownIcon className="h-5 w-5" />
-                                            </button>
-                                            <button onClick={() => handleEdit(product)} className="text-blue-600 hover:text-blue-900 mr-3">
-                                                <PencilIcon className="h-5 w-5" />
-                                            </button>
-                                            <button onClick={() => handleDelete(product)} className="text-red-600 hover:text-red-900">
-                                                <TrashIcon className="h-5 w-5" />
-                                            </button>
-                                        </td>
+                                        </th>
+                                        <th className="hidden sm:table-cell" style={{ ...thStyle, width: 52 }} />
+                                        <th style={thStyle}>Produkt</th>
+                                        <th style={thStyle}>Ref. číslo</th>
+                                        <th className="hidden md:table-cell" style={thStyle}>Kategória</th>
+                                        <th style={thStyle}>Cena</th>
+                                        <th style={thStyle}>Sklad</th>
+                                        <th className="hidden lg:table-cell" style={thStyle}>Stav</th>
+                                        <th style={{ ...thStyle, textAlign: 'right' }}><span className="sr-only">Akcie</span></th>
                                     </tr>
-                                ))}
-                                {products.length === 0 && (
-                                    <tr>
-                                        <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
-                                            Nenašli sa žiadne produkty pre zadané filtre.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {products.map((product, idx) => (
+                                        <tr key={product.id}
+                                            style={{
+                                                borderBottom: idx < products.length - 1 ? '1px solid #f8fafc' : 'none',
+                                                background: selectedIds.has(product.id) ? 'rgba(6,182,212,0.04)' : 'transparent',
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={(e) => { if (!selectedIds.has(product.id)) (e.currentTarget as HTMLTableRowElement).style.background = '#f8fafc'; }}
+                                            onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = selectedIds.has(product.id) ? 'rgba(6,182,212,0.04)' : 'transparent'; }}
+                                        >
+                                            <td style={{ padding: '11px 14px 11px 16px', width: 44 }}>
+                                                <input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)}
+                                                    style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                                            </td>
+                                            <td className="hidden sm:table-cell" style={{ padding: '11px 8px', width: 52 }}>
+                                                <button type="button" onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block' }}>
+                                                    {product.image ? (
+                                                        <img src={product.image} alt={product.name}
+                                                            style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', display: 'block' }} />
+                                                    ) : (
+                                                        <div style={{ width: 38, height: 38, borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16 }}>—</div>
+                                                    )}
+                                                </button>
+                                            </td>
+                                            <td style={{ padding: '11px 14px', maxWidth: 260 }}>
+                                                <button type="button" onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                                                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', lineHeight: 1.3 }}>{product.name}</div>
+                                                </button>
+                                            </td>
+                                            <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                                                <code style={{ fontSize: 11.5, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: '#475569', background: '#f1f5f9', padding: '2px 7px', borderRadius: 5 }}>
+                                                    {product.reference || '—'}
+                                                </code>
+                                            </td>
+                                            <td className="hidden md:table-cell" style={{ padding: '11px 14px', maxWidth: 200 }}>
+                                                <span style={{ fontSize: 12.5, color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}
+                                                    title={getCategoryList(product).join(', ')}>
+                                                    {getCategoryList(product).join(', ') || product.category}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                                                <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>
+                                                    {product.price ? `${product.price} €` : <span style={{ color: '#94a3b8' }}>—</span>}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                                                <span style={{
+                                                    display: 'inline-flex', alignItems: 'center', padding: '3px 9px',
+                                                    borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                                                    background: product.stock_quantity > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                                    color: product.stock_quantity > 0 ? '#059669' : '#dc2626',
+                                                }}>
+                                                    {product.stock_quantity} ks
+                                                </span>
+                                            </td>
+                                            <td className="hidden lg:table-cell" style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                                                <span style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                    padding: '3px 9px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                                                    background: product.is_visible ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                                                    color: product.is_visible ? '#059669' : '#d97706',
+                                                }}>
+                                                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: product.is_visible ? '#10b981' : '#f59e0b', flexShrink: 0 }} />
+                                                    {product.is_visible ? 'Viditeľný' : 'Skrytý'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '11px 16px 11px 14px', whiteSpace: 'nowrap' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                                                    <button onClick={() => { setReceiptProduct(product); setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' }); }} title="Naskladniť"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, color: '#10b981', lineHeight: 1 }}>
+                                                        <ArchiveBoxArrowDownIcon style={{ width: 16, height: 16 }} />
+                                                    </button>
+                                                    <button onClick={() => handleEdit(product)} title="Upraviť"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, color: '#06b6d4', lineHeight: 1 }}>
+                                                        <PencilIcon style={{ width: 16, height: 16 }} />
+                                                    </button>
+                                                    <button onClick={() => handleDelete(product)} title="Odstrániť"
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, color: '#ef4444', lineHeight: 1 }}>
+                                                        <TrashIcon style={{ width: 16, height: 16 }} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {products.length === 0 && (
+                                        <tr>
+                                            <td colSpan={9} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                                                Nenašli sa žiadne produkty pre zadané filtre.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
+                )}
 
-                        {totalPages > 1 && (
-                            <div className="mt-4 flex items-center justify-between">
-                                <p className="text-sm text-gray-600">
-                                    Strana <span className="font-semibold">{displayPage}</span> z <span className="font-semibold">{totalPages}</span>
-                                    <span className="ml-2 text-gray-400">({totalCount} produktov)</span>
-                                </p>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={goToPreviousPage}
-                                        disabled={!canGoPrevious || isFetching}
-                                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
-                                        ← Predchádzajúca
-                                    </button>
-                                    <button
-                                        onClick={goToNextPage}
-                                        disabled={!canGoNext || isFetching}
-                                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                    >
-                                        Ďalšia →
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </>
+                {/* ── Bottom pagination ── */}
+                {totalPages > 1 && !isLoading && (
+                    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <p style={{ fontSize: 13, color: '#64748b' }}>
+                            Strana <strong style={{ color: '#0f172a' }}>{displayPage}</strong> z <strong style={{ color: '#0f172a' }}>{totalPages}</strong>
+                            <span style={{ marginLeft: 8, color: '#94a3b8' }}>({totalCount} produktov)</span>
+                        </p>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={goToPreviousPage} disabled={!canGoPrevious || isFetching} style={paginationBtn(canGoPrevious && !isFetching)}>← Predchádzajúca</button>
+                            <button onClick={goToNextPage} disabled={!canGoNext || isFetching} style={paginationBtn(canGoNext && !isFetching)}>Ďalšia →</button>
+                        </div>
+                    </div>
                 )}
 
                 <ProductDetailModal
@@ -637,218 +634,89 @@ export default function AdminProducts() {
                     onEdit={(p) => { setViewModalOpen(false); handleEdit(p); }}
                 />
 
+                {/* ── Edit / Create modal ── */}
                 {isModalOpen && (
-                        <div className="fixed inset-0 z-10 overflow-y-auto">
-                        <div className="flex items-end sm:items-center justify-center min-h-screen px-4 pb-0 pt-4 sm:pt-0 sm:p-0">
-                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsModalOpen(false)}></div>
-                            <div className="relative bg-white rounded-t-2xl sm:rounded-lg shadow-xl text-left overflow-hidden transform transition-all sm:my-8 w-full sm:max-w-lg z-20 max-h-[90dvh] flex flex-col">
-                                <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
-                                    <div className="px-6 py-5 bg-white overflow-y-auto flex-1">
-                                        <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">
-                                            {editingProduct ? 'Upraviť produkt' : 'Pridať nový produkt'}
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Názov produktu *</label>
-                                                <input type="text" required value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Popis</label>
-                                                <textarea value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"></textarea>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700">Kategória *</label>
-                                                    <select
-                                                        multiple
-                                                        required
-                                                        value={selectedCategories}
-                                                        onChange={(e) => setSelectedCategories(Array.from(e.target.selectedOptions).map((opt) => opt.value))}
-                                                        className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                                    >
-                                                        {categoryOptions.map((category) => (
-                                                            <option key={category} value={category}>{category}</option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="mt-2 flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={newCategory}
-                                                            onChange={(e) => setNewCategory(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                    e.preventDefault();
-                                                                    addNewCategory();
-                                                                }
-                                                            }}
-                                                            placeholder="Pridať novú kategóriu"
-                                                            className="w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={addNewCategory}
-                                                            className="px-3 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Pridať
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700">Cena (€) *</label>
-                                                    <input type="number" step="0.01" min="0" required value={formData.price || ''} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500" />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700">Množstvo na sklade *</label>
-                                                    <input type="number" required value={formData.stock_quantity || ''} onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) })} className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700">Fotografia produktu</label>
-                                                    <input type="file" ref={imageInputRef} accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                                                    {editingProduct?.image && !imageFile && (
-                                                        <p className="mt-1 text-xs text-gray-400">Produkt už obsahuje obrázok. Nový ho prepíše.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Kód kompatibility</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.compatibility_code || ''}
-                                                    onChange={(e) => setFormData({ ...formData, compatibility_code: e.target.value })}
-                                                    placeholder="napr. 0001"
-                                                    className="mt-1 w-full px-3 py-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Detaily (JSON)</label>
-                                                <textarea
-                                                    value={detailsJson}
-                                                    onChange={(e) => setDetailsJson(e.target.value)}
-                                                    rows={6}
-                                                    placeholder='{"key": "value"}'
-                                                    className="mt-1 w-full px-3 py-2 border rounded font-mono text-sm focus:ring-blue-500 focus:border-blue-500"
-                                                />
-                                            </div>
-                                            <div className="pt-1">
-                                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.is_visible ?? true}
-                                                        onChange={(e) => setFormData({ ...formData, is_visible: e.target.checked })}
-                                                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                                                    />
-                                                    Viditeľný v katalógu
-                                                </label>
-                                            </div>
-                                            {formData.group_name && (
-                                                <p className="text-xs text-gray-500">Skupina: <span className="font-medium">{formData.group_name}</span></p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition">Zrušiť</button>
-                                        <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition">
-                                            {editingProduct ? 'Uložiť zmeny' : 'Vytvoriť'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+                    <AdminEditModal
+                        product={editingProduct}
+                        onClose={() => setIsModalOpen(false)}
+                        onSave={handleSave}
+                        allCategories={categories}
+                        allCompat={allCompat}
+                        allRefs={allRefs.filter(r => r !== editingProduct?.reference)}
+                        isPending={createMutation.isPending || updateMutation.isPending}
+                    />
                 )}
             </div>
 
+            {/* ── Stock receipt modal ── */}
             {receiptProduct && (
-                <div className="fixed inset-0 z-10 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setReceiptProduct(null)}></div>
-                        <div className="relative bg-white rounded-lg shadow-xl w-full sm:max-w-md z-20">
-                            <form onSubmit={(e) => {
-                                e.preventDefault();
-                                const isWildcard = receiptProduct.parameters?.type === 'wildcard_group';
-                                if (isWildcard && !receiptForm.variant_reference) {
-                                    toast.error('Vyberte konkrétny variant produktu.');
-                                    return;
-                                }
-                                receiveStockMutation.mutate({
-                                    product_id: receiptProduct.id,
-                                    batch_number: receiptForm.batch_number,
-                                    quantity: receiptForm.quantity,
-                                    notes: receiptForm.notes,
-                                    ...(receiptForm.variant_reference ? { variant_reference: receiptForm.variant_reference } : {}),
-                                });
-                            }}>
-                                <div className="px-6 py-5">
-                                    <h3 className="text-lg font-bold text-gray-900 border-b pb-3 mb-4">Naskladniť tovar</h3>
-                                    <p className="text-sm text-gray-700 mb-4 font-medium">{receiptProduct.name}</p>
-                                    <div className="space-y-4">
-                                        {receiptProduct.parameters?.type === 'wildcard_group' && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700">Variant (ref. číslo)</label>
-                                                {receiptForm.variant_reference ? (
-                                                    <div className="mt-1 px-3 py-2 border rounded bg-slate-50 text-sm font-mono text-gray-800">
-                                                        {receiptForm.variant_reference}
-                                                    </div>
-                                                ) : (
-                                                    <select
-                                                        required
-                                                        value={receiptForm.variant_reference}
-                                                        onChange={(e) => setReceiptForm({ ...receiptForm, variant_reference: e.target.value })}
-                                                        className="mt-1 w-full px-3 py-2 border rounded focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                                                    >
-                                                        <option value="">— Vyberte variant —</option>
-                                                        {(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => (
-                                                            <option key={opt.reference} value={opt.reference}>
-                                                                {opt.reference}{opt.label ? ` · ${opt.label}` : ''} (teraz: {opt.stock_quantity ?? 0} ks)
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.55)', animation: 'modalIn 0.2s ease' }} onClick={() => setReceiptProduct(null)} />
+                    <div style={{ position: 'relative', background: '#fff', borderRadius: 16, boxShadow: '0 24px 48px rgba(15,23,42,0.2)', width: '100%', maxWidth: 460, maxHeight: '90dvh', display: 'flex', flexDirection: 'column', zIndex: 10, animation: 'modalSlide 0.25s cubic-bezier(0.2,0.9,0.3,1)' }}>
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const isWildcard = receiptProduct.parameters?.type === 'wildcard_group';
+                            if (isWildcard && !receiptForm.variant_reference) {
+                                toast.error('Vyberte konkrétny variant produktu.');
+                                return;
+                            }
+                            receiveStockMutation.mutate({
+                                product_id: receiptProduct.id,
+                                batch_number: receiptForm.batch_number,
+                                quantity: receiptForm.quantity,
+                                notes: receiptForm.notes,
+                                ...(receiptForm.variant_reference ? { variant_reference: receiptForm.variant_reference } : {}),
+                            });
+                        }} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>Naskladniť tovar</h3>
+                                <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#64748b' }}>{receiptProduct.name}</p>
+                            </div>
+                            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {receiptProduct.parameters?.type === 'wildcard_group' && (
+                                    <FieldGroup label="Variant (ref. číslo)">
+                                        {receiptForm.variant_reference ? (
+                                            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: '#475569' }}>
+                                                {receiptForm.variant_reference}
                                             </div>
+                                        ) : (
+                                            <DropdownSelect
+                                                value={receiptForm.variant_reference}
+                                                onChange={(value) => setReceiptForm({ ...receiptForm, variant_reference: value })}
+                                                placeholder="— Vyberte variant —"
+                                                options={(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
+                                                    value: opt.reference,
+                                                    label: `${opt.reference}${opt.label ? ` · ${opt.label}` : ''} (teraz: ${opt.stock_quantity ?? 0} ks)`,
+                                                }))}
+                                            />
                                         )}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Číslo šarže *</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={receiptForm.batch_number}
-                                                onChange={(e) => setReceiptForm({ ...receiptForm, batch_number: e.target.value })}
-                                                placeholder="napr. LOT-2026-001"
-                                                className="mt-1 w-full px-3 py-2 border rounded focus:ring-emerald-500 focus:border-emerald-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Počet kusov *</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                min={1}
-                                                value={receiptForm.quantity}
-                                                onChange={(e) => setReceiptForm({ ...receiptForm, quantity: parseInt(e.target.value) || 1 })}
-                                                className="mt-1 w-full px-3 py-2 border rounded focus:ring-emerald-500 focus:border-emerald-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Poznámka (nepovinné)</label>
-                                            <textarea
-                                                value={receiptForm.notes}
-                                                onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })}
-                                                rows={2}
-                                                className="mt-1 w-full px-3 py-2 border rounded focus:ring-emerald-500 focus:border-emerald-500"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
-                                    <button type="button" onClick={() => setReceiptProduct(null)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition">Zrušiť</button>
-                                    <button type="submit" disabled={receiveStockMutation.isPending} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 transition">
-                                        {receiveStockMutation.isPending ? 'Ukladám...' : 'Naskladniť'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                                    </FieldGroup>
+                                )}
+                                <FieldGroup label="Číslo šarže *">
+                                    <StyledInput type="text" required value={receiptForm.batch_number}
+                                        onChange={(e) => setReceiptForm({ ...receiptForm, batch_number: e.target.value })}
+                                        placeholder="napr. LOT-2026-001" />
+                                </FieldGroup>
+                                <FieldGroup label="Počet kusov *">
+                                    <StyledInput type="number" required min={1} value={receiptForm.quantity}
+                                        onChange={(e) => setReceiptForm({ ...receiptForm, quantity: parseInt(e.target.value) || 1 })} />
+                                </FieldGroup>
+                                <FieldGroup label="Poznámka (nepovinné)">
+                                    <StyledTextarea value={receiptForm.notes}
+                                        onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })} rows={2} />
+                                </FieldGroup>
+                            </div>
+                            <div style={{ padding: '14px 24px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fafafa', borderRadius: '0 0 16px 16px' }}>
+                                <button type="button" onClick={() => setReceiptProduct(null)}
+                                    style={{ padding: '9px 18px', borderRadius: 8, fontSize: 13.5, fontWeight: 500, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer' }}>
+                                    Zrušiť
+                                </button>
+                                <button type="submit" disabled={receiveStockMutation.isPending}
+                                    style={{ padding: '9px 20px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', cursor: receiveStockMutation.isPending ? 'not-allowed' : 'pointer', opacity: receiveStockMutation.isPending ? 0.7 : 1 }}>
+                                    {receiveStockMutation.isPending ? 'Ukladám...' : 'Naskladniť'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -16,6 +16,7 @@ type PendingRefreshRequest = {
 export class AuthService {
     private isRefreshing = false;
     private pendingRefreshRequests: PendingRefreshRequest[] = [];
+    private loginRedirectInProgress = false;
 
     getUserMeta(): UserMeta | null {
         try {
@@ -38,9 +39,17 @@ export class AuthService {
         return this.getUserMeta() !== null;
     }
 
+    isLoginRedirectInProgress(): boolean {
+        return this.loginRedirectInProgress;
+    }
+
     redirectToLogin(path = '/login'): void {
-        if (window.location.pathname === path) return;
-        window.location.href = path;
+        if (this.loginRedirectInProgress || window.location.pathname === path) {
+            return;
+        }
+
+        this.loginRedirectInProgress = true;
+        window.location.replace(path);
     }
 
     async refreshAccessToken(): Promise<void> {

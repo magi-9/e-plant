@@ -1,8 +1,10 @@
 import csv
 import json
+import os
 import re
 from copy import copy
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -10,7 +12,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.db import models, transaction
 from django.db.models import Count, Sum
-from django.http import HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -36,6 +38,7 @@ from .compatibility import (
     get_compatibility_options,
     get_ref_prefixes_for_code,
 )
+from .cache_utils import invalidate_product_stats_cache
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
 
@@ -76,6 +79,14 @@ def _apply_product_filters(queryset, request):
             parameters__options__icontains=search
         )  # catches variant reference numbers
         qs = qs.filter(search_filter)
+        if re.fullmatch(r"\d{2}\.\d{3}\.\d{3}\.\d{2}-\d", search):
+            qs = qs.annotate(
+                exact_reference_match=models.Case(
+                    models.When(reference__iexact=search, then=0),
+                    default=1,
+                    output_field=models.IntegerField(),
+                )
+            ).order_by("exact_reference_match", "name", "id")
 
     categories = _parse_categories(request)
     if categories:
@@ -101,6 +112,30 @@ def _apply_product_filters(queryset, request):
         qs = qs.filter(stock_quantity__gt=0)
     elif stock_param == "out":
         qs = qs.filter(stock_quantity=0)
+
+    min_price_raw = request.query_params.get("min_price")
+    max_price_raw = request.query_params.get("max_price")
+    min_price = None
+    max_price = None
+    if min_price_raw not in (None, ""):
+        try:
+            min_price = Decimal(min_price_raw)
+        except (InvalidOperation, TypeError):
+            raise ValidationError({"min_price": "Must be a valid number."})
+    if max_price_raw not in (None, ""):
+        try:
+            max_price = Decimal(max_price_raw)
+        except (InvalidOperation, TypeError):
+            raise ValidationError({"max_price": "Must be a valid number."})
+    if min_price is not None or max_price is not None:
+        price_filter = models.Q()
+        if min_price is not None:
+            price_filter &= models.Q(price__gte=min_price)
+        if max_price is not None:
+            price_filter &= models.Q(price__lte=max_price) | models.Q(
+                price__isnull=True
+            )
+        qs = qs.filter(price_filter)
 
     compat_code = request.query_params.get("compatibility_code", "").strip()
     if compat_code:
@@ -147,6 +182,7 @@ def _option_entry(m):
         "label": option_label,
         "parameter_code": (m.parameters or {}).get("parameter_code", ""),
         "option_tokens": (m.parameters or {}).get("option_tokens", ""),
+        "engaging": (m.parameters or {}).get("engaging"),
     }
 
 
@@ -341,6 +377,8 @@ class ProductViewSet(viewsets.ModelViewSet):
                 request.query_params.get("search")
                 or request.query_params.get("group")
                 or request.query_params.get("ordering")
+                or request.query_params.get("min_price")
+                or request.query_params.get("max_price")
                 or _parse_categories(request)
             )
             if not has_filters:
@@ -405,6 +443,7 @@ class AdminSeedView(APIView):
             out = StringIO()
             call_command("import_product_data", master=True, update=True, stdout=out)
             messages.append(out.getvalue())
+            invalidate_product_stats_cache()
         except Exception as e:
             return Response(
                 {
@@ -634,6 +673,8 @@ class AdminBulkSetVisibleView(APIView):
         updated_count = Product.objects.filter(pk__in=ids).update(
             is_visible=bool(is_visible)
         )
+        if updated_count:
+            invalidate_product_stats_cache()
         return Response({"updated": updated_count}, status=status.HTTP_200_OK)
 
 
@@ -681,6 +722,7 @@ class AdminCategoriesView(APIView):
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
 
 
+@lru_cache(maxsize=1)
 def _load_allowed_categories() -> set[str]:
     """Return normalized keys of categories allowed by data/raw/visible_categories.txt."""
     from pathlib import Path
@@ -736,15 +778,83 @@ class ProductCategoriesView(APIView):
         if not is_admin:
             import re as _re
 
-            allowed = _load_allowed_categories()
-            if allowed:
-                categories = {
-                    c
-                    for c in categories
-                    if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
-                }
+            db_visible = GroupingSettings.get().visible_categories
+            if db_visible is not None:
+                visible_set = {c.strip() for c in db_visible if c.strip()}
+                categories = {c for c in categories if c in visible_set}
+            else:
+                allowed = _load_allowed_categories()
+                if allowed:
+                    categories = {
+                        c
+                        for c in categories
+                        if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
+                    }
 
         return Response({"categories": sorted(categories)}, status=status.HTTP_200_OK)
+
+
+class AdminCategoryVisibilityView(APIView):
+    """Admin: get all categories with visibility flags; PUT to update visible list."""
+
+    permission_classes = (permissions.IsAdminUser,)
+
+    def _all_categories(self) -> set[str]:
+        raw_cats = (
+            Product.objects.exclude(category="")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        params_cats = (
+            Product.objects.exclude(parameters__all_categories__isnull=True)
+            .exclude(parameters__all_categories="")
+            .values_list("parameters__all_categories", flat=True)
+        )
+        categories: set[str] = set()
+        for cat in raw_cats:
+            if cat:
+                categories.add(cat.strip())
+        for raw in params_cats:
+            if raw:
+                for part in raw.split(";"):
+                    part = part.strip()
+                    if part:
+                        categories.add(part)
+        return categories
+
+    def get(self, request, *args, **kwargs):
+        import re as _re
+
+        all_cats = self._all_categories()
+        settings = GroupingSettings.get()
+
+        if settings.visible_categories is not None:
+            visible_set = {c.strip() for c in settings.visible_categories if c.strip()}
+        else:
+            allowed = _load_allowed_categories()
+            if allowed:
+                visible_set = {
+                    c
+                    for c in all_cats
+                    if _re.sub(r"[^A-Z0-9]", "", c.upper()) in allowed
+                }
+            else:
+                visible_set = set(all_cats)
+
+        result = [{"name": c, "visible": c in visible_set} for c in sorted(all_cats)]
+        return Response({"categories": result})
+
+    def put(self, request, *args, **kwargs):
+        visible = request.data.get("visible_categories")
+        if not isinstance(visible, list):
+            return Response(
+                {"error": "visible_categories must be a list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        settings = GroupingSettings.get()
+        settings.visible_categories = [str(c) for c in visible]
+        settings.save(update_fields=["visible_categories"])
+        return Response({"visible_categories": settings.visible_categories})
 
 
 class CompatibilityOptionsView(APIView):
@@ -998,6 +1108,9 @@ class AdminProductImport(APIView):
                         products_to_update.values(), fields_to_update
                     )
 
+            if processed_count:
+                invalidate_product_stats_cache()
+
             return Response(
                 {"message": f"Successfully processed {processed_count} products."},
                 status=status.HTTP_200_OK,
@@ -1178,6 +1291,9 @@ class AdminProductFullImport(APIView):
             if to_update:
                 Product.objects.bulk_update(to_update, update_fields, batch_size=200)
 
+        if to_create or to_update:
+            invalidate_product_stats_cache()
+
         return Response(
             {
                 "message": f"Import dokončený. Vytvorených: {len(to_create)}, aktualizovaných: {len(to_update)}.",
@@ -1272,3 +1388,13 @@ class ProductInquiryView(APIView):
                 {"error": "Došlo k chybe pri odoslaní dotazu."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class CatalogPdfView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        path = "/data/raw/PRODUCT-REFERENCE-0326_01.pdf"
+        if not os.path.exists(path):
+            raise Http404("Catalog PDF not found")
+        return FileResponse(open(path, "rb"), content_type="application/pdf")

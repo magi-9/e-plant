@@ -13,12 +13,74 @@ Rules
 from django.db import transaction
 
 from ..grouping import storefront_group_key
+from ..compatibility import get_compatibility_codes_for_ref
 from ..models import Product, WildcardGroup
 
 
 def _build_norm_key(product) -> str:
     """Return the pipe-delimited normalisation key stored on WildcardGroup.norm_key."""
     return "|".join(storefront_group_key(product))
+
+
+def _compatibility_group_value(product) -> str:
+    """Return the compatibility value used for automatic reference-variant grouping."""
+    params = product.parameters or {}
+    compat_code = str(params.get("compatibility_code") or "").strip()
+    if compat_code:
+        return compat_code
+    return ",".join(get_compatibility_codes_for_ref(product.reference or ""))
+
+
+def _one_digit_reference_masks(reference: str | None) -> list[str]:
+    """Return masks made by replacing exactly one digit in the reference with x."""
+    ref = (reference or "").strip()
+    if not ref:
+        return []
+    return [
+        f"{ref[:idx]}x{ref[idx + 1:]}" for idx, char in enumerate(ref) if char.isdigit()
+    ]
+
+
+def _reference_variant_keys(product) -> list[str]:
+    """Return grouping keys for products whose references differ by one digit."""
+    price = str(product.price) if product.price is not None else ""
+    compat = _compatibility_group_value(product)
+    if not price or not compat:
+        return []
+    return [
+        f"ref_variant|{mask}|{price}|{compat}"
+        for mask in _one_digit_reference_masks(product.reference)
+    ]
+
+
+def _build_group_buckets(products: list[Product]) -> dict[str, list[Product]]:
+    """Build auto-group buckets, preferring reference masks over legacy name keys."""
+    candidate_ref_buckets: dict[str, list[Product]] = {}
+    for product in products:
+        for key in _reference_variant_keys(product):
+            candidate_ref_buckets.setdefault(key, []).append(product)
+
+    buckets: dict[str, list[Product]] = {}
+    assigned_ids: set[int] = set()
+    for key, members in sorted(
+        candidate_ref_buckets.items(),
+        key=lambda item: (-len(item[1]), item[0]),
+    ):
+        available_members = [
+            member for member in members if member.id not in assigned_ids
+        ]
+        if len(available_members) < 2:
+            continue
+        buckets[key] = available_members
+        assigned_ids.update(member.id for member in available_members)
+
+    for product in products:
+        if product.id in assigned_ids:
+            continue
+        key = _build_norm_key(product)
+        buckets.setdefault(key, []).append(product)
+
+    return buckets
 
 
 def sync_wildcard_groups() -> dict:
@@ -39,11 +101,7 @@ def sync_wildcard_groups() -> dict:
         Product.objects.filter(is_visible=True).exclude(id__in=manual_product_ids)
     )
 
-    # Group by norm_key
-    buckets: dict[str, list[Product]] = {}
-    for p in eligible:
-        key = _build_norm_key(p)
-        buckets.setdefault(key, []).append(p)
+    buckets = _build_group_buckets(eligible)
 
     # Existing auto-generated groups indexed by norm_key
     existing: dict[str, WildcardGroup] = {

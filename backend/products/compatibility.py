@@ -16,7 +16,7 @@ def _ref_family(ref):
 
 @lru_cache(maxsize=1)
 def _load():
-    """Return {code: frozenset(family_prefixes)} mapping, ignoring section."""
+    """Return {code: frozenset(family_prefixes)} mapping (used for filtering by code)."""
     if not os.path.exists(_CSV_PATH):
         return {}
     raw = {}
@@ -26,6 +26,21 @@ def _load():
             ref = row.get("reference", "").strip()
             if code and ref:
                 raw.setdefault(code, set()).add(_ref_family(ref))
+    return {k: frozenset(v) for k, v in raw.items()}
+
+
+@lru_cache(maxsize=1)
+def _load_ref_to_codes():
+    """Return {ref: frozenset(codes)} for exact per-product compatibility lookup."""
+    if not os.path.exists(_CSV_PATH):
+        return {}
+    raw = {}
+    with open(_CSV_PATH, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = row.get("compatibility_code", "").strip()
+            ref = row.get("reference", "").strip()
+            if code and ref:
+                raw.setdefault(ref, set()).add(code)
     return {k: frozenset(v) for k, v in raw.items()}
 
 
@@ -51,15 +66,14 @@ def get_ref_prefixes_for_code(code):
 
 
 def get_compatibility_codes_for_ref(ref):
-    """Return sorted list of compatibility codes that apply to a product reference."""
+    """Return sorted list of compatibility codes for this exact product reference.
+
+    Uses per-ref lookup from compatibility_options.csv so that only products
+    explicitly listed in the PDF receive compatibility codes.
+    """
     if not ref:
         return []
-    parts = ref.split(".")
-    if len(parts) < 4:
-        return []
-    family = ".".join(parts[:3])
-    data = _load()
-    return sorted(code for code, prefixes in data.items() if family in prefixes)
+    return sorted(_load_ref_to_codes().get(ref, frozenset()))
 
 
 def get_compatibility_counts():

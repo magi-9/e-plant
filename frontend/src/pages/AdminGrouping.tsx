@@ -136,9 +136,9 @@ export default function AdminGrouping() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <AdminNav />
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+            <AdminNav />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h1 className="text-3xl font-bold text-slate-900 mb-2">Správa groupingu</h1>
                 <p className="text-sm text-slate-500 mb-6">
                     Nastavte wildcard grouping a spravujte skupiny produktov.

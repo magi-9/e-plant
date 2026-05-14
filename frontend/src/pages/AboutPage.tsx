@@ -48,7 +48,7 @@ export default function AboutPage() {
                 <li>Uhlové a priame abutmenty</li>
                 <li>Skenovacie telesá TiBase</li>
                 <li>Multi-Unit abutmenty</li>
-                <li>CAD/CAM individuálne suprakonstrukcie</li>
+                <li>CAD/CAM individuálne suprakonštrukcie</li>
                 <li>Digitálne workflow riešenia</li>
               </ul>
               <p className="pt-2">
