@@ -338,6 +338,8 @@ def parse_pdf_compatibility_rows(pdf_text):
         refs = REFERENCE_PATTERN.findall(line)
         if not refs:
             continue
+        if not current_code:
+            continue
 
         option_tokens = extract_option_tokens(line, current_section, current_ch_vals)
         for ref in refs:
@@ -369,6 +371,18 @@ def parse_pdf_compatibility_rows(pdf_text):
                     "engaging": engaging,
                 }
             )
+
+        if (
+            current_code == "0268"
+            and "SCREW" in current_section
+            and "LENGTH" in current_section
+            and "43.632.201.01-2" in refs
+        ):
+            current_code = ""
+            current_section = ""
+            current_ch_vals = []
+            current_engaging = None
+            engaging_col_positions = None
 
     return rows
 
@@ -845,9 +859,25 @@ _PRODUCT_ALPHA_DI_CORRECTIONS = {
 }
 
 
+_CAPS_REFERENCE_OPTIONS = {
+    "49.418.000.01-2": ("3.8", "Regular"),
+    "49.418.000.02-2": ("3.8", "Wide"),
+    "49.419.000.01-2": ("6", "Regular"),
+    "49.419.000.02-2": ("6", "Wide"),
+    "49.420.000.01-2": ("8", "Regular"),
+    "49.420.000.02-2": ("8", "Wide"),
+}
+
+
 def _product_name_option_tokens(name: str, reference: str = "") -> str:
     """Extract missing technical dimensions from product names when the PDF table omits them."""
     parts = []
+    caps_options = _CAPS_REFERENCE_OPTIONS.get(reference)
+    if caps_options:
+        height, type_label = caps_options
+        parts.append(f"H(mm):{height}")
+        parts.append(f"Typ:{type_label}")
+
     das_multi_unit_m = re.search(
         r"\bDAS\s+Multi-Unit\s+(\d+(?:[\.,]\d+)?)\s*[º°].*?\bG(\d+(?:[\.,]\d+)?(?:/\d+(?:[\.,]\d+)?)?)",
         name,
@@ -1005,6 +1035,11 @@ def convert_catalog_pdf_options():
         pdf_text_for_systems = pdf_text
     else:
         pdf_text_for_systems = load_pdf_text(pdf_path)
+        if pdf_text_for_systems:
+            rows = parse_pdf_compatibility_rows(pdf_text_for_systems)
+            write_compatibility_options_csv(rows)
+        else:
+            print("compatibility_options.csv: skipped (could not parse PDF text)")
 
     code_to_systems = parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
     code_to_systems = _apply_system_name_corrections(code_to_systems)

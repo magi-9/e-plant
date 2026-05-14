@@ -12,6 +12,13 @@ def normalized_storefront_name(name: str) -> str:
     return re.sub(r"\s+", " ", without_variant).strip().casefold()
 
 
+def strip_gh_variant_from_name(name: str) -> str:
+    """Remove GH/G-variant markers from a display name, keeping original casing."""
+    raw = (name or "").strip()
+    without_variant = re.sub(r"\bG\d+(?:[\.,]\d+)?\b", "", raw, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", without_variant).strip()
+
+
 def storefront_group_key(product):
     return (
         normalized_storefront_name(product.name or ""),

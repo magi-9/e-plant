@@ -12,7 +12,7 @@ Rules
 
 from django.db import transaction
 
-from ..grouping import storefront_group_key
+from ..grouping import storefront_group_key, strip_gh_variant_from_name
 from ..compatibility import get_compatibility_codes_for_ref
 from ..models import Product, WildcardGroup
 
@@ -138,6 +138,12 @@ def sync_wildcard_groups() -> dict:
                 wg = existing[norm_key]
                 current_ids = set(wg.products.values_list("id", flat=True))
 
+                # Heal name if it still contains a GH variant segment
+                clean_name = strip_gh_variant_from_name(members[0].name)
+                if wg.name != clean_name:
+                    wg.name = clean_name
+                    wg.save(update_fields=["name"])
+
                 # Remove products that drifted out of this bucket
                 removed = current_ids - member_ids
                 if removed:
@@ -152,8 +158,7 @@ def sync_wildcard_groups() -> dict:
 
                 updated += 1
             else:
-                # Representative name: use the actual name of the first member
-                group_name = members[0].name
+                group_name = strip_gh_variant_from_name(members[0].name)
                 wg = WildcardGroup.objects.create(
                     name=group_name,
                     norm_key=norm_key,

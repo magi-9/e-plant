@@ -94,6 +94,30 @@ def test_parse_pdf_compatibility_rows_extracts_code_and_family():
     assert rows[2]["reference_family"] == "000"
 
 
+def test_parse_pdf_compatibility_rows_stops_0268_after_dynamic_screw_table():
+    pdf_text = """
+    COMPATIBLE WITH 0268
+    SCREW               LENGTH         SCREWDRIVER
+    18           43.618.201.01-2
+    41.320.068.01-2             24           43.624.201.01-2
+    32           43.632.201.01-2
+    DYNAMIC SCREWS TECHNICAL SPECIFICATIONS
+    41.320.068.01-2      2        25 N·cm     6,8
+    CAPS
+    49.418.000.01-2 (3,8 mm)
+    """
+
+    rows = convert_to_csv.parse_pdf_compatibility_rows(pdf_text)
+
+    assert [row["reference"] for row in rows] == [
+        "43.618.201.01-2",
+        "41.320.068.01-2",
+        "43.624.201.01-2",
+        "43.632.201.01-2",
+    ]
+    assert all(row["compatibility_code"] == "0268" for row in rows)
+
+
 def test_build_option_map_by_reference():
     parsed_rows = [
         {"reference": "54.315.002.21-2", "options": "αS:43º|GH(mm):0.3"},
@@ -179,6 +203,20 @@ def test_product_name_option_tokens_correct_known_dmt_angle():
     )
 
     assert tokens == "αdi:25°|SHANK:3"
+
+
+def test_product_name_option_tokens_fill_caps_height_and_type():
+    regular_tokens = convert_to_csv._product_name_option_tokens(
+        "CAPS 3,8mm S",
+        reference="49.418.000.01-2",
+    )
+    wide_tokens = convert_to_csv._product_name_option_tokens(
+        "CAPS 8mm W",
+        reference="49.420.000.02-2",
+    )
+
+    assert regular_tokens == "H(mm):3.8|Typ:Regular"
+    assert wide_tokens == "H(mm):8|Typ:Wide"
 
 
 def test_product_name_option_tokens_extract_multi_unit_gh_and_type():

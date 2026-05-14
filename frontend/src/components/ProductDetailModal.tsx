@@ -7,6 +7,7 @@ import { getProduct, type Product } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
+import DropdownSelect from './DropdownSelect';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 
@@ -43,6 +44,63 @@ export default function ProductDetailModal({
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const isGroupType = product?.parameters?.type === 'wildcard_group';
     const hasVariants = isGroupType && variantOptions.length > 0;
+
+    const varyingTokenKeys = useMemo(() => {
+        if (!hasVariants || variantOptions.length < 2) return new Set<string>();
+        const allKeys = new Set<string>();
+        variantOptions.forEach((opt) => {
+            (opt.option_tokens || '').split('|').forEach((token) => {
+                const ci = token.indexOf(':');
+                if (ci !== -1) allKeys.add(token.slice(0, ci));
+            });
+        });
+        const varying = new Set<string>();
+        allKeys.forEach((key) => {
+            const values = new Set(
+                variantOptions.map((opt) => {
+                    const token = (opt.option_tokens || '').split('|').find((t) => t.startsWith(key + ':'));
+                    return token ? token.slice(key.length + 1) : '';
+                })
+            );
+            if (values.size > 1) varying.add(key);
+        });
+        return varying;
+    }, [hasVariants, variantOptions]);
+
+    const engagingVaries = useMemo(
+        () => hasVariants && variantOptions.length > 1
+            && new Set(variantOptions.map((o) => o.engaging)).size > 1,
+        [hasVariants, variantOptions]
+    );
+
+    const variantDropdownOptions = useMemo(() => {
+        const refNumberPattern = /\d+(?:\.\d+)+-\d+/g;
+        const isOnlyRefNumbers = (val: string) => {
+            const withoutRefNumbers = val.trim()
+                .replace(refNumberPattern, '')
+                .replace(/[/,;\s]+/g, '');
+            return withoutRefNumbers.length === 0;
+        };
+
+        return variantOptions.map((option) => {
+            const parts: string[] = [];
+            if (varyingTokenKeys.size > 0) {
+                (option.option_tokens || '').split('|').forEach((token) => {
+                    const ci = token.indexOf(':');
+                    if (ci === -1) return;
+                    const key = token.slice(0, ci);
+                    const val = token.slice(ci + 1);
+                    if (varyingTokenKeys.has(key) && !isOnlyRefNumbers(val)) parts.push(`${key}: ${val}`);
+                });
+            }
+            if (engagingVaries) {
+                if (option.engaging === 1) parts.push('ENGAGING');
+                else if (option.engaging === 0) parts.push('NON-ENGAGING');
+            }
+            const label = parts.length > 0 ? parts.join(' · ') : (option.parameter_code || option.label || '');
+            return { value: option.reference || '', label };
+        });
+    }, [variantOptions, varyingTokenKeys, engagingVaries]);
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || variantOptions[0]?.id || null
@@ -346,37 +404,12 @@ export default function ProductDetailModal({
                                                     )}
                                                     {hasVariants && (
                                                         <div className="mb-5">
-                                                            <select
+                                                            <DropdownSelect
                                                                 value={selectedVariant?.reference || defaultVariantRef}
-                                                                onChange={(e) => setSelectedVariantRef(e.target.value)}
-                                                                className="w-full rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-800 appearance-none cursor-pointer transition-all border-2 border-cyan-500 shadow-md hover:shadow-lg focus:shadow-lg"
-                                                                style={{
-                                                                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230891b2' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                                                                  backgroundRepeat: 'no-repeat',
-                                                                  backgroundPosition: 'right 0.5rem center',
-                                                                  backgroundSize: '1.25rem',
-                                                                  paddingRight: '2.75rem'
-                                                                }}
-                                                            >
-                                                                {variantOptions.map((option) => {
-                                                                    const qty = option.stock_quantity ?? null;
-                                                                    const stockLabel = !isLoggedIn
-                                                                        ? ''
-                                                                        : qty === null
-                                                                            ? ''
-                                                                            : qty > 0
-                                                                                ? ` · ${qty} ks`
-                                                                                : ' · vypredané';
-                                                                    const displayLabel = option.reference && option.name
-                                                                        ? `${option.reference} – ${option.name}`
-                                                                        : option.reference || option.name || option.label || '';
-                                                                    return (
-                                                                        <option key={option.reference} value={option.reference}>
-                                                                            {`${displayLabel}${stockLabel}`}
-                                                                        </option>
-                                                                    );
-                                                                })}
-                                                            </select>
+                                                                onChange={(value) => setSelectedVariantRef(value)}
+                                                                options={variantDropdownOptions}
+                                                                placeholder="Vybrať variant"
+                                                            />
                                                         </div>
                                                     )}
                                                 </div>
@@ -560,7 +593,7 @@ export default function ProductDetailModal({
                                                         return (
                                                             <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
                                                                 <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ spojenia:</dt>
-                                                                <dd className="text-gray-700 text-sm min-w-0">{eng === 1 ? 'Engaging' : 'Non-engaging'}</dd>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{eng === 1 ? 'ENGAGING' : 'NON-ENGAGING'}</dd>
                                                             </div>
                                                         );
                                                     }
