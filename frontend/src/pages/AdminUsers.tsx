@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
@@ -73,6 +73,19 @@ export default function AdminUsers() {
             createMutation.mutate({ email: formData.email, password: formData.password, is_staff: creatingRole === 'admin', is_active: formData.is_active } as any);
         }
     };
+
+    useEffect(() => {
+        if (!previewUser) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setPreviewUser(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewUser]);
 
     if (!canAccess) return null;
 
@@ -247,12 +260,17 @@ export default function AdminUsers() {
                 )}
 
                 {previewUser && (
-                    <div className="fixed inset-0 z-10 overflow-y-auto">
+                    <div className="fixed inset-0 z-[100] overflow-y-auto">
                         <div className="flex min-h-screen items-end justify-center px-4 pb-0 pt-4 sm:items-center sm:p-0">
                             <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setPreviewUser(null)} />
-                            <div className="z-20 w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg">
+                            <div
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="customer-preview-title"
+                                className="z-[101] w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg"
+                            >
                                 <div className="px-6 py-5">
-                                    <h3 className="text-lg font-bold text-gray-900">{fullName(previewUser) || previewUser.email}</h3>
+                                    <h3 id="customer-preview-title" className="text-lg font-bold text-gray-900">{fullName(previewUser) || previewUser.email}</h3>
                                     <p className="mt-1 text-sm text-gray-500">{previewUser.email}</p>
                                     <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>

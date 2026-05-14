@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -114,11 +114,12 @@ type PendingStatusChange = {
 export default function AdminOrders() {
     const canAccess = useAdminPageGuard();
     const [searchParams, setSearchParams] = useSearchParams();
+    const querySearchTerm = searchParams.get('q') ?? '';
 
     const queryClient = useQueryClient();
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') ?? '');
+    const [searchTerm, setSearchTerm] = useState(querySearchTerm);
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [amountMin, setAmountMin] = useState('');
@@ -132,6 +133,10 @@ export default function AdminOrders() {
         queryKey: ['adminOrders'],
         queryFn: getAdminOrders,
     });
+
+    useEffect(() => {
+        setSearchTerm(querySearchTerm);
+    }, [querySearchTerm]);
 
     const ordersList: Order[] = useMemo(() => {
         const ordersData: unknown = orders;
