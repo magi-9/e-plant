@@ -271,6 +271,23 @@ def test_row_to_option_tokens_links_dynamic_screws_to_screwdrivers():
     assert "SCREWDRIVER:43.624.201.01-2" in tokens
 
 
+def test_system_name_corrections_fix_known_pdf_typos():
+    """_apply_system_name_corrections must rename BIOMET 3L → BIOMET 3i and MEDINTAKA → MEDENTIKA."""
+    raw = {
+        "0001": ["BIOMET 3L", "BIOLOK"],
+        "0025": ["MEDINTAKA", "MEGAGEN"],
+        "0099": ["ANKLYOS", "CLEAN"],
+    }
+    corrected = convert_to_csv._apply_system_name_corrections(raw)
+
+    assert "BIOMET 3i" in corrected["0001"]
+    assert "BIOMET 3L" not in corrected["0001"]
+    assert "MEDENTIKA" in corrected["0025"]
+    assert "MEDINTAKA" not in corrected["0025"]
+    assert "ANKYLOS" in corrected["0099"]
+    assert "ANKLYOS" not in corrected["0099"]
+
+
 def test_row_to_option_tokens_labels_product_type_and_related_tools():
     adaptor_tokens = convert_to_csv._row_to_option_tokens(
         {"product_type": "ADAPTOR", "H_mm": "8/10/12"}

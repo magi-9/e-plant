@@ -771,6 +771,8 @@ def build_merged_import_csv(
 # Known OCR/parsing errors in PDF system names → correct canonical name
 _SYSTEM_NAME_CORRECTIONS = {
     "ANKLYOS": "ANKYLOS",
+    "BIOMET 3L": "BIOMET 3i",
+    "MEDINTAKA": "MEDENTIKA",
 }
 
 
