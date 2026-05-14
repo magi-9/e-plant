@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     adminInterventionDeleteOrder,
@@ -40,6 +41,10 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
+    return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
+};
 
 type DraftItem = {
     product_id: number;
@@ -108,10 +113,18 @@ type PendingStatusChange = {
 
 export default function AdminOrders() {
     const canAccess = useAdminPageGuard();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const querySearchTerm = searchParams.get('q') ?? '';
 
     const queryClient = useQueryClient();
     const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [searchTerm, setSearchTerm] = useState(querySearchTerm);
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [amountMin, setAmountMin] = useState('');
+    const [amountMax, setAmountMax] = useState('');
+    const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'amount_desc' | 'amount_asc'>('newest');
     const [drafts, setDrafts] = useState<Record<number, InterventionDraft>>({});
     const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<PendingStatusChange | null>(null);
@@ -120,6 +133,63 @@ export default function AdminOrders() {
         queryKey: ['adminOrders'],
         queryFn: getAdminOrders,
     });
+
+    useEffect(() => {
+        setSearchTerm(querySearchTerm);
+    }, [querySearchTerm]);
+
+    const ordersList: Order[] = useMemo(() => {
+        const ordersData: unknown = orders;
+        return Array.isArray(orders)
+            ? orders
+            : isPaginated<Order>(ordersData)
+                ? ordersData.results
+                : [];
+    }, [orders]);
+
+    const filtered = useMemo(() => {
+        const normalizedSearch = searchTerm.trim().toLowerCase();
+        const fromTime = dateFrom ? new Date(dateFrom).getTime() : null;
+        const toTime = dateTo ? new Date(dateTo).getTime() : null;
+        const minAmount = amountMin.trim() === '' ? null : Number(amountMin);
+        const maxAmount = amountMax.trim() === '' ? null : Number(amountMax);
+
+        return ordersList
+            .filter((order: Order) => {
+                if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+
+                const createdTime = new Date(order.created_at).getTime();
+                if (fromTime !== null && createdTime < fromTime) return false;
+                if (toTime !== null && createdTime > toTime) return false;
+
+                const total = Number(order.total_price);
+                if (minAmount !== null && Number.isFinite(minAmount) && total < minAmount) return false;
+                if (maxAmount !== null && Number.isFinite(maxAmount) && total > maxAmount) return false;
+
+                if (!normalizedSearch) return true;
+                return [
+                    order.order_number,
+                    order.customer_name,
+                    order.email,
+                    order.phone,
+                    order.company_name,
+                    order.city,
+                    order.items.map((item) => item.product_name).join(' '),
+                ].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch);
+            })
+            .sort((a, b) => {
+                if (sortOrder === 'oldest') {
+                    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                }
+                if (sortOrder === 'amount_desc') {
+                    return Number(b.total_price) - Number(a.total_price);
+                }
+                if (sortOrder === 'amount_asc') {
+                    return Number(a.total_price) - Number(b.total_price);
+                }
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+    }, [amountMax, amountMin, dateFrom, dateTo, ordersList, searchTerm, sortOrder, statusFilter]);
 
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: number; status: string }) => updateOrderStatus(id, status),
@@ -164,22 +234,6 @@ export default function AdminOrders() {
         return <div className="p-8 text-center text-red-500 text-lg">Chyba pri načítavaní objednávok.</div>;
     }
 
-    const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
-        return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
-    };
-
-    const ordersData: unknown = orders;
-
-    const ordersList: Order[] = Array.isArray(orders)
-        ? orders
-        : isPaginated<Order>(ordersData)
-            ? ordersData.results
-            : [];
-
-    const filtered = statusFilter === 'all'
-        ? ordersList
-        : ordersList.filter((o: Order) => o.status === statusFilter);
-
     const counts = ordersList.reduce((acc: Record<string, number>, o: Order) => {
         acc[o.status] = (acc[o.status] ?? 0) + 1;
         return acc;
@@ -212,6 +266,17 @@ export default function AdminOrders() {
                 item.product_id === productId ? { ...item, quantity: safeQty } : item
             ),
         });
+    };
+
+    const updateSearch = (value: string) => {
+        setSearchTerm(value);
+        const next = new URLSearchParams(searchParams);
+        if (value.trim()) {
+            next.set('q', value);
+        } else {
+            next.delete('q');
+        }
+        setSearchParams(next, { replace: true });
     };
 
     const submitInterventionUpdate = (order: Order) => {
@@ -283,8 +348,47 @@ export default function AdminOrders() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-900">Správa objednávok</h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Celkom: <span className="font-semibold text-slate-700">{ordersList.length}</span> objednávok
+                        Zobrazené: <span className="font-semibold text-slate-700">{filtered.length}</span> z <span className="font-semibold text-slate-700">{ordersList.length}</span> objednávok
                     </p>
+                </div>
+
+                <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vyhľadávanie</label>
+                            <input
+                                type="search"
+                                value={searchTerm}
+                                onChange={(e) => updateSearch(e.target.value)}
+                                placeholder="Meno, e-mail, číslo objednávky..."
+                                className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Od</label>
+                            <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Do</label>
+                            <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Suma</label>
+                            <div className="mt-1 flex gap-2">
+                                <input type="number" min="0" step="0.01" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} placeholder="od" className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                <input type="number" min="0" step="0.01" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} placeholder="do" className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Triedenie</label>
+                            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                                <option value="newest">Najnovšie</option>
+                                <option value="oldest">Najstaršie</option>
+                                <option value="amount_desc">Suma od najvyššej</option>
+                                <option value="amount_asc">Suma od najnižšej</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Status filter tabs */}

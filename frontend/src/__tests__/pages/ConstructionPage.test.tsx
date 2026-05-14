@@ -11,9 +11,7 @@ describe('ConstructionPage', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole('heading', { name: /táto stránka je stále vo výstavbe/i }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /e-shop je otvorený/i })).toBeTruthy();
 
     expect(screen.getByText(/e-shop funguje normálne aj počas úprav/i)).toBeTruthy();
 

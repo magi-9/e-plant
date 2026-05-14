@@ -104,6 +104,7 @@ export interface Product {
             image?: string | null;
             parameter_code?: string;
             option_tokens?: string;
+            engaging?: number | null;
             label?: string;
             stock_quantity?: number;
             compatibility_codes?: string[];

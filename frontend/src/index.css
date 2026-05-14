@@ -21,11 +21,20 @@
 
 html {
   scrollbar-gutter: stable;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Custom CSS can go here */
 body {
   font-family: 'Inter', sans-serif;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @keyframes modalIn {

@@ -3,6 +3,17 @@ import client from './client';
 export interface User {
     id: number;
     email: string;
+    title?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    postal_code?: string;
+    is_company?: boolean;
+    company_name?: string;
+    ico?: string;
+    dic?: string;
     is_staff: boolean;
     is_active: boolean;
     date_joined: string;

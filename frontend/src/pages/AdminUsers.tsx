@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
 import AdminNav from '../components/AdminNav';
 import ConfirmModal from '../components/ConfirmModal';
@@ -8,10 +9,12 @@ import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 
 export default function AdminUsers() {
     const canAccess = useAdminPageGuard();
+    const navigate = useNavigate();
 
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [previewUser, setPreviewUser] = useState<User | null>(null);
     const [creatingRole, setCreatingRole] = useState<'admin' | 'client'>('client');
     const [formData, setFormData] = useState({ email: '', password: '', is_active: true });
     const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
@@ -31,6 +34,7 @@ export default function AdminUsers() {
 
     const admins = usersList.filter(u => u.is_staff);
     const clients = usersList.filter(u => !u.is_staff);
+    const fullName = (user: User) => [user.title, user.first_name, user.last_name].filter(Boolean).join(' ').trim();
 
     const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-users'], exact: false });
 
@@ -70,6 +74,19 @@ export default function AdminUsers() {
         }
     };
 
+    useEffect(() => {
+        if (!previewUser) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setPreviewUser(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewUser]);
+
     if (!canAccess) return null;
 
     if (isLoading) {
@@ -106,7 +123,8 @@ export default function AdminUsers() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Meno</th>
+                            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
                             <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Dátum registrácie</th>
                             <th className="relative px-4 py-3"><span className="sr-only">Akcie</span></th>
                         </tr>
@@ -114,7 +132,7 @@ export default function AdminUsers() {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {list.length === 0 && (
                             <tr>
-                                <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-400">
+                                <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">
                                     Žiadni {role === 'admin' ? 'administrátori' : 'klienti'}
                                 </td>
                             </tr>
@@ -125,16 +143,25 @@ export default function AdminUsers() {
                                     <div className="flex items-center">
                                         <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${role === 'admin' ? 'bg-purple-100' : 'bg-blue-100'}`}>
                                             <span className={`font-bold text-base ${role === 'admin' ? 'text-purple-600' : 'text-blue-600'}`}>
-                                                {user.email.charAt(0).toUpperCase()}
+                                                {(fullName(user) || user.email).charAt(0).toUpperCase()}
                                             </span>
                                         </div>
-                                        <div className="ml-3 font-medium text-gray-900 text-sm">{user.email}</div>
+                                        <div className="ml-3">
+                                            <div className="font-medium text-gray-900 text-sm">{fullName(user) || '-'}</div>
+                                            <div className="text-xs text-gray-500 sm:hidden">{user.email}</div>
+                                        </div>
                                     </div>
+                                </td>
+                                <td className="hidden sm:table-cell px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                    {user.email}
                                 </td>
                                 <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                                     {user.date_joined ? new Date(user.date_joined).toLocaleDateString('sk-SK') : '-'}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                    <button onClick={() => setPreviewUser(user)} className="text-slate-500 hover:text-slate-900 mr-3" title="Náhľad" aria-label={`Náhľad používateľa ${user.email}`}>
+                                        <EyeIcon className="h-5 w-5" />
+                                    </button>
                                     <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-3" title="Upraviť" aria-label={`Upraviť používateľa ${user.email}`}>
                                         <PencilIcon className="h-5 w-5" />
                                     </button>
@@ -149,6 +176,11 @@ export default function AdminUsers() {
             </div>
         </div>
     );
+
+    const openCustomerOrders = (user: User) => {
+        const query = fullName(user) || user.email;
+        navigate(`/admin/orders?q=${encodeURIComponent(query)}`);
+    };
 
     return (
         <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
@@ -222,6 +254,57 @@ export default function AdminUsers() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {previewUser && (
+                    <div className="fixed inset-0 z-[100] overflow-y-auto">
+                        <div className="flex min-h-screen items-end justify-center px-4 pb-0 pt-4 sm:items-center sm:p-0">
+                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setPreviewUser(null)} />
+                            <div
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="customer-preview-title"
+                                className="z-[101] w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg"
+                            >
+                                <div className="px-6 py-5">
+                                    <h3 id="customer-preview-title" className="text-lg font-bold text-gray-900">{fullName(previewUser) || previewUser.email}</h3>
+                                    <p className="mt-1 text-sm text-gray-500">{previewUser.email}</p>
+                                    <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Telefón</dt>
+                                            <dd className="mt-1 text-sm text-gray-900">{previewUser.phone || '-'}</dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Registrácia</dt>
+                                            <dd className="mt-1 text-sm text-gray-900">{previewUser.date_joined ? new Date(previewUser.date_joined).toLocaleDateString('sk-SK') : '-'}</dd>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Adresa</dt>
+                                            <dd className="mt-1 text-sm text-gray-900">
+                                                {[previewUser.street, [previewUser.postal_code, previewUser.city].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '-'}
+                                            </dd>
+                                        </div>
+                                        {previewUser.is_company && (
+                                            <div className="sm:col-span-2">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Firma</dt>
+                                                <dd className="mt-1 text-sm text-gray-900">
+                                                    {[previewUser.company_name, previewUser.ico ? `IČO: ${previewUser.ico}` : '', previewUser.dic ? `DIČ: ${previewUser.dic}` : ''].filter(Boolean).join(' · ')}
+                                                </dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                </div>
+                                <div className="flex flex-wrap justify-end gap-2 bg-gray-50 px-6 py-4">
+                                    <button type="button" onClick={() => setPreviewUser(null)} className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                        Zavrieť
+                                    </button>
+                                    <button type="button" onClick={() => openCustomerOrders(previewUser)} className="rounded bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-700">
+                                        Objednávky klienta
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 
-export function useAdminPageGuard(redirectTo = '/products'): boolean {
+export function useAdminPageGuard(redirectTo = '/login'): boolean {
     const navigate = useNavigate();
     const location = useLocation();
     const allowed = isAdmin();

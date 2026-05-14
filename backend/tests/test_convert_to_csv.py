@@ -94,6 +94,30 @@ def test_parse_pdf_compatibility_rows_extracts_code_and_family():
     assert rows[2]["reference_family"] == "000"
 
 
+def test_parse_pdf_compatibility_rows_stops_0268_after_dynamic_screw_table():
+    pdf_text = """
+    COMPATIBLE WITH 0268
+    SCREW               LENGTH         SCREWDRIVER
+    18           43.618.201.01-2
+    41.320.068.01-2             24           43.624.201.01-2
+    32           43.632.201.01-2
+    DYNAMIC SCREWS TECHNICAL SPECIFICATIONS
+    41.320.068.01-2      2        25 N·cm     6,8
+    CAPS
+    49.418.000.01-2 (3,8 mm)
+    """
+
+    rows = convert_to_csv.parse_pdf_compatibility_rows(pdf_text)
+
+    assert [row["reference"] for row in rows] == [
+        "43.618.201.01-2",
+        "41.320.068.01-2",
+        "43.624.201.01-2",
+        "43.632.201.01-2",
+    ]
+    assert all(row["compatibility_code"] == "0268" for row in rows)
+
+
 def test_build_option_map_by_reference():
     parsed_rows = [
         {"reference": "54.315.002.21-2", "options": "αS:43º|GH(mm):0.3"},
@@ -179,6 +203,89 @@ def test_product_name_option_tokens_correct_known_dmt_angle():
     )
 
     assert tokens == "αdi:25°|SHANK:3"
+
+
+def test_product_name_option_tokens_fill_caps_height_and_type():
+    regular_tokens = convert_to_csv._product_name_option_tokens(
+        "CAPS 3,8mm S",
+        reference="49.418.000.01-2",
+    )
+    wide_tokens = convert_to_csv._product_name_option_tokens(
+        "CAPS 8mm W",
+        reference="49.420.000.02-2",
+    )
+
+    assert regular_tokens == "H(mm):3.8|Typ:Regular"
+    assert wide_tokens == "H(mm):8|Typ:Wide"
+
+
+def test_parse_pdf_technical_spec_options_extracts_dynamic_screw_specs():
+    rows = convert_to_csv.parse_pdf_technical_spec_options(
+        "DYNAMIC SCREWS TECHNICAL SPECIFICATIONS\n"
+        "41.314.039.01-2     1,4       15 N·cm     3,9      1,8      2,1       -       "
+        "1,8       2,4     straight     -     45º Chamfer    Hexalobular 1,70"
+    )
+    expected_options = (
+        "METRIC:1.4|TORQUE:15 N·cm|TOTAL LENGTH(mm):3.9|THREAD LENGTH(mm):1.8|"
+        "A LENGTH(mm):2.1|C LENGTH(mm):1.8|HEAD Ø(mm):2.4|SEAT:straight|"
+        "THREAD ENTRY:45º Chamfer|CONNECTION:Hexalobular 1.70"
+    )
+
+    assert rows == [
+        {
+            "reference": "41.314.039.01-2",
+            "options": expected_options,
+        }
+    ]
+
+
+def test_parse_pdf_technical_spec_options_extracts_dynamic_milling_tool_specs():
+    rows = convert_to_csv.parse_pdf_technical_spec_options(
+        "DYNAMIC MILLING TOOL SPECIFICATIONS\n"
+        "33.435.758.01-2      2        35       1              7,5                1          4         50"
+    )
+    expected_options = (
+        "CUTTING Ø(mm):2|SEAT:35|CUTTING LENGTH(mm):1|USEFUL LENGTH(mm):7.5|"
+        "STEM CUTTING Ø(mm):1|SHANK:4|TOTAL LENGTH(mm):50"
+    )
+
+    assert rows == [
+        {
+            "reference": "33.435.758.01-2",
+            "options": expected_options,
+        }
+    ]
+
+
+def test_parse_pdf_technical_spec_options_extracts_straight_screw_specs():
+    rows = convert_to_csv.parse_pdf_technical_spec_options(
+        "STRARICHT SCREWS TECHNICAL SPECIFICATIONS\n"
+        "40.320.003.02-2     2          0,4    30 N·cm     7       3,25      5"
+        "         -        2        2,4    straight   45º Chamfer       Hex. 1,20"
+    )
+    expected_options = (
+        "METRIC:2|THREAD PITCH(mm):0.4|TORQUE:30 N·cm|TOTAL LENGTH(mm):7|"
+        "THREAD LENGTH(mm):3.25|A LENGTH(mm):5|C LENGTH(mm):2|HEAD Ø(mm):2.4|"
+        "SEAT:straight|THREAD ENTRY:45º Chamfer|CONNECTION:Hex. 1.20"
+    )
+
+    assert rows == [
+        {
+            "reference": "40.320.003.02-2",
+            "options": expected_options,
+        }
+    ]
+
+
+def test_manual_override_removes_false_scanbody_height():
+    tokens, catalog_section = convert_to_csv._apply_product_manual_override(
+        "53.413.025.01-2",
+        ["H(mm):30.413", "ADAPTOR:23.413.025.01-2"],
+        "DYNAMIC SCANBODY",
+    )
+
+    assert tokens == ["ADAPTOR:23.413.025.01-2"]
+    assert catalog_section == "DYNAMIC SCANBODY"
 
 
 def test_product_name_option_tokens_extract_multi_unit_gh_and_type():
