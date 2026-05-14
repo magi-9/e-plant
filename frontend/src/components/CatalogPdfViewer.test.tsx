@@ -51,6 +51,7 @@ describe('CatalogPdfViewer', () => {
 
         expect(screen.queryByText('Žiadna zhoda v katalógu')).toBeNull()
         expect(screen.getByText('Strana 177')).toBeTruthy()
+        expect(document.querySelector('[data-testid="catalog-reference-highlight"]')).toBeNull()
         expect(globalThis.fetch).toHaveBeenCalledWith(
             'http://localhost:5002/api/products/catalog-pdf/pages/?reference=50.315.081.01-2',
             { credentials: 'include' },
