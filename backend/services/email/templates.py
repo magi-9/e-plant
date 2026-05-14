@@ -24,6 +24,17 @@ def _pickup_address_or_default(shop) -> str:
     return escape(pickup_address) if pickup_address else "Osobný odber"
 
 
+def _pickup_contact_block(shop, include_phone: bool = True) -> str:
+    lines = [_pickup_address_or_default(shop)]
+    opening_hours = _text_or_empty(getattr(shop, "opening_hours", "")).strip()
+    company_phone = _text_or_empty(getattr(shop, "company_phone", "")).strip()
+    if opening_hours:
+        lines.append(f"Otváracie hodiny: {escape(opening_hours)}")
+    if include_phone and company_phone:
+        lines.append(f"Tel: {escape(company_phone)}")
+    return "<br>".join(lines)
+
+
 def verification_email_html(
     verify_url: str, company_name: str = DEFAULT_COMPANY_PROFILE["company_name"]
 ) -> str:
@@ -351,8 +362,7 @@ def order_confirmation_customer_html(
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
                       <strong style="color:#1e293b;">{escape(order.customer_name)}</strong><br>
-                      {(f'{_pickup_address_or_default(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}<br>')}
-                      <span style="color:#64748b;">Tel: {escape(order.phone)}</span>
+                      {(f'{_pickup_contact_block(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}<br><span style="color:#64748b;">Tel: {escape(order.phone)}</span>')}
                     </td></tr>
                   </table>
                 </td>
@@ -530,7 +540,7 @@ def order_notification_warehouse_html(
                   <p style="font-size:11px;font-weight:700;color:#94a3b8;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.8px;">{"Miesto odberu" if order.shipping_method == "pickup" else "Dodacia adresa"}</p>
                   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;border-collapse:collapse;">
                     <tr><td style="padding:14px 16px;font-size:13px;color:#374151;line-height:1.9;">
-                      {(f'{_pickup_address_or_default(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}')}
+                      {(f'{_pickup_contact_block(shop)}<br>' if order.shipping_method == "pickup" else f'{escape(order.street)}<br>{escape(order.city)}, {escape(order.postal_code)}')}
                     </td></tr>
                   </table>
                 </td>

@@ -72,10 +72,10 @@ export default function Navbar() {
             className="fixed top-0 left-0 right-0 z-50 h-16"
             style={{ background: '#020617', borderBottom: '1px solid rgba(6,182,212,0.18)' }}
         >
-            <div className="w-full h-full px-2 sm:px-3 flex items-center justify-between">
+            <div className="w-full h-full px-2 sm:px-3 flex items-center justify-between gap-2 min-w-0">
 
                 {/* Left: logo + nav links */}
-                <div className="flex items-center gap-8">
+                <div className="flex items-center gap-4 sm:gap-8 min-w-0">
                     <button
                         type="button"
                         onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/products'); }}
@@ -85,7 +85,7 @@ export default function Navbar() {
                         <img
                             src={logoUrl}
                             alt="Dynamic Abutment Solutions"
-                            className="h-7 w-auto object-contain brightness-0 invert"
+                            className="h-7 w-auto max-w-[132px] sm:max-w-none object-contain brightness-0 invert"
                         />
                     </button>
 
@@ -108,11 +108,11 @@ export default function Navbar() {
                 </div>
 
                 {/* Right: cart + user/login */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
 
                     <Link
                         to="/about"
-                        className="sm:hidden inline-flex items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
+                        className="hidden min-[380px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
                         style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: 'rgba(255,255,255,0.04)' }}
                     >
                         Kontakt
@@ -124,7 +124,7 @@ export default function Navbar() {
                             <Link
                                 to="/cart"
                                 aria-label="Košík"
-                                className={`relative flex items-center gap-2 rounded-[10px] px-3.5 py-2 transition-all duration-200 ${cartPulse ? 'scale-105' : ''}`}
+                                className={`relative flex items-center gap-1.5 rounded-[10px] px-2.5 sm:px-3.5 py-2 transition-all duration-200 ${cartPulse ? 'scale-105' : ''}`}
                                 style={{
                                     background: isActive('/cart') ? 'rgba(6,182,212,0.2)' : 'rgba(6,182,212,0.1)',
                                     border: '1px solid rgba(6,182,212,0.25)',

@@ -24,10 +24,12 @@ export default function AdminNav() {
         <nav style={{
             position: 'sticky', top: 0, zIndex: 50, height: 60,
             background: '#0f172a', borderBottom: '1px solid rgba(255,255,255,0.08)',
+            overflowX: 'auto',
         }}>
             <div style={{
-                maxWidth: 1440, margin: '0 auto', padding: '0 32px',
-                height: '100%', display: 'flex', alignItems: 'center', gap: 24,
+                maxWidth: 1440, margin: '0 auto', padding: '0 clamp(12px, 3vw, 32px)',
+                height: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                minWidth: 0,
             }}>
                 <Link to="/admin" style={{
                     fontWeight: 800, fontSize: 17, letterSpacing: '-0.04em',

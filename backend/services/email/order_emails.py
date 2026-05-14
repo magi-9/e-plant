@@ -193,7 +193,14 @@ class OrderEmailService(BaseEmailService):
             pickup_address = (
                 getattr(shop, "pickup_address", "") or ""
             ).strip() or "Osobný odber"
-            delivery_info = f"\nMIESTO ODBERU:\n{pickup_address}"
+            pickup_lines = [pickup_address]
+            opening_hours = (getattr(shop, "opening_hours", "") or "").strip()
+            company_phone = (getattr(shop, "company_phone", "") or "").strip()
+            if opening_hours:
+                pickup_lines.append(f"Otváracie hodiny: {opening_hours}")
+            if company_phone:
+                pickup_lines.append(f"Tel: {company_phone}")
+            delivery_info = "\nMIESTO ODBERU:\n" + "\n".join(pickup_lines)
         else:
             delivery_info = f"\nDODACIA ADRESA:\n{self.order.street}\n{self.order.city}, {self.order.postal_code}"
 
