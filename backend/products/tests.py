@@ -1,10 +1,13 @@
 import csv
 
 import pytest
+import sys
+import types
 from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from products import views
 from products.models import (
     GroupingSettings,
     Product,
@@ -695,3 +698,41 @@ def test_reference_search_exact_match_is_first_result():
     assert response.status_code == status.HTTP_200_OK
     ids = [r["id"] for r in response.data["results"]]
     assert ids[:2] == [exact.id, mentioned.id]
+
+
+def test_catalog_reference_matching_ignores_pdf_spacing():
+    assert views._catalog_page_contains_reference(
+        "Visual code: 50.312.120.03 - 2",
+        "50.312.120.03-2",
+    )
+
+
+def test_catalog_page_search_prefers_pdftotext(monkeypatch):
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(
+            returncode=0, stdout="page one\fcontains 50.312.120.03-2\fpage three"
+        )
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    assert views._find_reference_pages("catalog.pdf", "50.312.120.03-2") == [2]
+
+
+def test_catalog_page_search_falls_back_to_pypdf_without_pdftotext(monkeypatch):
+    class MatchingPage:
+        def extract_text(self):
+            return "contains 50.312.120.03-2"
+
+    class FakePdfReader:
+        def __init__(self, _path):
+            self.pages = [MatchingPage()]
+
+    fake_pypdf = types.SimpleNamespace(PdfReader=FakePdfReader)
+    monkeypatch.setitem(sys.modules, "pypdf", fake_pypdf)
+
+    def fake_run(*_args, **_kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    assert views._find_reference_pages("catalog.pdf", "50.312.120.03-2") == [1]

@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import re
+import subprocess
 from copy import copy
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
@@ -1390,11 +1391,98 @@ class ProductInquiryView(APIView):
             )
 
 
+_CATALOG_PDF_CANDIDATES = [
+    "/data/PRODUCT-REFERENCE-0326_01.pdf",
+    "/data/raw/PRODUCT-REFERENCE-0326_01.pdf",
+]
+_CATALOG_REFERENCE_RE = re.compile(r"[^0-9A-Za-z]+")
+
+
+def _catalog_pdf_path():
+    for p in _CATALOG_PDF_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return None
+
+
 class CatalogPdfView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        path = "/data/raw/PRODUCT-REFERENCE-0326_01.pdf"
-        if not os.path.exists(path):
+        path = _catalog_pdf_path()
+        if not path:
             raise Http404("Catalog PDF not found")
         return FileResponse(open(path, "rb"), content_type="application/pdf")
+
+
+class CatalogPdfPagesView(APIView):
+    """Return page numbers (1-based) in the catalog PDF that contain the given reference."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        reference = request.query_params.get("reference", "").strip()
+        if not reference:
+            return Response({"pages": []})
+
+        path = _catalog_pdf_path()
+        if not path:
+            return Response({"pages": [], "error": "Catalog PDF not found"}, status=404)
+
+        matching = _find_reference_pages(path, reference)
+        return Response({"pages": matching})
+
+
+def _find_reference_pages(pdf_path: str, reference: str) -> list:
+    """Return 1-based page numbers whose text contains reference."""
+    matches = _find_reference_pages_with_pdftotext(pdf_path, reference)
+    if matches:
+        return matches
+
+    try:
+        from pypdf import PdfReader  # noqa: PLC0415
+
+        reader = PdfReader(pdf_path)
+        return [
+            i + 1
+            for i, page in enumerate(reader.pages)
+            if _catalog_page_contains_reference(page.extract_text() or "", reference)
+        ]
+    except Exception:
+        return []
+
+
+def _find_reference_pages_with_pdftotext(pdf_path: str, reference: str) -> list:
+    """Return matching pages using poppler's pdftotext when available."""
+    try:
+        result = subprocess.run(
+            ["pdftotext", "-layout", pdf_path, "-"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return []
+
+    if result.returncode != 0:
+        return []
+    pages_text = result.stdout.split("\f")
+    return [
+        i + 1
+        for i, page_text in enumerate(pages_text)
+        if _catalog_page_contains_reference(page_text, reference)
+    ]
+
+
+def _normalise_catalog_reference(value: str) -> str:
+    return _CATALOG_REFERENCE_RE.sub("", value).lower()
+
+
+def _catalog_page_contains_reference(page_text: str, reference: str) -> bool:
+    if reference in page_text:
+        return True
+    return _normalise_catalog_reference(reference) in _normalise_catalog_reference(
+        page_text
+    )
