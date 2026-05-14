@@ -48,6 +48,7 @@ export class AuthService {
             return;
         }
 
+        this.clearUserMeta();
         this.loginRedirectInProgress = true;
         window.location.replace(path);
     }

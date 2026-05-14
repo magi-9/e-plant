@@ -351,6 +351,11 @@ export default function CheckoutPage() {
     };
 
     const shippingCost = Number(globalSettings?.shipping_cost ?? 0);
+    const pickupDetails = [
+        globalSettings?.pickup_address,
+        globalSettings?.opening_hours ? `Otváracie hodiny: ${globalSettings.opening_hours}` : '',
+        globalSettings?.company_phone ? `Tel: ${globalSettings.company_phone}` : '',
+    ].filter(Boolean).join(' · ');
 
     // ── step 1 → 2 ───────────────────────────────────────────
     const proceedToStep2 = (e: React.FormEvent<HTMLFormElement>) => {
@@ -673,7 +678,7 @@ export default function CheckoutPage() {
                                         selected={formData.shipping_method === 'pickup'}
                                         onClick={() => setFormData(p => ({ ...p, shipping_method: 'pickup' }))}
                                         title="Osobný odber — Zadarmo"
-                                        subtitle={[globalSettings?.pickup_address, globalSettings?.opening_hours].filter(Boolean).join(' · ')}
+                                        subtitle={pickupDetails}
                                         icon={
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>

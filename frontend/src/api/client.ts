@@ -24,6 +24,8 @@ type ErrorWithConfig = AxiosError & {
 
 type RefreshService = Pick<AuthService, 'refreshAccessToken' | 'redirectToLogin'>;
 
+const isAdminRequest = (requestUrl: string): boolean => requestUrl.includes('/admin/');
+
 export const shouldAttemptTokenRefresh = (error: ErrorWithConfig): boolean => {
     const originalRequest = error.config;
     const status = error.response?.status;
@@ -51,6 +53,9 @@ export const createAuthRefreshErrorHandler = (
     const originalRequest = error.config;
 
     if (!shouldAttemptTokenRefresh(error) || !originalRequest) {
+        if (error.response?.status === 403 && originalRequest?.url && isAdminRequest(originalRequest.url)) {
+            refreshService.redirectToLogin('/login');
+        }
         return Promise.reject(error);
     }
 

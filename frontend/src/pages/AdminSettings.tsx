@@ -195,6 +195,11 @@ export default function AdminSettings() {
                                             <label className="block text-sm font-medium text-gray-700">Otváracie hodiny</label>
                                             <input type="text" value={formData.opening_hours} onChange={e => setFormData({ ...formData, opening_hours: e.target.value })} placeholder="napr. Po–Pi 8:00–17:00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
                                         </div>
+                                        <div className="mt-4">
+                                            <label className="block text-sm font-medium text-gray-700">Telefón pre osobný odber</label>
+                                            <input type="text" value={formData.company_phone} onChange={e => setFormData({ ...formData, company_phone: e.target.value })} placeholder="napr. +421 900 000 000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <p className="mt-1 text-sm text-gray-500">Použije sa aj v údajoch spoločnosti a v e-mailoch k osobnému odberu.</p>
+                                        </div>
                                     </div>
                                 </>
                             )}

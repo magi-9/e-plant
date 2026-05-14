@@ -263,6 +263,34 @@ class TestOrderEmailService:
         assert self.order.order_number in kwargs["subject"]
 
     @patch.object(OrderEmailService, "send_email")
+    def test_pickup_confirmation_includes_contact_details(self, mock_send_email):
+        """Pickup confirmation shows address, opening hours, and pickup phone."""
+        from unittest.mock import Mock
+
+        self.order.shipping_method = "pickup"
+        self.order.shipping_cost = 0
+        self.order.save(update_fields=["shipping_method", "shipping_cost"])
+        mock_send_email.return_value = 1
+        mock_shop = Mock(
+            iban="",
+            warehouse_email="warehouse@test.com",
+            pickup_address="Hlavná 1, Bratislava",
+            opening_hours="Po-Pi 8:00-17:00",
+            company_phone="+421900111222",
+        )
+
+        service = OrderEmailService(self.order)
+        result = service._send_customer_confirmation(mock_shop, None)
+
+        assert result is True
+        _, kwargs = mock_send_email.call_args
+        assert "Hlavná 1, Bratislava" in kwargs["text_body"]
+        assert "Otváracie hodiny: Po-Pi 8:00-17:00" in kwargs["text_body"]
+        assert "Tel: +421900111222" in kwargs["text_body"]
+        assert "Otváracie hodiny: Po-Pi 8:00-17:00" in kwargs["html_body"]
+        assert "Tel: +421900111222" in kwargs["html_body"]
+
+    @patch.object(OrderEmailService, "send_email")
     def test_send_warehouse_notification(self, mock_send_email):
         """Test sending warehouse notification email."""
         from unittest.mock import Mock
