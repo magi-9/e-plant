@@ -11,6 +11,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 import AdminEditModal, { type EditSavePayload } from '../components/admin/AdminEditModal';
 import DropdownSelect from '../components/DropdownSelect';
+import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
 
 const PAGE_SIZE = 50;
 
@@ -684,7 +685,7 @@ export default function AdminProducts() {
                                                 value={receiptForm.variant_reference}
                                                 onChange={(value) => setReceiptForm({ ...receiptForm, variant_reference: value })}
                                                 placeholder="— Vyberte variant —"
-                                                options={(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
+                                                options={sortByFirstOptionTokenValue(receiptProduct.parameters.options || []).map((opt: { reference: string; label?: string; stock_quantity?: number }) => ({
                                                     value: opt.reference,
                                                     label: `${opt.reference}${opt.label ? ` · ${opt.label}` : ''} (teraz: ${opt.stock_quantity ?? 0} ks)`,
                                                 }))}

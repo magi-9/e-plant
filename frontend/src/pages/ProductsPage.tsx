@@ -151,7 +151,7 @@ export default function ProductsPage() {
         placeholderData: keepPreviousData,
     });
 
-    const { data: databaseProductCount } = useQuery({
+    const { data: databaseProductCount, isLoading: isProductCountLoading } = useQuery({
         queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice],
         queryFn: () => getProductCount({
             search: debouncedSearch,
@@ -163,19 +163,19 @@ export default function ProductsPage() {
         placeholderData: keepPreviousData,
     });
 
-    const { data: allCategories = [] } = useQuery({
+    const { data: allCategories = [], isLoading: isCategoriesLoading } = useQuery({
         queryKey: ['products-categories'],
         queryFn: getProductCategories,
         staleTime: 5 * 60 * 1000,
     });
 
-    const { data: compatibilityOptions = [] } = useQuery({
+    const { data: compatibilityOptions = [], isLoading: isCompatibilityOptionsLoading } = useQuery({
         queryKey: ['compatibility-options'],
         queryFn: getCompatibilityOptions,
         staleTime: 10 * 60 * 1000,
     });
 
-    const { data: compatibilityCounts = {} } = useQuery({
+    const { data: compatibilityCounts = {}, isLoading: isCompatibilityCountsLoading } = useQuery({
         queryKey: ['compatibility-counts'],
         queryFn: getCompatibilityCounts,
         staleTime: Infinity,
@@ -187,7 +187,7 @@ export default function ProductsPage() {
     }, [data]);
 
     // Fetch cached category counts from backend (pre-computed + cached server-side)
-    const { data: categoryCounts = {} } = useQuery({
+    const { data: categoryCounts = {}, isLoading: isCategoryCountsLoading } = useQuery({
         queryKey: ['category-counts'],
         queryFn: getCategoryCounts,
         staleTime: Infinity,
@@ -312,8 +312,16 @@ export default function ProductsPage() {
         }, 600);
     };
 
-    // Only show full-page spinner on very first load (no data yet, not a search refetch)
-    if (isLoading && !data) return (
+    const isInitialPageLoading = (
+        (isLoading && !data)
+        || (isProductCountLoading && databaseProductCount == null)
+        || (isCategoriesLoading && allCategories.length === 0)
+        || (isCompatibilityOptionsLoading && compatibilityOptions.length === 0)
+        || (isCompatibilityCountsLoading && Object.keys(compatibilityCounts).length === 0)
+        || (isCategoryCountsLoading && Object.keys(categoryCounts).length === 0)
+    );
+
+    if (isInitialPageLoading) return (
         <div className="flex justify-center items-center min-h-screen bg-slate-50">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
         </div>
@@ -342,7 +350,17 @@ export default function ProductsPage() {
         });
     }
 
-    const visibleCount = databaseProductCount ?? filteredProducts.length;
+    const categoryBadgeCount = selectedCategories.length > 0
+        ? selectedCategories.reduce((sum, category) => sum + (categoryCounts[category] || 0), 0)
+        : null;
+    const canUseCategoryBadgeCount = selectedCategories.length > 0
+        && !debouncedSearch
+        && !selectedCompatibility
+        && maxPrice >= 500
+        && !inStockOnly;
+    const visibleCount = canUseCategoryBadgeCount && categoryBadgeCount != null
+        ? categoryBadgeCount
+        : databaseProductCount ?? filteredProducts.length;
     const canonicalUrl = `${SEO_SITE_URL}${window.location.pathname}`;
     const socialImageUrl = `${SEO_SITE_URL}/dynamicabutment-logo.png`;
 

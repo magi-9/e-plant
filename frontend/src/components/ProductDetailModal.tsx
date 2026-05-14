@@ -11,6 +11,7 @@ import DropdownSelect from './DropdownSelect';
 import CatalogPdfViewer from './CatalogPdfViewer';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
+import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
 
 const HEADER_CATEGORIES = 3;
 const HEADER_COMPAT_CODES = 3;
@@ -44,6 +45,7 @@ export default function ProductDetailModal({
     const [catalogOpen, setCatalogOpen] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
+    const sortedVariantOptions = useMemo(() => sortByFirstOptionTokenValue(variantOptions), [variantOptions]);
     const isGroupType = product?.parameters?.type === 'wildcard_group';
     const hasVariants = isGroupType && variantOptions.length > 0;
 
@@ -84,7 +86,7 @@ export default function ProductDetailModal({
             return withoutRefNumbers.length === 0;
         };
 
-        return variantOptions.map((option) => {
+        return sortedVariantOptions.map((option) => {
             const parts: string[] = [];
             if (varyingTokenKeys.size > 0) {
                 (option.option_tokens || '').split('|').forEach((token) => {
@@ -108,17 +110,17 @@ export default function ProductDetailModal({
             const label = parts.length > 0 ? parts.join(' · ') : fallbackLabel;
             return { value: option.reference || '', label };
         });
-    }, [variantOptions, varyingTokenKeys, engagingVaries]);
+    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries]);
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
-        ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || variantOptions[0]?.id || null
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || sortedVariantOptions[0]?.id || null
         : null;
 
     // Reset UI states when product changes; auto-select first in-stock variant
     useEffect(() => {
         setIsAdding(false);
         if (isGroupType) {
-            const options = product?.parameters?.options || [];
+            const options = sortByFirstOptionTokenValue(product?.parameters?.options || []);
             const firstInStockWithImage = options.find(
                 (v) => (v.stock_quantity ?? 0) > 0 && !!v.image
             );
@@ -138,10 +140,10 @@ export default function ProductDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product?.id]);
 
-    const defaultVariantRef = hasVariants ? variantOptions[0]?.reference || '' : '';
+    const defaultVariantRef = hasVariants ? sortedVariantOptions[0]?.reference || '' : '';
 
     const selectedVariant = hasVariants
-        ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || variantOptions[0]
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || sortedVariantOptions[0]
         : null;
 
     useEffect(() => {
