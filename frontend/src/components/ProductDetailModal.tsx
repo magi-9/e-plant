@@ -97,7 +97,13 @@ export default function ProductDetailModal({
                 if (option.engaging === 1) parts.push('ENGAGING');
                 else if (option.engaging === 0) parts.push('NON-ENGAGING');
             }
-            const label = parts.length > 0 ? parts.join(' · ') : (option.parameter_code || option.label || '');
+            const fallbackLabel = [
+                option.parameter_code,
+                option.label,
+                option.reference,
+                option.name,
+            ].find((value) => typeof value === 'string' && value.trim().length > 0)?.trim() || 'Unnamed variant';
+            const label = parts.length > 0 ? parts.join(' · ') : fallbackLabel;
             return { value: option.reference || '', label };
         });
     }, [variantOptions, varyingTokenKeys, engagingVaries]);
