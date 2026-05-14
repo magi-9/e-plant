@@ -23,12 +23,24 @@ interface Props {
     reference: string
 }
 
+function catalogDebug(message: string, details?: unknown) {
+    if (import.meta.env.DEV) {
+        console.debug(`[CatalogPdfViewer] ${message}`, details ?? '')
+    }
+}
+
 async function fetchMatchPages(reference: string): Promise<number[]> {
-    const res = await fetch(`${CATALOG_PAGES_URL}?reference=${encodeURIComponent(reference)}`, {
+    const url = `${CATALOG_PAGES_URL}?reference=${encodeURIComponent(reference)}`
+    catalogDebug('fetch match pages', { reference, url })
+    const res = await fetch(url, {
         credentials: 'include',
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+        catalogDebug('match pages request failed', { status: res.status })
+        return []
+    }
     const data = await res.json() as { pages: number[] }
+    catalogDebug('match pages response', data)
     return data.pages ?? []
 }
 
@@ -78,6 +90,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                 ])
 
                 if (cancelled) return
+                catalogDebug('pdf loaded', { reference, pagesFromApi: apiPages, totalPages: pdfDoc.numPages })
 
                 let pages = apiPages
                 if (pages.length === 0) {
@@ -138,6 +151,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                 }
 
                 if (!cancelled) {
+                    catalogDebug('render complete', { reference, pages })
                     setMatchPages(pages)
                     setCurrentIdx(0)
                     setLoading(false)
