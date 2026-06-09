@@ -707,9 +707,15 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     story.append(Spacer(1, 4 * mm))
 
     # ── NOTES ─────────────────────────────────────────────────────────────
-    customer_notes = "\n\n".join(
-        part for part in order.notes.split("\n\n") if not part.startswith("Varianty:")
-    ).strip() if order.notes else ""
+    customer_notes = (
+        "\n\n".join(
+            part
+            for part in order.notes.split("\n\n")
+            if not part.startswith("Varianty:")
+        ).strip()
+        if order.notes
+        else ""
+    )
     if customer_notes:
         story.append(Spacer(1, 6 * mm))
         story.append(Paragraph("Poznámka:", s_label))
