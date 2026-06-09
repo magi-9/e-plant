@@ -539,24 +539,21 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
         "Doprava (osobný odber)" if shipping_method == "pickup" else "Doprava (kuriér)"
     )
     shipping_cost = Decimal(str(order.shipping_cost or "0"))
-    shipping_vat_percent = getattr(shop_settings, "vat_rate", None)
-    if shipping_vat_percent is None:
-        country = getattr(order, "country", "SK") or "SK"
-        shipping_vat_percent = VAT_RATES.get(country, VAT_RATES["SK"]) * Decimal("100")
-    shipping_net, shipping_vat = _split_gross_vat(shipping_cost, shipping_vat_percent)
+    shipping_net = shipping_cost
+    shipping_vat = Decimal("0")
 
     total_net = shipping_net
     total_vat = shipping_vat
 
     if has_batches:
-        COL_W = [48 * mm, 22 * mm, 16 * mm, 30 * mm, 24 * mm, 30 * mm]
+        COL_W = [48 * mm, 22 * mm, 16 * mm, 30 * mm, 20 * mm, 34 * mm]
         rows = [
             [
                 Paragraph("Popis", s_th),
                 Paragraph("Šarža", s_th),
                 Paragraph("Množ.", s_th_r),
-                Paragraph("Cena bez DPH", s_th_r),
-                Paragraph("DPH", s_th_r),
+                Paragraph("Jednotková cena bez DPH", s_th_r),
+                Paragraph("Sadzba DPH", s_th_r),
                 Paragraph("Cena s DPH", s_th_r),
             ]
         ]
@@ -566,6 +563,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             gross_subtotal = item.get_gross_subtotal()
             total_net += net_subtotal
             total_vat += vat_amount
+            vat_rate = item.vat_rate_snapshot.normalize()
             batch_allocations = list(item.batch_allocations.all())
             batch_str = (
                 ", ".join(
@@ -575,13 +573,14 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 if batch_allocations
                 else "—"
             )
+            net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(esc(batch_str), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{net_subtotal:.2f} €", s_td_r),
-                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
+                    Paragraph(f"{net_unit:.2f} €", s_td_r),
+                    Paragraph(f"{vat_rate:f}%", s_td_r),
                     Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
                 ]
             )
@@ -591,18 +590,18 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 Paragraph("—", s_normal),
                 Paragraph("1", s_td_r),
                 Paragraph(f"{shipping_net:.2f} €", s_td_r),
-                Paragraph(f"{shipping_vat:.2f} €", s_td_r),
+                Paragraph("0%", s_td_r),
                 Paragraph(f"{shipping_cost:.2f} €", s_td_r),
             ]
         )
     else:
-        COL_W = [68 * mm, 16 * mm, 34 * mm, 24 * mm, 34 * mm]
+        COL_W = [68 * mm, 16 * mm, 30 * mm, 20 * mm, 36 * mm]
         rows = [
             [
                 Paragraph("Popis", s_th),
                 Paragraph("Množ.", s_th_r),
-                Paragraph("Cena bez DPH", s_th_r),
-                Paragraph("DPH", s_th_r),
+                Paragraph("Jednotková cena bez DPH", s_th_r),
+                Paragraph("Sadzba DPH", s_th_r),
                 Paragraph("Cena s DPH", s_th_r),
             ]
         ]
@@ -612,12 +611,14 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             gross_subtotal = item.get_gross_subtotal()
             total_net += net_subtotal
             total_vat += vat_amount
+            vat_rate = item.vat_rate_snapshot.normalize()
+            net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{net_subtotal:.2f} €", s_td_r),
-                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
+                    Paragraph(f"{net_unit:.2f} €", s_td_r),
+                    Paragraph(f"{vat_rate:f}%", s_td_r),
                     Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
                 ]
             )
@@ -626,7 +627,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 Paragraph(esc(shipping_label), s_normal),
                 Paragraph("1", s_td_r),
                 Paragraph(f"{shipping_net:.2f} €", s_td_r),
-                Paragraph(f"{shipping_vat:.2f} €", s_td_r),
+                Paragraph("0%", s_td_r),
                 Paragraph(f"{shipping_cost:.2f} €", s_td_r),
             ]
         )
@@ -706,11 +707,14 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     story.append(Spacer(1, 4 * mm))
 
     # ── NOTES ─────────────────────────────────────────────────────────────
-    if order.notes:
+    customer_notes = "\n\n".join(
+        part for part in order.notes.split("\n\n") if not part.startswith("Varianty:")
+    ).strip() if order.notes else ""
+    if customer_notes:
         story.append(Spacer(1, 6 * mm))
         story.append(Paragraph("Poznámka:", s_label))
         story.append(Spacer(1, 1 * mm))
-        story.append(Paragraph(esc(order.notes), s_normal))
+        story.append(Paragraph(esc(customer_notes), s_normal))
 
     if pre_invoice:
         story.append(Spacer(1, 6 * mm))

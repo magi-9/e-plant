@@ -186,7 +186,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                     <table className="w-full text-sm mb-6 border-collapse">
                         <thead>
                             <tr className="border-b-2 border-slate-200">
-                                {['Položka', 'Množstvo', 'Jednotková cena', 'Spolu'].map((h, i) => (
+                                {['Položka', 'Množstvo', 'Sadzba DPH', 'Jednotková cena', 'Spolu'].map((h, i) => (
                                     <th key={h} className={`pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
                                 ))}
                             </tr>
@@ -203,6 +203,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                                         )}
                                     </td>
                                     <td className="py-3 text-right text-slate-500">{it.quantity}×</td>
+                                    <td className="py-3 text-right text-slate-500">{parseFloat(it.vat_rate_snapshot).toFixed(0)}%</td>
                                     <td className="py-3 text-right text-slate-500">{grossUnitPrice(it.price_snapshot, it.vat_rate_snapshot).toFixed(2)} €</td>
                                     <td className="py-3 text-right font-semibold text-slate-900">{parseFloat(it.subtotal).toFixed(2)} €</td>
                                 </tr>
@@ -218,7 +219,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                                 <span className="text-slate-800">{subtotal.toFixed(2)} €</span>
                             </div>
                             <div className="flex justify-between text-sm pb-3 border-b border-slate-200">
-                                <span className="text-slate-500">Doprava ({SHIP_LABELS[order.shipping_method] ?? order.shipping_method})</span>
+                                <span className="text-slate-500">Doprava ({SHIP_LABELS[order.shipping_method] ?? order.shipping_method}) <span className="text-xs text-slate-400">0% DPH</span></span>
                                 <span className={shippingCost === 0 ? 'text-emerald-600' : 'text-slate-800'}>
                                     {shippingCost === 0 ? 'Zadarmo' : `${shippingCost.toFixed(2)} €`}
                                 </span>
