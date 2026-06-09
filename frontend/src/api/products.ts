@@ -77,6 +77,8 @@ export interface Product {
     category: string;
     all_categories?: string;
     price: string | null;
+    vat_rate: string;
+    gross_price: string | null;
     stock_quantity: number;
     image: string | null;
     is_visible: boolean;
@@ -101,6 +103,8 @@ export interface Product {
             category?: string;
             all_categories?: string;
             price?: string | null;
+            vat_rate?: string;
+            gross_price?: string | null;
             image?: string | null;
             parameter_code?: string;
             option_tokens?: string;

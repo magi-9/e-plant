@@ -116,6 +116,9 @@ class GroupingSettingsSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    gross_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True, source="get_gross_price"
+    )
     group_name = serializers.CharField(
         source="group.name", read_only=True, default=None
     )
@@ -206,6 +209,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "description",
             "category",
             "price",
+            "vat_rate",
+            "gross_price",
             "stock_quantity",
             "image",
             "remove_image",

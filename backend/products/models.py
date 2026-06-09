@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 
@@ -61,6 +63,9 @@ class Product(models.Model):
     description = models.TextField(blank=True)
     category = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    vat_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("5.00")
+    )
     stock_quantity = models.IntegerField(default=0)
     low_stock_threshold = models.IntegerField(default=5)
     low_stock_alert_sent = models.BooleanField(default=False)
@@ -81,6 +86,13 @@ class Product(models.Model):
     )
     is_visible = models.BooleanField(default=True)
     parameters = models.JSONField(default=dict, blank=True)
+
+    def get_gross_price(self):
+        price = Decimal(str(self.price or "0"))
+        vat_rate = Decimal(str(self.vat_rate or "0"))
+        return (price * (Decimal("1.00") + vat_rate / Decimal("100"))).quantize(
+            Decimal("0.01")
+        )
 
     def save(self, *args, **kwargs):
         if self.stock_quantity > self.low_stock_threshold and self.low_stock_alert_sent:

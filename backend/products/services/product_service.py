@@ -11,7 +11,7 @@ class ProductService:
         def _scrub_prices(value):
             if isinstance(value, dict):
                 for key, nested in value.items():
-                    if key == "price":
+                    if key in ("price", "gross_price"):
                         value[key] = None
                     else:
                         _scrub_prices(nested)

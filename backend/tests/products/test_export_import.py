@@ -90,6 +90,7 @@ def test_export_includes_all_required_fields(api_client, user_factory):
         "description",
         "category",
         "price",
+        "vat_rate",
         "stock_quantity",
         "low_stock_threshold",
         "low_stock_alert_sent",
@@ -130,6 +131,7 @@ def test_full_import_creates_new_products(api_client, user_factory):
             "description": "Good implant",
             "category": "IMPLANTS",
             "price": "150.00",
+            "vat_rate": "23.00",
             "stock_quantity": 5,
             "low_stock_threshold": 3,
             "low_stock_alert_sent": False,
@@ -151,6 +153,7 @@ def test_full_import_creates_new_products(api_client, user_factory):
     p = Product.objects.get(reference="10.001.002.01-1")
     assert p.name == "Implant X"
     assert p.price == Decimal("150.00")
+    assert p.vat_rate == Decimal("23.00")
     assert p.stock_quantity == 5
     assert p.is_visible is True
     assert p.parameters == {"type": "single"}

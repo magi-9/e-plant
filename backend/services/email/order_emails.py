@@ -172,7 +172,8 @@ class OrderEmailService(BaseEmailService):
         for item in self.order.items.select_related("product").prefetch_related(
             "batch_allocations__batch_lot"
         ):
-            line = f"  - {item.product.name} x {item.quantity} @ {item.price_snapshot}€ = {item.get_subtotal()}€"
+            gross_unit = item.get_gross_subtotal() / item.quantity
+            line = f"  - {item.product.name} x {item.quantity} @ {gross_unit:.2f}€ = {item.get_gross_subtotal()}€"
             batches = item.batch_allocations.all()
             if batches:
                 batch_str = ", ".join(

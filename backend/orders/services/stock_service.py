@@ -96,6 +96,7 @@ class StockService:
                     "product": product,
                     "quantity": quantity,
                     "price_snapshot": product.price,
+                    "vat_rate_snapshot": product.vat_rate,
                     "batch_allocations": allocations,
                 }
             )

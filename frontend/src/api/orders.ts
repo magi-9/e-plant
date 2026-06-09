@@ -66,6 +66,9 @@ export interface Order {
         product_name: string;
         quantity: number;
         price_snapshot: string;
+        vat_rate_snapshot: string;
+        net_subtotal: string;
+        vat_amount: string;
         subtotal: string;
         batch_allocations: BatchAllocation[];
     }>;

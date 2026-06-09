@@ -8,6 +8,28 @@ from orders.models import Order, OrderItem
 
 
 @pytest.mark.django_db
+def test_legacy_order_item_zero_vat_keeps_gross_snapshot(product_factory):
+    product = product_factory(price=Decimal("100.00"))
+    order = Order.objects.create(
+        customer_name="Legacy",
+        email="legacy@example.com",
+        phone="000",
+        order_number="LEGACY-1",
+        total_price=Decimal("100.00"),
+        payment_method="bank_transfer",
+    )
+    item = OrderItem.objects.create(
+        order=order,
+        product=product,
+        quantity=1,
+        price_snapshot=Decimal("100.00"),
+        vat_rate_snapshot=Decimal("0.00"),
+    )
+
+    assert item.get_subtotal() == Decimal("100.00")
+
+
+@pytest.mark.django_db
 def test_create_order_success(api_client, user_factory, product_factory):
     """Test that an order can be created successfully"""
     user = user_factory()
@@ -70,7 +92,7 @@ def test_order_total_calculated_correctly(
 
     assert response.status_code == status.HTTP_201_CREATED
     order = Order.objects.first()
-    assert order.total_price == Decimal("250.00")
+    assert order.total_price == Decimal("262.50")
 
 
 @pytest.mark.django_db
@@ -102,6 +124,7 @@ def test_order_price_snapshot_stored(api_client, user_factory, product_factory):
 
     order_item = OrderItem.objects.first()
     assert order_item.price_snapshot == Decimal("100.00")
+    assert order_item.vat_rate_snapshot == Decimal("5.00")
 
     # Change product price
     product.price = Decimal("150.00")
@@ -326,7 +349,7 @@ def test_order_with_pickup_shipping_method(api_client, user_factory, product_fac
     order = Order.objects.first()
     assert order.shipping_method == "pickup"
     assert order.shipping_cost == Decimal("0.00")
-    assert order.total_price == Decimal("50.00")
+    assert order.total_price == Decimal("52.50")
 
 
 @pytest.mark.django_db

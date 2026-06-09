@@ -40,6 +40,9 @@ const PAY_LABELS: Record<string, string> = {
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('sk-SK', { day: 'numeric', month: 'long', year: 'numeric' });
 
+const grossUnitPrice = (priceSnapshot: string, vatRateSnapshot: string) =>
+    Number(priceSnapshot) * (1 + Number(vatRateSnapshot || '0') / 100);
+
 // ── gradient button ──────────────────────────────────────────
 
 function GBtn({
@@ -200,7 +203,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                                         )}
                                     </td>
                                     <td className="py-3 text-right text-slate-500">{it.quantity}×</td>
-                                    <td className="py-3 text-right text-slate-500">{parseFloat(it.price_snapshot).toFixed(2)} €</td>
+                                    <td className="py-3 text-right text-slate-500">{grossUnitPrice(it.price_snapshot, it.vat_rate_snapshot).toFixed(2)} €</td>
                                     <td className="py-3 text-right font-semibold text-slate-900">{parseFloat(it.subtotal).toFixed(2)} €</td>
                                 </tr>
                             ))}

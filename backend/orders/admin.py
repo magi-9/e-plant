@@ -11,6 +11,7 @@ class OrderItemInline(admin.TabularInline):
         "product",
         "quantity",
         "price_snapshot",
+        "vat_rate_snapshot",
         "get_subtotal",
         "batch_numbers",
     )

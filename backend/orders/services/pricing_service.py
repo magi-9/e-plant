@@ -36,15 +36,20 @@ class PricingService:
 
         for item in prepared_items:
             price_snapshot = item["price_snapshot"]
+            vat_rate = Decimal(str(item.get("vat_rate_snapshot", "0")))
             quantity = item["quantity"]
-            subtotal = price_snapshot * quantity
+            net_subtotal = price_snapshot * quantity
+            subtotal = (
+                net_subtotal * (Decimal("1.00") + vat_rate / Decimal("100"))
+            ).quantize(Decimal("0.01"))
             total_price += subtotal
 
             logger.debug(
-                "Item pricing: %s - %s × %s = %s",
+                "Item pricing: %s - %s × %s + %s%% VAT = %s",
                 item.get("product", "Unknown"),
                 quantity,
                 price_snapshot,
+                vat_rate,
                 subtotal,
             )
 

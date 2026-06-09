@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
@@ -97,12 +99,28 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
     price_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
+    vat_rate_snapshot = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("5.00")
+    )
 
     def __str__(self):
         return f"{self.quantity}x {self.product.name} @ {self.price_snapshot}"
 
     def get_subtotal(self):
+        return self.get_gross_subtotal()
+
+    def get_net_subtotal(self):
         return self.quantity * self.price_snapshot
+
+    def get_vat_amount(self):
+        return (
+            self.get_net_subtotal() * self.vat_rate_snapshot / Decimal("100")
+        ).quantize(Decimal("0.01"))
+
+    def get_gross_subtotal(self):
+        return (self.get_net_subtotal() + self.get_vat_amount()).quantize(
+            Decimal("0.01")
+        )
 
 
 class BatchLot(models.Model):

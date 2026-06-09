@@ -187,7 +187,7 @@ export default function ProductDetailModal({
     const effectiveCategory = activeVariant?.category || product?.category || '';
     const effectiveAllCategories = activeVariant?.all_categories || product?.all_categories || product?.parameters?.all_categories || effectiveCategory || '';
     const effectiveImage = activeVariant?.image || variantImageFallback || product?.image;
-    const effectivePrice = activeVariant?.price ?? product?.price;
+    const effectivePrice = activeVariant?.gross_price ?? product?.gross_price ?? activeVariant?.price ?? product?.price;
     const effectiveVariantRef = activeVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';

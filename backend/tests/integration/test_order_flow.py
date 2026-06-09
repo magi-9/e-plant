@@ -39,7 +39,7 @@ def test_complete_order_creation_flow(
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["status"] == "awaiting_payment"
-    assert response.data["total_price"] == "249.80"
+    assert response.data["total_price"] == "262.29"
     assert re.fullmatch(
         rf"{timezone.now().year}X\d{{4}}", response.data["order_number"]
     )

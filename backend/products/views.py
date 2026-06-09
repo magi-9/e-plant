@@ -178,6 +178,8 @@ def _option_entry(m):
         "category": m.category,
         "all_categories": (m.parameters or {}).get("all_categories", ""),
         "price": str(m.price) if m.price is not None else None,
+        "vat_rate": str(m.vat_rate),
+        "gross_price": str(m.get_gross_price()) if m.price is not None else None,
         "image": m.image.url if getattr(m, "image", None) and m.image else "",
         "stock_quantity": m.stock_quantity,
         "label": option_label,
@@ -489,8 +491,8 @@ class ProductCountView(APIView):
                 )
 
                 seen: set = set()
-                for name, price, category, wc_gid in qs.values_list(
-                    "name", "price", "category", "wildcard_group_id"
+                for name, price, vat_rate, category, wc_gid in qs.values_list(
+                    "name", "price", "vat_rate", "category", "wildcard_group_id"
                 ):
                     if wc_gid and wc_gid in active_wc_ids:
                         key = ("wc_db", wc_gid)
@@ -499,6 +501,7 @@ class ProductCountView(APIView):
                             "wc_mem",
                             normalized_storefront_name(name),
                             str(price) if price is not None else "",
+                            str(vat_rate) if vat_rate is not None else "",
                             (category or "").strip().casefold(),
                         )
                     seen.add(key)
@@ -1034,6 +1037,7 @@ class AdminProductImport(APIView):
                     product.description = ""
                     product.category = "Uncategorized"
                     product.price = Decimal("0.00")
+                    product.vat_rate = Decimal("5.00")
                     product.stock_quantity = 0
                     product.low_stock_threshold = 5
                     product.low_stock_alert_sent = False
@@ -1052,6 +1056,15 @@ class AdminProductImport(APIView):
                     except (ValueError, InvalidOperation):
                         raise ValidationError(
                             f"Invalid price for product {name}: {price_value}"
+                        )
+
+                vat_rate_value = row.get("vat_rate")
+                if vat_rate_value is not None and str(vat_rate_value).strip():
+                    try:
+                        product.vat_rate = Decimal(vat_rate_value)
+                    except (ValueError, InvalidOperation):
+                        raise ValidationError(
+                            f"Invalid vat_rate for product {name}: {vat_rate_value}"
                         )
 
                 stock_value = row.get("stock_quantity")
@@ -1100,6 +1113,7 @@ class AdminProductImport(APIView):
                         "description",
                         "category",
                         "price",
+                        "vat_rate",
                         "stock_quantity",
                         "low_stock_threshold",
                         "low_stock_alert_sent",
@@ -1140,6 +1154,7 @@ class AdminProductExport(APIView):
                 "description": p.description,
                 "category": p.category,
                 "price": str(p.price),
+                "vat_rate": str(p.vat_rate),
                 "stock_quantity": p.stock_quantity,
                 "low_stock_threshold": p.low_stock_threshold,
                 "low_stock_alert_sent": p.low_stock_alert_sent,
@@ -1236,6 +1251,12 @@ class AdminProductFullImport(APIView):
             except (InvalidOperation, TypeError):
                 price = Decimal("0.00")
 
+            vat_rate_str = row.get("vat_rate", "5.00") or "5.00"
+            try:
+                vat_rate = Decimal(str(vat_rate_str))
+            except (InvalidOperation, TypeError):
+                vat_rate = Decimal("5.00")
+
             params = row.get("parameters") or {}
             if not isinstance(params, dict):
                 params = {}
@@ -1249,6 +1270,7 @@ class AdminProductFullImport(APIView):
                 "description": row.get("description") or "",
                 "category": row.get("category") or "",
                 "price": price,
+                "vat_rate": vat_rate,
                 "stock_quantity": int(row.get("stock_quantity") or 0),
                 "low_stock_threshold": int(row.get("low_stock_threshold") or 5),
                 "low_stock_alert_sent": bool(row.get("low_stock_alert_sent", False)),
@@ -1277,6 +1299,7 @@ class AdminProductFullImport(APIView):
             "description",
             "category",
             "price",
+            "vat_rate",
             "stock_quantity",
             "low_stock_threshold",
             "low_stock_alert_sent",

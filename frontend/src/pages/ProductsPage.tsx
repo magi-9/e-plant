@@ -55,6 +55,8 @@ const getProductPreviewImage = (product: Product): string | null => {
     return null;
 };
 
+const getCustomerPrice = (product: Product): string | null => product.gross_price ?? product.price;
+
 const PAGE_SIZE = 20;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
 
@@ -302,7 +304,7 @@ export default function ProductsPage() {
         addItem({
             productId: product.id,
             name: product.name,
-            price: product.price!,
+            price: getCustomerPrice(product)!,
             image: previewImage,
             stockQuantity: product.stock_quantity,
         });
@@ -383,7 +385,7 @@ export default function ProductsPage() {
                 image: product.image || socialImageUrl,
                 offers: {
                     '@type': 'Offer',
-                    price: product.price,
+                    price: getCustomerPrice(product),
                     priceCurrency: 'EUR',
                     availability: product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
                 }
@@ -1003,7 +1005,7 @@ export default function ProductsPage() {
                                         </div>
 
                                         <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
-                                            {product.price ? (
+                                            {getCustomerPrice(product) ? (
                                                 <div className="flex items-center gap-1.5">
                                                     {(() => {
                                                         const s = product.parameters?.type === 'wildcard_group'
@@ -1011,7 +1013,7 @@ export default function ProductsPage() {
                                                             : product.stock_quantity;
                                                         return <StockDot stock={s} />;
                                                     })()}
-                                                    <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
+                                                    <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{getCustomerPrice(product)} €</p>
                                                 </div>
                                             ) : (
                                                 <span className="text-[10px] sm:text-xs font-semibold text-cyan-700 bg-cyan-50 px-1.5 sm:px-2.5 py-0.5 rounded-full">
@@ -1023,7 +1025,7 @@ export default function ProductsPage() {
 
                                         {!userIsAdmin && (
                                         <div className="mt-3 sm:mt-4 flex justify-end sm:min-h-[2.25rem]">
-                                            {product.price ? (() => {
+                                            {getCustomerPrice(product) ? (() => {
                                                 const cartItem = items.find(
                                                     item => item.productId === product.id && !item.variantReference
                                                 );

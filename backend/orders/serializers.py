@@ -26,6 +26,12 @@ class OrderItemBatchSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
+    net_subtotal = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True, source="get_net_subtotal"
+    )
+    vat_amount = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True, source="get_vat_amount"
+    )
     subtotal = serializers.DecimalField(
         max_digits=10, decimal_places=2, read_only=True, source="get_subtotal"
     )
@@ -39,10 +45,13 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "product_name",
             "quantity",
             "price_snapshot",
+            "vat_rate_snapshot",
+            "net_subtotal",
+            "vat_amount",
             "subtotal",
             "batch_allocations",
         )
-        read_only_fields = ("id", "product", "price_snapshot")
+        read_only_fields = ("id", "product", "price_snapshot", "vat_rate_snapshot")
 
 
 class ShippingRateSerializer(serializers.ModelSerializer):

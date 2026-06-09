@@ -7,7 +7,7 @@ from .models import Product, ProductGroup
 
 class ProductInline(admin.TabularInline):
     model = Product
-    fields = ("name", "reference", "price", "stock_quantity", "is_visible")
+    fields = ("name", "reference", "price", "vat_rate", "stock_quantity", "is_visible")
     extra = 0
     show_change_link = True
 
@@ -53,6 +53,7 @@ class ProductAdmin(admin.ModelAdmin):
         "reference",
         "group",
         "price",
+        "vat_rate",
         "stock_quantity",
         "low_stock_threshold",
         "low_stock_alert_sent",
@@ -61,6 +62,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = (
         "category",
         "group",
+        "vat_rate",
         "is_visible",
         "low_stock_alert_sent",
     )

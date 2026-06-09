@@ -112,8 +112,8 @@ class TestShippingIntegration:
                 "items": [{"product_id": product.pk, "quantity": 1}],
             }
         )
-        # total = product price + shipping = 30 + 3.90 = 33.90
-        assert order.total_price == Decimal("33.90")
+        # total = gross product price + shipping = 31.50 + 3.90 = 35.40
+        assert order.total_price == Decimal("35.40")
         assert order.shipping_cost == Decimal("3.90")
 
     def test_free_shipping_when_above_threshold(self):
@@ -147,8 +147,8 @@ class TestShippingIntegration:
                 "items": [{"product_id": product.pk, "quantity": 1}],
             }
         )
-        # total = 60, free_above = 50 → shipping = 0
-        assert order.total_price == Decimal("60.00")
+        # total = 63.00 gross, free_above = 50 → shipping = 0
+        assert order.total_price == Decimal("63.00")
         assert order.shipping_cost == Decimal("0.00")
 
     def test_pickup_shipping_is_always_free(self):
@@ -178,7 +178,7 @@ class TestShippingIntegration:
         )
         assert order.shipping_cost == Decimal("0.00")
         assert order.shipping_carrier == "Osobný odber"
-        assert order.total_price == Decimal(str(product.price))
+        assert order.total_price == product.get_gross_price()
 
     def test_no_shipping_rate_falls_back_to_global_settings(self):
         from orders.services.order_service import OrderService
@@ -209,4 +209,4 @@ class TestShippingIntegration:
             }
         )
         assert order.shipping_cost == Decimal("5.00")
-        assert order.total_price == Decimal("25.00")
+        assert order.total_price == Decimal("26.00")

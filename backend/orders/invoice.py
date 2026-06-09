@@ -195,6 +195,22 @@ VAT_RATES = {
 }
 
 
+def _vat_percent_to_rate(vat_percent) -> Decimal:
+    rate = Decimal(str(vat_percent or "0"))
+    if rate > 1:
+        rate = rate / Decimal("100")
+    return rate
+
+
+def _split_gross_vat(gross_amount, vat_percent) -> tuple[Decimal, Decimal]:
+    gross = Decimal(str(gross_amount))
+    rate = _vat_percent_to_rate(vat_percent)
+    if rate == 0:
+        return gross.quantize(Decimal("0.01")), Decimal("0.00")
+    net = (gross / (Decimal("1.00") + rate)).quantize(Decimal("0.01"))
+    return net, (gross - net).quantize(Decimal("0.01"))
+
+
 # ── Skonto helpers ────────────────────────────────────────────────────────────
 def skonto_amount(total) -> Decimal:
     """Return total after 2% early-payment discount."""
@@ -523,19 +539,33 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
         "Doprava (osobný odber)" if shipping_method == "pickup" else "Doprava (kuriér)"
     )
     shipping_cost = Decimal(str(order.shipping_cost or "0"))
+    shipping_vat_percent = getattr(shop_settings, "vat_rate", None)
+    if shipping_vat_percent is None:
+        country = getattr(order, "country", "SK") or "SK"
+        shipping_vat_percent = VAT_RATES.get(country, VAT_RATES["SK"]) * Decimal("100")
+    shipping_net, shipping_vat = _split_gross_vat(shipping_cost, shipping_vat_percent)
+
+    total_net = shipping_net
+    total_vat = shipping_vat
 
     if has_batches:
-        COL_W = [68 * mm, 22 * mm, 18 * mm, 32 * mm, 30 * mm]
+        COL_W = [48 * mm, 22 * mm, 16 * mm, 30 * mm, 24 * mm, 30 * mm]
         rows = [
             [
                 Paragraph("Popis", s_th),
                 Paragraph("Šarža", s_th),
                 Paragraph("Množ.", s_th_r),
-                Paragraph("Cena / ks", s_th_r),
-                Paragraph("Spolu", s_th_r),
+                Paragraph("Cena bez DPH", s_th_r),
+                Paragraph("DPH", s_th_r),
+                Paragraph("Cena s DPH", s_th_r),
             ]
         ]
         for item in items_qs:
+            net_subtotal = item.get_net_subtotal()
+            vat_amount = item.get_vat_amount()
+            gross_subtotal = item.get_gross_subtotal()
+            total_net += net_subtotal
+            total_vat += vat_amount
             batch_allocations = list(item.batch_allocations.all())
             batch_str = (
                 ", ".join(
@@ -550,8 +580,9 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(esc(batch_str), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
-                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                    Paragraph(f"{net_subtotal:.2f} €", s_td_r),
+                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
+                    Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
                 ]
             )
         rows.append(
@@ -559,34 +590,43 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 Paragraph(esc(shipping_label), s_normal),
                 Paragraph("—", s_normal),
                 Paragraph("1", s_td_r),
-                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+                Paragraph(f"{shipping_net:.2f} €", s_td_r),
+                Paragraph(f"{shipping_vat:.2f} €", s_td_r),
                 Paragraph(f"{shipping_cost:.2f} €", s_td_r),
             ]
         )
     else:
-        COL_W = [88 * mm, 18 * mm, 32 * mm, 32 * mm]
+        COL_W = [68 * mm, 16 * mm, 34 * mm, 24 * mm, 34 * mm]
         rows = [
             [
                 Paragraph("Popis", s_th),
                 Paragraph("Množ.", s_th_r),
-                Paragraph("Cena / ks", s_th_r),
-                Paragraph("Spolu", s_th_r),
+                Paragraph("Cena bez DPH", s_th_r),
+                Paragraph("DPH", s_th_r),
+                Paragraph("Cena s DPH", s_th_r),
             ]
         ]
         for item in items_qs:
+            net_subtotal = item.get_net_subtotal()
+            vat_amount = item.get_vat_amount()
+            gross_subtotal = item.get_gross_subtotal()
+            total_net += net_subtotal
+            total_vat += vat_amount
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{item.price_snapshot:.2f} €", s_td_r),
-                    Paragraph(f"{item.get_subtotal():.2f} €", s_td_r),
+                    Paragraph(f"{net_subtotal:.2f} €", s_td_r),
+                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
+                    Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
                 ]
             )
         rows.append(
             [
                 Paragraph(esc(shipping_label), s_normal),
                 Paragraph("1", s_td_r),
-                Paragraph(f"{shipping_cost:.2f} €", s_td_r),
+                Paragraph(f"{shipping_net:.2f} €", s_td_r),
+                Paragraph(f"{shipping_vat:.2f} €", s_td_r),
                 Paragraph(f"{shipping_cost:.2f} €", s_td_r),
             ]
         )
@@ -616,39 +656,18 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     # ── TOTALS SUMMARY (with VAT and optional skonto) ─────────────────────
     totals_rows = [
         [
-            Paragraph("Spolu:", s_r_bold),
-            Paragraph(f"{order.total_price:.2f} €", s_r_bold),
+            Paragraph("Základ dane:", s_r),
+            Paragraph(f"{total_net:.2f} €", s_td_r),
         ],
         [
-            Paragraph("Celkom:", s_r_bold),
+            Paragraph("DPH:", s_r),
+            Paragraph(f"{total_vat:.2f} €", s_td_r),
+        ],
+        [
+            Paragraph("Celkom s DPH:", s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ],
     ]
-
-    if getattr(order, "is_vat_payer", False):
-        country = getattr(order, "country", "SK") or "SK"
-        vat_rate = VAT_RATES.get(country, VAT_RATES["SK"])
-        settings_vat_rate = getattr(shop_settings, "vat_rate", None)
-        if settings_vat_rate is not None and country == "SK":
-            vat_rate = Decimal(str(settings_vat_rate))
-            if vat_rate > 1:
-                vat_rate = vat_rate / Decimal("100")
-        base = (order.total_price / (1 + vat_rate)).quantize(Decimal("0.01"))
-        vat_amount = (order.total_price - base).quantize(Decimal("0.01"))
-        vat_pct = int(vat_rate * 100)
-        totals_rows.extend(
-            [
-                [Paragraph("Základ dane:", s_r), Paragraph(f"{base:.2f} €", s_td_r)],
-                [
-                    Paragraph(f"DPH {vat_pct}%:", s_r),
-                    Paragraph(f"{vat_amount:.2f} €", s_td_r),
-                ],
-                [
-                    Paragraph("Celkom s DPH:", s_r_bold),
-                    Paragraph(f"{order.total_price:.2f} €", s_total_r),
-                ],
-            ]
-        )
 
     # Add skonto as a dedicated summary row directly under the final total.
     if order.payment_method == "bank_transfer":

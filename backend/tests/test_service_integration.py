@@ -39,7 +39,7 @@ class TestServiceIntegrationPoints:
             with django_capture_on_commit_callbacks(execute=True):
                 order = OrderService(user=user).create_order(order_data)
 
-        assert order.total_price == Decimal("120.00")
+        assert order.total_price == Decimal("126.00")
         mock_send.assert_called_once()
 
     def test_user_service_register_user_triggers_auth_email(self):
