@@ -23,6 +23,7 @@ RAW_DIR = os.path.join(BASE_DIR, "raw")
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 PRODUCT_STUBS_CSV = os.path.join(CSV_DIR, "product_stubs.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
+DEALER_PRICES_CSV = os.path.join(CSV_DIR, "dealer_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
 VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
@@ -128,6 +129,44 @@ def convert_products():
             count += 1
 
     print(f"products.csv: {count} rows → {out_path}")
+
+
+def convert_dealer_prices():
+    path = resolve_source_file("DEALER PRICES 2025.xlsx")
+    wb = openpyxl.load_workbook(path)
+    ws = wb["Dealer 2025"]
+
+    count = 0
+    current_section = ""
+
+    with open(DEALER_PRICES_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+
+        for row in ws.iter_rows(values_only=True):
+            col_a, col_b, col_c, col_d = row[0], row[1], row[2], row[3]
+
+            if all(v is None for v in [col_a, col_b, col_c, col_d]):
+                continue
+            if col_a in ("DEALER PRICES 2026", "DEALER PRICES 2025"):
+                continue
+            if isinstance(col_d, datetime.datetime) or isinstance(col_c, datetime.datetime):
+                continue
+
+            # Section header: col_a has a name but no numeric price (check before skipping "Item reference")
+            if col_a and col_c in (None, "Item reference") and not isinstance(col_d, (int, float)):
+                current_section = str(col_a).strip()
+                continue
+
+            if col_c and isinstance(col_d, (int, float)):
+                name = str(col_a).strip() if col_a else ""
+                detail = str(col_b).strip() if col_b else ""
+                reference = str(col_c).strip()
+                price = float(col_d)
+                writer.writerow([current_section, name, detail, reference, price])
+                count += 1
+
+    print(f"dealer_prices.csv: {count} rows → {DEALER_PRICES_CSV}")
 
 
 def convert_retail_prices():
@@ -1248,8 +1287,14 @@ def convert_catalog_pdf_options():
 
 
 if __name__ == "__main__":
-    print("Converting Excel files to CSV...\n")
-    convert_products()
-    convert_retail_prices()
-    convert_catalog_pdf_options()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "dealer":
+        print("Converting dealer prices...\n")
+        convert_dealer_prices()
+    else:
+        print("Converting Excel files to CSV...\n")
+        convert_products()
+        convert_retail_prices()
+        convert_dealer_prices()
+        convert_catalog_pdf_options()
     print("\nDone. Files are in data/csv/ (gitignored).")
