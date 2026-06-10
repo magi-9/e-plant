@@ -35,6 +35,7 @@ from .serializers import (
     WildcardGroupSerializer,
 )
 from .compatibility import (
+    TIBASE_CATEGORY,
     get_compatibility_counts,
     get_compatibility_options,
     get_compatible_screws_for_tibase,
@@ -880,9 +881,6 @@ class CompatibilityCountsView(APIView):
         return Response({"counts": get_compatibility_counts()})
 
 
-TIBASE_CATEGORY = "TITANIUM BASE (screw included)"
-
-
 class CompatibleScrewsView(APIView):
     """Return compatible straight and dynamic screws for a TiBase product.
 
@@ -927,12 +925,9 @@ class CompatibleScrewsView(APIView):
                     }
                 )
 
-        parts = (product.reference or "").split(".")
-        compat_code = parts[2].zfill(4) if len(parts) >= 3 else ""
-
         return Response(
             {
-                "compatibility_code": compat_code,
+                "compatibility_code": screw_refs["compatibility_code"],
                 "screws": screws,
             }
         )

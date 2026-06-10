@@ -224,9 +224,10 @@ class OrderService:
 
         Raises serializers.ValidationError on any validation failure.
         """
-        from products.compatibility import get_compatible_screws_for_tibase
-
-        TIBASE_CATEGORY = "TITANIUM BASE (screw included)"
+        from products.compatibility import (
+            TIBASE_CATEGORY,
+            get_compatible_screws_for_tibase,
+        )
 
         # Build a map from product_id -> prepared_item for quick lookup
         prepared_by_pid = {item["product"].id: item for item in prepared_items}
