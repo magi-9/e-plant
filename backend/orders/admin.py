@@ -38,6 +38,8 @@ class OrderAdmin(admin.ModelAdmin):
         "customer_name",
         "email",
         "total_price",
+        "discount_percent",
+        "discount_amount",
         "shipping_cost",
         "shipping_carrier",
         "payment_method",
@@ -53,6 +55,8 @@ class OrderAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
         "total_price",
+        "discount_percent",
+        "discount_amount",
         "shipping_cost",
         "shipping_carrier",
     )
@@ -67,6 +71,8 @@ class OrderAdmin(admin.ModelAdmin):
                     "status",
                     "payment_method",
                     "total_price",
+                    "discount_percent",
+                    "discount_amount",
                     "notes",
                 )
             },

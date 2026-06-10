@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import CustomUser, EmailRateLimit, GlobalSettings
 
@@ -12,10 +13,17 @@ class CustomUserAdmin(admin.ModelAdmin):
         "last_name",
         "is_active",
         "is_staff",
+        "annual_discount_percent",
+        "annual_discount_year",
         "date_joined",
     )
     list_filter = ("is_active", "is_staff")
     search_fields = ("email", "title", "first_name", "last_name")
+
+    def save_model(self, request, obj, form, change):
+        if "annual_discount_percent" in form.changed_data:
+            obj.annual_discount_year = timezone.localdate().year
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(GlobalSettings)

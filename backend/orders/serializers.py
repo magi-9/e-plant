@@ -191,6 +191,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_method",
             "status",
             "total_price",
+            "discount_percent",
+            "discount_amount",
             "shipping_cost",
             "shipping_carrier",
             "notes",
@@ -203,6 +205,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_number",
             "status",
             "total_price",
+            "discount_percent",
+            "discount_amount",
             "created_at",
             "updated_at",
         )

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
 import AdminNav from '../components/AdminNav';
@@ -17,7 +17,7 @@ export default function AdminUsers() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [previewUser, setPreviewUser] = useState<User | null>(null);
     const [creatingRole, setCreatingRole] = useState<'admin' | 'client'>('client');
-    const [formData, setFormData] = useState({ email: '', password: '', first_name: '', last_name: '', is_active: true });
+    const [formData, setFormData] = useState({ email: '', password: '', first_name: '', last_name: '', is_active: true, annual_discount_percent: '0' });
     const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
@@ -36,6 +36,11 @@ export default function AdminUsers() {
     const admins = usersList.filter(u => u.is_staff);
     const clients = usersList.filter(u => !u.is_staff);
     const fullName = (user: User) => [user.title, user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+    const formatCurrency = (value?: number) => new Intl.NumberFormat('sk-SK', { style: 'currency', currency: 'EUR' }).format(value ?? 0);
+    const formatDiscount = (value?: string | number) => {
+        const amount = Number(value ?? 0);
+        return `${amount.toLocaleString('sk-SK', { maximumFractionDigits: 2 })} %`;
+    };
 
     const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-users'], exact: false });
 
@@ -68,23 +73,42 @@ export default function AdminUsers() {
     const handleAdd = (role: 'admin' | 'client') => {
         setEditingUser(null);
         setCreatingRole(role);
-        setFormData({ email: '', password: '', first_name: '', last_name: '', is_active: true });
+        setFormData({ email: '', password: '', first_name: '', last_name: '', is_active: true, annual_discount_percent: '0' });
         setIsModalOpen(true);
     };
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
-        setFormData({ email: user.email, password: '', first_name: user.first_name ?? '', last_name: user.last_name ?? '', is_active: user.is_active });
+        setFormData({
+            email: user.email,
+            password: '',
+            first_name: user.first_name ?? '',
+            last_name: user.last_name ?? '',
+            is_active: user.is_active,
+            annual_discount_percent: String(user.annual_discount_percent ?? '0'),
+        });
         setIsModalOpen(true);
     };
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         if (editingUser) {
-            updateMutation.mutate({ id: editingUser.id, data: { is_active: formData.is_active } });
+            updateMutation.mutate({
+                id: editingUser.id,
+                data: {
+                    is_active: formData.is_active,
+                    annual_discount_percent: Number(formData.annual_discount_percent || 0),
+                },
+            });
         } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            createMutation.mutate({ email: formData.email, password: formData.password, first_name: formData.first_name, last_name: formData.last_name, is_staff: creatingRole === 'admin', is_active: formData.is_active } as any);
+            createMutation.mutate({
+                email: formData.email,
+                password: formData.password,
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                is_staff: creatingRole === 'admin',
+                is_active: formData.is_active,
+            });
         }
     };
 
@@ -196,6 +220,32 @@ export default function AdminUsers() {
         navigate(`/admin/orders?q=${encodeURIComponent(query)}`);
     };
 
+    const renderTurnoverChart = (user: User) => {
+        const monthly = user.turnover_monthly ?? [];
+        const maxTurnover = Math.max(...monthly.map(item => item.turnover), 1);
+
+        return (
+            <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Obrat po mesiacoch</span>
+                    <ChartBarIcon className="h-4 w-4 text-cyan-600" />
+                </div>
+                <div className="flex h-28 items-end gap-1.5 rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                    {monthly.map((item) => (
+                        <div key={item.month} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
+                            <div
+                                className="w-full rounded-t bg-cyan-500"
+                                style={{ height: `${Math.max((item.turnover / maxTurnover) * 100, item.turnover > 0 ? 8 : 2)}%` }}
+                                title={`${item.month}: ${formatCurrency(item.turnover)}`}
+                            />
+                            <span className="text-[10px] text-gray-400">{item.month.slice(5)}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
             <AdminNav />
@@ -281,6 +331,29 @@ export default function AdminUsers() {
                                                     <span className="text-sm text-gray-700">Aktívny účet</span>
                                                 </label>
                                             </div>
+                                            {editingUser && !editingUser.is_staff && (
+                                                <div>
+                                                    <label htmlFor="admin-user-discount" className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Zľava do konca roka
+                                                    </label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            id="admin-user-discount"
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.01"
+                                                            value={formData.annual_discount_percent}
+                                                            onChange={e => setFormData({ ...formData, annual_discount_percent: e.target.value })}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                                        />
+                                                        <span className="text-sm text-gray-500">%</span>
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        Uložením sa zľava nastaví pre aktuálny rok.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
@@ -305,11 +378,35 @@ export default function AdminUsers() {
                                 role="dialog"
                                 aria-modal="true"
                                 aria-labelledby="customer-preview-title"
-                                className="z-[101] w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg"
+                                className="z-[101] w-full max-w-2xl overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg"
                             >
                                 <div className="px-6 py-5">
                                     <h3 id="customer-preview-title" className="text-lg font-bold text-gray-900">{fullName(previewUser) || previewUser.email}</h3>
                                     <p className="mt-1 text-sm text-gray-500">{previewUser.email}</p>
+                                    {!previewUser.is_staff && (
+                                        <div className="mt-5 rounded-lg border border-cyan-100 bg-cyan-50/60 p-4">
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Obrat za 12 mesiacov</dt>
+                                                    <dd className="mt-1 text-2xl font-bold text-gray-900">
+                                                        {formatCurrency(previewUser.turnover_last_12_months)}
+                                                    </dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Aktuálna zľava</dt>
+                                                    <dd className="mt-1 text-2xl font-bold text-gray-900">
+                                                        {formatDiscount(previewUser.annual_discount_percent)}
+                                                    </dd>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {previewUser.annual_discount_valid_until
+                                                            ? `Platí do ${new Date(previewUser.annual_discount_valid_until).toLocaleDateString('sk-SK')}`
+                                                            : 'Bez aktívnej zľavy'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {renderTurnoverChart(previewUser)}
+                                        </div>
+                                    )}
                                     <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <div>
                                             <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Telefón</dt>

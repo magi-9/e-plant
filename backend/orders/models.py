@@ -65,6 +65,12 @@ class Order(AddressModel):
     )
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+    discount_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="awaiting_payment"

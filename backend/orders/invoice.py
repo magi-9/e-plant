@@ -676,11 +676,21 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             Paragraph("DPH:", s_r),
             Paragraph(f"{total_vat:.2f} €", s_td_r),
         ],
+    ]
+    if getattr(order, "discount_amount", Decimal("0.00")):
+        totals_rows.append(
+            [
+                Paragraph(f"Zľava {order.discount_percent:.2f} %:", s_r),
+                Paragraph(f"-{order.discount_amount:.2f} €", s_td_r),
+            ]
+        )
+
+    totals_rows.append(
         [
             Paragraph("Celkom s DPH:", s_r_bold),
             Paragraph(f"{order.total_price:.2f} €", s_total_r),
         ],
-    ]
+    )
 
     # Add skonto as a dedicated summary row directly under the final total.
     if order.payment_method == "bank_transfer":

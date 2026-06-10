@@ -88,6 +88,18 @@ class CustomUser(AbstractUser, AddressModel):
     vat_id = models.CharField(
         max_length=20, blank=True, default="", verbose_name="IČ DPH"
     )
+    annual_discount_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0
+    )
+    annual_discount_year = models.PositiveIntegerField(null=True, blank=True)
+
+    def get_active_discount_percent(self):
+        from django.utils import timezone
+
+        current_year = timezone.localdate().year
+        if self.annual_discount_year == current_year:
+            return self.annual_discount_percent
+        return 0
 
     def clean(self):
         super().clean()
