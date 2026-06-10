@@ -286,6 +286,11 @@ export default function ProductDetailModal({
             ? compatibleScrews.find((s) => s.id === selectedScrewId) ?? null
             : null;
 
+        if (isTiBase && compatibleScrews.length > 0 && (!selectedScrew || selectedScrew.stock_quantity === 0)) {
+            toast.error('Vybraná skrutka nie je skladom.');
+            return;
+        }
+
         setIsAdding(true);
         addItem({
             productId: product.id,

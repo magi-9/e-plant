@@ -52,6 +52,7 @@ export const useCartStore = create<CartState>()(
                                         ...i,
                                         quantity: i.quantity + 1,
                                         stockQuantity: item.stockQuantity ?? i.stockQuantity,
+                                        bundledScrew: item.bundledScrew ?? i.bundledScrew,
                                     }
                                     : i
                             ),

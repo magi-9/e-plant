@@ -54,9 +54,13 @@ def test_compatible_screws_returns_screws_for_tibase(
     dynamic_screw = product_factory(reference="41.316.084.01-2", stock_quantity=3)
     dynamic_screw2 = product_factory(reference="41.316.099.01-2", stock_quantity=2)
 
+    from products.compatibility import _load_screws_by_code
+
     url = reverse("product_compatible_screws", kwargs={"pk": tibase.id})
     with patch("products.compatibility._CSV_PATH", screws_csv):
+        _load_screws_by_code.cache_clear()
         response = api_client.get(url)
+    _load_screws_by_code.cache_clear()
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()

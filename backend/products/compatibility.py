@@ -76,49 +76,56 @@ def get_compatibility_codes_for_ref(ref):
     return sorted(_load_ref_to_codes().get(ref, frozenset()))
 
 
+TIBASE_CATEGORY = "TITANIUM BASE (screw included)"
+
+
+@lru_cache(maxsize=1)
+def _load_screws_by_code():
+    """Return {compatibility_code: {"straight": [...], "dynamic": [...]}} from CSV.
+
+    Cached for the process lifetime like the other _load* helpers.
+    """
+    if not os.path.exists(_CSV_PATH):
+        return {}
+    result = {}
+    with open(_CSV_PATH, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = row.get("compatibility_code", "").strip()
+            section = row.get("section", "").strip()
+            ref = row.get("reference", "").strip()
+            if not (code and ref):
+                continue
+            entry = result.setdefault(code, {"straight": [], "dynamic": []})
+            if section == "STRAIGHT" and ref.startswith("40."):
+                if ref not in entry["straight"]:
+                    entry["straight"].append(ref)
+            elif section == "DYNAMIC" and ref.startswith("41."):
+                if ref not in entry["dynamic"]:
+                    entry["dynamic"].append(ref)
+    return result
+
+
 def get_compatible_screws_for_tibase(reference):
     """Return compatible screw references for a TiBase product reference.
 
     Extracts the 4-digit compatibility code from segment 3 of the reference
-    (e.g. '31.3XX.CCCC.VV-2' → code = segment[2].zfill(4)), then scans the
-    CSV for rows where:
-      - compatibility_code == code
-      - section == 'STRAIGHT' and reference starts with '40.'  (straight screws)
-      - section == 'DYNAMIC'  and reference starts with '41.'  (dynamic screws)
+    (e.g. '31.3XX.CCCC.VV-2' → code = segment[2].zfill(4)), then returns
+    matching STRAIGHT (40.xxx) and DYNAMIC (41.xxx) screw refs from the CSV.
 
-    Returns a dict: {'straight': [ref, ...], 'dynamic': [ref, ...]}
+    Returns a dict:
+        {'compatibility_code': '0001', 'straight': [ref, ...], 'dynamic': [ref, ...]}
     """
-    if not reference:
-        return {"straight": [], "dynamic": []}
-
     parts = reference.split(".")
     if len(parts) < 3:
-        return {"straight": [], "dynamic": []}
+        return {"compatibility_code": "", "straight": [], "dynamic": []}
 
     code = parts[2].zfill(4)
-
-    if not os.path.exists(_CSV_PATH):
-        return {"straight": [], "dynamic": []}
-
-    straight = []
-    dynamic = []
-
-    with open(_CSV_PATH, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            if row.get("compatibility_code", "").strip() != code:
-                continue
-            section = row.get("section", "").strip()
-            ref = row.get("reference", "").strip()
-            if not ref:
-                continue
-            if section == "STRAIGHT" and ref.startswith("40."):
-                if ref not in straight:
-                    straight.append(ref)
-            elif section == "DYNAMIC" and ref.startswith("41."):
-                if ref not in dynamic:
-                    dynamic.append(ref)
-
-    return {"straight": straight, "dynamic": dynamic}
+    entry = _load_screws_by_code().get(code, {"straight": [], "dynamic": []})
+    return {
+        "compatibility_code": code,
+        "straight": entry["straight"],
+        "dynamic": entry["dynamic"],
+    }
 
 
 def get_compatibility_counts():
