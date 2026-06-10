@@ -268,7 +268,21 @@ class AdminUserCreateView(generics.CreateAPIView):
     permission_classes = (IsAdminUser,)
 
     def perform_create(self, serializer):
-        _perform_user_registration(serializer)
+        is_staff = bool(self.request.data.get("is_staff", False))
+        is_active = bool(self.request.data.get("is_active", True))
+        user = UserService.register_user(
+            email=serializer.validated_data["email"],
+            password=serializer.validated_data["password"],
+            title=serializer.validated_data.get("title", ""),
+            first_name=serializer.validated_data["first_name"],
+            last_name=serializer.validated_data["last_name"],
+            is_active=is_active,
+            send_verification_email=False,
+        )
+        if is_staff:
+            user.is_staff = True
+            user.save(update_fields=["is_staff"])
+        serializer.instance = user
 
 
 class AdminUserUpdateView(generics.UpdateAPIView):

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
 import AdminNav from '../components/AdminNav';
 import ConfirmModal from '../components/ConfirmModal';
@@ -38,17 +39,30 @@ export default function AdminUsers() {
 
     const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-users'], exact: false });
 
+    const apiErrorMessage = (err: unknown): string => {
+        const data = (err as { response?: { data?: unknown } })?.response?.data;
+        if (!data || typeof data !== 'object') return 'Neznáma chyba.';
+        const msgs = Object.entries(data as Record<string, unknown>)
+            .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
+            .filter(Boolean)
+            .join(' ');
+        return msgs || 'Neznáma chyba.';
+    };
+
     const createMutation = useMutation({
         mutationFn: createAdminUser,
-        onSuccess: () => { invalidate(); setIsModalOpen(false); }
+        onSuccess: () => { invalidate(); setIsModalOpen(false); toast.success('Používateľ bol vytvorený.'); },
+        onError: (err) => toast.error(apiErrorMessage(err)),
     });
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: number; data: Partial<User> }) => updateAdminUser(id, data),
-        onSuccess: () => { invalidate(); setIsModalOpen(false); }
+        onSuccess: () => { invalidate(); setIsModalOpen(false); toast.success('Používateľ bol aktualizovaný.'); },
+        onError: (err) => toast.error(apiErrorMessage(err)),
     });
     const deleteMutation = useMutation({
         mutationFn: deleteAdminUser,
-        onSuccess: () => { invalidate(); setDeleteTarget(null); }
+        onSuccess: () => { invalidate(); setDeleteTarget(null); toast.success('Používateľ bol odstránený.'); },
+        onError: (err) => toast.error(apiErrorMessage(err)),
     });
 
     const handleAdd = (role: 'admin' | 'client') => {

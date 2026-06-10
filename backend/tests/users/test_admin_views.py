@@ -95,3 +95,57 @@ def test_admin_toggle_non_existent_user(api_client, user_factory):
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.data["error"] == "User not found"
+
+
+@pytest.mark.django_db
+def test_admin_can_create_client(api_client, user_factory):
+    admin = user_factory(is_staff=True)
+    url = reverse("admin_user_create")
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.post(
+        url,
+        {
+            "email": "client@example.com",
+            "password": "StrongPass123!",
+            "first_name": "Jan",
+            "last_name": "Novak",
+            "is_staff": False,
+            "is_active": True,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.get(email="client@example.com")
+    assert user.is_staff is False
+    assert user.is_active is True
+
+
+@pytest.mark.django_db
+def test_admin_can_create_admin_user(api_client, user_factory):
+    admin = user_factory(is_staff=True)
+    url = reverse("admin_user_create")
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.post(
+        url,
+        {
+            "email": "newadmin@example.com",
+            "password": "StrongPass123!",
+            "first_name": "Eva",
+            "last_name": "Admin",
+            "is_staff": True,
+            "is_active": True,
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    from django.contrib.auth import get_user_model
+
+    user = get_user_model().objects.get(email="newadmin@example.com")
+    assert user.is_staff is True
+    assert user.is_active is True

@@ -8,7 +8,7 @@ RUN if getent passwd 1000 > /dev/null; then         CONF_USER=$(getent passwd 10
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 

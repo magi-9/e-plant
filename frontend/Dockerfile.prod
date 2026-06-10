@@ -7,7 +7,7 @@ ARG VITE_HOME_PAGE_READY="true"
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --prefer-offline || npm ci
 
 COPY . .
 RUN VITE_API_URL=${VITE_API_URL} VITE_SENTRY_DSN=${VITE_SENTRY_DSN} VITE_HOME_PAGE_READY=${VITE_HOME_PAGE_READY} npm run build
