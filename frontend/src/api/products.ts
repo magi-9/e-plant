@@ -244,6 +244,23 @@ export const getProduct = async (id: number): Promise<Product> => {
     return normalizeProductImages(response.data);
 };
 
+export interface CompatibleScrew {
+    id: number;
+    reference: string;
+    name: string;
+    stock_quantity: number;
+}
+
+export interface CompatibleScrewsResponse {
+    compatibility_code: string;
+    screws: CompatibleScrew[];
+}
+
+export const getCompatibleScrews = async (productId: number): Promise<CompatibleScrewsResponse> => {
+    const response = await client.get<CompatibleScrewsResponse>(`/products/${productId}/compatible-screws/`);
+    return response.data;
+};
+
 export const createProduct = async (data: FormData): Promise<Product> => {
     const response = await client.post<Product>('/products/admin/create/', data, {
         headers: { 'Content-Type': 'multipart/form-data' }

@@ -22,6 +22,7 @@ from .views import (
     CategoryCountsView,
     CompatibilityCountsView,
     CompatibilityOptionsView,
+    CompatibleScrewsView,
     ProductCategoriesView,
     ProductCountView,
     ProductGroupListView,
@@ -54,6 +55,11 @@ urlpatterns = [
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
     path(
         "<int:pk>/", ProductViewSet.as_view({"get": "retrieve"}), name="product_detail"
+    ),
+    path(
+        "<int:pk>/compatible-screws/",
+        CompatibleScrewsView.as_view(),
+        name="product_compatible_screws",
     ),
     path(
         "admin/create/",

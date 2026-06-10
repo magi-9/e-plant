@@ -411,7 +411,11 @@ export default function CheckoutPage() {
                 payment_method: formData.payment_method,
                 shipping_method: formData.shipping_method,
                 notes: mergedNotes,
-                items: items.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+                items: items.map(i => ({
+                    product_id: i.productId,
+                    quantity: i.quantity,
+                    ...(i.bundledScrew ? { bundled_screw_product_id: i.bundledScrew.productId } : {}),
+                })),
             };
 
             const order = await createOrder(orderData);

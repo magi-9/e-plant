@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export interface BundledScrew {
+    productId: number;
+    name: string;
+    reference: string;
+}
+
 export interface CartItem {
     productId: number;
     name: string;
@@ -10,6 +16,7 @@ export interface CartItem {
     image?: string | null;
     variantReference?: string;
     variantLabel?: string;
+    bundledScrew?: BundledScrew;
 }
 
 export interface CartState {

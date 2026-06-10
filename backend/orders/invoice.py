@@ -574,14 +574,20 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 else "—"
             )
             net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
+            if item.is_free:
+                unit_price_str = "zdarma"
+                gross_str = "0,00 €"
+            else:
+                unit_price_str = f"{net_unit:.2f} €"
+                gross_str = f"{gross_subtotal:.2f} €"
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(esc(batch_str), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{net_unit:.2f} €", s_td_r),
+                    Paragraph(unit_price_str, s_td_r),
                     Paragraph(f"{vat_rate:f}%", s_td_r),
-                    Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
+                    Paragraph(gross_str, s_td_r),
                 ]
             )
         rows.append(
@@ -613,13 +619,19 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             total_vat += vat_amount
             vat_rate = item.vat_rate_snapshot.normalize()
             net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
+            if item.is_free:
+                unit_price_str = "zdarma"
+                gross_str = "0,00 €"
+            else:
+                unit_price_str = f"{net_unit:.2f} €"
+                gross_str = f"{gross_subtotal:.2f} €"
             rows.append(
                 [
                     Paragraph(esc(item.product.name), s_normal),
                     Paragraph(str(item.quantity), s_td_r),
-                    Paragraph(f"{net_unit:.2f} €", s_td_r),
+                    Paragraph(unit_price_str, s_td_r),
                     Paragraph(f"{vat_rate:f}%", s_td_r),
-                    Paragraph(f"{gross_subtotal:.2f} €", s_td_r),
+                    Paragraph(gross_str, s_td_r),
                 ]
             )
         rows.append(
