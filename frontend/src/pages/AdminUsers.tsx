@@ -16,7 +16,7 @@ export default function AdminUsers() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [previewUser, setPreviewUser] = useState<User | null>(null);
     const [creatingRole, setCreatingRole] = useState<'admin' | 'client'>('client');
-    const [formData, setFormData] = useState({ email: '', password: '', is_active: true });
+    const [formData, setFormData] = useState({ email: '', password: '', first_name: '', last_name: '', is_active: true });
     const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
@@ -54,13 +54,13 @@ export default function AdminUsers() {
     const handleAdd = (role: 'admin' | 'client') => {
         setEditingUser(null);
         setCreatingRole(role);
-        setFormData({ email: '', password: '', is_active: true });
+        setFormData({ email: '', password: '', first_name: '', last_name: '', is_active: true });
         setIsModalOpen(true);
     };
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
-        setFormData({ email: user.email, password: '', is_active: user.is_active });
+        setFormData({ email: user.email, password: '', first_name: user.first_name ?? '', last_name: user.last_name ?? '', is_active: user.is_active });
         setIsModalOpen(true);
     };
 
@@ -70,7 +70,7 @@ export default function AdminUsers() {
             updateMutation.mutate({ id: editingUser.id, data: { is_active: formData.is_active } });
         } else {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            createMutation.mutate({ email: formData.email, password: formData.password, is_staff: creatingRole === 'admin', is_active: formData.is_active } as any);
+            createMutation.mutate({ email: formData.email, password: formData.password, first_name: formData.first_name, last_name: formData.last_name, is_staff: creatingRole === 'admin', is_active: formData.is_active } as any);
         }
     };
 
@@ -218,6 +218,30 @@ export default function AdminUsers() {
                                                     className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                                                     disabled={!!editingUser}
                                                 />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label htmlFor="admin-user-first-name" className="block text-sm font-medium text-gray-700 mb-1">Meno</label>
+                                                    <input
+                                                        id="admin-user-first-name"
+                                                        type="text"
+                                                        required={!editingUser}
+                                                        value={formData.first_name}
+                                                        onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label htmlFor="admin-user-last-name" className="block text-sm font-medium text-gray-700 mb-1">Priezvisko</label>
+                                                    <input
+                                                        id="admin-user-last-name"
+                                                        type="text"
+                                                        required={!editingUser}
+                                                        value={formData.last_name}
+                                                        onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                </div>
                                             </div>
                                             {!editingUser && (
                                                 <div>
