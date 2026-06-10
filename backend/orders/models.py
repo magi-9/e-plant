@@ -102,6 +102,7 @@ class OrderItem(models.Model):
     vat_rate_snapshot = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("5.00")
     )
+    is_free = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.quantity}x {self.product.name} @ {self.price_snapshot}"

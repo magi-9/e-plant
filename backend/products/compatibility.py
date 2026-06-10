@@ -76,6 +76,58 @@ def get_compatibility_codes_for_ref(ref):
     return sorted(_load_ref_to_codes().get(ref, frozenset()))
 
 
+TIBASE_CATEGORY = "TITANIUM BASE (screw included)"
+
+
+@lru_cache(maxsize=1)
+def _load_screws_by_code():
+    """Return {compatibility_code: {"straight": [...], "dynamic": [...]}} from CSV.
+
+    Cached for the process lifetime like the other _load* helpers.
+    """
+    if not os.path.exists(_CSV_PATH):
+        return {}
+    result = {}
+    with open(_CSV_PATH, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = row.get("compatibility_code", "").strip()
+            section = row.get("section", "").strip()
+            ref = row.get("reference", "").strip()
+            if not (code and ref):
+                continue
+            entry = result.setdefault(code, {"straight": [], "dynamic": []})
+            if section == "STRAIGHT" and ref.startswith("40."):
+                if ref not in entry["straight"]:
+                    entry["straight"].append(ref)
+            elif section == "DYNAMIC" and ref.startswith("41."):
+                if ref not in entry["dynamic"]:
+                    entry["dynamic"].append(ref)
+    return result
+
+
+def get_compatible_screws_for_tibase(reference):
+    """Return compatible screw references for a TiBase product reference.
+
+    Extracts the 4-digit compatibility code from segment 3 of the reference
+    (e.g. '31.3XX.CCCC.VV-2' → code = segment[2].zfill(4)), then returns
+    matching STRAIGHT (40.xxx) and DYNAMIC (41.xxx) screw refs from the CSV.
+
+    Returns a dict:
+        {'compatibility_code': '0001', 'straight': [ref, ...], 'dynamic': [ref, ...]}
+    """
+    parts = reference.split(".")
+    if len(parts) < 3:
+        return {"compatibility_code": "", "straight": [], "dynamic": []}
+
+    code = parts[2].zfill(4)
+    entry = _load_screws_by_code().get(code, {"straight": [], "dynamic": []})
+    return {
+        "compatibility_code": code,
+        "straight": entry["straight"],
+        "dynamic": entry["dynamic"],
+    }
+
+
 def get_compatibility_counts():
     """Return {compatibility_code: product_count} dict. Cached with TTL."""
     cache_key = "compatibility_counts"

@@ -35,8 +35,10 @@ from .serializers import (
     WildcardGroupSerializer,
 )
 from .compatibility import (
+    TIBASE_CATEGORY,
     get_compatibility_counts,
     get_compatibility_options,
+    get_compatible_screws_for_tibase,
     get_ref_prefixes_for_code,
 )
 from .cache_utils import invalidate_product_stats_cache
@@ -877,6 +879,58 @@ class CompatibilityCountsView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"counts": get_compatibility_counts()})
+
+
+class CompatibleScrewsView(APIView):
+    """Return compatible straight and dynamic screws for a TiBase product.
+
+    GET /api/products/<pk>/compatible-screws/
+
+    Returns 404 if the product does not exist or is not a TiBase.
+    Returns 200 with screws list (may be empty when no CSV data matches).
+    """
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, pk, *args, **kwargs):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            raise Http404
+
+        if product.category != TIBASE_CATEGORY:
+            raise Http404
+
+        screw_refs = get_compatible_screws_for_tibase(product.reference or "")
+        all_refs = screw_refs["straight"] + screw_refs["dynamic"]
+
+        if all_refs:
+            screw_products = {
+                p.reference: p for p in Product.objects.filter(reference__in=all_refs)
+            }
+        else:
+            screw_products = {}
+
+        # Build ordered list preserving straight-first, then dynamic order
+        screws = []
+        for ref in all_refs:
+            p = screw_products.get(ref)
+            if p:
+                screws.append(
+                    {
+                        "id": p.id,
+                        "reference": p.reference,
+                        "name": p.name,
+                        "stock_quantity": p.stock_quantity,
+                    }
+                )
+
+        return Response(
+            {
+                "compatibility_code": screw_refs["compatibility_code"],
+                "screws": screws,
+            }
+        )
 
 
 # Cached category counts

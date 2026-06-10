@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 class OrderItemInputSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)
+    bundled_screw_product_id = serializers.IntegerField(required=False, allow_null=True)
 
 
 class OrderItemBatchSerializer(serializers.ModelSerializer):
@@ -46,12 +47,19 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "quantity",
             "price_snapshot",
             "vat_rate_snapshot",
+            "is_free",
             "net_subtotal",
             "vat_amount",
             "subtotal",
             "batch_allocations",
         )
-        read_only_fields = ("id", "product", "price_snapshot", "vat_rate_snapshot")
+        read_only_fields = (
+            "id",
+            "product",
+            "price_snapshot",
+            "vat_rate_snapshot",
+            "is_free",
+        )
 
 
 class ShippingRateSerializer(serializers.ModelSerializer):

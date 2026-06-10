@@ -11,8 +11,10 @@ from typing import Any, Dict, List, Optional
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from rest_framework import serializers
 
 from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
+from products.models import Product
 from services.email import OrderEmailService
 from users.models import GlobalSettings
 
@@ -92,8 +94,26 @@ class OrderService:
         self, validated_data: Dict[str, Any], items_data: List[Dict[str, Any]]
     ) -> "Order":
         with transaction.atomic():
+            # Separate bundled screw requests from regular item data
+            bundled_screw_requests = []  # list of (tibase_item_data, screw_product_id)
+            clean_items_data = []
+            for item in items_data:
+                screw_id = item.pop("bundled_screw_product_id", None)
+                clean_items_data.append(item)
+                if screw_id is not None:
+                    bundled_screw_requests.append((item, screw_id))
+
             # Validate stock and prepare items (locks products)
-            prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
+            prepared_items = self.stock_service.validate_and_reserve_stock(
+                clean_items_data
+            )
+
+            # Process free bundled screws
+            if bundled_screw_requests:
+                free_screw_items = self._prepare_free_screw_items(
+                    bundled_screw_requests, prepared_items
+                )
+                prepared_items.extend(free_screw_items)
 
             # Calculate items total
             items_total = self.pricing_service.calculate_order_total(prepared_items)
@@ -180,6 +200,98 @@ class OrderService:
             )
 
             return order
+
+    def _prepare_free_screw_items(
+        self,
+        bundled_screw_requests: List[Any],
+        prepared_items: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Validate and prepare free screw OrderItems for TiBase bundling.
+
+        For each (tibase_item_data, screw_product_id) pair:
+          - Confirm the screw is compatible with the TiBase reference.
+          - Confirm screw stock >= tibase quantity.
+          - Deduct stock and allocate batches FIFO (same as regular items).
+          - Return prepared item dicts with price_snapshot=0, vat_rate_snapshot=0,
+            is_free=True.
+
+        Raises serializers.ValidationError on any validation failure.
+        """
+        from products.compatibility import (
+            TIBASE_CATEGORY,
+            get_compatible_screws_for_tibase,
+        )
+
+        # Build a map from product_id -> prepared_item for quick lookup
+        prepared_by_pid = {item["product"].id: item for item in prepared_items}
+
+        free_items = []
+        for tibase_item_data, screw_product_id in bundled_screw_requests:
+            tibase_product_id = tibase_item_data["product_id"]
+            tibase_quantity = tibase_item_data["quantity"]
+
+            # Resolve TiBase from prepared items (already locked)
+            tibase_prepared = prepared_by_pid.get(tibase_product_id)
+            if not tibase_prepared:
+                raise serializers.ValidationError(
+                    f"TiBase product id={tibase_product_id} not found in order items."
+                )
+
+            tibase_product = tibase_prepared["product"]
+            if tibase_product.category != TIBASE_CATEGORY:
+                raise serializers.ValidationError(
+                    f"Product '{tibase_product.name}' is not a TiBase product and "
+                    "cannot have a bundled screw."
+                )
+
+            # Validate screw exists
+            try:
+                screw_product = Product.objects.select_for_update().get(
+                    pk=screw_product_id
+                )
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Screw product id={screw_product_id} does not exist."
+                )
+
+            # Validate screw is compatible
+            compat = get_compatible_screws_for_tibase(tibase_product.reference or "")
+            all_compat_refs = compat["straight"] + compat["dynamic"]
+            if screw_product.reference not in all_compat_refs:
+                raise serializers.ValidationError(
+                    f"Screw '{screw_product.reference}' is not compatible with "
+                    f"TiBase '{tibase_product.reference}'."
+                )
+
+            # Validate screw stock
+            if screw_product.stock_quantity < tibase_quantity:
+                raise serializers.ValidationError(
+                    f"Not enough screw stock for '{screw_product.name}'. "
+                    f"Available: {screw_product.stock_quantity}, "
+                    f"Required: {tibase_quantity}."
+                )
+
+            # Deduct screw stock
+            screw_product.stock_quantity -= tibase_quantity
+            screw_product.save(update_fields=["stock_quantity"])
+
+            # FIFO batch allocation for the screw
+            allocations = self.stock_service._allocate_batches_fifo(
+                screw_product, tibase_quantity
+            )
+
+            free_items.append(
+                {
+                    "product": screw_product,
+                    "quantity": tibase_quantity,
+                    "price_snapshot": Decimal("0.00"),
+                    "vat_rate_snapshot": Decimal("0.00"),
+                    "is_free": True,
+                    "batch_allocations": allocations,
+                }
+            )
+
+        return free_items
 
     def _generate_order_number(self) -> str:
         """
