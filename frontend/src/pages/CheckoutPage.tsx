@@ -244,11 +244,11 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
                 {items.map((item) => (
                     <div key={`${item.productId}:${item.variantReference || 'default'}`}
                         className="flex justify-between gap-2 text-sm">
-                        <span className="text-slate-600 min-w-0 truncate">
+                        <span className={`min-w-0 truncate ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-600'}`}>
                             {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ''} ×{item.quantity}
                         </span>
-                        <span className="font-medium text-slate-900 flex-shrink-0 tabular-nums">
-                            {(parseFloat(item.price) * item.quantity).toFixed(2)} €
+                        <span className={`font-medium flex-shrink-0 tabular-nums ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
+                            {item.isBundledScrew ? 'zadarmo' : `${(parseFloat(item.price) * item.quantity).toFixed(2)} €`}
                         </span>
                     </div>
                 ))}
@@ -411,11 +411,13 @@ export default function CheckoutPage() {
                 payment_method: formData.payment_method,
                 shipping_method: formData.shipping_method,
                 notes: mergedNotes,
-                items: items.map(i => ({
-                    product_id: i.productId,
-                    quantity: i.quantity,
-                    ...(i.bundledScrew ? { bundled_screw_product_id: i.bundledScrew.productId } : {}),
-                })),
+                items: items
+                    .filter(i => !i.isBundledScrew)
+                    .map(i => ({
+                        product_id: i.productId,
+                        quantity: i.quantity,
+                        ...(i.bundledScrew ? { bundled_screw_product_id: i.bundledScrew.productId } : {}),
+                    })),
             };
 
             const order = await createOrder(orderData);

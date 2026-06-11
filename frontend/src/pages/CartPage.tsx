@@ -250,61 +250,89 @@ export default function CartPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="font-semibold text-sm text-slate-900 truncate">{item.name}</p>
+                                                            <p className={`font-semibold text-sm truncate ${item.isBundledScrew ? 'text-emerald-700' : 'text-slate-900'}`}>{item.name}</p>
+                                                            {item.isBundledScrew && (
+                                                                <p className="text-xs text-emerald-600 font-semibold mt-0.5">Skrutka zadarmo</p>
+                                                            )}
                                                             {item.variantLabel && (
                                                                 <p className="text-xs text-cyan-600 mt-0.5">{item.variantLabel}</p>
                                                             )}
-                                                            <p className="text-xs text-slate-400 mt-0.5">
-                                                                {typeof available === 'number' ? `Skladom: ${available} ks` : 'Dostupnosť: nezistená'}
-                                                            </p>
+                                                            {!item.isBundledScrew && (
+                                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                                    {typeof available === 'number' ? `Skladom: ${available} ks` : 'Dostupnosť: nezistená'}
+                                                                </p>
+                                                            )}
                                                         </div>
 
                                                         {/* Desktop: price + total columns */}
                                                         <div className="hidden md:flex items-center gap-6 text-sm flex-shrink-0">
-                                                            <span className="text-slate-500 tabular-nums w-24 text-right">{item.price} €</span>
-                                                            <span className="font-semibold text-slate-900 tabular-nums w-20 text-right">{lineTotal} €</span>
+                                                            {item.isBundledScrew ? (
+                                                                <span className="text-emerald-600 font-semibold tabular-nums w-24 text-right">zadarmo</span>
+                                                            ) : (
+                                                                <span className="text-slate-500 tabular-nums w-24 text-right">{item.price} €</span>
+                                                            )}
+                                                            <span className={`font-semibold tabular-nums w-20 text-right ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                                {item.isBundledScrew ? 'zadarmo' : `${lineTotal} €`}
+                                                            </span>
+                                                            {!item.isBundledScrew ? (
+                                                                <button type="button"
+                                                                    onClick={() => removeItem(item.productId, item.variantReference)}
+                                                                    className="text-slate-300 hover:text-red-400 transition-colors w-9 flex justify-end"
+                                                                    aria-label="Odstrániť">
+                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
+                                                                    </svg>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="w-9" />
+                                                            )}
+                                                        </div>
+
+                                                        {/* Mobile: remove button */}
+                                                        {!item.isBundledScrew && (
                                                             <button type="button"
                                                                 onClick={() => removeItem(item.productId, item.variantReference)}
-                                                                className="text-slate-300 hover:text-red-400 transition-colors w-9 flex justify-end"
+                                                                className="md:hidden text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
                                                                 aria-label="Odstrániť">
                                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
                                                                 </svg>
                                                             </button>
-                                                        </div>
-
-                                                        {/* Mobile: remove button */}
-                                                        <button type="button"
-                                                            onClick={() => removeItem(item.productId, item.variantReference)}
-                                                            className="md:hidden text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
-                                                            aria-label="Odstrániť">
-                                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
-                                                            </svg>
-                                                        </button>
+                                                        )}
                                                     </div>
 
                                                     {/* Qty + mobile total */}
                                                     <div className="mt-2.5 md:mt-3 pt-2 md:pt-0 border-t md:border-0 border-slate-100 flex items-center gap-3">
-                                                        <QtyStepper
-                                                            value={item.quantity}
-                                                            onDec={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
-                                                            onInc={() => {
-                                                                if (disableInc) {
-                                                                    toast.error(`Pre položku '${item.name}' je skladom iba ${available} ks.`);
-                                                                    return;
-                                                                }
-                                                                updateQuantity(item.productId, item.quantity + 1, item.variantReference);
-                                                            }}
-                                                            disableInc={disableInc}
-                                                        />
+                                                        {item.isBundledScrew ? (
+                                                            <span className="text-sm font-semibold text-emerald-700 px-1">{item.quantity} ks</span>
+                                                        ) : (
+                                                            <QtyStepper
+                                                                value={item.quantity}
+                                                                onDec={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
+                                                                onInc={() => {
+                                                                    if (disableInc) {
+                                                                        toast.error(`Pre položku '${item.name}' je skladom iba ${available} ks.`);
+                                                                        return;
+                                                                    }
+                                                                    updateQuantity(item.productId, item.quantity + 1, item.variantReference);
+                                                                }}
+                                                                disableInc={disableInc}
+                                                            />
+                                                        )}
                                                         {hasShortage && (
                                                             <span className="hidden md:inline text-xs font-medium text-red-500">Nie je toľko skladom</span>
                                                         )}
-                                                        <div className="md:hidden ml-auto text-right">
-                                                            <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
-                                                            <p className="text-xs text-slate-400">{item.price} €/ks</p>
-                                                        </div>
+                                                        {!item.isBundledScrew && (
+                                                            <div className="md:hidden ml-auto text-right">
+                                                                <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
+                                                                <p className="text-xs text-slate-400">{item.price} €/ks</p>
+                                                            </div>
+                                                        )}
+                                                        {item.isBundledScrew && (
+                                                            <div className="md:hidden ml-auto text-right">
+                                                                <p className="text-sm font-bold text-emerald-600">zadarmo</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {hasShortage && (
                                                         <p className="md:hidden text-xs font-medium text-red-500 mt-1.5">Nie je toľko skladom</p>

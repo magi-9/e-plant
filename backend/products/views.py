@@ -898,7 +898,11 @@ class CompatibleScrewsView(APIView):
         except Product.DoesNotExist:
             raise Http404
 
-        if product.category != TIBASE_CATEGORY:
+        catalog_section = (product.parameters or {}).get("catalog_section", "")
+        is_tibase = (
+            product.category == TIBASE_CATEGORY or "tibase" in catalog_section.lower()
+        )
+        if not is_tibase:
             raise Http404
 
         screw_refs = get_compatible_screws_for_tibase(product.reference or "")

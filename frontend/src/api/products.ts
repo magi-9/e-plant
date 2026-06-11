@@ -93,6 +93,7 @@ export interface Product {
         option_tokens?: string;
         all_categories?: string;
         parameter_code?: string;
+        catalog_section?: string;
         details?: unknown;
         options?: Array<{
             id?: number;

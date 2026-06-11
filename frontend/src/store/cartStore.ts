@@ -17,6 +17,10 @@ export interface CartItem {
     variantReference?: string;
     variantLabel?: string;
     bundledScrew?: BundledScrew;
+    // Set on the screw line item itself
+    isBundledScrew?: boolean;
+    bundledForProductId?: number;
+    bundledForVariantRef?: string;
 }
 
 export interface CartState {
@@ -27,6 +31,10 @@ export interface CartState {
     clearCart: () => void;
     getTotalItems: () => number;
     getTotalPrice: () => number;
+}
+
+function bundledScrewVariantRef(tibaseProductId: number, tibaseVariantRef: string): string {
+    return `__bundled__${tibaseProductId}__${tibaseVariantRef}`;
 }
 
 export const useCartStore = create<CartState>()(
@@ -42,37 +50,58 @@ export const useCartStore = create<CartState>()(
                             (i.variantReference || '') === (item.variantReference || '')
                     );
 
+                    let newItems: CartItem[];
                     if (existingItem) {
-                        // Increase quantity if item already exists
-                        return {
-                            items: state.items.map((i) =>
-                                i.productId === item.productId &&
-                                (i.variantReference || '') === (item.variantReference || '')
-                                    ? {
-                                        ...i,
-                                        quantity: i.quantity + 1,
-                                        stockQuantity: item.stockQuantity ?? i.stockQuantity,
-                                        bundledScrew: item.bundledScrew ?? i.bundledScrew,
-                                    }
-                                    : i
-                            ),
-                        };
+                        newItems = state.items.map((i) =>
+                            i.productId === item.productId &&
+                            (i.variantReference || '') === (item.variantReference || '')
+                                ? {
+                                    ...i,
+                                    quantity: i.quantity + 1,
+                                    stockQuantity: item.stockQuantity ?? i.stockQuantity,
+                                    bundledScrew: item.bundledScrew ?? i.bundledScrew,
+                                }
+                                : i
+                        );
+                        // Sync bundled screw quantity
+                        const newQty = existingItem.quantity + 1;
+                        const screwRef = bundledScrewVariantRef(item.productId, item.variantReference || '');
+                        newItems = newItems.map((i) =>
+                            i.isBundledScrew &&
+                            i.bundledForProductId === item.productId &&
+                            i.bundledForVariantRef === (item.variantReference || '')
+                                ? { ...i, quantity: newQty }
+                                : i
+                        );
+                        void screwRef;
                     } else {
-                        // Add new item with quantity 1
-                        return {
-                            items: [...state.items, { ...item, quantity: 1 }],
-                        };
+                        newItems = [...state.items, { ...item, quantity: 1 }];
+                        // Add bundled screw as a separate line item
+                        if (item.bundledScrew) {
+                            const screwItem: CartItem = {
+                                productId: item.bundledScrew.productId,
+                                name: item.bundledScrew.name,
+                                price: '0.00',
+                                quantity: 1,
+                                variantReference: bundledScrewVariantRef(item.productId, item.variantReference || ''),
+                                isBundledScrew: true,
+                                bundledForProductId: item.productId,
+                                bundledForVariantRef: item.variantReference || '',
+                            };
+                            newItems = [...newItems, screwItem];
+                        }
                     }
+                    return { items: newItems };
                 });
 
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(
-                                new CustomEvent('cart:item-added', {
-                                detail: {
-                                    productId: item.productId,
-                                    name: item.name,
-                        },
-                    })
+                        new CustomEvent('cart:item-added', {
+                            detail: {
+                                productId: item.productId,
+                                name: item.name,
+                            },
+                        })
                     );
                 }
             },
@@ -84,6 +113,12 @@ export const useCartStore = create<CartState>()(
                             !(
                                 i.productId === productId &&
                                 (i.variantReference || '') === (variantReference || '')
+                            ) &&
+                            // Also remove any bundled screw tied to this TiBase item
+                            !(
+                                i.isBundledScrew &&
+                                i.bundledForProductId === productId &&
+                                i.bundledForVariantRef === (variantReference || '')
                             )
                     ),
                 }));
@@ -103,12 +138,23 @@ export const useCartStore = create<CartState>()(
                 const isIncrease = !!currentItem && quantity > currentItem.quantity;
 
                 set((state) => ({
-                    items: state.items.map((i) =>
-                        i.productId === productId &&
-                        (i.variantReference || '') === (variantReference || '')
-                            ? { ...i, quantity }
-                            : i
-                    ),
+                    items: state.items.map((i) => {
+                        if (
+                            i.productId === productId &&
+                            (i.variantReference || '') === (variantReference || '')
+                        ) {
+                            return { ...i, quantity };
+                        }
+                        // Sync bundled screw quantity with TiBase
+                        if (
+                            i.isBundledScrew &&
+                            i.bundledForProductId === productId &&
+                            i.bundledForVariantRef === (variantReference || '')
+                        ) {
+                            return { ...i, quantity };
+                        }
+                        return i;
+                    }),
                 }));
 
                 if (isIncrease && typeof window !== 'undefined') {
@@ -127,7 +173,9 @@ export const useCartStore = create<CartState>()(
             },
 
             getTotalItems: () => {
-                return get().items.reduce((total, item) => total + item.quantity, 0);
+                return get().items
+                    .filter((item) => !item.isBundledScrew)
+                    .reduce((total, item) => total + item.quantity, 0);
             },
 
             getTotalPrice: () => {

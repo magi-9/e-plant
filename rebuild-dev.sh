@@ -138,8 +138,18 @@ if [ "$import_ok" -ne 1 ]; then
 fi
 
 echo ""
+echo "--- Seeding dev data ---"
+
+if ! docker compose $ENV_FILE_ARG exec -T backend python manage.py seed_dev_data; then
+	echo "❌ Failed to seed dev data."
+	echo "   Check backend logs: docker compose logs backend"
+	exit 1
+fi
+
+echo ""
 echo "✅ Dev stack is up! Migrations run automatically on backend startup."
 echo "   Demo users     : admin@example.com/admin, client@example.com/client"
+echo "   Dev data seed  : completed"
 echo "   Products import: completed"
 echo "   Check progress : docker compose logs -f backend"
 echo "   Frontend       : http://localhost:5001"

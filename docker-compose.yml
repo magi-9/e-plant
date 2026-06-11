@@ -18,6 +18,7 @@ services:
     build: ./backend
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_dev_data &&
              python manage.py runserver 0.0.0.0:5002"
     volumes:
       - ./backend:/app
