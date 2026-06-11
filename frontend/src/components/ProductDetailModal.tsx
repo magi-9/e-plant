@@ -233,6 +233,10 @@ export default function ProductDetailModal({
     const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
 
+    const cartItem = items.find(
+        (item) => item.productId === product?.id && (item.variantReference || '') === (effectiveVariantRef || '')
+    );
+
     // Sort so active filter categories appear first, then the rest.
     const sortedCategoryList = useMemo(() => {
         const list = effectiveAllCategories
@@ -486,7 +490,7 @@ export default function ProductDetailModal({
                                                     {isTiBaseProduct(product) && (
                                                         <div className="mb-4">
                                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                                                                Skrutka <span className="text-emerald-600 font-bold">(1 ks zdarma)</span>
+                                                                Skrutka <span className="text-emerald-600 font-bold">({cartItem?.quantity ?? 1} ks zdarma)</span>
                                                             </p>
                                                             {screwsLoading ? (
                                                                 <p className="text-sm text-slate-400">Načítavam skrutky…</p>
@@ -565,10 +569,6 @@ export default function ProductDetailModal({
 
                                                                 return null;
                                                             }
-
-                                                            const cartItem = items.find(
-                                                                item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
-                                                            );
 
                                                             // Prefer showing quantity controls when an item exists in cart
                                                             if (cartItem) {
