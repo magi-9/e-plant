@@ -146,9 +146,14 @@ export default function ProductDetailModal({
     }, [product?.id]);
 
     const TIBASE_CATEGORY = 'TITANIUM BASE (screw included)';
+    const isTiBaseProduct = (p: typeof product): p is Product =>
+        !!p && (
+            p.category === TIBASE_CATEGORY ||
+            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase')
+        );
 
     useEffect(() => {
-        if (!product || product.category !== TIBASE_CATEGORY) {
+        if (!isTiBaseProduct(product)) {
             setCompatibleScrews([]);
             setSelectedScrewId(null);
             return;
@@ -281,7 +286,7 @@ export default function ProductDetailModal({
             return;
         }
 
-        const isTiBase = product.category === TIBASE_CATEGORY;
+        const isTiBase = isTiBaseProduct(product);
         const selectedScrew = isTiBase
             ? compatibleScrews.find((s) => s.id === selectedScrewId) ?? null
             : null;
@@ -478,7 +483,7 @@ export default function ProductDetailModal({
                                                             />
                                                         </div>
                                                     )}
-                                                    {product.category === TIBASE_CATEGORY && (
+                                                    {isTiBaseProduct(product) && (
                                                         <div className="mb-4">
                                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                                                                 Skrutka <span className="text-emerald-600 font-bold">(1 ks zdarma)</span>
