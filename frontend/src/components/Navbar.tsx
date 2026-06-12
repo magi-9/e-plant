@@ -63,6 +63,7 @@ export default function Navbar() {
 
     const navLinks = [
         { to: '/products', label: 'Produkty' },
+        { to: '/catalogs', label: 'Katalógy' },
         { to: '/about', label: 'O nás' },
     ];
 
@@ -109,6 +110,14 @@ export default function Navbar() {
 
                 {/* Right: cart + user/login */}
                 <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+
+                    <Link
+                        to="/catalogs"
+                        className="hidden min-[430px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
+                        style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: isActive('/catalogs') ? 'rgba(6,182,212,0.16)' : 'rgba(255,255,255,0.04)' }}
+                    >
+                        Katalógy
+                    </Link>
 
                     <Link
                         to="/about"
