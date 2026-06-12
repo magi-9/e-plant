@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as pdfjsLib from 'pdfjs-dist'
 import CatalogPdfViewer from './CatalogPdfViewer'
@@ -56,5 +56,37 @@ describe('CatalogPdfViewer', () => {
             'http://localhost:5002/api/products/catalog-pdf/pages/?reference=50.315.081.01-2',
             { credentials: 'include' },
         )
+    })
+
+    it('opens a direct catalog PDF without reference lookup', async () => {
+        vi.mocked(pdfjsLib.getDocument).mockReturnValue({
+            promise: Promise.resolve({
+                numPages: 3,
+                getPage: vi.fn(async () => mockPage),
+            }),
+        } as unknown as ReturnType<typeof pdfjsLib.getDocument>)
+
+        render(
+            <CatalogPdfViewer
+                open
+                onClose={vi.fn()}
+                pdfUrl="/catalogs/test.pdf"
+                title="Test katalóg"
+            />,
+        )
+
+        await waitFor(() => {
+            expect(screen.getByText('1 / 3')).toBeTruthy()
+        })
+
+        expect(screen.getByText('Test katalóg')).toBeTruthy()
+        expect(globalThis.fetch).not.toHaveBeenCalled()
+        expect(pdfjsLib.getDocument).toHaveBeenCalledWith({ url: '/catalogs/test.pdf' })
+
+        fireEvent.click(screen.getByLabelText('Nasledujúca strana'))
+
+        await waitFor(() => {
+            expect(screen.getByText('2 / 3')).toBeTruthy()
+        })
     })
 })

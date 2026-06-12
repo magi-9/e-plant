@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, useCallback } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import * as pdfjsLib from 'pdfjs-dist'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -20,7 +21,9 @@ const PAGE_GAP = 8
 interface Props {
     open: boolean
     onClose: () => void
-    reference: string
+    reference?: string
+    pdfUrl?: string
+    title?: string
 }
 
 function catalogDebug(message: string, details?: unknown) {
@@ -73,13 +76,16 @@ function pageTextContainsReference(pageText: string, reference: string): boolean
     return pageText.includes(reference) || normaliseReference(pageText).includes(normaliseReference(reference))
 }
 
-export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
+export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl, title = 'Katalóg produktov' }: Props) {
     const containerRef = useRef<HTMLDivElement>(null)
     const pageDivsRef = useRef<HTMLDivElement[]>([])
+    const pdfDocRef = useRef<PDFDocumentProxy | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [matchPages, setMatchPages] = useState<number[]>([])
     const [currentIdx, setCurrentIdx] = useState(0)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(0)
     const [searchComplete, setSearchComplete] = useState(false)
 
     const scrollToPage = useCallback((pageNum: number) => {
@@ -87,18 +93,46 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
         if (div) div.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, [])
 
+    const renderSinglePage = useCallback(async (pdfDoc: PDFDocumentProxy, pageNum: number) => {
+        const container = containerRef.current
+        if (!container) return
+
+        container.innerHTML = ''
+        pageDivsRef.current = []
+
+        const page = await pdfDoc.getPage(pageNum)
+        const viewport = page.getViewport({ scale: SCALE })
+
+        const pageDiv = document.createElement('div')
+        pageDiv.style.cssText = `position:relative;width:${viewport.width}px;height:${viewport.height}px;margin-bottom:${PAGE_GAP}px;flex-shrink:0`
+        pageDivsRef.current[pageNum - 1] = pageDiv
+
+        const canvas = document.createElement('canvas')
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        canvas.style.display = 'block'
+
+        await page.render({ canvas, viewport }).promise
+        pageDiv.appendChild(canvas)
+        container.appendChild(pageDiv)
+    }, [])
+
     useEffect(() => {
-        if (!open || !reference) return
+        if (!open || (!reference && !pdfUrl)) return
 
         let cancelled = false
 
         const run = async () => {
-            catalogDebug('open viewer', { reference, pdfUrl: CATALOG_PDF_URL, pagesUrl: CATALOG_PAGES_URL })
+            const activePdfUrl = pdfUrl || CATALOG_PDF_URL
+            catalogDebug('open viewer', { reference, pdfUrl: activePdfUrl, pagesUrl: CATALOG_PAGES_URL })
             setLoading(true)
             setError(null)
             setMatchPages([])
             setCurrentIdx(0)
+            setCurrentPage(1)
+            setTotalPages(0)
             setSearchComplete(false)
+            pdfDocRef.current = null
 
             try {
                 const container = await waitForContainer(
@@ -113,8 +147,25 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                 container.innerHTML = ''
                 pageDivsRef.current = []
 
+                if (pdfUrl) {
+                    const pdfDoc = await pdfjsLib.getDocument({ url: activePdfUrl }).promise
+                    if (cancelled) return
+
+                    pdfDocRef.current = pdfDoc
+                    setTotalPages(pdfDoc.numPages)
+                    setCurrentPage(1)
+                    await renderSinglePage(pdfDoc, 1)
+
+                    if (!cancelled) {
+                        catalogDebug('catalog render complete', { title, totalPages: pdfDoc.numPages })
+                        setLoading(false)
+                        setSearchComplete(true)
+                    }
+                    return
+                }
+
                 const [pdfDoc, apiPages] = await Promise.all([
-                    pdfjsLib.getDocument({ url: CATALOG_PDF_URL, withCredentials: true }).promise,
+                    pdfjsLib.getDocument({ url: activePdfUrl, withCredentials: true }).promise,
                     fetchMatchPages(reference),
                 ])
 
@@ -201,13 +252,29 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
 
         void run()
         return () => { cancelled = true }
-    }, [open, reference, scrollToPage])
+    }, [open, pdfUrl, reference, renderSinglePage, scrollToPage, title])
 
     const goTo = (delta: number) => {
         if (matchPages.length === 0) return
         const next = (currentIdx + delta + matchPages.length) % matchPages.length
         setCurrentIdx(next)
         scrollToPage(matchPages[next])
+    }
+
+    const goToPdfPage = async (pageNum: number) => {
+        const pdfDoc = pdfDocRef.current
+        if (!pdfDoc) return
+        const next = Math.min(Math.max(pageNum, 1), pdfDoc.numPages)
+        setLoading(true)
+        setError(null)
+        setCurrentPage(next)
+        try {
+            await renderSinglePage(pdfDoc, next)
+        } catch {
+            setError('Nepodarilo sa načítať stranu katalógu.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -240,7 +307,7 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                             <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
                                 <div className="flex items-center gap-4 min-w-0">
                                     <Dialog.Title className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                                        Katalóg produktov
+                                        {title}
                                     </Dialog.Title>
                                     {reference && (
                                         <span className="text-xs font-mono text-gray-500 truncate">
@@ -268,6 +335,29 @@ export default function CatalogPdfViewer({ open, onClose, reference }: Props) {
                                                 onClick={() => goTo(1)}
                                                 className="p-1 rounded hover:bg-gray-100"
                                                 aria-label="Nasledujúca zhoda"
+                                            >
+                                                <ChevronRightIcon className="h-4 w-4 text-gray-600" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {pdfUrl && totalPages > 0 && (
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <button
+                                                onClick={() => { void goToPdfPage(currentPage - 1) }}
+                                                className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                                aria-label="Predchádzajúca strana"
+                                                disabled={currentPage <= 1 || loading}
+                                            >
+                                                <ChevronLeftIcon className="h-4 w-4 text-gray-600" />
+                                            </button>
+                                            <span className="text-xs text-gray-600 tabular-nums w-20 text-center">
+                                                {currentPage} / {totalPages}
+                                            </span>
+                                            <button
+                                                onClick={() => { void goToPdfPage(currentPage + 1) }}
+                                                className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                                aria-label="Nasledujúca strana"
+                                                disabled={currentPage >= totalPages || loading}
                                             >
                                                 <ChevronRightIcon className="h-4 w-4 text-gray-600" />
                                             </button>
