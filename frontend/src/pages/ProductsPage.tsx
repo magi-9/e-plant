@@ -951,7 +951,7 @@ export default function ProductsPage() {
                                                     <h3 className="text-[11px] sm:text-sm font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
-                                                    {isLoggedIn && (() => {
+                                                    {isLoggedIn && viewMode !== 'grid' && (() => {
                                                         const effectiveStock = product.parameters?.type === 'wildcard_group'
                                                             ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
                                                             : product.stock_quantity;
