@@ -17,6 +17,7 @@ const CATALOG_PAGES_URL = `${API_URL}/products/catalog-pdf/pages/`
 const REFERENCE_NORMALISE_RE = /[^0-9a-z]/gi
 const SCALE = 1.5
 const PAGE_GAP = 8
+const PRELOAD_RADIUS = 2
 
 interface Props {
     open: boolean
@@ -80,6 +81,9 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
     const containerRef = useRef<HTMLDivElement>(null)
     const pageDivsRef = useRef<HTMLDivElement[]>([])
     const pdfDocRef = useRef<PDFDocumentProxy | null>(null)
+    const renderedPagesRef = useRef(new Set<number>())
+    const renderingPagesRef = useRef(new Set<number>())
+    const observerRef = useRef<IntersectionObserver | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [matchPages, setMatchPages] = useState<number[]>([])
@@ -93,19 +97,13 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         if (div) div.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, [])
 
-    const renderSinglePage = useCallback(async (pdfDoc: PDFDocumentProxy, pageNum: number) => {
-        const container = containerRef.current
-        if (!container) return
-
-        container.innerHTML = ''
-        pageDivsRef.current = []
-
+    const renderPageIntoDiv = useCallback(async (pdfDoc: PDFDocumentProxy, pageNum: number, pageDiv: HTMLDivElement) => {
+        if (renderedPagesRef.current.has(pageNum) || renderingPagesRef.current.has(pageNum)) return
+        renderingPagesRef.current.add(pageNum)
         const page = await pdfDoc.getPage(pageNum)
         const viewport = page.getViewport({ scale: SCALE })
 
-        const pageDiv = document.createElement('div')
         pageDiv.style.cssText = `position:relative;width:${viewport.width}px;height:${viewport.height}px;margin-bottom:${PAGE_GAP}px;flex-shrink:0`
-        pageDivsRef.current[pageNum - 1] = pageDiv
 
         const canvas = document.createElement('canvas')
         canvas.width = viewport.width
@@ -113,8 +111,34 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         canvas.style.display = 'block'
 
         await page.render({ canvas, viewport }).promise
+        pageDiv.innerHTML = ''
         pageDiv.appendChild(canvas)
-        container.appendChild(pageDiv)
+        pageDiv.dataset.rendered = 'true'
+        renderedPagesRef.current.add(pageNum)
+        renderingPagesRef.current.delete(pageNum)
+    }, [])
+
+    const renderDirectPageWindow = useCallback(async (pageNum: number) => {
+        const pdfDoc = pdfDocRef.current
+        if (!pdfDoc) return
+
+        const start = Math.max(1, pageNum - PRELOAD_RADIUS)
+        const end = Math.min(pdfDoc.numPages, pageNum + PRELOAD_RADIUS)
+        await Promise.all(
+            Array.from({ length: end - start + 1 }, (_, index) => {
+                const targetPage = start + index
+                const pageDiv = pageDivsRef.current[targetPage - 1]
+                return pageDiv ? renderPageIntoDiv(pdfDoc, targetPage, pageDiv) : Promise.resolve()
+            }),
+        )
+    }, [renderPageIntoDiv])
+
+    const createPlaceholderForPage = useCallback((pageNum: number, width: number, height: number) => {
+        const pageDiv = document.createElement('div')
+        pageDiv.dataset.pageNum = String(pageNum)
+        pageDiv.style.cssText = `position:relative;width:${width}px;height:${height}px;margin-bottom:${PAGE_GAP}px;flex-shrink:0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,0.12);display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px`
+        pageDiv.textContent = `Strana ${pageNum}`
+        return pageDiv
     }, [])
 
     useEffect(() => {
@@ -146,6 +170,9 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
 
                 container.innerHTML = ''
                 pageDivsRef.current = []
+                renderedPagesRef.current.clear()
+                renderingPagesRef.current.clear()
+                observerRef.current?.disconnect()
 
                 if (pdfUrl) {
                     const pdfDoc = await pdfjsLib.getDocument({ url: activePdfUrl }).promise
@@ -154,14 +181,54 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                     pdfDocRef.current = pdfDoc
                     setTotalPages(pdfDoc.numPages)
                     setCurrentPage(1)
-                    await renderSinglePage(pdfDoc, 1)
+
+                    const firstPage = await pdfDoc.getPage(1)
+                    const firstViewport = firstPage.getViewport({ scale: SCALE })
+
+                    const placeholders = Array.from(
+                        { length: pdfDoc.numPages },
+                        (_, index) => createPlaceholderForPage(index + 1, firstViewport.width, firstViewport.height),
+                    )
+                    if (cancelled) return
+
+                    placeholders.forEach((pageDiv) => {
+                        container.appendChild(pageDiv)
+                    })
+                    pageDivsRef.current = placeholders
+                    container.scrollTop = 0
+
+                    const pageHeight = firstViewport.height + PAGE_GAP
+                    const onScroll = () => {
+                        const page = Math.min(
+                            pdfDoc.numPages,
+                            Math.max(1, Math.round(container.scrollTop / pageHeight) + 1),
+                        )
+                        setCurrentPage(page)
+                        void renderDirectPageWindow(page)
+                    }
+                    container.addEventListener('scroll', onScroll, { passive: true })
+
+                    observerRef.current = new IntersectionObserver((entries) => {
+                        entries.forEach((entry) => {
+                            if (!entry.isIntersecting) return
+                            const page = Number((entry.target as HTMLDivElement).dataset.pageNum)
+                            if (!Number.isNaN(page)) {
+                                void renderDirectPageWindow(page)
+                            }
+                        })
+                    }, { root: container, rootMargin: '1200px 0px', threshold: 0.01 })
+                    placeholders.forEach((pageDiv) => observerRef.current?.observe(pageDiv))
+
+                    await renderDirectPageWindow(1)
 
                     if (!cancelled) {
                         catalogDebug('catalog render complete', { title, totalPages: pdfDoc.numPages })
                         setLoading(false)
                         setSearchComplete(true)
                     }
-                    return
+                    return () => {
+                        container.removeEventListener('scroll', onScroll)
+                    }
                 }
 
                 const [pdfDoc, apiPages] = await Promise.all([
@@ -250,9 +317,17 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
             }
         }
 
-        void run()
-        return () => { cancelled = true }
-    }, [open, pdfUrl, reference, renderSinglePage, scrollToPage, title])
+        let cleanup: (() => void) | undefined
+        void run().then((result) => {
+            cleanup = result
+        })
+        return () => {
+            cancelled = true
+            cleanup?.()
+            observerRef.current?.disconnect()
+            observerRef.current = null
+        }
+    }, [createPlaceholderForPage, open, pdfUrl, reference, renderDirectPageWindow, scrollToPage, title])
 
     const goTo = (delta: number) => {
         if (matchPages.length === 0) return
@@ -261,20 +336,13 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         scrollToPage(matchPages[next])
     }
 
-    const goToPdfPage = async (pageNum: number) => {
+    const goToPdfPage = (pageNum: number) => {
         const pdfDoc = pdfDocRef.current
         if (!pdfDoc) return
         const next = Math.min(Math.max(pageNum, 1), pdfDoc.numPages)
-        setLoading(true)
-        setError(null)
         setCurrentPage(next)
-        try {
-            await renderSinglePage(pdfDoc, next)
-        } catch {
-            setError('Nepodarilo sa načítať stranu katalógu.')
-        } finally {
-            setLoading(false)
-        }
+        void renderDirectPageWindow(next)
+        scrollToPage(next)
     }
 
     return (
