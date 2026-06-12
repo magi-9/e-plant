@@ -318,11 +318,17 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         }
 
         let cleanup: (() => void) | undefined
+        let effectCleanedUp = false
         void run().then((result) => {
+            if (effectCleanedUp) {
+                result?.()
+                return
+            }
             cleanup = result
         })
         return () => {
             cancelled = true
+            effectCleanedUp = true
             cleanup?.()
             observerRef.current?.disconnect()
             observerRef.current = null
