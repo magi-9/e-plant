@@ -8,6 +8,12 @@ vi.mock('pdfjs-dist', () => ({
     getDocument: vi.fn(),
 }))
 
+class MockIntersectionObserver {
+    observe = vi.fn()
+    disconnect = vi.fn()
+    unobserve = vi.fn()
+}
+
 const mockPage = {
     getViewport: vi.fn(() => ({ width: 120, height: 180 })),
     getTextContent: vi.fn(async () => ({ items: [] })),
@@ -18,6 +24,7 @@ describe('CatalogPdfViewer', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         window.HTMLElement.prototype.scrollIntoView = vi.fn()
+        vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
         vi.spyOn(globalThis, 'fetch').mockResolvedValue({
             ok: true,
             json: async () => ({ pages: [177] }),
@@ -32,6 +39,7 @@ describe('CatalogPdfViewer', () => {
 
     afterEach(() => {
         vi.restoreAllMocks()
+        vi.unstubAllGlobals()
     })
 
     it('shows backend match pages instead of a no-match message', async () => {
