@@ -679,6 +679,26 @@ def test_filter_active_bypasses_default_ordering():
 
 
 @pytest.mark.django_db
+def test_search_exact_category_match_is_first_result():
+    category_match = make_product(
+        name="ZZZ Category product",
+        category="Impl",
+        parameters={"all_categories": "Other; Implant system"},
+    )
+    text_match = make_product(
+        name="AAA Implant system mentioned",
+        category="Other",
+        description="Implant system",
+    )
+
+    response = APIClient().get("/api/products/", {"search": "Implant system"})
+
+    assert response.status_code == status.HTTP_200_OK
+    ids = [r["id"] for r in response.data["results"]]
+    assert ids[:2] == [category_match.id, text_match.id]
+
+
+@pytest.mark.django_db
 def test_reference_search_exact_match_is_first_result():
     mentioned = make_product(
         name="AAA Mentioned product",
