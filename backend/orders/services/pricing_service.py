@@ -71,6 +71,16 @@ class PricingService:
         return Decimal(str(shipping_rate.price))
 
     @staticmethod
+    def calculate_discount_amount(
+        order_total: Decimal, discount_percent: Decimal
+    ) -> Decimal:
+        if discount_percent <= 0:
+            return Decimal("0.00")
+        return (order_total * discount_percent / Decimal("100")).quantize(
+            Decimal("0.01")
+        )
+
+    @staticmethod
     def calculate_item_subtotal(price: Decimal, quantity: int) -> Decimal:
         """
         Calculate subtotal for a single item.

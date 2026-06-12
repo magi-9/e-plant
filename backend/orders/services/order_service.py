@@ -117,6 +117,11 @@ class OrderService:
 
             # Calculate items total
             items_total = self.pricing_service.calculate_order_total(prepared_items)
+            discount_percent = self._get_customer_discount_percent()
+            discount_amount = self.pricing_service.calculate_discount_amount(
+                items_total, discount_percent
+            )
+            discounted_items_total = items_total - discount_amount
 
             # Resolve shipping cost
             shipping_method = validated_data.get("shipping_method", "courier")
@@ -130,7 +135,7 @@ class OrderService:
                 shipping_rate = ShippingRate.objects.filter(country=country).first()
                 if shipping_rate is not None:
                     shipping_cost = self.pricing_service.calculate_shipping(
-                        items_total, shipping_rate
+                        discounted_items_total, shipping_rate
                     )
                     shipping_carrier = shipping_rate.carrier
                 else:
@@ -138,7 +143,7 @@ class OrderService:
                     shipping_cost = Decimal(str(shop.shipping_cost))
                     shipping_carrier = ""
 
-            total_price = items_total + shipping_cost
+            total_price = discounted_items_total + shipping_cost
 
             # All new orders start in awaiting_payment status
             status = "awaiting_payment"
@@ -154,6 +159,8 @@ class OrderService:
                             validated_data=validated_data,
                             order_number=order_number,
                             total_price=total_price,
+                            discount_percent=discount_percent,
+                            discount_amount=discount_amount,
                             status=status,
                             shipping_cost=shipping_cost,
                             shipping_carrier=shipping_carrier,
@@ -333,11 +340,19 @@ class OrderService:
         message = str(exc).lower()
         return "order_number" in message and "unique" in message
 
+    def _get_customer_discount_percent(self, user: Optional[User] = None) -> Decimal:
+        customer = user if user is not None else self.user
+        if customer is None or not hasattr(customer, "get_active_discount_percent"):
+            return Decimal("0.00")
+        return Decimal(str(customer.get_active_discount_percent()))
+
     def _create_order_instance(
         self,
         validated_data: Dict[str, Any],
         order_number: str,
         total_price: Decimal,
+        discount_percent: Decimal,
+        discount_amount: Decimal,
         status: str,
         shipping_cost: Decimal = Decimal("0.00"),
         shipping_carrier: str = "",
@@ -361,6 +376,8 @@ class OrderService:
             order_number=order_number,
             status=status,
             total_price=total_price,
+            discount_percent=discount_percent,
+            discount_amount=discount_amount,
             shipping_cost=shipping_cost,
             shipping_carrier=shipping_carrier,
             **validated_data,
@@ -464,6 +481,11 @@ class OrderService:
             self._create_order_items(order, prepared_items)
 
             items_total = self.pricing_service.calculate_order_total(prepared_items)
+            discount_percent = self._get_customer_discount_percent(order.user)
+            discount_amount = self.pricing_service.calculate_discount_amount(
+                items_total, discount_percent
+            )
+            discounted_items_total = items_total - discount_amount
             shipping_method = (
                 validated_data.get("shipping_method")
                 or order.shipping_method
@@ -477,7 +499,7 @@ class OrderService:
                 shipping_rate = ShippingRate.objects.filter(country=country).first()
                 if shipping_rate is not None:
                     shipping_cost = self.pricing_service.calculate_shipping(
-                        items_total, shipping_rate
+                        discounted_items_total, shipping_rate
                     )
                     shipping_carrier = shipping_rate.carrier
                 else:
@@ -490,7 +512,9 @@ class OrderService:
 
             order.shipping_cost = shipping_cost
             order.shipping_carrier = shipping_carrier
-            order.total_price = items_total + shipping_cost
+            order.discount_percent = discount_percent
+            order.discount_amount = discount_amount
+            order.total_price = discounted_items_total + shipping_cost
             order.save()
 
             transaction.on_commit(

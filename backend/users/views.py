@@ -13,6 +13,7 @@ from services.email import AuthEmailService
 
 from .models import GlobalSettings
 from .serializers import (
+    AdminUserSerializer,
     AdminUserUpdateSerializer,
     GlobalSettingsSerializer,
     UserRegistrationSerializer,
@@ -256,7 +257,7 @@ class AdminUsersListView(generics.ListAPIView):
     """Admin endpoint to list all users"""
 
     queryset = User.objects.all().order_by("-date_joined")
-    serializer_class = UserSerializer
+    serializer_class = AdminUserSerializer
     permission_classes = (IsAdminUser,)
 
 
@@ -292,6 +293,11 @@ class AdminUserUpdateView(generics.UpdateAPIView):
 
     serializer_class = AdminUserUpdateSerializer
     permission_classes = (IsAdminUser,)
+
+    def get_serializer_class(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            return AdminUserUpdateSerializer
+        return AdminUserSerializer
 
 
 class AdminUserDeleteView(generics.DestroyAPIView):
