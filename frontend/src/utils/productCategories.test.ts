@@ -9,6 +9,8 @@ const makeProduct = (allCategories: string): Product => ({
     category: allCategories.split(';')[0]?.trim() || '',
     all_categories: allCategories,
     price: '10.00',
+    vat_rate: '23.00',
+    gross_price: '12.30',
     stock_quantity: 1,
     image: null,
     is_visible: true,

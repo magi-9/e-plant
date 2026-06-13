@@ -46,6 +46,14 @@ const getVariantWord = (count: number): string => {
     return 'variantov';
 };
 
+const StockDot = ({ stock }: { stock: number }) => (
+    <span
+        className={`inline-block h-2.5 w-2.5 rounded-full ${stock > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}
+        aria-label={stock > 0 ? 'Skladom' : 'Nie je skladom'}
+        title={stock > 0 ? 'Skladom' : 'Nie je skladom'}
+    />
+);
+
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
