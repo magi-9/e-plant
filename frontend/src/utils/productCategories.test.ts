@@ -50,4 +50,53 @@ describe('product category display ordering', () => {
         expect(result.visible).toEqual(['BTI', 'BIOMET 3i']);
         expect(result.extra).toBe(1);
     });
+
+    it('uses variant categories when a wildcard group parent does not include the searched category', () => {
+        const product = makeProduct('BIOMET 3i');
+        product.parameters = {
+            type: 'wildcard_group',
+            options: [
+                {
+                    reference: '33.190.716.01-2',
+                    name: 'DMT Ø1.8mm, Seat 90º',
+                    category: 'BIOMET 3i',
+                    all_categories: 'BIOMET 3i; BTI',
+                },
+                {
+                    reference: '33.290.716.01-2',
+                    name: 'DMT Ø1.8mm, Seat 90º',
+                    category: 'BIOMET 3i',
+                },
+            ],
+        };
+
+        const result = getCardCategories(product, [], 'bti');
+
+        expect(result.visible).toEqual(['BTI', 'BIOMET 3i']);
+        expect(result.extra).toBe(0);
+    });
+
+    it('uses variant primary category when it matches the search text', () => {
+        const product = makeProduct('ACE');
+        product.parameters = {
+            type: 'wildcard_group',
+            options: [
+                {
+                    reference: '31.313.024.01-2',
+                    name: 'Dynamic TiBase NR Comp.0024',
+                    category: 'BTI',
+                },
+                {
+                    reference: '31.313.024.02-2',
+                    name: 'Dynamic TiBase NR Comp.0024',
+                    category: 'ACE',
+                },
+            ],
+        };
+
+        const result = getCardCategories(product, [], 'bti');
+
+        expect(result.visible).toEqual(['BTI', 'ACE']);
+        expect(result.extra).toBe(0);
+    });
 });
