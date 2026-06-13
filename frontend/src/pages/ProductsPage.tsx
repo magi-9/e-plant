@@ -14,12 +14,6 @@ import { getWildcardBadgeReference } from '../utils/variantReference';
 import { getCardCategories, getCategoryList } from '../utils/productCategories';
 import toast from 'react-hot-toast';
 
-function StockDot({ stock }: { stock: number }) {
-    const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
-    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
-}
-
 const getProductPreviewImage = (product: Product): string | null => {
     if (product.image) return product.image;
 
@@ -969,12 +963,6 @@ export default function ProductsPage() {
                                         <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
                                                 <div className="flex items-center gap-1.5">
-                                                    {(() => {
-                                                        const s = product.parameters?.type === 'wildcard_group'
-                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
-                                                            : product.stock_quantity;
-                                                        return <StockDot stock={s} />;
-                                                    })()}
                                                     <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
                                                 </div>
                                             ) : (
