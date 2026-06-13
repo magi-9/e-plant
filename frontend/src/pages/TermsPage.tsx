@@ -27,35 +27,34 @@ export default function TermsPage() {
 
                     <h2>2. Kontaktné údaje</h2>
                     <p>
-                        <strong>Email:</strong> {company.companyEmail}<br />
+                        <strong>Email:</strong> info@ebringer.sk<br />
                         <strong>Telefón:</strong> {company.companyPhone || 'Neuvedené'}<br />
                     </p>
 
                     <h2>3. Ceny tovaru</h2>
                     <p>
-                        Všetky uvádzané ceny [sú / nie sú] konečné a [zahŕňajú / nezahŕňajú] DPH v zákonnej výške.<br />
-                        [DOPLNIŤ: Ďalšie podrobnosti o zmenách cien alebo zľavách.]
+                        Všetky uvádzané ceny sú zobrazené v eurách. Pri produkte je uvedená cena bez DPH a výsledná cena s DPH. Informácia o DPH je uvedená aj na faktúre.
                     </p>
 
                     <h2>4. Spôsob platby a dopravy</h2>
                     <p>
-                        <strong>Platba:</strong> [DOPLNIŤ: napr. kartou online, prevodom, na dobierku]<br />
-                        <strong>Doprava:</strong> [DOPLNIŤ: napr. kuriérska spoločnosť, Slovenská pošta, osobný odber]<br />
+                        <strong>Platba:</strong> prevodom na bankový účet.<br />
+                        <strong>Doprava:</strong> osobný odber alebo doručenie kuriérom.<br />
                     </p>
 
                     <h2>5. Dodacie podmienky</h2>
                     <p>
-                        Tvorí sa v závislosti od dostupnosti tovaru. Štandardná dodacia lehota je [DOPLNIŤ: napr. 2-5 pracovných dní]. O odoslaní tovaru je zákazník informovaný e-mailom.
+                        Dodanie tovaru závisí od jeho aktuálnej dostupnosti. O vybavení alebo odoslaní objednávky je zákazník informovaný e-mailom.
                     </p>
 
                     <h2>6. Odstúpenie od zmluvy</h2>
                     <p>
-                        Spotrebiteľ má právo odstúpiť od zmluvy bez udania dôvodu do 14 dní od prevzatia tovaru. Oznámenie o odstúpení musí byť doručené prevádzkovateľovi najneskôr v posledný deň lehoty. Formulár na odstúpenie nájdete <a href="/withdrawal" className="text-blue-600 hover:text-blue-800">tu</a>.
+                        Spotrebiteľ má právo odstúpiť od zmluvy bez udania dôvodu do 14 dní od prevzatia tovaru. Pri medicínskych a hygienicky chránených produktoch je možné prijať vrátenie alebo výmenu iba v prípade, že ochranný obal nebol otvorený ani porušený. Vrátený tovar nesmie byť poškodený ani upravovaný zásahom kupujúceho. Oznámenie o odstúpení musí byť doručené prevádzkovateľovi najneskôr v posledný deň lehoty. Formulár na odstúpenie nájdete <a href="/withdrawal" className="text-blue-600 hover:text-blue-800">tu</a>.
                     </p>
 
                     <h2>7. Reklamačný poriadok</h2>
                     <p>
-                        Záručná doba na tovar je 24 mesiacov (pokiaľ nie je uvedené inak alebo pokiaľ nejde o firemného zákazníka). Bližšie informácie o spôsobe uplatnenia reklamácie nájdete v <a href="/complaints" className="text-blue-600 hover:text-blue-800">Reklamačnom poriadku</a>.
+                        Zákonná zodpovednosť za vady pri spotrebiteľovi trvá 24 mesiacov od prevzatia tovaru, pokiaľ právne predpisy neustanovujú inak. Bližšie informácie o spôsobe uplatnenia reklamácie nájdete v <a href="/complaints" className="text-blue-600 hover:text-blue-800">Reklamačnom poriadku</a>.
                     </p>
 
                     <h2>8. Mimosúdne riešenie sporov (ADR)</h2>

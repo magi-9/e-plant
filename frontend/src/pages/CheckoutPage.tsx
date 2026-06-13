@@ -248,14 +248,14 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
                             {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ''} ×{item.quantity}
                         </span>
                         <span className={`font-medium flex-shrink-0 tabular-nums ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
-                            {item.isBundledScrew ? 'zadarmo' : `${(parseFloat(item.price) * item.quantity).toFixed(2)} €`}
+                            {item.isBundledScrew ? 'zadarmo' : `${(parseFloat(item.price) * item.quantity).toFixed(2)} € s DPH`}
                         </span>
                     </div>
                 ))}
             </div>
             <div className="border-t border-slate-100 pt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
-                    <span className="text-slate-500">Medziúčet</span>
+                    <span className="text-slate-500">Medziúčet s DPH</span>
                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                 </div>
                 <div className="flex justify-between">
@@ -266,7 +266,7 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
                 </div>
             </div>
             <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-                <span className="font-bold text-slate-900">Celkom</span>
+                <span className="font-bold text-slate-900">Celkom s DPH</span>
                 <span className="text-xl font-extrabold bg-clip-text text-transparent"
                     style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
                     {total.toFixed(2)} €

@@ -13,12 +13,6 @@ import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
 import toast from 'react-hot-toast';
 
-function StockDot({ stock }: { stock: number }) {
-    const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
-    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
-}
-
 const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
     return raw
@@ -56,6 +50,7 @@ const getProductPreviewImage = (product: Product): string | null => {
 };
 
 const getCustomerPrice = (product: Product): string | null => product.gross_price ?? product.price;
+const getNetPrice = (product: Product): string | null => product.price;
 
 const PAGE_SIZE = 20;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
@@ -305,6 +300,7 @@ export default function ProductsPage() {
             productId: product.id,
             name: product.name,
             price: getCustomerPrice(product)!,
+            netPrice: getNetPrice(product),
             image: previewImage,
             stockQuantity: product.stock_quantity,
         });
@@ -1006,14 +1002,13 @@ export default function ProductsPage() {
 
                                         <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {getCustomerPrice(product) ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    {(() => {
-                                                        const s = product.parameters?.type === 'wildcard_group'
-                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
-                                                            : product.stock_quantity;
-                                                        return <StockDot stock={s} />;
-                                                    })()}
-                                                    <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{getCustomerPrice(product)} €</p>
+                                                <div>
+                                                    {getNetPrice(product) && (
+                                                        <p className="text-[10px] text-slate-400 leading-none mb-0.5">
+                                                            bez DPH {getNetPrice(product)} €
+                                                        </p>
+                                                    )}
+                                                    <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{getCustomerPrice(product)} € s DPH</p>
                                                 </div>
                                             ) : (
                                                 <span className="text-[10px] sm:text-xs font-semibold text-cyan-700 bg-cyan-50 px-1.5 sm:px-2.5 py-0.5 rounded-full">

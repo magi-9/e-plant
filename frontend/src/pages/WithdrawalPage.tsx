@@ -19,6 +19,7 @@ export default function WithdrawalPage() {
                 <div className="prose prose-blue max-w-none">
                     <p>
                         Ako spotrebiteľ máte zákonné právo bez udania dôvodu odstúpiť od zmluvy v lehote do 14 dní od doručenia a prevzatia tovaru.
+                        Pri medicínskych a hygienicky chránených produktoch je možné prijať vrátenie alebo výmenu iba v prípade, že ochranný obal nebol otvorený ani porušený.
                         Toto právo sa nevzťahuje na tovar upravený podľa osobitných požiadaviek (na zákazku) alebo na tovar uzavretý v ochrannom obale, ktorý nie je vhodné vrátiť z dôvodu ochrany zdravia alebo z hygienických dôvodov a ktorého ochranný obal bol po dodaní porušený.
                     </p>
 
@@ -28,7 +29,7 @@ export default function WithdrawalPage() {
                             <strong>Predávajúci:</strong><br />
                             {company.companyName}<br />
                             {company.fullAddress || 'Slovensko'}<br />
-                            E-mail: {company.companyEmail}
+                            E-mail: info@ebringer.sk
                         </p>
 
                         <p className="mb-4">
@@ -62,6 +63,7 @@ export default function WithdrawalPage() {
                     <h2 className="mt-8">Vrátenie peňazí</h2>
                     <p>
                         Platby Vám budú vrátené bez zbytočného odkladu, najneskôr do 14 dní odo dňa, keď nám bude doručené Vaše oznámenie o odstúpení od zmluvy. Vrátenie platieb môžeme pozdržať až do chvíle prijatia vráteného tovaru alebo preukázania jeho zaslania.
+                        Náklady na vrátenie tovaru znáša zákazník.
                     </p>
                 </div>
             </div>

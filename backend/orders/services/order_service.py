@@ -245,7 +245,8 @@ class OrderService:
                 )
 
             tibase_product = tibase_prepared["product"]
-            if tibase_product.category != TIBASE_CATEGORY:
+            catalog_section = (tibase_product.catalog_section or "").lower()
+            if tibase_product.category != TIBASE_CATEGORY and "tibase" not in catalog_section:
                 raise serializers.ValidationError(
                     f"Product '{tibase_product.name}' is not a TiBase product and "
                     "cannot have a bundled screw."

@@ -11,6 +11,7 @@ export interface CartItem {
     productId: number;
     name: string;
     price: string;
+    netPrice?: string | null;
     quantity: number;
     stockQuantity?: number;
     image?: string | null;
