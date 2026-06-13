@@ -123,7 +123,7 @@ export default function ProductsPage() {
         placeholderData: keepPreviousData,
     });
 
-    const { data: databaseProductCount, isLoading: isProductCountLoading } = useQuery({
+    const { data: databaseProductCount } = useQuery({
         queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice],
         queryFn: () => getProductCount({
             search: debouncedSearch,
@@ -135,19 +135,19 @@ export default function ProductsPage() {
         placeholderData: keepPreviousData,
     });
 
-    const { data: allCategories = [], isLoading: isCategoriesLoading } = useQuery({
+    const { data: allCategories = [] } = useQuery({
         queryKey: ['products-categories'],
         queryFn: getProductCategories,
         staleTime: 5 * 60 * 1000,
     });
 
-    const { data: compatibilityOptions = [], isLoading: isCompatibilityOptionsLoading } = useQuery({
+    const { data: compatibilityOptions = [] } = useQuery({
         queryKey: ['compatibility-options'],
         queryFn: getCompatibilityOptions,
         staleTime: 10 * 60 * 1000,
     });
 
-    const { data: compatibilityCounts = {}, isLoading: isCompatibilityCountsLoading } = useQuery({
+    const { data: compatibilityCounts = {} } = useQuery({
         queryKey: ['compatibility-counts'],
         queryFn: getCompatibilityCounts,
         staleTime: Infinity,
@@ -159,7 +159,7 @@ export default function ProductsPage() {
     }, [data]);
 
     // Fetch cached category counts from backend (pre-computed + cached server-side)
-    const { data: categoryCounts = {}, isLoading: isCategoryCountsLoading } = useQuery({
+    const { data: categoryCounts = {} } = useQuery({
         queryKey: ['category-counts'],
         queryFn: getCategoryCounts,
         staleTime: Infinity,
@@ -284,14 +284,7 @@ export default function ProductsPage() {
         }, 600);
     };
 
-    const isInitialPageLoading = (
-        (isLoading && !data)
-        || (isProductCountLoading && databaseProductCount == null)
-        || (isCategoriesLoading && allCategories.length === 0)
-        || (isCompatibilityOptionsLoading && compatibilityOptions.length === 0)
-        || (isCompatibilityCountsLoading && Object.keys(compatibilityCounts).length === 0)
-        || (isCategoryCountsLoading && Object.keys(categoryCounts).length === 0)
-    );
+    const isInitialPageLoading = isLoading && !data;
 
     if (isInitialPageLoading) return (
         <div className="flex justify-center items-center min-h-screen bg-slate-50">
