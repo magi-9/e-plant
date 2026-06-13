@@ -12,6 +12,7 @@ import CatalogPdfViewer from './CatalogPdfViewer';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
+import { getOrderedCategories } from '../utils/productCategories';
 
 const HEADER_CATEGORIES = 3;
 const HEADER_COMPAT_CODES = 3;
@@ -22,6 +23,7 @@ interface ProductDetailModalProps {
     product: Product | null;
     onEdit?: (product: Product) => void;
     selectedCategories?: string[];
+    searchQuery?: string;
     onCategoryClick?: (category: string) => void;
     onCompatibilityCodeClick?: (code: string) => void;
     onReferenceClick?: (reference: string) => void;
@@ -33,6 +35,7 @@ export default function ProductDetailModal({
     product,
     onEdit,
     selectedCategories = [],
+    searchQuery = '',
     onCategoryClick,
     onCompatibilityCodeClick,
     onReferenceClick,
@@ -237,17 +240,14 @@ export default function ProductDetailModal({
         (item) => item.productId === product?.id && (item.variantReference || '') === (effectiveVariantRef || '')
     );
 
-    // Sort so active filter categories appear first, then the rest.
     const sortedCategoryList = useMemo(() => {
-        const list = effectiveAllCategories
-            .split(';')
-            .map((value) => value.trim())
-            .filter(Boolean);
-        if (!selectedCategories.length) return list;
-        const active = selectedCategories.filter((c) => list.includes(c));
-        const rest = list.filter((c) => !active.includes(c));
-        return [...active, ...rest];
-    }, [effectiveAllCategories, selectedCategories]);
+        if (!product) return [];
+        return getOrderedCategories(
+            { ...product, category: effectiveCategory, all_categories: effectiveAllCategories },
+            selectedCategories,
+            searchQuery,
+        );
+    }, [effectiveAllCategories, effectiveCategory, product, searchQuery, selectedCategories]);
 
     if (!product) return null;
 

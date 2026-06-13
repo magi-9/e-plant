@@ -34,8 +34,22 @@ export const getCardCategories = (
     activeCats: string[],
     searchQuery = '',
 ): { visible: string[]; extra: number } => {
+    const ordered = getOrderedCategories(product, activeCats, searchQuery);
+    if (!ordered.length) return { visible: product.category ? [product.category] : [], extra: 0 };
+
+    return {
+        visible: ordered.slice(0, CARD_VISIBLE_CATEGORIES),
+        extra: Math.max(0, ordered.length - CARD_VISIBLE_CATEGORIES),
+    };
+};
+
+export const getOrderedCategories = (
+    product: Product,
+    activeCats: string[],
+    searchQuery = '',
+): string[] => {
     const list = getCategoryList(product);
-    if (!list.length) return { visible: product.category ? [product.category] : [], extra: 0 };
+    if (!list.length) return product.category ? [product.category] : [];
 
     const ordered: string[] = [];
     const normalizedSearch = normalizeCategory(searchQuery);
@@ -55,8 +69,5 @@ export const getCardCategories = (
 
     list.forEach((category) => pushUnique(ordered, category));
 
-    return {
-        visible: ordered.slice(0, CARD_VISIBLE_CATEGORIES),
-        extra: Math.max(0, ordered.length - CARD_VISIBLE_CATEGORIES),
-    };
+    return ordered;
 };

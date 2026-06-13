@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../api/products';
-import { getCardCategories } from './productCategories';
+import { getCardCategories, getOrderedCategories } from './productCategories';
 
 const makeProduct = (allCategories: string): Product => ({
     id: 1,
@@ -26,6 +26,16 @@ describe('product category display ordering', () => {
 
         expect(result.visible).toEqual(['BTI', 'ACE']);
         expect(result.extra).toBe(2);
+    });
+
+    it('uses the same search priority for the full detail category list', () => {
+        const result = getOrderedCategories(
+            makeProduct('ACE; ANTHOGYR; BTI; Straumann'),
+            [],
+            'bti',
+        );
+
+        expect(result).toEqual(['BTI', 'ACE', 'ANTHOGYR', 'Straumann']);
     });
 
     it('keeps selected filter categories before search matches', () => {

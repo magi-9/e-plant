@@ -1093,6 +1093,7 @@ export default function ProductsPage() {
                 setOpen={setOpenModal}
                 product={selectedProduct}
                 selectedCategories={selectedCategories}
+                searchQuery={debouncedSearch}
                 onCategoryClick={(category) => {
                     setSelectedCategories([category]);
                     scrollToFilters();
