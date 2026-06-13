@@ -11,6 +11,7 @@ import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
+import { getCardCategories, getCategoryList } from '../utils/productCategories';
 import toast from 'react-hot-toast';
 
 function StockDot({ stock }: { stock: number }) {
@@ -18,31 +19,6 @@ function StockDot({ stock }: { stock: number }) {
     const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
     return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
 }
-
-const getCategoryList = (product: Product): string[] => {
-    const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
-    return raw
-        .split(';')
-        .map((value) => value.trim())
-        .filter(Boolean);
-};
-
-const CARD_VISIBLE_CATEGORIES = 2;
-
-const getCardCategories = (
-    product: Product,
-    activeCats: string[]
-): { visible: string[]; extra: number } => {
-    const list = getCategoryList(product);
-    if (!list.length) return { visible: product.category ? [product.category] : [], extra: 0 };
-    const active = activeCats.filter((c) => list.includes(c));
-    const rest = list.filter((c) => !active.includes(c));
-    const ordered = [...active, ...rest];
-    return {
-        visible: ordered.slice(0, CARD_VISIBLE_CATEGORIES),
-        extra: Math.max(0, ordered.length - CARD_VISIBLE_CATEGORIES),
-    };
-};
 
 const getProductPreviewImage = (product: Product): string | null => {
     if (product.image) return product.image;
@@ -974,7 +950,7 @@ export default function ProductsPage() {
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
                                                 {(() => {
-                                                    const { visible, extra } = getCardCategories(product, selectedCategories);
+                                                    const { visible, extra } = getCardCategories(product, selectedCategories, debouncedSearch);
                                                     return (
                                                         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                                                             <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
