@@ -7,6 +7,7 @@ import ShopLayout from './components/ShopLayout';
 import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
+import CatalogsPage from './pages/CatalogsPage';
 import AuthPage from './pages/AuthPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -132,6 +133,7 @@ function App() {
               path="/products"
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
             />
+            <Route path="/catalogs" element={<CatalogsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

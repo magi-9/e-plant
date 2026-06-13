@@ -11,38 +11,8 @@ import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
+import { getCardCategories, getCategoryList } from '../utils/productCategories';
 import toast from 'react-hot-toast';
-
-function StockDot({ stock }: { stock: number }) {
-    const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
-    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
-}
-
-const getCategoryList = (product: Product): string[] => {
-    const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
-    return raw
-        .split(';')
-        .map((value) => value.trim())
-        .filter(Boolean);
-};
-
-const CARD_VISIBLE_CATEGORIES = 2;
-
-const getCardCategories = (
-    product: Product,
-    activeCats: string[]
-): { visible: string[]; extra: number } => {
-    const list = getCategoryList(product);
-    if (!list.length) return { visible: product.category ? [product.category] : [], extra: 0 };
-    const active = activeCats.filter((c) => list.includes(c));
-    const rest = list.filter((c) => !active.includes(c));
-    const ordered = [...active, ...rest];
-    return {
-        visible: ordered.slice(0, CARD_VISIBLE_CATEGORIES),
-        extra: Math.max(0, ordered.length - CARD_VISIBLE_CATEGORIES),
-    };
-};
 
 const getProductPreviewImage = (product: Product): string | null => {
     if (product.image) return product.image;
@@ -949,18 +919,6 @@ export default function ProductsPage() {
                                                     <h3 className="text-[11px] sm:text-sm font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] flex-1">
                                                         {product.name}
                                                     </h3>
-                                                    {isLoggedIn && (() => {
-                                                        const effectiveStock = product.parameters?.type === 'wildcard_group'
-                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
-                                                            : product.stock_quantity;
-                                                        return effectiveStock >= 5 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1.5 cursor-default" title="Na sklade" />
-                                                        ) : effectiveStock >= 1 ? (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0 mt-1.5 cursor-default" title="Posledné kusy" />
-                                                        ) : (
-                                                            <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0 mt-1.5 cursor-default" title="Nie je na sklade" />
-                                                        );
-                                                    })()}
                                                 </div>
                                                 {product.parameters?.type === 'wildcard_group' ? (
                                                     <div className="mt-0.5">
@@ -986,7 +944,7 @@ export default function ProductsPage() {
                                                     <p className="mt-0.5 text-[11px] text-slate-500 font-medium truncate">{product.reference}</p>
                                                 )}
                                                 {(() => {
-                                                    const { visible, extra } = getCardCategories(product, selectedCategories);
+                                                    const { visible, extra } = getCardCategories(product, selectedCategories, debouncedSearch);
                                                     return (
                                                         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                                                             <TagIcon className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0" />
@@ -1005,12 +963,6 @@ export default function ProductsPage() {
                                         <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {product.price ? (
                                                 <div className="flex items-center gap-1.5">
-                                                    {(() => {
-                                                        const s = product.parameters?.type === 'wildcard_group'
-                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
-                                                            : product.stock_quantity;
-                                                        return <StockDot stock={s} />;
-                                                    })()}
                                                     <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{product.price} €</p>
                                                 </div>
                                             ) : (

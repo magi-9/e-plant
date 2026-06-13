@@ -80,6 +80,17 @@ def _apply_product_filters(queryset, request):
             parameters__options__icontains=search
         )  # catches variant reference numbers
         qs = qs.filter(search_filter)
+        qs = qs.annotate(
+            category_search_match=models.Case(
+                models.When(
+                    models.Q(category__iexact=search)
+                    | models.Q(parameters__all_categories__icontains=search),
+                    then=0,
+                ),
+                default=1,
+                output_field=models.IntegerField(),
+            )
+        ).order_by("category_search_match", "name", "id")
         if re.fullmatch(r"\d{2}\.\d{3}\.\d{3}\.\d{2}-\d", search):
             qs = qs.annotate(
                 exact_reference_match=models.Case(
@@ -87,7 +98,7 @@ def _apply_product_filters(queryset, request):
                     default=1,
                     output_field=models.IntegerField(),
                 )
-            ).order_by("exact_reference_match", "name", "id")
+            ).order_by("exact_reference_match", "category_search_match", "name", "id")
 
     categories = _parse_categories(request)
     if categories:
