@@ -14,12 +14,6 @@ import { getWildcardBadgeReference } from '../utils/variantReference';
 import { getCardCategories, getCategoryList } from '../utils/productCategories';
 import toast from 'react-hot-toast';
 
-function StockDot({ stock }: { stock: number }) {
-    const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-    const label = stock >= 5 ? 'Skladom' : stock >= 1 ? 'Málo' : 'Vypredané';
-    return <span className="w-2 h-2 rounded-full flex-shrink-0 inline-block" style={{ background: bg }} aria-label={label} title={label} />;
-}
-
 const getProductPreviewImage = (product: Product): string | null => {
     if (product.image) return product.image;
 

@@ -1,7 +1,7 @@
 
 import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CursorArrowRaysIcon, ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { getProduct, getCompatibleScrews, type Product, type CompatibleScrew } from '../api/products';
 import { useCartStore } from '../store/cartStore';
@@ -429,8 +429,9 @@ export default function ProductDetailModal({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setCatalogOpen(true)}
-                                                                className="text-xs text-cyan-600 underline underline-offset-2 hover:text-cyan-800 flex-shrink-0"
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 hover:border-cyan-300 hover:bg-cyan-100 transition-colors flex-shrink-0"
                                                             >
+                                                                <CursorArrowRaysIcon className="h-3.5 w-3.5" />
                                                                 Pozrieť v katalógu
                                                             </button>
                                                         </div>
