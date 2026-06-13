@@ -46,14 +46,6 @@ const getVariantWord = (count: number): string => {
     return 'variantov';
 };
 
-const StockDot = ({ stock }: { stock: number }) => (
-    <span
-        className={`inline-block h-2.5 w-2.5 rounded-full ${stock > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}
-        aria-label={stock > 0 ? 'Skladom' : 'Nie je skladom'}
-        title={stock > 0 ? 'Skladom' : 'Nie je skladom'}
-    />
-);
-
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
@@ -973,12 +965,6 @@ export default function ProductsPage() {
                                         <div className="mt-auto pt-2 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
                                             {getCustomerPrice(product) ? (
                                                 <div className="flex items-center gap-1.5">
-                                                    {(() => {
-                                                        const s = product.parameters?.type === 'wildcard_group'
-                                                            ? (product.parameters.options || []).reduce((sum, o) => sum + (o.stock_quantity ?? 0), 0)
-                                                            : product.stock_quantity;
-                                                        return <StockDot stock={s} />;
-                                                    })()}
                                                     <p className="text-sm sm:text-lg font-bold bg-gradient-to-r from-cyan-600 to-emerald-600 bg-clip-text text-transparent">{getCustomerPrice(product)} €</p>
                                                 </div>
                                             ) : (
