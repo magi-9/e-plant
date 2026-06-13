@@ -12,10 +12,21 @@ const pushUnique = (target: string[], value: string) => {
 
 export const getCategoryList = (product: Product): string[] => {
     const raw = product.all_categories || product.parameters?.all_categories || product.category || '';
-    return raw
+    const categories = raw
         .split(';')
         .map((value) => value.trim())
         .filter(Boolean);
+
+    (product.parameters?.options || []).forEach((option) => {
+        const optionCategories = option.all_categories || option.category || '';
+        optionCategories
+            .split(';')
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .forEach((category) => pushUnique(categories, category));
+    });
+
+    return categories;
 };
 
 export const getCardCategories = (
