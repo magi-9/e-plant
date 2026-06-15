@@ -1,0 +1,254 @@
+Claude - ignore this file
+Done:
+- grouping podla kategorii, cize nazov staci  cena rozsah
+- admin setting na spravu groupingu
+- naskladnenie dakam do riti
+- cervena bodka onhover vypisat na sklade
+- nie bodka pre neprihlasenych
+- skokovy refresh variantov pri neprihlasenych
+- checkmark suhlasim so vseobecnymi podmienkami a gdpr a tato blbost.
+- ked som odhlaseny ma byt ina ikona na login ako logout
+- faktury
+- nastavenie dph
+- predvoleny low treshold do slovenciny
+- dvojite overenie u objednavok je fajn ale tie popupy maju byt in app nie z browsera
+- fyzicky prebrat tovar
+- caka na platbu - kedze nemame informaciu o platbe, tak by sme mohli po case (24h?) zmenit stav objednavky na ukoncena
+- grafana a sentry
+- stats
+- predvolene produkty na zaciatku
+- cookes a session confirmation
+
+- vsetky napisy, firma, ico a pod
+
+- routing 2 mainpages
+- xxx cisla na variantoch
+
+
+- compatibility nums - vyhlavanie a filtrovanie aj podla cisiel kompatibilit mame to niekde ze vacere kategorie maju rovnake kompatibility number 
+- 404 page - UI nice
+- UI enhancments   - at all ready in while in claude design
+- do not allow admin dashboard for non admin users - event without data
+- working on update   - UI nicer
+- permanentny db save na grouping
+- Lokácia a kontakt - oddedelne firma akoze oficialne a labak
+- login Titul to co za blbost poraidne leabels na meno a tak. 
+- hlaska po slovensky ma byt ked je ze tento user uz existuje
+- Martin Ebringer s.r.o.
+Overenie e-mailovej adresy
+Ďakujeme za Vašu registráciu na Martin Ebringer s.r.o.!
+Pre dokončenie registrácie a aktiváciu Vášho účtu kliknite na tlačidlo nižšie.
+
+Overiť e-mailovú adresu
+Ak tlačidlo nefunguje, skopírujte tento odkaz do prehliadača:
+https://ebringer.sk/verify-email/Ng/d7n8q6-1fd0bbbe97442a6cb8636dd7c54d4435/
+
+Ak ste si účet nevytvárali, tento e-mail môžete ignorovať.   Tuto pisme iba Dynamic Abutment a tam dole moze ostat ebringer ale bez toho ze pozdravujeme tim. iba podpis ebringer s.r.o. 
+
+- ak do 2hod sa neoveri email, tak vymazat ucet 
+- pdf button na kazdej objednavke v admin dashboard aj pre zakaznika v objednavkach
+
+- 404 na vsetko co nepozname
+
+-meno priezvisko na registracii
+- dynamiabutment.ebringer.sk - ked dojde requst na toto ma byt redirect na /products
+
+
+- dost je miesta na vypisane clenska cena na desktop, a ked je odhlaseny, tak tam v detaile ma byt buton na prihlasenie ak chce vidiet cenu.
+
+- login a registracia
+
+
+- detail dropdown UI ma mat nejaky style
+- detial button - do kosika nema schovat +- produkty, alebo ma byt pod alebo nad
+- in checkout there should be a button to Objednat visible the Sign should be visibe even when the GDPR is not ack but not clickable, or if clicked should highlight the checkbox and say "Please accept the terms and conditions to proceed with your order."
+- data v nahlade pdf musia byt fetchnute z appky nie take ake su teraz.
+- pdf generovnaie v tomto nahlade musi byt totzne s tym co dojde na mail
+- faktura v maily je ok, ale v maili chybaju data o firme
+- na fakture aj v nahlade vsade ma byt ze ak nieje len jedna sarza pouzita tak tam musi byt napisane ze nazov sarze a pocet napr LOT-122343 5x, LOT-7686587 7x
+- trosku zmenime flow v appke. cize po vytvoreni objednavky sa posle mail ktory bude nejaka predfaktura, realne to bude faktura ale bude mat dole napis ze neje uctovny doklad a mohla by mat podtlac ze predfaktura. a samotna faktura sa posle az ked admin zmeni state na zaplatena alebo na odoslana ci ukoncena daj pozor, faktura sa moze poslat iba jeden krat.
+- v admin setting v objednavkach sa musi potvrdzovat zmenenie stavu objednavky. kedze sa posiela mail cize ked sa zmeni  z caka sa na platbu na hocico vyssie cize zaplatena, odoslana, ukoncena alebo podobne. vyskoci nieco ste si isty? zakazniovi bude odolana faktura. treba pridat state ukoncena a vymazat nova lebo flow je ze(caka na platbu -> zaplatena(opt) -> odoslana(opt)-> ukoncena), pripadne moze byt zrusena
+
+
+
+- slovo predfaktura by mala byt v jednom riadku nie rozdelena na predfaktur a a.
+- watermark ma byt navrchu nie na pozadi
+- email s fakturou ma byt tiez pekny, pouzi template ako na predfaktutu na ten email
+
+- update e-mail na warehouse mail aby mal pocty tych sarzi
+- export do pdf z user UI /orders stale produkuje prazdnu fakturu. pouzi rovnaky template ako na fakturu ci predfakturu podla stavu objednavky
+- in detial options in dropdown should have style
+- task 9 is not done yet
+
+python manage.py shell -c "from orders.models import Order, OrderItem; OrderItem.objects.all().delete(); Order.objects.all().delete()"
+
+    - contact button niekde v nav alebo pod nav v mobile UI
+- Individualne suprakonštrukcie
+- zvacsit detail
+- frontend edit prduktov
+- vela kodov nie zobrazovat
+- mobile UI:
+    - overenie e-mail velke odsadenie zhora
+    - IBAN blbost 
+    - produkty maju vpravo space, nesedi to
+- dodacia adresa chyba v emailoch ak je dodanie osobne
+31.322.170.21-2 - parametre ok neparsovane, neni engaging
+- persistent grouping
+- pridavanie kategorii
+- clickable e-mail kontakt na konci stranku
+- mobile products page nizky a siroky je produkt teda obrazok je maly zvacsit ten box
+- engaging
+- vsetky dropdowns postradaju style
+- 52.410.104.01-2 - nieje viditelny zistit preco - ma zle kategorie?
+- visible/non visible categories setup admin
+- admin product edit - zrusit nezrusi zmeny ma sa spytat ci to naozaj chcem zrusit zmeny a zrusit zmeny
+- filtrovanie podla ceny nema byt iba uz z fetchnutych produktov ale aj z celeho sortimentu
+
+-schovat celkovo skryte produkty. nech je akoze defaultne zapnuty v 
+admin rozhrani vsade nejaky filter aj v products page aj v sklade
+-50.312.033.02-2 - produkt ma kompatibilitu ale v PDF nieje v tej kompatibilite - kompatibilita musi byt urcena iba z PDF
+- 52.412.104.01-2 - neexistuje ale je v PDF - kolko je takych? importujeme ich?
+- bootstrap-autofill-overlay.js:1269 Uncaught (in promise) NotFoundError: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.
+    at Ha.Node.insertBefore (bootstrap-autofill-overlay.js:1269:17235)
+    at AutofillInlineMenuContentService.<anonymous> (bootstrap-autofill-overlay.js:6582:30)
+    at Generator.next (<anonymous>)
+    at fulfilled (bootstrap-autofill-overlay.js:6284:58)
+﻿ co je toto za error?
+
+
+
+
+
+OK - 50.313.017.04-2 - H(mm) - ma mat 8/10/12
+OK - 50.313.030.01-2 43.621.410.01-2 50.313.030.03-2 43.624.410.01-2 - H(mm) - ma mat 8/10/12
+OK - 40.320.007.01-2 - ma mat parameter TYPE s hodnotou TORX T6
+OK - nova vec, aj ine produkty mozu byt parametre nejakeho produktu napr:
+    40.320.007.01-2 - ma mat aj parameter SCREWDRIVER s hodnotou 43.601.107.01-2
+    a ma to platit aj spatne 43.601.107.01-2 ma mat parameter STRAIGHT SCREW s hodnotou 40.320.007.01-2
+    - ak je hodnota ref.number mal by byt kliknutelny a ked sa klinke tak sa vyhlada ten produkt
+    - takisto aj vsetku kody a kategorie by mali byt klinkutelne a hned sa zapne taky filter. 
+
+ OK - 43.618.201.01-2 - chyba length parameter s hodnotou 18
+
+?? - co robi parameter system vo volnom popise predsa systemy su nacitavane z kategorii automaticky a nemoze byt iba jeden system ked ich ma viacej napr tu - 30.414.003.01-2
+OK - 33.435.758.01-2 - chyba parameter SHANK a Adi
+
+OK - 33.320.704.01-2 - Adi je 25 nie 20
+
+OK - 50.313.030.01-2 50.313.030.03-2 - TYP - ma byt adaptor
+OK - 43.621.410.01-2 , 43.624.410.01-2 - TYP - ma byt screwdriver adaptor
+OK - ak sa vyhladava podla ref.number teda string je jasne refnumber prvy vysledok musi byt ted dany produkt ktory zodpoveda tomu ref. number a dalsie moznu byt co maju v popise dane refnumber
+OK - 52.410.132.01-2 - chyba parameter adaptor a screwdriver adaptor
+OK - 43.618.201.01-2 - chyba parameter DYNAMIC SCREW
+OK - 33.435.758.01-2 - chyba parameter adi ma byt 30 nie 35 a typ je DYNAMIC MILLING TOOL
+
+
+OK - 48.312.021.01-2 - parameter GH (mm) ma mat hodnotu 1,5/2,9 a typ ma byt ANGULATED MULTI-UNIT 20º
+OK - 41.320.117.01-2 - chyba parameter DYNAMIC
+SCREW, LENGTH a SCREWDRIVER 
+OK - chybaju aj dalsie taketo parametre v inych produtoch
+OK - 43.625.108.01-2 - nema mat parameter H
+OK - 33.620.704.01-2, 33.420.704.01-2 - Adi je 25 nie 20
+OK - 43.618.201.01-2 - typ je screwdriver a jeden parameter ma byt dynamic screw 41.316.080.01-2
+OK - 48.312.040.04-2 - GH(mm) ma byt 4,5/5,9
+OK - 43.624.201.01-2 0 ma mat parameter LENGTH
+OK - grouping by sa mohol riesit uz pri nahravani, rovnake pravidla ake sa aplikuju potom ale mohli by sme to uz pri nahranavni nastavit.
+OK - pripravit nejake manualne edity aby sme vedeli nastavit staci v kode do produktov ked poviem ze tento produk ma mat takuto hodnotu a pod.
+OK - 43.632.201.01-2 ma mat kategoriu DYNAMIC SCREW s hodnotou 41.316.094.01-2
+
+
+OK - 48.612.021.03-2 - GH ma byt iba 3,5/5,4
+OK - 48.612.021.04-2 - GH ma byt iba 4,5/6,4 
+OK - 41.320.117.01-2 - ma mat takto parametre - DYNAMIC SCREW - 41.320.075.01-2, LENGTH 18/24/32, SCREWDRIVER 43.618.201.01-2, 43.624.201.01-2, 43.632.201.01-2
+OK - 23.313.025.01-2 an 23.413.025.01-2 - GH nema mat
+
+
+OK - BIOMET 3L nieje je BIOMET 3i
+ok - EDINTAKA -> MEDENTIKA - 0025 
+?? - Produkty od oficialneho distributora ??
+OK - v dropdownoch v detaile by sme nemuseli mat refnumber, ani ci je vypredane alebo skladom
+OK - ak nejaky parameter sa vo wildcart group meni, napr GH, tak tato informacia nesmie byt v nazve daneho wildcart group
+OK - Engaging a non engaging ma byt UPPER CASE
+OK - skusme tam dat iba ten parameter ktory sa meni cize ak sa meni GH tak bude v dropdowne GH  s hodnotou u toho produktu alebo engaging a non engaging(wildcart grouping ostava rovnaky tie pravidla iba ideme upravovat nazvy a dropdown selecty)
+OK- aplikovat dropdown style ako je na ostatnych ako napr pri vyhladavani.
+OK - ADAPTOR: alebo screwdrive adaptor alebo teda hocico co ma ako value jeden alebo viac ref.number nemobze byt pouzite v selecte napr tu 52.410.101.01-2
+OK- preco nieje group 49.420.000.0x-2 a 49.418.000.0x-2 a 49.419.000.0x-2
+OK - !!! compatibility 0268 konci stranou 328 !!!!!!
+
+OK - divne:
+40.316.005.01-2
+40.320.007.02-2
+40.314.007.01-2
+
+OK - 53.413.025.01-2 - nema mat H(mm)
+
+OK - naucit sa citat strany 332- 337 teda zacinajuce: "EFERENCEMETRICTORQUE41.314.039.01-21,415 N·cm41.314.040.02-21,415 N·cm41,72,25
+41.314.043.01-21,415 N·cm4,31,82,03
+41.314.044.01-21,4" a konciace:  "“NOBEL BIOCARE REPLACE RP
+ASTRA LILAC
+NOBEL BIOCARE REPLACE WP
+ASTRA EVOLUTION 4.8
+NOBEL BIOCARE BRANEMARK WP
+ASTRA EVOLUTION 5.4
+NOBEL BIOCARE REPLACE 6.0”
+337
+USEFULLENGTH
+CUTTING
+PRODUCT REFERENCES
+33.435.758.01-223517,51450
+33.635.758.01-223517,51650
+33.345.808.01-2245181350
+33.445.808.01-2245181450
+33.645.808.01-2245181650
+33.390.958.01-229019,51350
+33.490.958.01-229019,51450
+33.690.958.01-229019,51650"     
+a pridat tieto parametre do produktov
+
+OK - MOBILE UI - product page alebo nav blokuje automaticku sirku, kedze je asi nastavena minimalna sirka nav predpokladam -lebo na mobile ked posuniem vlavo tak tam mam asi 2px bieleho a nav tam je hore. 
+OK - v admin nav presne nastavenia adresy osobneho odberu a otvaracich hodin. Do mailu dojde cela adresa aj tel c. aj s otvaracimi hodinami podobne aj v checkout kde sa vybera moznost doprava. A druha vec vo fakture bude iba ze osobny odber ako je teraz.
+OK- preview dat zakaznika meno a pod. takisto v obejdnavkach ma byt vyhladavanie podla nejakeho stringu, filtrovanie podla, datumu a casu alebo sumy. A v spominanom preview profilu bude link ze objednavky Klienta a vtedy prejde sa na objednavky a automaticky vyhlada toho klienta. a v klientoch ma byt meno a priezvisko a az potom e-mail
+OK - on 404 it should forward to nice 404 page. - Failed to load resource: the server responded with a status of 404 () - pokial to je file not found ale pokial to je unautorized tak ma ist redirect to login. zaroven sa pozri preco ked som sa zabudol na admin page a neodhlasil a reset pc alebo take nieco pise 404 -  ak sa toto stane nech ma radsej odhlasi a da na login
+
+
+
+
+- sorted options v dropdownoch podla value prveho key
+- ked sa loaduje stranka tak nech najprv ukaze nejaky loading state a az ked naloaduje az potom obsah
+- 44 produktov v kategórii BEGO toto tu musi reflektovat nie pocet groupnotych akoze musi tam byt celkovy pocet produktov tak aby zodpovedalo tomu co je pri kategorii vlavo.
+
+TODO: 
+- ked sa loaduje stranka tak nech najprv ukaze nejaky loading kruzok a az ked naloaduje az potom obsah, lebo ten footer skace hore dolu stale.
+/wp-content/plugins/all-in-one-wp-migration/uninstall.php /wordpress/wp-content/ai1wm-backups/ /xmlrpc.php - nemali by requesty sem skoncit 404? 
+
+- I am not a robot - captcha
+
+----
+new
+----
+ti base a multi unit 5%
+
+tibase vyber straight/dynamic screw   - radio button - 1ks free
+dealer + 40% + dph
+zlavy zakaznikom overwiew obrat...
+
+- abecedne poradie kategorii pri vyhladavani
+
+- do 14 dni neotvoreny stav, bez porusenia a zasahov
+- zaruka 1 rok
+
+- guide kit - universal + work offset - pdf ako info
+- admin heslo mi nejde vyrobit nove
+- button v detaile do kosika ak uz si clovek dal nieco do kosika
+- zvyraznit katalog
+- kedza mame na desktope info ze nasklade tak tam nemusi byt este jedna bodka ta farebna
+
+Future feature - introduce new level tree of products - scres, tibases, screwdrivers and so on adaptors analog and so on so they can select type as well.
+
+- new product detail full page. photo, information as it is now and under could be other related products form that compatibility like screws and screwdrives adaptors and so on, or similar products... 
+
+
+
+prompt:
+in data/raw there are 3 catalogues i want in top bar so there will be option - page like Katalogy and we will use our PDF view function so it will load that PDFs so they can browse it
+use photos use photos from that raw/photos-catalog and make them be buttons to open pdfs

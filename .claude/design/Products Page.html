@@ -1,0 +1,755 @@
+<!DOCTYPE html><html lang="sk"><head>
+
+
+
+
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Plant – Products Page Enhancement</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slideInPanel { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .fade-up { animation: fadeUp 0.25s ease-out; }
+    .slide-in { animation: slideInRight 0.25s ease-out; }
+    input[type=range] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #e2e8f0; outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #0891b2; cursor: pointer; box-shadow: 0 1px 4px rgba(8,145,178,0.3); }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+  </style>
+<link id="gfont-Inter" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"></head>
+<body style="font-family: Inter; cursor: crosshair;" data-cc-id="cc-1">
+<div id="root"><div style="min-height: 100vh; background: rgb(248, 250, 252); font-family: Inter, sans-serif; -webkit-font-smoothing: antialiased;"><nav style="position: sticky; top: 0px; z-index: 100; height: 64px; background: rgb(2, 6, 23); border-bottom: 1px solid rgba(6, 182, 212, 0.18);"><div style="max-width: 1440px; margin: 0px auto; padding: 0px 24px; height: 100%; display: flex; align-items: center; justify-content: space-between;"><div style="display: flex; align-items: center; gap: 32px;"><span style="font-weight: 800; font-size: 18px; letter-spacing: -0.05em; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">DAS</span><a href="#" style="font-size: 14px; color: rgb(255, 255, 255); font-weight: 600; text-decoration: none; transition: color 0.15s;">Produkty</a><a href="#" style="font-size: 14px; color: rgba(255, 255, 255, 0.45); font-weight: 400; text-decoration: none; transition: color 0.15s;">O nás</a><a href="#" style="font-size: 14px; color: rgba(255, 255, 255, 0.45); font-weight: 400; text-decoration: none; transition: color 0.15s;">Kontakt</a></div><div style="display: flex; align-items: center; gap: 12px;"><button style="position: relative; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 8px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 01-8 0"></path></svg><span style="font-size: 13px; color: rgb(255, 255, 255); font-weight: 600;">0</span></button><button style="background: none; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 7px 14px; color: rgba(255, 255, 255, 0.7); font-size: 13px; cursor: pointer; font-family: Inter;">Prihlásiť sa</button></div></div></nav><div style="display: flex; max-width: 1440px; margin: 0px auto;"><aside style="width: 240px; flex-shrink: 0; position: sticky; top: 64px; height: calc(-64px + 100vh); overflow-y: auto; background: rgb(255, 255, 255); border-right: 1px solid rgb(226, 232, 240); padding: 20px 0px;"><div style="padding: 0px 16px 16px;"><p style="font-size: 11px; font-weight: 700; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">Kategórie</p><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 4px; background: rgb(224, 247, 250); border: 1px solid rgba(8, 145, 178, 0.2); color: rgb(8, 145, 178); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"><span>Všetko</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">16</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>TiBase</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">3</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Skenovacie telá</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">2</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Abutmenty</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">1</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Multi-Unit</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">2</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>CAD/CAM</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">3</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Chirurgia</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">2</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Odtlačky</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">1</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Hojenie</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">1</span></button><button style="width: 100%; text-align: left; padding: 8px 12px; border-radius: 10px; margin-bottom: 3px; background: none; border: 1px solid transparent; color: rgb(71, 85, 105); font-size: 13px; font-weight: 400; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.15s;"><span>Nástroje</span><span style="font-size: 11px; color: rgb(148, 163, 184); background: rgb(248, 250, 252); padding: 1px 7px; border-radius: 20px;">1</span></button></div><div style="height: 1px; background: rgb(226, 232, 240); margin: 4px 16px 16px;"></div><div style="padding: 0px 16px 16px;"><p style="font-size: 11px; font-weight: 700; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px;">Max. cena</p><input type="range" min="0" max="300" step="10" value="300" style="width: 100%; accent-color: rgb(8, 145, 178); margin-bottom: 6px;"><div style="display: flex; justify-content: space-between;"><span style="font-size: 12px; color: rgb(148, 163, 184);">0 €</span><span style="font-size: 12px; font-weight: 600; color: rgb(148, 163, 184);">Všetky ceny</span></div></div><div style="height: 1px; background: rgb(226, 232, 240); margin: 0px 16px 16px;"></div><div style="padding: 0px 16px;"><div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;"><div><p style="font-size: 13px; font-weight: 500; color: rgb(15, 23, 42);">Len skladom</p><p style="font-size: 11px; color: rgb(148, 163, 184);">Skryť vypredané produkty</p></div><div style="width: 40px; height: 22px; border-radius: 11px; background: rgb(226, 232, 240); position: relative; transition: background 0.2s; flex-shrink: 0;"><div style="position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 3px; transition: left 0.2s;"></div></div></div></div></aside><main style="flex: 1 1 0%; padding: 28px 28px 48px; min-width: 0px;"><div style="margin-bottom: 20px;"><h1 style="font-size: 24px; font-weight: 800; color: rgb(15, 23, 42); letter-spacing: -0.03em; margin-bottom: 2px;">Naše produkty</h1><p style="font-size: 13px; color: rgb(148, 163, 184);">16 produktov</p></div><div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; background: rgb(255, 255, 255); border: 1px solid rgb(226, 232, 240); border-radius: 14px; padding: 10px 14px;"><div style="flex: 1 1 0%; display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg><input placeholder="Hľadať produkt, referenčné číslo..." value="" style="border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: none; outline: none; font-size: 14px; color: rgb(15, 23, 42); font-family: Inter; width: 100%;"></div><div style="width: 1px; height: 24px; background: rgb(226, 232, 240);"></div><select style="border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; background: none; outline: none; font-size: 13px; color: rgb(71, 85, 105); font-family: Inter; cursor: pointer; padding: 0px 4px; font-weight: 500;"><option value="none">Zoradiť</option><option value="asc">Cena: vzostupne</option><option value="desc">Cena: zostupne</option></select><div style="width: 1px; height: 24px; background: rgb(226, 232, 240);"></div><button style="width: 32px; height: 32px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; background: rgb(224, 247, 250); color: rgb(8, 145, 178); font-size: 16px; display: flex; align-items: center; justify-content: center;">⊞</button><button style="width: 32px; height: 32px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; background: none; color: rgb(148, 163, 184); font-size: 16px; display: flex; align-items: center; justify-content: center;">☰</button><div style="width: 1px; height: 24px; background: rgb(226, 232, 240);"></div><button style="height: 28px; padding: 0px 10px; border-radius: 7px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); color: rgb(255, 255, 255);">3 stĺpce</button><button style="height: 28px; padding: 0px 10px; border-radius: 7px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: rgb(248, 250, 252); color: rgb(148, 163, 184);">4 stĺpce</button></div><div class="fade-up" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;"><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>TiBase</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">TiBase</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">TiBase Ø 3.5 – Straumann BL</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-TB-035-SBL</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">79.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>TiBase</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">TiBase</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">TiBase Ø 4.0 – Straumann BL</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-TB-040-SBL</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">89.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>TiBase</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; right: 8px; background: rgb(254, 226, 226); border: 1px solid rgb(252, 165, 165); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(153, 27, 27);">Vypredané</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">TiBase</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">TiBase Ø 4.5 – Nobel Active</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-TB-045-NA</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Vypredané" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(239, 68, 68); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">89.00 €</span></div></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Skenovacie telá</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Skenovacie telá</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Skenovacie telo Multi-Unit Ø 5.0</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-ST-MU-050</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">45.50 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Skenovacie telá</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Skenovacie telá</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Skenovacie telo Ø 3.5</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-ST-035</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">38.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Abutmenty</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; right: 8px; background: rgb(254, 243, 199); border: 1px solid rgb(252, 211, 77); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(146, 64, 14);">Posledné 3 ks</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Abutmenty</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Uhľový Abutment 17° – Straumann BL</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-UA-17-SBL</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Posledné kusy" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(245, 158, 11); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">124.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Multi-Unit</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; left: 8px; background: rgba(8, 145, 178, 0.9); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(255, 255, 255);">4 varianty</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Multi-Unit</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Multi-Unit Abutment Ø 4.0 Low Profile</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-MUA-040-LP</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 12px; color: rgb(8, 145, 178); font-weight: 600; background: rgb(224, 247, 250); padding: 2px 8px; border-radius: 20px;">Členská cena</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Multi-Unit</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; right: 8px; background: rgb(254, 243, 199); border: 1px solid rgb(252, 211, 77); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(146, 64, 14);">Posledné 2 ks</div><div style="position: absolute; top: 8px; left: 8px; background: rgba(8, 145, 178, 0.9); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(255, 255, 255);">3 varianty</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Multi-Unit</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Multi-Unit Abutment Ø 5.0 Standard</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-MUA-050-ST</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Posledné kusy" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(245, 158, 11); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">156.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>CAD/CAM</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">CAD/CAM</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">CAD/CAM Blank Titanium Grade 5</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-CC-TI5</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">67.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Chirurgia</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; left: 8px; background: rgba(8, 145, 178, 0.9); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(255, 255, 255);">6 varianty</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Chirurgia</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Guided Surgery Template System</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-GS-TSS</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 12px; color: rgb(8, 145, 178); font-weight: 600; background: rgb(224, 247, 250); padding: 2px 8px; border-radius: 20px;">Členská cena</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Chirurgia</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; right: 8px; background: rgb(254, 243, 199); border: 1px solid rgb(252, 211, 77); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(146, 64, 14);">Posledné 1 ks</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Chirurgia</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Drill Protocol Set – Nobel Biocare</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-DP-NB</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Posledné kusy" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(245, 158, 11); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">298.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Odtlačky</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; left: 8px; background: rgba(8, 145, 178, 0.9); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(255, 255, 255);">5 varianty</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Odtlačky</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Impression Coping Open Tray</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-IC-OT</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">32.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Hojenie</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Hojenie</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Healing Abutment Ø 4.0 H4</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-HA-040-H4</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">28.50 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>Nástroje</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Nástroje</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Torque Wrench 35 Ncm Kit</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-TW-35K</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Posledné kusy" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(245, 158, 11); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">189.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>CAD/CAM</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div><div style="position: absolute; top: 8px; left: 8px; background: rgba(8, 145, 178, 0.9); border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 600; color: rgb(255, 255, 255);">3 varianty</div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">CAD/CAM</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">Zirconia Blank 98 mm Full Contour</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-ZB-98FC</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">54.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div><div style="background: rgb(255, 255, 255); border-radius: 20px; border: 1px solid rgb(226, 232, 240); overflow: hidden; cursor: pointer; box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px; transition: 0.2s; display: flex; flex-direction: column; transform: none;"><div style="position: relative; height: 200px; background: rgb(248, 250, 252); overflow: hidden;"><div style="width: 100%; height: 100%; background: linear-gradient(135deg, rgb(240, 253, 254) 0%, rgb(236, 253, 245) 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></rect><circle cx="13" cy="17" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"></circle><path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-family: monospace; font-size: 9px; color: rgb(148, 163, 184); text-align: center; line-height: 1.4;">product photo<br>CAD/CAM</span></div><div style="position: absolute; inset: 0px; background: rgba(2, 6, 23, 0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;"><button style="background: rgba(255, 255, 255, 0.95); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; border-radius: 9999px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgb(15, 23, 42); display: flex; align-items: center; gap: 6px; box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>Rýchly náhľad</button></div></div><div style="padding: 14px 14px 12px; flex: 1 1 0%; display: flex; flex-direction: column;"><p style="font-size: 10px; font-weight: 600; color: rgb(8, 145, 178); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">CAD/CAM</p><p style="font-size: 14px; font-weight: 600; color: rgb(15, 23, 42); line-height: 1.35; margin-bottom: 4px; flex: 1 1 0%;">PMMA Blank 98 mm A2</p><p style="font-size: 11px; color: rgb(148, 163, 184); margin-bottom: 10px;">DAS-PMMA-98-A2</p><div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgb(226, 232, 240);"><div style="display: flex; align-items: center; gap: 6px;"><span title="Na sklade" style="width: 8px; height: 8px; border-radius: 50%; background: rgb(16, 185, 129); flex-shrink: 0; display: inline-block;"></span><span style="font-size: 17px; font-weight: 800; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%) text; -webkit-text-fill-color: transparent;">18.00 €</span></div><button style="width: 32px; height: 32px; border-radius: 9999px; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(6, 182, 212, 0.3) 0px 2px 8px; transition: box-shadow 0.15s;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button></div></div></div></div></main></div><div style="position: fixed; bottom: 20px; right: 20px; z-index: 300; background: rgb(30, 41, 59); border: 1px solid rgb(51, 65, 85); border-radius: 16px; padding: 16px 18px; min-width: 230px; box-shadow: rgba(0, 0, 0, 0.5) 0px 12px 40px;"><p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgb(100, 116, 139); margin-bottom: 14px;">Tweaks</p><p style="font-size: 11px; color: rgb(100, 116, 139); margin-bottom: 6px;">Štýl kariet</p><div style="display: flex; gap: 6px; margin-bottom: 14px;"><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); color: rgb(255, 255, 255);">Zaoblené</button><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: rgb(51, 65, 85); color: rgb(148, 163, 184);">Hranaté</button></div><p style="font-size: 11px; color: rgb(100, 116, 139); margin-bottom: 6px;">Sidebar</p><div style="display: flex; gap: 6px; margin-bottom: 14px;"><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: rgb(51, 65, 85); color: rgb(148, 163, 184);">Jednoduchý</button><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); color: rgb(255, 255, 255);">Bohatý</button></div><p style="font-size: 11px; color: rgb(100, 116, 139); margin-bottom: 6px;">Zobrazenie</p><div style="display: flex; gap: 6px;"><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, rgb(6, 182, 212) 0%, rgb(16, 185, 129) 100%); color: rgb(255, 255, 255);">Mriežka</button><button style="flex: 1 1 0%; padding: 7px 0px; border-radius: 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; cursor: pointer; font-size: 12px; font-weight: 600; background: rgb(51, 65, 85); color: rgb(148, 163, 184);">Zoznam</button></div></div></div></div>
+<script type="text/babel" data-plugins="transform-react-jsx-source" data-filename="inline-0">
+const { useState, useMemo, useRef, useEffect } = React;
+
+// ── COMPATIBILITY DATA ───────────────────────────────────────
+const COMPAT_SYSTEMS = ['Straumann BL', 'Nobel Active', 'Nobel Biocare', 'Zimmer Biomet', 'Universal'];
+
+const PRODUCT_COMPAT = {
+  1:  ['Straumann BL'],
+  2:  ['Straumann BL'],
+  3:  ['Nobel Active'],
+  4:  ['Straumann BL', 'Nobel Active', 'Nobel Biocare', 'Zimmer Biomet'],
+  5:  ['Straumann BL', 'Nobel Active', 'Nobel Biocare', 'Zimmer Biomet'],
+  6:  ['Straumann BL'],
+  7:  ['Straumann BL', 'Nobel Active'],
+  8:  ['Nobel Active', 'Nobel Biocare'],
+  9:  ['Universal'],
+  10: ['Straumann BL', 'Nobel Active', 'Nobel Biocare'],
+  11: ['Nobel Biocare'],
+  12: ['Straumann BL', 'Nobel Active', 'Nobel Biocare', 'Zimmer Biomet'],
+  13: ['Straumann BL', 'Nobel Active'],
+  14: ['Universal'],
+  15: ['Universal'],
+  16: ['Universal'],
+};
+
+const PRODUCT_VARIANTS = {
+  7:  [
+    { id:'lp1', label:'Low Profile 1 mm',  price:142 },
+    { id:'lp2', label:'Low Profile 2 mm',  price:148 },
+    { id:'lp3', label:'Standard 3 mm',     price:155 },
+    { id:'lp4', label:'High Profile 4 mm', price:162 },
+  ],
+  8:  [
+    { id:'st0',  label:'0° Straight', price:156 },
+    { id:'st17', label:'17° Angled',  price:168 },
+    { id:'st30', label:'30° Angled',  price:178 },
+  ],
+  10: [
+    { id:'gs-s',  label:'Starter Set (3 impl.)',  price:320 },
+    { id:'gs-m',  label:'Medium Set (5 impl.)',   price:480 },
+    { id:'gs-l',  label:'Pro Set (8 impl.)',      price:720 },
+    { id:'gs-xl', label:'Full Arch Set',          price:980 },
+    { id:'gs-d',  label:'Digital Integration',   price:1100 },
+    { id:'gs-c',  label:'Custom Template',        price:null },
+  ],
+  12: [
+    { id:'ot-35', label:'Ø 3.5 Open Tray',   price:32 },
+    { id:'ot-40', label:'Ø 4.0 Open Tray',   price:34 },
+    { id:'ot-45', label:'Ø 4.5 Open Tray',   price:36 },
+    { id:'ct-35', label:'Ø 3.5 Closed Tray', price:30 },
+    { id:'ct-40', label:'Ø 4.0 Closed Tray', price:32 },
+  ],
+  15: [
+    { id:'a1', label:'Shade A1', price:54 },
+    { id:'a2', label:'Shade A2', price:54 },
+    { id:'b1', label:'Shade B1', price:56 },
+  ],
+};
+
+const C = {
+  bg: '#f8fafc', card: '#fff', border: '#e2e8f0',
+  text: '#0f172a', sub: '#475569', muted: '#94a3b8',
+  cyan: '#0891b2', cyanLite: '#e0f7fa',
+  grad: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+  nav: '#020617', navBorder: 'rgba(6,182,212,0.18)',
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "cardStyle": "rounded",
+  "sidebarStyle": "rich",
+  "viewMode": "grid",
+  "cols": 3
+}/*EDITMODE-END*/;
+
+const PRODUCTS = [
+  { id:1, name:'TiBase Ø 3.5 – Straumann BL', cat:'TiBase', price:79, stock:12, ref:'DAS-TB-035-SBL', variants:0 },
+  { id:2, name:'TiBase Ø 4.0 – Straumann BL', cat:'TiBase', price:89, stock:8,  ref:'DAS-TB-040-SBL', variants:0 },
+  { id:3, name:'TiBase Ø 4.5 – Nobel Active',  cat:'TiBase', price:89, stock:0,  ref:'DAS-TB-045-NA',  variants:0 },
+  { id:4, name:'Skenovacie telo Multi-Unit Ø 5.0', cat:'Skenovacie telá', price:45.5, stock:15, ref:'DAS-ST-MU-050', variants:0 },
+  { id:5, name:'Skenovacie telo Ø 3.5',        cat:'Skenovacie telá', price:38,   stock:22, ref:'DAS-ST-035',    variants:0 },
+  { id:6, name:'Uhľový Abutment 17° – Straumann BL', cat:'Abutmenty', price:124, stock:3, ref:'DAS-UA-17-SBL', variants:0 },
+  { id:7, name:'Multi-Unit Abutment Ø 4.0 Low Profile', cat:'Multi-Unit', price:null, stock:5, ref:'DAS-MUA-040-LP', variants:4 },
+  { id:8, name:'Multi-Unit Abutment Ø 5.0 Standard',   cat:'Multi-Unit', price:156, stock:2, ref:'DAS-MUA-050-ST', variants:3 },
+  { id:9, name:'CAD/CAM Blank Titanium Grade 5', cat:'CAD/CAM', price:67,  stock:30, ref:'DAS-CC-TI5',   variants:0 },
+  { id:10,name:'Guided Surgery Template System', cat:'Chirurgia', price:null, stock:7, ref:'DAS-GS-TSS', variants:6 },
+  { id:11,name:'Drill Protocol Set – Nobel Biocare', cat:'Chirurgia', price:298, stock:1, ref:'DAS-DP-NB', variants:0 },
+  { id:12,name:'Impression Coping Open Tray',   cat:'Odtlačky', price:32,  stock:18, ref:'DAS-IC-OT',    variants:5 },
+  { id:13,name:'Healing Abutment Ø 4.0 H4',    cat:'Hojenie',  price:28.5,stock:25, ref:'DAS-HA-040-H4',variants:0 },
+  { id:14,name:'Torque Wrench 35 Ncm Kit',      cat:'Nástroje', price:189, stock:4,  ref:'DAS-TW-35K',   variants:0 },
+  { id:15,name:'Zirconia Blank 98 mm Full Contour', cat:'CAD/CAM', price:54, stock:11, ref:'DAS-ZB-98FC', variants:3 },
+  { id:16,name:'PMMA Blank 98 mm A2',           cat:'CAD/CAM', price:18,  stock:40, ref:'DAS-PMMA-98-A2',variants:0 },
+];
+
+const CATS = [...new Set(PRODUCTS.map(p => p.cat))];
+const COUNTS = CATS.reduce((a, c) => ({ ...a, [c]: PRODUCTS.filter(p => p.cat === c).length }), {});
+
+// ── ATOMS ────────────────────────────────────────────────────
+function GBtn({ children, onClick, outline, sm, full, style={} }) {
+  const [h, setH] = useState(false);
+  return (
+    <button onClick={onClick} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)} style={{
+      display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
+      padding: sm ? '8px 16px' : '11px 20px', width: full ? '100%' : undefined,
+      borderRadius:9999, background: outline ? 'transparent' : C.grad,
+      border: outline ? `1.5px solid ${C.cyan}` : 'none',
+      color: outline ? C.cyan : '#fff', fontSize: sm ? 12 : 14, fontWeight:600,
+      cursor:'pointer', transition:'box-shadow 0.15s',
+      boxShadow: outline ? 'none' : h ? '0 6px 20px rgba(6,182,212,0.35)' : '0 3px 12px rgba(6,182,212,0.22)',
+      letterSpacing:'-0.01em', whiteSpace:'nowrap', fontFamily:'Inter', ...style,
+    }}>{children}</button>
+  );
+}
+
+function StockDot({ stock }) {
+  if (stock >= 5) return <span style={{ width:8, height:8, borderRadius:'50%', background:'#10b981', flexShrink:0, display:'inline-block' }} title="Na sklade" />;
+  if (stock >= 1) return <span style={{ width:8, height:8, borderRadius:'50%', background:'#f59e0b', flexShrink:0, display:'inline-block' }} title="Posledné kusy" />;
+  return <span style={{ width:8, height:8, borderRadius:'50%', background:'#ef4444', flexShrink:0, display:'inline-block' }} title="Vypredané" />;
+}
+
+function ImgPlaceholder({ name, cat }) {
+  return (
+    <div style={{
+      width:'100%', height:'100%',
+      background: 'linear-gradient(135deg, #f0fdfe 0%, #ecfdf5 100%)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+      gap:6, padding:16,
+    }}>
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" strokeWidth="1.5" fill="none"/>
+        <circle cx="13" cy="17" r="3" stroke="#94a3b8" strokeWidth="1.5" fill="none"/>
+        <path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <span style={{ fontFamily:'monospace', fontSize:9, color:'#94a3b8', textAlign:'center', lineHeight:1.4 }}>
+        product photo<br/>{cat}
+      </span>
+    </div>
+  );
+}
+
+// ── NAVBAR ────────────────────────────────────────────────────
+function Navbar({ cartCount }) {
+  return (
+    <nav style={{ position:'sticky', top:0, zIndex:100, height:64, background:C.nav, borderBottom:`1px solid ${C.navBorder}` }}>
+      <div style={{ maxWidth:1440, margin:'0 auto', padding:'0 24px', height:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:32 }}>
+          <span style={{ fontWeight:800, fontSize:18, letterSpacing:'-0.05em', background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>DAS</span>
+          {['Produkty', 'O nás', 'Kontakt'].map(l => (
+            <a key={l} href="#" style={{ fontSize:14, color: l==='Produkty' ? '#fff' : 'rgba(255,255,255,0.45)', fontWeight: l==='Produkty' ? 600 : 400, textDecoration:'none', transition:'color 0.15s' }}>{l}</a>
+          ))}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <button style={{ position:'relative', background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.25)', borderRadius:10, padding:'8px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            <span style={{ fontSize:13, color:'#fff', fontWeight:600 }}>{cartCount}</span>
+          </button>
+          <button style={{ background:'none', border:'1px solid rgba(255,255,255,0.15)', borderRadius:8, padding:'7px 14px', color:'rgba(255,255,255,0.7)', fontSize:13, cursor:'pointer', fontFamily:'Inter' }}>Prihlásiť sa</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────
+function Sidebar({ cats, selected, setSelected, rich, maxPrice, setMaxPrice, inStockOnly, setInStockOnly, selectedCompats, setSelectedCompats, availableCompats, availableCats }) {
+  return (
+    <aside style={{ width:240, flexShrink:0, position:'sticky', top:64, height:'calc(100vh - 64px)', overflowY:'auto', background:C.card, borderRight:`1px solid ${C.border}`, padding:'20px 0' }}>
+      {/* Categories */}
+      <div style={{ padding:'0 16px 16px' }}>
+        <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Kategórie</p>
+        <button onClick={() => setSelected([])} style={{
+          width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:10, marginBottom:4,
+          background: selected.length===0 ? C.cyanLite : 'none',
+          border: selected.length===0 ? `1px solid rgba(8,145,178,0.2)` : '1px solid transparent',
+          color: selected.length===0 ? C.cyan : C.sub,
+          fontSize:13, fontWeight: selected.length===0 ? 600 : 400, cursor:'pointer',
+          display:'flex', justifyContent:'space-between', alignItems:'center',
+        }}>
+          <span>Všetko</span>
+          {rich && <span style={{ fontSize:11, color:C.muted, background:C.bg, padding:'1px 7px', borderRadius:20 }}>{PRODUCTS.length}</span>}
+        </button>
+        {cats.map(cat => {
+          const available = availableCats.includes(cat);
+          const active = selected.includes(cat);
+          return (
+            <button key={cat} onClick={() => available || active ? setSelected(s => s.includes(cat) ? s.filter(c=>c!==cat) : [...s, cat]) : null} style={{
+              width:'100%', textAlign:'left', padding:'8px 12px', borderRadius:10, marginBottom:3,
+              background: active ? C.cyanLite : 'none',
+              border: active ? `1px solid rgba(8,145,178,0.2)` : '1px solid transparent',
+              color: active ? C.cyan : available ? C.sub : C.muted,
+              fontSize:13, fontWeight: active ? 600 : 400, cursor: available || active ? 'pointer' : 'not-allowed',
+              display:'flex', justifyContent:'space-between', alignItems:'center',
+              transition:'all 0.15s', opacity: available || active ? 1 : 0.45,
+            }}>
+              <span>{cat}</span>
+              {rich && <span style={{ fontSize:11, color: active ? C.cyan : C.muted, background: active ? 'rgba(8,145,178,0.12)' : C.bg, padding:'1px 7px', borderRadius:20 }}>{COUNTS[cat]}</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Compatibility */}
+      <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
+      <div style={{ padding:'0 16px 16px' }}>
+        <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Kompatibilita</p>
+        {COMPAT_SYSTEMS.map(sys => {
+          const available = availableCompats.includes(sys);
+          const active = selectedCompats.includes(sys);
+          return (
+            <button key={sys} onClick={() => available || active ? setSelectedCompats(s => s.includes(sys) ? s.filter(x=>x!==sys) : [...s, sys]) : null} style={{
+              width:'100%', textAlign:'left', padding:'7px 12px', borderRadius:10, marginBottom:3,
+              background: active ? 'rgba(139,92,246,0.1)' : 'none',
+              border: active ? '1px solid rgba(139,92,246,0.25)' : '1px solid transparent',
+              color: active ? '#7c3aed' : available ? C.sub : C.muted,
+              fontSize:13, fontWeight: active ? 600 : 400,
+              cursor: available || active ? 'pointer' : 'not-allowed',
+              display:'flex', justifyContent:'space-between', alignItems:'center',
+              transition:'all 0.15s', opacity: available || active ? 1 : 0.4,
+            }}>
+              <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                <div style={{ width:8, height:8, borderRadius:2, background: active ? '#7c3aed' : available ? '#a78bfa' : C.border, flexShrink:0, transition:'background 0.15s' }} />
+                <span>{sys}</span>
+              </div>
+              {rich && (
+                <span style={{ fontSize:10, color: active ? '#7c3aed' : C.muted, background: active ? 'rgba(139,92,246,0.12)' : C.bg, padding:'1px 6px', borderRadius:20 }}>
+                  {PRODUCTS.filter(p => (PRODUCT_COMPAT[p.id]||[]).includes(sys)).length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {rich && <>
+        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
+        {/* Price filter */}
+        <div style={{ padding:'0 16px 16px' }}>
+          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Max. cena</p>
+          <input type="range" min={0} max={300} step={10} value={maxPrice} onChange={e => setMaxPrice(+e.target.value)}
+            style={{ width:'100%', accentColor:C.cyan, marginBottom:6 }} />
+          <div style={{ display:'flex', justifyContent:'space-between' }}>
+            <span style={{ fontSize:12, color:C.muted }}>0 €</span>
+            <span style={{ fontSize:12, fontWeight:600, color: maxPrice < 300 ? C.cyan : C.muted }}>{maxPrice < 300 ? `do ${maxPrice} €` : 'Všetky ceny'}</span>
+          </div>
+        </div>
+        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
+        {/* In stock toggle */}
+        <div style={{ padding:'0 16px' }}>
+          <div onClick={() => setInStockOnly(v => !v)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}>
+            <div>
+              <p style={{ fontSize:13, fontWeight:500, color:C.text }}>Len skladom</p>
+              <p style={{ fontSize:11, color:C.muted }}>Skryť vypredané produkty</p>
+            </div>
+            <div style={{ width:40, height:22, borderRadius:11, background: inStockOnly ? C.grad : C.border, position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:3, left: inStockOnly ? 21 : 3, width:16, height:16, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }} />
+            </div>
+          </div>
+        </div>
+      </>}
+    </aside>
+  );
+}
+
+// ── PRODUCT CARD (GRID) ──────────────────────────────────────
+function ProductCard({ product, cardStyle, onQuickView, onAdd, inCart }) {
+  const [hov, setHov] = useState(false);
+  const rounded = cardStyle === 'rounded' ? 20 : 8;
+
+  return (
+    <div onClick={() => onQuickView(product)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+      background: C.card, borderRadius: rounded,
+      border: `1px solid ${hov ? 'rgba(8,145,178,0.3)' : C.border}`,
+      overflow:'hidden', cursor:'pointer',
+      boxShadow: hov ? '0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(6,182,212,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
+      transition:'all 0.2s', display:'flex', flexDirection:'column',
+      transform: hov ? 'translateY(-2px)' : 'none',
+    }}>
+      {/* Image */}
+      <div style={{ position:'relative', height:200, background:'#f8fafc', overflow:'hidden' }}>
+        <ImgPlaceholder name={product.name} cat={product.cat} />
+        {/* Hover overlay */}
+        <div style={{
+          position:'absolute', inset:0, background:'rgba(2,6,23,0.18)',
+          opacity: hov ? 1 : 0, transition:'opacity 0.2s', pointerEvents:'none',
+        }} />
+        {/* Stock badge corner */}
+        {product.stock <= 3 && product.stock > 0 && (
+          <div style={{ position:'absolute', top:8, right:8, background:'#fef3c7', border:'1px solid #fcd34d', borderRadius:6, padding:'2px 7px', fontSize:10, fontWeight:600, color:'#92400e' }}>
+            Posledné {product.stock} ks
+          </div>
+        )}
+        {product.stock === 0 && (
+          <div style={{ position:'absolute', top:8, right:8, background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:6, padding:'2px 7px', fontSize:10, fontWeight:600, color:'#991b1b' }}>
+            Vypredané
+          </div>
+        )}
+        {product.variants > 0 && (
+          <div style={{ position:'absolute', top:8, left:8, background:'rgba(8,145,178,0.9)', borderRadius:6, padding:'2px 7px', fontSize:10, fontWeight:600, color:'#fff' }}>
+            {product.variants} varianty
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ padding:'14px 14px 12px', flex:1, display:'flex', flexDirection:'column' }}>
+        <p style={{ fontSize:10, fontWeight:600, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>{product.cat}</p>
+        <p style={{ fontSize:14, fontWeight:600, color:C.text, lineHeight:1.35, marginBottom:4, flex:1 }}>{product.name}</p>
+        <p style={{ fontSize:11, color:C.muted, marginBottom:10 }}>{product.ref}</p>
+
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <StockDot stock={product.stock} />
+            {product.price
+              ? <span style={{ fontSize:17, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{product.price.toFixed(2)} €</span>
+              : <span style={{ fontSize:12, color:C.cyan, fontWeight:600, background:C.cyanLite, padding:'2px 8px', borderRadius:20 }}>Členská cena</span>
+            }
+          </div>
+          {product.stock > 0 && (
+            inCart > 0
+              ? <div style={{ display:'flex', alignItems:'center', gap:0, border:`1.5px solid ${C.cyan}`, borderRadius:9999, overflow:'hidden', background:C.cyanLite }}>
+                  <button style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:16, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onClick={e => { e.stopPropagation(); onAdd(product, -1); }}>−</button>
+                  <span style={{ fontSize:12, fontWeight:700, color:C.cyan, padding:'0 6px' }}>{inCart}</span>
+                  <button style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:16, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onClick={e => { e.stopPropagation(); onAdd(product, 1); }}>+</button>
+                </div>
+              : <button onClick={e => { e.stopPropagation(); onAdd(product, 1); }} style={{
+                  width:32, height:32, borderRadius:9999, background:C.grad, border:'none', cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  boxShadow:'0 2px 8px rgba(6,182,212,0.3)', transition:'box-shadow 0.15s',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PRODUCT ROW (LIST) ────────────────────────────────────────
+function ProductRow({ product, onQuickView, onAdd, inCart }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div onClick={() => onQuickView(product)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+      background: C.card, borderRadius:14,
+      border: `1px solid ${hov ? 'rgba(8,145,178,0.25)' : C.border}`,
+      padding:'14px 20px', display:'flex', alignItems:'center', gap:16,
+      boxShadow: hov ? '0 4px 16px rgba(0,0,0,0.06)' : '0 1px 2px rgba(0,0,0,0.03)',
+      transition:'all 0.18s', cursor:'pointer',
+      marginBottom:8,
+    }}>
+      <div style={{ width:60, height:60, borderRadius:12, overflow:'hidden', flexShrink:0, background:'#f0fdfe' }}>
+        <ImgPlaceholder name={product.name} cat={product.cat} />
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <p style={{ fontSize:14, fontWeight:600, color:C.text }}>{product.name}</p>
+          <StockDot stock={product.stock} />
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:3 }}>
+          <span style={{ fontSize:11, color:C.cyan, fontWeight:600 }}>{product.cat}</span>
+          <span style={{ fontSize:11, color:C.muted }}>{product.ref}</span>
+          {product.variants > 0 && <span style={{ fontSize:11, color:'#8b5cf6', fontWeight:500 }}>{product.variants} varianty</span>}
+        </div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:16, flexShrink:0 }}>
+        {product.price
+          ? <span style={{ fontSize:18, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{product.price.toFixed(2)} €</span>
+          : <span style={{ fontSize:12, color:C.cyan, fontWeight:600, background:C.cyanLite, padding:'3px 10px', borderRadius:20 }}>Členská cena</span>
+        }
+
+        {product.stock > 0 && (
+          inCart > 0
+            ? <div style={{ display:'flex', alignItems:'center', gap:0, border:`1.5px solid ${C.cyan}`, borderRadius:9999, overflow:'hidden', background:C.cyanLite }}>
+                <button style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:16, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={e => { e.stopPropagation(); onAdd(product, -1); }}>−</button>
+                <span style={{ fontSize:12, fontWeight:700, color:C.cyan, padding:'0 6px' }}>{inCart}</span>
+                <button style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:16, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={e => { e.stopPropagation(); onAdd(product, 1); }}>+</button>
+              </div>
+            : <GBtn sm onClick={e => { e.stopPropagation(); onAdd(product, 1); }}>+ Košík</GBtn>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── DETAIL PANEL ─────────────────────────────────────────────
+function QuickViewPanel({ product, onClose, onAdd, inCart }) {
+  const [selVariant, setSelVariant] = useState(null);
+  const variants = product ? (PRODUCT_VARIANTS[product.id] || []) : [];
+  const compats = product ? (PRODUCT_COMPAT[product.id] || []) : [];
+
+  useEffect(() => {
+    if (product && variants.length > 0) setSelVariant(variants[0].id);
+    else setSelVariant(null);
+  }, [product?.id]);
+
+  if (!product) return null;
+
+  const activeVariant = variants.find(v => v.id === selVariant);
+  const displayPrice = activeVariant ? activeVariant.price : product.price;
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)', zIndex:200, backdropFilter:'blur(2px)' }} />
+      <div style={{
+        position:'fixed', top:0, right:0, bottom:0, width:460, background:C.card, zIndex:201,
+        boxShadow:'-8px 0 40px rgba(0,0,0,0.12)',
+        animation:'slideInPanel 0.3s cubic-bezier(0.32,0.72,0,1)',
+        display:'flex', flexDirection:'column', overflowY:'auto',
+      }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 20px 0' }}>
+          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.1em' }}>Detail produktu</p>
+          <button onClick={onClose} style={{ background:C.bg, border:'none', cursor:'pointer', color:C.muted, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        {/* Image */}
+        <div style={{ height:220, margin:'16px 20px 0', borderRadius:16, overflow:'hidden', background:'#f0fdfe' }}>
+          <ImgPlaceholder name={product.name} cat={product.cat} />
+        </div>
+
+        <div style={{ padding:'20px', flex:1 }}>
+          {/* Title block */}
+          <span style={{ fontSize:11, fontWeight:600, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.08em' }}>{product.cat}</span>
+          <h2 style={{ fontSize:20, fontWeight:800, color:C.text, letterSpacing:'-0.02em', marginTop:6, lineHeight:1.25 }}>{product.name}</h2>
+          <p style={{ fontSize:13, color:C.muted, marginTop:4 }}>Ref: {product.ref}</p>
+
+          {/* Stock */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, margin:'16px 0 0', padding:'12px 14px', background:C.bg, borderRadius:12, border:`1px solid ${C.border}` }}>
+            <StockDot stock={product.stock} />
+            <span style={{ fontSize:13, color:C.sub }}>
+              {product.stock >= 5 ? `Na sklade: ${product.stock} ks` : product.stock > 0 ? `Posledné: ${product.stock} ks` : 'Vypredané'}
+            </span>
+          </div>
+
+          {/* Compatibility chips */}
+          {compats.length > 0 && (
+            <div style={{ marginTop:14 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Kompatibilita</p>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {compats.map(c => (
+                  <span key={c} style={{ fontSize:11, fontWeight:500, color:'#7c3aed', background:'rgba(139,92,246,0.09)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:20, padding:'3px 10px' }}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Variants dropdown */}
+          {variants.length > 0 && (
+            <div style={{ marginTop:18 }}>
+              <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Variant</p>
+              <div style={{ position:'relative' }}>
+                <select value={selVariant||''} onChange={e => setSelVariant(e.target.value)} style={{
+                  width:'100%', padding:'11px 38px 11px 14px', borderRadius:12,
+                  border:`1.5px solid ${C.border}`, background:C.card, color:C.text,
+                  fontSize:14, fontFamily:'Inter', fontWeight:500, cursor:'pointer',
+                  appearance:'none', WebkitAppearance:'none', outline:'none',
+                  boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+                }}>
+                  {variants.map(v => (
+                    <option key={v.id} value={v.id}>{v.label}{v.price ? ` — ${v.price.toFixed(2)} €` : ' — Členská cena'}</option>
+                  ))}
+                </select>
+                <svg style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          <div style={{ marginTop:18, marginBottom:20 }}>
+            <p style={{ fontSize:12, color:C.muted, lineHeight:1.7 }}>
+              Prémiový komponent Dynamic Abutment Solutions, kompatibilný s viacerými implantátnymi systémami. Každý produkt je testovaný v reálnej laboratórnej praxi pred zaradením do portfólia.
+            </p>
+          </div>
+
+          {/* Price */}
+          {displayPrice
+            ? <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, padding:'14px 16px', background:C.bg, borderRadius:12, border:`1px solid ${C.border}` }}>
+                <span style={{ fontSize:13, color:C.sub }}>Cena bez DPH</span>
+                <span style={{ fontSize:26, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{displayPrice.toFixed(2)} €</span>
+              </div>
+            : <div style={{ background:C.cyanLite, border:`1px solid rgba(8,145,178,0.2)`, borderRadius:12, padding:'12px 16px', marginBottom:16, textAlign:'center' }}>
+                <p style={{ fontSize:13, color:C.cyan, fontWeight:600 }}>Cena je dostupná po prihlásení</p>
+              </div>
+          }
+
+          {/* Add to cart */}
+          {product.stock > 0 && (
+            inCart > 0
+              ? <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', border:`2px solid ${C.cyan}`, borderRadius:14, overflow:'hidden', background:C.cyanLite, height:48 }}>
+                  <button style={{ flex:1, height:'100%', background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:20, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => onAdd(product, -1)}>−</button>
+                  <span style={{ fontSize:16, fontWeight:700, color:C.cyan, padding:'0 16px' }}>{inCart} v košíku</span>
+                  <button style={{ flex:1, height:'100%', background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:20, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => onAdd(product, 1)}>+</button>
+                </div>
+              : <GBtn full onClick={() => onAdd(product, 1)} style={{ height:48, fontSize:15 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                  Pridať do košíka
+                </GBtn>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── APP ──────────────────────────────────────────────────────
+function App() {
+  const [cardStyle, setCardStyle] = useState(TWEAK_DEFAULTS.cardStyle);
+  const [sidebarStyle, setSidebarStyle] = useState(TWEAK_DEFAULTS.sidebarStyle);
+  const [viewMode, setViewMode] = useState(TWEAK_DEFAULTS.viewMode);
+  const [cols, setCols] = useState(TWEAK_DEFAULTS.cols);
+  const [tweaks, setTweaks] = useState(false);
+
+  const [search, setSearch] = useState('');
+  const [selectedCats, setSelectedCats] = useState([]);
+  const [selectedCompats, setSelectedCompats] = useState([]);
+  const [sortPrice, setSortPrice] = useState('none');
+  const [maxPrice, setMaxPrice] = useState(300);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [quickView, setQuickView] = useState(null);
+  const [cart, setCart] = useState({});
+
+  useEffect(() => {
+    const h = e => {
+      if (e.data?.type === '__activate_edit_mode') setTweaks(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaks(false);
+    };
+    window.addEventListener('message', h);
+    window.parent.postMessage({ type:'__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', h);
+  }, []);
+
+  const handleAdd = (product, delta) => {
+    setCart(c => {
+      const cur = c[product.id] || 0;
+      const next = Math.max(0, cur + delta);
+      if (next === 0) { const n = {...c}; delete n[product.id]; return n; }
+      return { ...c, [product.id]: next };
+    });
+  };
+
+  const cartCount = Object.values(cart).reduce((s, v) => s + v, 0);
+
+  // bi-directional: products matching only cats filter (for compat availability)
+  const byCats = useMemo(() => PRODUCTS.filter(p =>
+    selectedCats.length === 0 || selectedCats.includes(p.cat)
+  ), [selectedCats]);
+
+  // bi-directional: products matching only compats filter (for cat availability)
+  const byCompats = useMemo(() => PRODUCTS.filter(p =>
+    selectedCompats.length === 0 || (PRODUCT_COMPAT[p.id]||[]).some(c => selectedCompats.includes(c))
+  ), [selectedCompats]);
+
+  // which compats are available given current cat selection
+  const availableCompats = useMemo(() => {
+    const set = new Set();
+    byCats.forEach(p => (PRODUCT_COMPAT[p.id]||[]).forEach(c => set.add(c)));
+    return [...set];
+  }, [byCats]);
+
+  // which cats are available given current compat selection
+  const availableCats = useMemo(() => [...new Set(byCompats.map(p => p.cat))], [byCompats]);
+
+  const products = useMemo(() => {
+    let p = PRODUCTS.filter(pr =>
+      (!search || pr.name.toLowerCase().includes(search.toLowerCase()) || pr.ref.toLowerCase().includes(search.toLowerCase())) &&
+      (selectedCats.length === 0 || selectedCats.includes(pr.cat)) &&
+      (selectedCompats.length === 0 || (PRODUCT_COMPAT[pr.id]||[]).some(c => selectedCompats.includes(c))) &&
+      (!inStockOnly || pr.stock > 0) &&
+      (sidebarStyle !== 'rich' || maxPrice >= 300 || !pr.price || pr.price <= maxPrice)
+    );
+    if (sortPrice === 'asc') p = [...p].sort((a,b) => (a.price||999) - (b.price||999));
+    if (sortPrice === 'desc') p = [...p].sort((a,b) => (b.price||0) - (a.price||0));
+    return p;
+  }, [search, selectedCats, selectedCompats, sortPrice, maxPrice, inStockOnly, sidebarStyle]);
+
+  const postTweak = (edits) => window.parent.postMessage({ type:'__edit_mode_set_keys', edits }, '*');
+
+  return (
+    <div style={{ minHeight:'100vh', background:C.bg, fontFamily:"'Inter', sans-serif", WebkitFontSmoothing:'antialiased' }}>
+      <Navbar cartCount={cartCount} />
+
+      <div style={{ display:'flex', maxWidth:1440, margin:'0 auto' }}>
+        <Sidebar cats={CATS} selected={selectedCats} setSelected={setSelectedCats}
+          rich={sidebarStyle === 'rich'} maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+          inStockOnly={inStockOnly} setInStockOnly={setInStockOnly}
+          selectedCompats={selectedCompats} setSelectedCompats={setSelectedCompats}
+          availableCompats={availableCompats} availableCats={availableCats}
+        />
+
+        <main style={{ flex:1, padding:'28px 28px 48px', minWidth:0 }}>
+          {/* Page header */}
+          <div style={{ marginBottom:20 }}>
+            <h1 style={{ fontSize:24, fontWeight:800, color:C.text, letterSpacing:'-0.03em', marginBottom:2 }}>Naše produkty</h1>
+            <p style={{ fontSize:13, color:C.muted }}>{products.length} produktov{selectedCats.length > 0 ? ` v kategórii ${selectedCats.join(', ')}` : ''}</p>
+          </div>
+
+          {/* Search + controls bar */}
+          <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:20, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:'10px 14px' }}>
+            {/* Search */}
+            <div style={{ flex:1, display:'flex', alignItems:'center', gap:8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hľadať produkt, referenčné číslo..."
+                style={{ border:'none', background:'none', outline:'none', fontSize:14, color:C.text, fontFamily:'Inter', width:'100%' }}
+              />
+              {search && <button onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:C.muted, fontSize:16, lineHeight:1, padding:'0 4px' }}>×</button>}
+            </div>
+            <div style={{ width:1, height:24, background:C.border }} />
+            {/* Sort */}
+            <select value={sortPrice} onChange={e => setSortPrice(e.target.value)} style={{
+              border:'none', background:'none', outline:'none', fontSize:13, color:C.sub, fontFamily:'Inter',
+              cursor:'pointer', padding:'0 4px', fontWeight:500,
+            }}>
+              <option value="none">Zoradiť</option>
+              <option value="asc">Cena: vzostupne</option>
+              <option value="desc">Cena: zostupne</option>
+            </select>
+            <div style={{ width:1, height:24, background:C.border }} />
+            {/* View toggle */}
+            {[['grid','⊞'],['list','☰']].map(([mode, icon]) => (
+              <button key={mode} onClick={() => setViewMode(mode)} style={{
+                width:32, height:32, borderRadius:8, border:'none', cursor:'pointer',
+                background: viewMode === mode ? C.cyanLite : 'none',
+                color: viewMode === mode ? C.cyan : C.muted, fontSize:16,
+                display:'flex', alignItems:'center', justifyContent:'center',
+              }}>{icon}</button>
+            ))}
+            {/* Cols (grid only) */}
+            {viewMode === 'grid' && (
+              <>
+                <div style={{ width:1, height:24, background:C.border }} />
+                {[3,4].map(n => (
+                  <button key={n} onClick={() => setCols(n)} style={{
+                    height:28, padding:'0 10px', borderRadius:7, border:'none', cursor:'pointer', fontSize:12, fontWeight:600,
+                    background: cols === n ? C.grad : C.bg, color: cols === n ? '#fff' : C.muted,
+                  }}>{n} stĺpce</button>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Active filter chips */}
+          {(selectedCats.length > 0 || selectedCompats.length > 0 || inStockOnly || (sidebarStyle==='rich' && maxPrice < 300)) && (
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+              {selectedCats.map(c => (
+                <button key={c} onClick={() => setSelectedCats(s => s.filter(x => x !== c))} style={{
+                  display:'flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20,
+                  background:C.cyanLite, border:`1px solid rgba(8,145,178,0.2)`, color:C.cyan,
+                  fontSize:12, fontWeight:500, cursor:'pointer',
+                }}>
+                  {c} <span style={{ fontSize:14, lineHeight:1 }}>×</span>
+                </button>
+              ))}
+              {selectedCompats.map(c => (
+                <button key={c} onClick={() => setSelectedCompats(s => s.filter(x => x !== c))} style={{
+                  display:'flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20,
+                  background:'rgba(139,92,246,0.09)', border:'1px solid rgba(139,92,246,0.25)', color:'#7c3aed',
+                  fontSize:12, fontWeight:500, cursor:'pointer',
+                }}>
+                  {c} <span style={{ fontSize:14, lineHeight:1 }}>×</span>
+                </button>
+              ))}
+              {inStockOnly && <button onClick={() => setInStockOnly(false)} style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20, background:'#f0fdf4', border:'1px solid #bbf7d0', color:'#15803d', fontSize:12, fontWeight:500, cursor:'pointer' }}>Len skladom ×</button>}
+              {sidebarStyle==='rich' && maxPrice < 300 && <button onClick={() => setMaxPrice(300)} style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:20, background:'#fef3c7', border:'1px solid #fcd34d', color:'#92400e', fontSize:12, fontWeight:500, cursor:'pointer' }}>do {maxPrice} € ×</button>}
+            </div>
+          )}
+
+          {/* Products */}
+          {products.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'80px 0', color:C.muted }}>
+              <p style={{ fontSize:18, fontWeight:600, color:C.text, marginBottom:8 }}>Nenašli sa žiadne produkty</p>
+              <p style={{ fontSize:14 }}>Skúste zmeniť filtre alebo vyhľadávací výraz.</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols}, 1fr)`, gap:16 }} className="fade-up">
+              {products.map(p => <ProductCard key={p.id} product={p} cardStyle={cardStyle} onQuickView={setQuickView} onAdd={handleAdd} inCart={cart[p.id]||0} />)}
+            </div>
+          ) : (
+            <div className="fade-up">
+              {products.map(p => <ProductRow key={p.id} product={p} onQuickView={setQuickView} onAdd={handleAdd} inCart={cart[p.id]||0} />)}
+            </div>
+          )}
+        </main>
+      </div>
+
+      <QuickViewPanel product={quickView} onClose={() => setQuickView(null)} onAdd={handleAdd} inCart={quickView ? (cart[quickView.id]||0) : 0} />
+
+      {/* Tweaks */}
+      {tweaks && (
+        <div style={{ position:'fixed', bottom:20, right:20, zIndex:300, background:'#1e293b', border:'1px solid #334155', borderRadius:16, padding:'16px 18px', minWidth:230, boxShadow:'0 12px 40px rgba(0,0,0,0.5)' }}>
+          <p style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'#64748b', marginBottom:14 }}>Tweaks</p>
+
+          <p style={{ fontSize:11, color:'#64748b', marginBottom:6 }}>Štýl kariet</p>
+          <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+            {[['rounded','Zaoblené'],['sharp','Hranaté']].map(([v,l]) => (
+              <button key={v} onClick={() => { setCardStyle(v); postTweak({cardStyle:v}); }} style={{ flex:1, padding:'7px 0', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background: cardStyle===v ? C.grad : '#334155', color: cardStyle===v ? '#fff' : '#94a3b8' }}>{l}</button>
+            ))}
+          </div>
+
+          <p style={{ fontSize:11, color:'#64748b', marginBottom:6 }}>Sidebar</p>
+          <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+            {[['simple','Jednoduchý'],['rich','Bohatý']].map(([v,l]) => (
+              <button key={v} onClick={() => { setSidebarStyle(v); postTweak({sidebarStyle:v}); }} style={{ flex:1, padding:'7px 0', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background: sidebarStyle===v ? C.grad : '#334155', color: sidebarStyle===v ? '#fff' : '#94a3b8' }}>{l}</button>
+            ))}
+          </div>
+
+          <p style={{ fontSize:11, color:'#64748b', marginBottom:6 }}>Zobrazenie</p>
+          <div style={{ display:'flex', gap:6 }}>
+            {[['grid','Mriežka'],['list','Zoznam']].map(([v,l]) => (
+              <button key={v} onClick={() => { setViewMode(v); postTweak({viewMode:v}); }} style={{ flex:1, padding:'7px 0', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background: viewMode===v ? C.grad : '#334155', color: viewMode===v ? '#fff' : '#94a3b8' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+
+</body></html>

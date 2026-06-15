@@ -26,9 +26,6 @@ frontend/.tmp/
 .vscode/
 .idea/
 
-*.md
-*.txt
-
 # dev sh files
 check-all.sh
 rebuild-dev.sh
@@ -41,4 +38,3 @@ data/new/
 data/__pycache__/
 # Added by code-review-graph
 .code-review-graph/
-.claude/

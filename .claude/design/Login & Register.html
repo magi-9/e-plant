@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Plant – Login & Register (Mobile)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: #060e1e; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .fade-up { animation: fadeUp 0.26s ease-out both; }
+    input:focus { outline: none; }
+    ::placeholder { color: #94a3b8; }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  bg: '#f8fafc', card: '#ffffff', border: '#e2e8f0',
+  text: '#0f172a', sub: '#475569', muted: '#94a3b8',
+  cyan: '#0891b2', cyanLite: '#e0f7fa',
+  grad: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+  nav: '#020617', navBorder: 'rgba(6,182,212,0.18)',
+  error: '#ef4444',
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "darkDevice": true,
+  "startTab": "login"
+}/*EDITMODE-END*/;
+
+// ── ATOMS ─────────────────────────────────────────────────────
+
+function GBtn({ children, onClick, outline, disabled, full, sm, style = {} }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button onClick={onClick} disabled={disabled}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        padding: sm ? '9px 16px' : '13px 20px',
+        width: full ? '100%' : undefined, borderRadius: 9999,
+        background: outline ? 'transparent' : disabled ? '#e2e8f0' : C.grad,
+        border: outline ? `1.5px solid ${C.cyan}` : 'none',
+        color: outline ? C.cyan : disabled ? C.muted : '#fff',
+        fontSize: sm ? 13 : 15, fontWeight: 600, fontFamily: 'Inter',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transform: pressed && !disabled ? 'scale(0.97)' : 'scale(1)',
+        transition: 'transform 0.1s',
+        boxShadow: outline || disabled ? 'none' : '0 4px 16px rgba(6,182,212,0.28)',
+        letterSpacing: '-0.01em', ...style,
+      }}>{children}
+    </button>
+  );
+}
+
+function MobileInput({ label, type = 'text', placeholder, value, onChange, error }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {label && <label style={{ fontSize: 12, fontWeight: 600, color: C.sub, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{label}</label>}
+      <input
+        type={type} placeholder={placeholder} value={value} onChange={onChange}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={{
+          height: 48, padding: '0 14px', borderRadius: 12,
+          border: `1.5px solid ${error ? C.error : focused ? C.cyan : C.border}`,
+          background: focused ? '#f0fdff' : C.card,
+          color: C.text, fontSize: 15, fontFamily: 'Inter',
+          transition: 'border-color 0.15s, background 0.15s',
+          boxShadow: focused ? '0 0 0 3px rgba(8,145,178,0.1)' : 'none',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      />
+      {error && <span style={{ fontSize: 11, color: C.error }}>{error}</span>}
+    </div>
+  );
+}
+
+// ── SCREEN: LOGIN ─────────────────────────────────────────────
+function LoginScreen({ onSwitch, onSuccess }) {
+  const [data, setData] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({});
+
+  function submit() {
+    const e = {};
+    if (!data.email) e.email = 'Zadajte e-mail';
+    if (!data.password) e.password = 'Zadajte heslo';
+    setErrors(e);
+    if (!Object.keys(e).length) onSuccess('login');
+  }
+
+  return (
+    <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+      {/* hero strip */}
+      <div style={{
+        background: C.nav, padding: '40px 24px 32px', position: 'relative', overflow: 'hidden', flexShrink: 0,
+      }}>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="g2" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#06b6d4" strokeWidth="0.7"/></pattern></defs>
+          <rect width="100%" height="100%" fill="url(#g2)" />
+        </svg>
+        <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(6,182,212,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a9 9 0 0 1 9 9c0 5.25-9 13-9 13S3 16.25 3 11a9 9 0 0 1 9-9z"/><circle cx="12" cy="11" r="3"/>
+              </svg>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.05em', background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>E-Plant</span>
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1.2 }}>Vitajte späť</h1>
+          <p style={{ marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Prihláste sa do svojho účtu</p>
+        </div>
+      </div>
+
+      {/* form */}
+      <div style={{ flex: 1, padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 16, background: C.bg }}>
+        <MobileInput label="E-mail" type="email" placeholder="vas@email.com" value={data.email}
+          onChange={e => setData(p => ({...p, email: e.target.value}))} error={errors.email} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <MobileInput label="Heslo" type="password" placeholder="••••••••" value={data.password}
+            onChange={e => setData(p => ({...p, password: e.target.value}))} error={errors.password} />
+          <div style={{ textAlign: 'right' }}>
+            <a href="#" style={{ fontSize: 12, color: C.cyan, textDecoration: 'none', fontWeight: 500 }}>Zabudnuté heslo?</a>
+          </div>
+        </div>
+
+        <GBtn full onClick={submit} style={{ marginTop: 4 }}>Prihlásiť sa</GBtn>
+
+        <p style={{ textAlign: 'center', fontSize: 13, color: C.muted, paddingBottom: 8 }}>
+          Nemáte účet?{' '}
+          <a href="#" onClick={e => { e.preventDefault(); onSwitch(); }}
+            style={{ color: C.cyan, textDecoration: 'none', fontWeight: 600 }}>Zaregistrujte sa</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── SCREEN: REGISTER ──────────────────────────────────────────
+function RegisterScreen({ onSwitch, onSuccess }) {
+  const [data, setData] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [errors, setErrors] = useState({});
+
+  function submit() {
+    const e = {};
+    if (!data.name) e.name = 'Zadajte meno';
+    if (!data.email) e.email = 'Zadajte e-mail';
+    if (!data.password || data.password.length < 8) e.password = 'Minimálne 8 znakov';
+    if (data.password !== data.confirm) e.confirm = 'Heslá sa nezhodujú';
+    setErrors(e);
+    if (!Object.keys(e).length) onSuccess('register');
+  }
+
+  const strength = data.password.length >= 12 ? 4 : data.password.length >= 10 ? 3 : data.password.length >= 8 ? 2 : data.password.length > 0 ? 1 : 0;
+  const strengthCol = strength >= 3 ? '#10b981' : strength === 2 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+      {/* hero strip */}
+      <div style={{ background: C.nav, padding: '40px 24px 32px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="g3" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#06b6d4" strokeWidth="0.7"/></pattern></defs>
+          <rect width="100%" height="100%" fill="url(#g3)" />
+        </svg>
+        <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: 'radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a9 9 0 0 1 9 9c0 5.25-9 13-9 13S3 16.25 3 11a9 9 0 0 1 9-9z"/><circle cx="12" cy="11" r="3"/>
+              </svg>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.05em', background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>E-Plant</span>
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1.2 }}>Nový účet</h1>
+          <p style={{ marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Zaregistrujte sa zadarmo</p>
+        </div>
+      </div>
+
+      {/* form */}
+      <div style={{ flex: 1, padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 16, background: C.bg }}>
+        <MobileInput label="Celé meno" placeholder="Ján Novák" value={data.name}
+          onChange={e => setData(p => ({...p, name: e.target.value}))} error={errors.name} />
+        <MobileInput label="E-mail" type="email" placeholder="vas@email.com" value={data.email}
+          onChange={e => setData(p => ({...p, email: e.target.value}))} error={errors.email} />
+        <MobileInput label="Heslo" type="password" placeholder="Minimálne 8 znakov" value={data.password}
+          onChange={e => setData(p => ({...p, password: e.target.value}))} error={errors.password} />
+        {data.password.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? strengthCol : C.border, transition: 'background 0.2s' }} />
+              ))}
+            </div>
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {strength < 2 ? 'Slabé' : strength === 2 ? 'Dobré' : strength === 3 ? 'Silné' : 'Veľmi silné'} heslo
+            </span>
+          </div>
+        )}
+        <MobileInput label="Potvrdiť heslo" type="password" placeholder="Zopakujte heslo" value={data.confirm}
+          onChange={e => setData(p => ({...p, confirm: e.target.value}))} error={errors.confirm} />
+        <GBtn full onClick={submit} style={{ marginTop: 4 }}>Vytvoriť účet</GBtn>
+        <p style={{ textAlign: 'center', fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+          Registráciou súhlasíte s{' '}
+          <a href="#" style={{ color: C.cyan, textDecoration: 'none' }}>podmienkami</a>
+          {' '}a{' '}
+          <a href="#" style={{ color: C.cyan, textDecoration: 'none' }}>GDPR</a>.
+        </p>
+        <p style={{ textAlign: 'center', fontSize: 13, color: C.muted, paddingBottom: 8 }}>
+          Už máte účet?{' '}
+          <a href="#" onClick={e => { e.preventDefault(); onSwitch(); }}
+            style={{ color: C.cyan, textDecoration: 'none', fontWeight: 600 }}>Prihláste sa</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── SUCCESS SCREEN ────────────────────────────────────────────
+function SuccessScreen({ type, onBack }) {
+  return (
+    <div className="fade-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px 28px', gap: 18, textAlign: 'center', background: C.bg }}>
+      <div style={{ width: 72, height: 72, borderRadius: 22, background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(6,182,212,0.32)' }}>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text, letterSpacing: '-0.04em' }}>
+          {type === 'login' ? 'Vitajte späť!' : 'Účet vytvorený!'}
+        </h2>
+        <p style={{ marginTop: 8, fontSize: 14, color: C.sub, lineHeight: 1.6 }}>
+          {type === 'login' ? 'Presmerujeme vás na váš dashboard.' : 'Skontrolujte e-mail pre overenie.'}
+        </p>
+      </div>
+      <GBtn onClick={onBack} outline sm>Späť</GBtn>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────
+function App() {
+  const [tweaks] = useState(TWEAK_DEFAULTS);
+  const [screen, setScreen] = useState(tweaks.startTab); // 'login' | 'register'
+  const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    window.addEventListener('message', e => {
+      if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks-panel') && (document.getElementById('tweaks-panel').style.display = 'flex');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks-panel') && (document.getElementById('tweaks-panel').style.display = 'none');
+    });
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  }, []);
+
+  const content = success
+    ? <SuccessScreen type={success} onBack={() => setSuccess(null)} />
+    : screen === 'login'
+      ? <LoginScreen onSwitch={() => setScreen('register')} onSuccess={t => setSuccess(t)} />
+      : <RegisterScreen onSwitch={() => setScreen('login')} onSuccess={t => setSuccess(t)} />;
+
+  return (
+    <IOSDevice dark={tweaks.darkDevice}>
+      {content}
+    </IOSDevice>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
