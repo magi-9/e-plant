@@ -167,7 +167,7 @@ export default function CartPage() {
     };
 
     const handleStockInquiry = () => {
-        const recipient = settings?.warehouse_email || 'warehouse@dentalshop.sk';
+        const recipient = settings?.warehouse_email || 'info@ebringer.sk';
         const subject = encodeURIComponent('Záujem o nedostupný produkt z košíka');
         const body = encodeURIComponent(contactMessage);
         window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;

@@ -4,7 +4,6 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
-from .base import EMAIL_DOMAIN
 from .base import MIDDLEWARE as BASE_MIDDLEWARE
 from .base import REST_FRAMEWORK as BASE_REST_FRAMEWORK
 
@@ -134,8 +133,8 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
         RuntimeWarning,
     )
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", f"noreply@{EMAIL_DOMAIN}")
-WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", f"warehouse@{EMAIL_DOMAIN}")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@ebringer.sk")
+WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "info@ebringer.sk")
 
 LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
 LOGGING = {
