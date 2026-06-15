@@ -130,15 +130,17 @@ export default function ComplaintsPage() {
 
                     <h2>5. Spôsob uplatnenia reklamácie</h2>
                     <p>Reklamáciu je možné uplatniť:</p>
-                    <p>
-                        e-mailom: <strong>{companyEmail}</strong>
-                    </p>
-                    <p>alebo písomne na adresu:</p>
-                    <p>
-                        {companyName}<br />
-                        {companyStreet}<br />
-                        {companyCityLine}
-                    </p>
+                    <ul>
+                        <li>
+                            e-mailom: <strong>{companyEmail}</strong>
+                        </li>
+                        <li>
+                            písomne na adresu:<br />
+                            {companyName}<br />
+                            {companyStreet}<br />
+                            {companyCityLine}
+                        </li>
+                    </ul>
                     <p>Reklamácia musí obsahovať:</p>
                     <ul>
                         {claimRequirements.map((requirement) => (
@@ -157,13 +159,13 @@ export default function ComplaintsPage() {
 
                     <h2>7. Spôsob vybavenia reklamácie</h2>
                     <p>V prípade uznania reklamácie môže predávajúci podľa povahy vady:</p>
-                    <ol type="a">
+                    <ul>
                         <li>vymeniť tovar za nový,</li>
                         <li>dodať chýbajúcu časť dodávky,</li>
                         <li>poskytnúť primeranú zľavu z kúpnej ceny,</li>
                         <li>vystaviť dobropis,</li>
                         <li>odstúpiť od zmluvy a vrátiť zaplatenú cenu.</li>
-                    </ol>
+                    </ul>
                     <p>Voľba spôsobu vybavenia reklamácie patrí predávajúcemu, pokiaľ právne predpisy neustanovujú inak.</p>
 
                     <h2>8. Produkty Dynamic Ti-Base®</h2>
