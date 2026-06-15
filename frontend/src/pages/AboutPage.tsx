@@ -131,7 +131,7 @@ export default function AboutPage() {
                   <ShieldCheckIcon className="h-5 w-5 text-cyan-600 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-slate-900 group-hover:text-cyan-600">Reklamačný poriadok</p>
-                    <p className="text-xs text-slate-500">Postup pri reklamáciách a riešení problémov</p>
+                    <p className="text-xs text-slate-500">Postup pri reklamáciách v B2B režime</p>
                   </div>
                 </Link>
                 <Link
@@ -140,8 +140,8 @@ export default function AboutPage() {
                 >
                   <ShieldCheckIcon className="h-5 w-5 text-cyan-600 flex-shrink-0" />
                   <div>
-                    <p className="font-semibold text-slate-900 group-hover:text-cyan-600">Právo na odstúpenie od zmluvy</p>
-                    <p className="text-xs text-slate-500">Vaše práva na vrátenie a vrátenie peňazí</p>
+                    <p className="font-semibold text-slate-900 group-hover:text-cyan-600">Vrátenie tovaru</p>
+                    <p className="text-xs text-slate-500">Postup pri žiadosti o vrátenie alebo výmenu tovaru</p>
                   </div>
                 </Link>
               </div>

@@ -51,7 +51,7 @@ export default function ShopLayout() {
               <Link to="/terms" className="text-slate-300/80 hover:text-white transition-colors">Obchodné podmienky</Link>
               <Link to="/privacy" className="text-slate-300/80 hover:text-white transition-colors">Ochrana osobných údajov</Link>
               <Link to="/complaints" className="text-slate-300/80 hover:text-white transition-colors">Reklamačný poriadok</Link>
-              <Link to="/withdrawal" className="text-slate-300/80 hover:text-white transition-colors">Odstúpenie od zmluvy</Link>
+              <Link to="/withdrawal" className="text-slate-300/80 hover:text-white transition-colors">Vrátenie tovaru</Link>
             </div>
           </div>
           <div className="pt-6 text-center text-xs text-slate-400/80">

@@ -25,41 +25,46 @@ export default function TermsPage() {
                         <strong>DIČ / IČ DPH:</strong> {[company.companyDic, company.companyVatId].filter(Boolean).join(' / ') || 'Neuvedené'}<br />
                     </p>
 
-                    <h2>2. Kontaktné údaje</h2>
+                    <h2>2. Rozsah pôsobnosti</h2>
+                    <p>
+                        Tieto obchodné podmienky sa vzťahujú na nákup tovaru podnikateľskými subjektmi v rámci B2B obchodného vzťahu, najmä zubnými laboratóriami, zubnými klinikami, stomatologickými ambulanciami a ďalšími zdravotníckymi zariadeniami. Vzťahy medzi predávajúcim a kupujúcim sa spravujú príslušnými ustanoveniami Obchodného zákonníka, pokiaľ nie je dohodnuté inak.
+                    </p>
+
+                    <h2>3. Kontaktné údaje</h2>
                     <p>
                         <strong>Email:</strong> info@ebringer.sk<br />
                         <strong>Telefón:</strong> {company.companyPhone || 'Neuvedené'}<br />
                     </p>
 
-                    <h2>3. Ceny tovaru</h2>
+                    <h2>4. Ceny tovaru</h2>
                     <p>
                         Všetky uvádzané ceny sú zobrazené v eurách. Pri produkte je uvedená cena bez DPH a výsledná cena s DPH. Informácia o DPH je uvedená aj na faktúre.
                     </p>
 
-                    <h2>4. Spôsob platby a dopravy</h2>
+                    <h2>5. Spôsob platby a dopravy</h2>
                     <p>
                         <strong>Platba:</strong> prevodom na bankový účet.<br />
                         <strong>Doprava:</strong> osobný odber alebo doručenie kuriérom.<br />
                     </p>
 
-                    <h2>5. Dodacie podmienky</h2>
+                    <h2>6. Dodacie podmienky</h2>
                     <p>
                         Dodanie tovaru závisí od jeho aktuálnej dostupnosti. O vybavení alebo odoslaní objednávky je zákazník informovaný e-mailom.
                     </p>
 
-                    <h2>6. Odstúpenie od zmluvy</h2>
+                    <h2>7. Odstúpenie od zmluvy a vrátenie tovaru</h2>
                     <p>
-                        Spotrebiteľ má právo odstúpiť od zmluvy bez udania dôvodu do 14 dní od prevzatia tovaru. Pri medicínskych a hygienicky chránených produktoch je možné prijať vrátenie alebo výmenu iba v prípade, že ochranný obal nebol otvorený ani porušený. Vrátený tovar nesmie byť poškodený ani upravovaný zásahom kupujúceho. Oznámenie o odstúpení musí byť doručené prevádzkovateľovi najneskôr v posledný deň lehoty. Formulár na odstúpenie nájdete <a href="/withdrawal" className="text-blue-600 hover:text-blue-800">tu</a>.
+                        Keďže ide o B2B obchodný vzťah medzi podnikateľmi, zákonné spotrebiteľské právo na odstúpenie od zmluvy bez uvedenia dôvodu do 14 dní sa neuplatňuje. Vrátenie alebo výmena tovaru mimo reklamácie je možná iba po predchádzajúcej dohode s predávajúcim. Podmienky vrátenia nájdete na stránke <a href="/withdrawal" className="text-blue-600 hover:text-blue-800">Vrátenie tovaru v B2B režime</a>.
                     </p>
 
-                    <h2>7. Reklamačný poriadok</h2>
+                    <h2>8. Reklamačný poriadok</h2>
                     <p>
-                        Zákonná zodpovednosť za vady pri spotrebiteľovi trvá 24 mesiacov od prevzatia tovaru, pokiaľ právne predpisy neustanovujú inak. Bližšie informácie o spôsobe uplatnenia reklamácie nájdete v <a href="/complaints" className="text-blue-600 hover:text-blue-800">Reklamačnom poriadku</a>.
+                        Práva zo zodpovednosti za vady sa uplatňujú v B2B režime podľa Obchodného zákonníka a podľa reklamačného poriadku predávajúceho. Bližšie informácie o spôsobe uplatnenia reklamácie nájdete v <a href="/complaints" className="text-blue-600 hover:text-blue-800">Reklamačnom poriadku pre B2B zákazníkov</a>.
                     </p>
 
-                    <h2>8. Mimosúdne riešenie sporov (ADR)</h2>
+                    <h2>9. Riešenie sporov</h2>
                     <p>
-                        Ak spotrebiteľ nie je spokojný so spôsobom, ktorým predávajúci vybavil jeho reklamáciu alebo ak sa domnieva, že predávajúci porušil jeho práva, má možnosť obrátiť sa na predávajúceho so žiadosťou o nápravu. Ak predávajúci na žiadosť o nápravu odpovie zamietavo alebo na ňu neodpovie do 30 dní odo dňa jej odoslania, spotrebiteľ má právo podať návrh na začatie alternatívneho riešenia svojho sporu podľa ustanovenia § 12 zákona č. 391/2015 Z. z. o alternatívnom riešení spotrebiteľských sporov.
+                        Prípadné spory budú zmluvné strany riešiť prednostne vzájomnou komunikáciou a dohodou. Ak nedôjde k dohode, spor sa bude riešiť podľa príslušných právnych predpisov Slovenskej republiky.
                     </p>
                 </div>
             </div>
