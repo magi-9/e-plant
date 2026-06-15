@@ -69,6 +69,11 @@ function initSentryIfConsented() {
     dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.1,
+    ignoreErrors: [
+      // iubenda-radar compliance crawler injects a script referencing its own SDK
+      // which isn't installed on this site — pure bot noise, not a real user error
+      'TrackerStorageType is not defined',
+    ],
   });
   sentryInitialized = true;
 }

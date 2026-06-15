@@ -10,7 +10,6 @@ import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 export default function AdminSettings() {
     const canAccess = useAdminPageGuard();
 
-    const fallbackEmailDomain = import.meta.env.VITE_EMAIL_DOMAIN || 'example.com';
     const queryClient = useQueryClient();
     const { data: currentSettings, isLoading } = useQuery({ queryKey: ['global-settings'], queryFn: getGlobalSettings });
     const [activeSection, setActiveSection] = useState<'notifications' | 'inventory' | 'company' | 'catalog'>('notifications');
@@ -19,7 +18,7 @@ export default function AdminSettings() {
     const importFileRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState<GlobalSettings>({
-        warehouse_email: `warehouse@${fallbackEmailDomain}`,
+        warehouse_email: 'info@ebringer.sk',
         low_stock_threshold: 5,
         currency: 'EUR (€)',
         shipping_cost: '5.00',
@@ -35,7 +34,7 @@ export default function AdminSettings() {
         company_postal_code: '',
         company_state: 'Slovensko',
         company_phone: '',
-        company_email: `martin@${fallbackEmailDomain}`,
+        company_email: 'info@ebringer.sk',
         iban: '',
         bank_name: '',
         bank_swift: '',

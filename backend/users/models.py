@@ -3,15 +3,13 @@ from django.db import IntegrityError, models, transaction
 
 from common.models import AddressModel
 
-
-from django.conf import settings
-
 _old_warehouse_email = "warehouse@ebringer.sk"
 _old_company_email = "martin.ebringer@swanmail.sk"
+DEFAULT_CONTACT_EMAIL = "info@ebringer.sk"
 
 
 DEFAULT_COMPANY_PROFILE = {
-    "warehouse_email": f"warehouse@{settings.EMAIL_DOMAIN}",
+    "warehouse_email": DEFAULT_CONTACT_EMAIL,
     "company_name": "Martin Ebringer s.r.o.",
     "company_ico": "52595684",
     "company_dic": "2121087859",
@@ -21,16 +19,13 @@ DEFAULT_COMPANY_PROFILE = {
     "company_postal_code": "84107",
     "company_state": "Slovensko",
     "company_phone": "+421 903 428 948",
-    "company_email": (
-        f"{getattr(settings, 'CONTACT_EMAIL_LOCAL_PART', 'martin')}"
-        f"@{settings.EMAIL_DOMAIN}"
-    ),
+    "company_email": DEFAULT_CONTACT_EMAIL,
     "iban": "SK78 1100 0000 0029 4107 6639",
     "bank_name": "Tatra banka, a.s.",
     "bank_swift": "TATRSKBX",
 }
 
-DEFAULT_SENDER_EMAIL = f"noreply@{settings.EMAIL_DOMAIN}"
+DEFAULT_SENDER_EMAIL = DEFAULT_CONTACT_EMAIL
 
 
 class CustomUserManager(BaseUserManager):

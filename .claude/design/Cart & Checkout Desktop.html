@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Plant – Cart & Checkout (Desktop)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes removeItem { 0% { opacity: 1; max-height: 120px; transform: translateX(0); margin-bottom: 12px; } 100% { opacity: 0; max-height: 0; transform: translateX(-20px); margin-bottom: 0; } }
+    .fade-up { animation: fadeUp 0.3s ease-out; }
+    .removing { animation: removeItem 0.36s ease-out forwards; overflow: hidden; }
+    .cart-row:hover { background: #f8fafc !important; }
+    input, textarea, select { font-family: 'Inter', sans-serif; }
+    input:focus, textarea:focus { outline: none; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  bg: '#f8fafc', card: '#ffffff', border: '#e2e8f0',
+  text: '#0f172a', sub: '#475569', muted: '#94a3b8',
+  cyan: '#0891b2', cyanLite: '#e0f7fa',
+  grad: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+  nav: '#020617', navBorder: 'rgba(6,182,212,0.18)',
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "compactNav": false,
+  "stickyRight": true
+}/*EDITMODE-END*/;
+
+const INIT_ITEMS = [
+  { id: 1, name: 'TiBase Ø 4.0', variant: 'Straumann BL – H2.5 / GH1.5', price: 89.00, qty: 2, stock: 8 },
+  { id: 2, name: 'Skenovacie telo Multi-Unit', variant: 'Nobel Active Ø 5.0', price: 45.50, qty: 1, stock: 15 },
+  { id: 3, name: 'Uhľový Abutment 17°', variant: null, price: 124.00, qty: 1, stock: 3 },
+];
+
+// ── ATOMS ────────────────────────────────────────────────────
+function GBtn({ children, onClick, outline, sm, lg, disabled, full, style = {} }) {
+  const [hov, setHov] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button onClick={onClick} disabled={disabled}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => { setHov(false); setPressed(false); }}
+      onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        padding: lg ? '14px 28px' : sm ? '9px 18px' : '11px 22px',
+        width: full ? '100%' : undefined, borderRadius: 9999,
+        background: outline ? 'transparent' : disabled ? '#e2e8f0' : C.grad,
+        border: outline ? `1.5px solid ${C.cyan}` : 'none',
+        color: outline ? C.cyan : disabled ? C.muted : '#fff',
+        fontSize: lg ? 15 : sm ? 13 : 14, fontWeight: 600, fontFamily: 'Inter',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transform: pressed && !disabled ? 'scale(0.98)' : 'scale(1)',
+        transition: 'transform 0.1s, box-shadow 0.2s, opacity 0.15s',
+        boxShadow: outline || disabled ? 'none' : hov ? '0 6px 20px rgba(6,182,212,0.35)' : '0 4px 14px rgba(6,182,212,0.22)',
+        opacity: disabled ? 0.5 : 1,
+        letterSpacing: '-0.01em', whiteSpace: 'nowrap', ...style,
+      }}>{children}
+    </button>
+  );
+}
+
+function Field({ label, value, onChange, type = 'text', placeholder, half, third }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div style={{ flex: third ? '1 1 30%' : half ? '1 1 45%' : '1 1 100%', minWidth: 0, marginBottom: 14 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: C.sub, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+      <input type={type} value={value} onChange={e => onChange && onChange(e.target.value)} placeholder={placeholder}
+        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        style={{
+          width: '100%', padding: '10px 14px', borderRadius: 10,
+          border: `1.5px solid ${focus ? C.cyan : C.border}`,
+          background: C.card, fontSize: 14, color: C.text, outline: 'none',
+          fontFamily: 'Inter', transition: 'border-color 0.15s, box-shadow 0.15s',
+          boxShadow: focus ? '0 0 0 3px rgba(8,145,178,0.1)' : 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+const COUNTRIES = [
+  { value: 'SK', label: 'Slovensko' },
+  { value: 'CZ', label: 'Česká republika' },
+];
+
+function SelectField({ label, value, onChange, half }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div style={{ flex: half ? '1 1 45%' : '1 1 100%', minWidth: 0, marginBottom: 14 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, color: C.sub, display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
+      <select value={value} onChange={e => onChange && onChange(e.target.value)}
+        onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+        style={{
+          width: '100%', padding: '10px 14px', borderRadius: 10,
+          border: `1.5px solid ${focus ? C.cyan : C.border}`,
+          background: C.card, fontSize: 14, color: C.text, outline: 'none',
+          fontFamily: 'Inter', transition: 'border-color 0.15s, box-shadow 0.15s',
+          boxShadow: focus ? '0 0 0 3px rgba(8,145,178,0.1)' : 'none',
+          appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer',
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
+          backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', paddingRight: 36,
+        }}>
+        {COUNTRIES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function ToggleRow({ value, onChange, label, desc }) {
+  return (
+    <div onClick={() => onChange(!value)} style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+      background: value ? C.cyanLite : C.card, borderRadius: value ? '14px 14px 0 0' : 14,
+      border: `1.5px solid ${value ? C.cyan : C.border}`, borderBottom: value ? `1.5px solid ${C.cyan}` : undefined,
+      cursor: 'pointer', transition: 'all 0.2s',
+    }}>
+      <div style={{ width: 44, height: 26, borderRadius: 13, background: value ? C.grad : C.border, position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+        <div style={{ position: 'absolute', top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.18)', transition: 'left 0.2s' }} />
+      </div>
+      <div>
+        <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{label}</p>
+        {desc && <p style={{ fontSize: 12, color: C.muted }}>{desc}</p>}
+      </div>
+    </div>
+  );
+}
+
+function AddressBlock({ form, setField, prefix = '' }) {
+  return <>
+    <Field label="Ulica a číslo" value={form[prefix+'street'] || ''} onChange={v => setField(prefix+'street', v)} placeholder="Hlavná 12" />
+    <Field label="Sekundárna ulica a číslo" value={form[prefix+'street2'] || ''} onChange={v => setField(prefix+'street2', v)} placeholder="Byt, poschodie, budova... (nepovinné)" />
+    <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{ flex: 2 }}><Field label="Mesto" value={form[prefix+'city'] || ''} onChange={v => setField(prefix+'city', v)} /></div>
+      <div style={{ flex: 1 }}><Field label="PSČ" value={form[prefix+'postal'] || ''} onChange={v => setField(prefix+'postal', v)} /></div>
+    </div>
+    <SelectField label="Krajina" value={form[prefix+'country'] || 'SK'} onChange={v => setField(prefix+'country', v)} />
+  </>;
+}
+
+function PayCard({ selected, onSelect, icon, label, desc, badge }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div onClick={onSelect} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+      padding: '14px 16px', borderRadius: 14, marginBottom: 10,
+      border: `2px solid ${selected ? C.cyan : hov ? '#cbd5e1' : C.border}`,
+      background: selected ? C.cyanLite : C.card,
+      cursor: 'pointer', transition: 'all 0.18s',
+      display: 'flex', alignItems: 'center', gap: 14,
+      boxShadow: selected ? '0 2px 12px rgba(6,182,212,0.14)' : hov ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+    }}>
+      <span style={{ fontSize: 24, flexShrink: 0 }}>{icon}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{label}</p>
+          {badge && <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', background: '#d1fae5', borderRadius: 20, padding: '1px 8px' }}>{badge}</span>}
+        </div>
+        <p style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{desc}</p>
+      </div>
+      <div style={{
+        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+        border: `2px solid ${selected ? C.cyan : C.muted}`,
+        background: selected ? C.grad : 'transparent', transition: 'all 0.18s',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {selected && <svg width="9" height="7" viewBox="0 0 9 7"><path d="M1 3l2.5 2.5 5-5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      </div>
+    </div>
+  );
+}
+
+// ── NAVBAR ────────────────────────────────────────────────────
+function Navbar({ screen, setScreen, cartCount, onBack }) {
+  const [cartHov, setCartHov] = useState(false);
+  return (
+    <nav style={{
+      position: 'sticky', top: 0, zIndex: 100,
+      background: C.nav, borderBottom: `1px solid ${C.navBorder}`,
+      height: 64,
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Logo */}
+        <button onClick={() => setScreen('cart')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.05em', background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DAS</span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>e-shop</span>
+        </button>
+
+        {/* Center breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {['Košík', ...(screen !== 'cart' ? ['Objednávka'] : [])].map((label, i, arr) => (
+            <React.Fragment key={i}>
+              <span style={{ fontSize: 13, fontWeight: i === arr.length - 1 ? 600 : 400, color: i === arr.length - 1 ? '#fff' : 'rgba(255,255,255,0.4)' }}>{label}</span>
+              {i < arr.length - 1 && <svg width="6" height="10" viewBox="0 0 6 10"><path d="M1 1l4 4-4 4" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontWeight: 500 }}>O nás</a>
+          {/* Cart icon */}
+          <div style={{ position: 'relative' }}
+            onMouseEnter={() => setCartHov(true)}
+            onMouseLeave={() => setCartHov(false)}
+          >
+            <button onClick={() => setScreen('cart')} style={{
+              background: cartCount > 0 ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${cartCount > 0 ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 10, padding: '8px 14px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+              <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{cartCount}</span>
+            </button>
+          </div>
+          {/* Login */}
+          <button style={{
+            background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+            padding: '7px 14px', color: 'rgba(255,255,255,0.7)', fontSize: 13, cursor: 'pointer', fontFamily: 'Inter',
+          }}>Prihlásiť sa</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ── ORDER SUMMARY PANEL ───────────────────────────────────────
+function OrderSummary({ items, subtotal, shippingCost, shipping, total, showItems = true, compact = false }) {
+  return (
+    <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+      {showItems && items.length > 0 && (
+        <div style={{ borderBottom: `1px solid ${C.border}` }}>
+          {items.map((item, i) => (
+            <div key={item.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '12px 20px', borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #cffafe, #d1fae5)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: C.muted, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.4 }}>product{'\n'}photo</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                {item.variant && <p style={{ fontSize: 11, color: C.cyan, marginTop: 1 }}>{item.variant}</p>}
+                <p style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{item.qty}× {item.price.toFixed(2)} €</p>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: C.text, flexShrink: 0 }}>{(item.price * item.qty).toFixed(2)} €</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, color: C.sub }}>Medziúčet</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{subtotal.toFixed(2)} €</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 14, marginBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 13, color: C.sub }}>Doprava</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: shippingCost === 0 ? '#10b981' : C.text }}>
+            {shippingCost === 0 ? 'Zadarmo' : `${shippingCost.toFixed(2)} €`}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Celkom</span>
+          <span style={{ fontSize: 20, fontWeight: 800, background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            {total.toFixed(2)} €
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── STEPS ────────────────────────────────────────────────────
+function Steps({ current }) {
+  const steps = ['Kontaktné údaje', 'Doručenie & platba', 'Potvrdenie'];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32 }}>
+      {steps.map((label, i) => {
+        const n = i + 1, done = n < current, active = n === current;
+        return (
+          <React.Fragment key={n}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%',
+                background: (done || active) ? C.grad : C.border,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 700, color: (done || active) ? '#fff' : C.muted,
+                boxShadow: active ? '0 2px 12px rgba(6,182,212,0.4)' : 'none',
+                transition: 'all 0.3s', flexShrink: 0,
+              }}>{done ? '✓' : n}</div>
+              <span style={{ fontSize: 13, fontWeight: active ? 700 : done ? 500 : 400, color: active ? C.text : done ? C.sub : C.muted, whiteSpace: 'nowrap' }}>{label}</span>
+            </div>
+            {i < 2 && <div style={{ flex: 1, height: 2, margin: '0 16px', background: done ? C.grad : C.border, borderRadius: 2, transition: 'background 0.4s', minWidth: 24 }} />}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── CART SCREEN ──────────────────────────────────────────────
+function CartScreen({ items, setItems, onCheckout }) {
+  const [removingIds, setRemovingIds] = useState(new Set());
+
+  const remove = (id) => {
+    setRemovingIds(p => new Set([...p, id]));
+    setTimeout(() => {
+      setItems(p => p.filter(i => i.id !== id));
+      setRemovingIds(p => { const n = new Set(p); n.delete(id); return n; });
+    }, 370);
+  };
+  const update = (id, qty) => setItems(p => p.map(i => i.id === id ? { ...i, qty } : i));
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const total = subtotal; // no shipping yet
+
+  if (items.length === 0) return (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }} className="fade-up">
+      <div style={{ width: 88, height: 88, borderRadius: 24, background: 'linear-gradient(135deg, #cffafe, #d1fae5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>🛒</div>
+      <p style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Košík je prázdny</p>
+      <p style={{ fontSize: 15, color: C.muted }}>Pridajte produkty z e-shopu a vráťte sa sem.</p>
+      <GBtn lg style={{ marginTop: 8 }}>Prejsť na produkty</GBtn>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }} className="fade-up">
+      <h1 style={{ fontSize: 28, fontWeight: 800, color: C.text, marginBottom: 6, letterSpacing: '-0.03em' }}>Nákupný košík</h1>
+      <p style={{ fontSize: 14, color: C.muted, marginBottom: 32 }}>{items.reduce((s, i) => s + i.qty, 0)} položiek</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
+        {/* Items */}
+        <div>
+          {/* Header row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px 80px', gap: 16, padding: '0 16px 10px', borderBottom: `2px solid ${C.border}` }}>
+            {['Produkt', 'Množstvo', 'Cena/ks', 'Spolu'].map(h => (
+              <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+            ))}
+          </div>
+
+          {items.map(item => (
+            <div key={item.id} className={`cart-row ${removingIds.has(item.id) ? 'removing' : ''}`} style={{
+              display: 'grid', gridTemplateColumns: '1fr 120px 100px 80px',
+              gap: 16, padding: '18px 16px', borderBottom: `1px solid ${C.border}`,
+              transition: 'background 0.15s', background: C.card, alignItems: 'center',
+            }}>
+              {/* Product info */}
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', minWidth: 0 }}>
+                <div style={{ width: 64, height: 64, borderRadius: 14, background: 'linear-gradient(135deg, #cffafe, #d1fae5)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: C.muted, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.4 }}>product{'\n'}photo</div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{item.name}</p>
+                  {item.variant && <p style={{ fontSize: 12, color: C.cyan, marginTop: 2, fontWeight: 500 }}>{item.variant}</p>}
+                  <p style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Skladom: {item.stock} ks</p>
+                  <button onClick={() => remove(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12, padding: '4px 0 0', fontFamily: 'Inter', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    Odstrániť
+                  </button>
+                </div>
+              </div>
+
+              {/* Qty stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', border: `1.5px solid ${C.border}`, borderRadius: 9999, overflow: 'hidden', background: C.bg, width: 'fit-content' }}>
+                <button onClick={() => item.qty > 1 && update(item.id, item.qty - 1)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: item.qty <= 1 ? 'not-allowed' : 'pointer', color: item.qty <= 1 ? C.muted : C.text, fontSize: 16, fontWeight: 300 }}>−</button>
+                <span style={{ minWidth: 24, textAlign: 'center', fontSize: 13, fontWeight: 700, color: C.text }}>{item.qty}</span>
+                <button onClick={() => item.qty < item.stock && update(item.id, item.qty + 1)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: item.qty >= item.stock ? 'not-allowed' : 'pointer', color: item.qty >= item.stock ? C.muted : C.text, fontSize: 16, fontWeight: 300 }}>+</button>
+              </div>
+
+              <span style={{ fontSize: 14, color: C.sub }}>{item.price.toFixed(2)} €</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{(item.price * item.qty).toFixed(2)} €</span>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 16px 0' }}>
+            <button onClick={() => setItems([])} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 13, cursor: 'pointer', fontFamily: 'Inter', fontWeight: 500 }}>
+              Vyprázdniť košík
+            </button>
+            <GBtn outline sm>← Pokračovať v nákupe</GBtn>
+          </div>
+        </div>
+
+        {/* Sticky right: order summary */}
+        <div style={{ position: 'sticky', top: 88 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.sub, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Súhrn objednávky</p>
+          <OrderSummary items={[]} subtotal={subtotal} shippingCost={0} shipping="pickup" total={total} showItems={false} />
+          <div style={{ marginTop: 12 }}>
+            <GBtn full lg onClick={onCheckout}>Pokračovať na objednávku →</GBtn>
+          </div>
+          <p style={{ fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 10 }}>Doprava bude vypočítaná v ďalšom kroku</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CHECKOUT SCREEN ──────────────────────────────────────────
+function CheckoutScreen({ items, onSuccess }) {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    name: 'MUDr. Jana Nováková', email: 'jana@klinika.sk',
+    phone: '+421900123456', street: 'Hlavná 12', street2: '',
+    city: 'Bratislava', postal: '81101', country: 'SK',
+    isCompany: false, ico: '', dic: '', dicDph: '',
+    diffDelivery: false,
+    delStreet: '', delStreet2: '', delCity: '', delPostal: '', delCountry: 'SK',
+    notes: '', shipping: 'pickup',
+  });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const shippingCost = form.shipping === 'courier' ? 5 : 0;
+  const total = subtotal + shippingCost;
+
+  if (step === 3) return <SuccessScreen total={total} subtotal={subtotal} shippingCost={shippingCost} shipping={form.shipping} onDone={onSuccess} />;
+
+  return (
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px' }} key={step} className="fade-up">
+      <Steps current={step} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 48, alignItems: 'start' }}>
+        {/* Left: form */}
+        <div>
+          {step === 1 && <>
+            <Section title="Kontaktné údaje">
+              <Field label="Meno a priezvisko / firma" value={form.name} onChange={v => set('name', v)} />
+              <div style={{ display: 'flex', gap: 16 }}>
+                <Field label="E-mail" value={form.email} onChange={v => set('email', v)} type="email" half />
+                <Field label="Telefón" value={form.phone} onChange={v => set('phone', v)} type="tel" half />
+              </div>
+            </Section>
+
+            <Section title="Adresa">
+              <Field label="Ulica a číslo" value={form.street} onChange={v => set('street', v)} placeholder="Hlavná 12" />
+              <Field label="Sekundárna ulica a číslo" value={form.street2} onChange={v => set('street2', v)} placeholder="Byt, poschodie, budova... (nepovinné)" />
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ flex: 2 }}><Field label="Mesto" value={form.city} onChange={v => set('city', v)} /></div>
+                <div style={{ flex: 1 }}><Field label="PSČ" value={form.postal} onChange={v => set('postal', v)} /></div>
+              </div>
+              <SelectField label="Krajina" value={form.country} onChange={v => set('country', v)} />
+            </Section>
+
+            {/* Fakturovať na firmu */}
+            <div style={{ marginBottom: 16 }}>
+              <ToggleRow value={form.isCompany} onChange={v => set('isCompany', v)} label="Fakturovať na firmu / IČO" desc="Zadajte IČO, DIČ a DIČ DPH" />
+              {form.isCompany && (
+                <div className="fade-up" style={{ padding: '20px', background: C.bg, border: `1.5px solid ${C.cyan}`, borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <Field label="IČO" value={form.ico} onChange={v => set('ico', v)} placeholder="12345678" half />
+                    <Field label="DIČ" value={form.dic} onChange={v => set('dic', v)} placeholder="2012345678" half />
+                  </div>
+                  <Field label="DIČ DPH" value={form.dicDph} onChange={v => set('dicDph', v)} placeholder="SK2012345678" />
+                </div>
+              )}
+            </div>
+
+            {/* Dodacia adresa */}
+            <div style={{ marginBottom: 28 }}>
+              <ToggleRow value={form.diffDelivery} onChange={v => set('diffDelivery', v)} label="Dodacia adresa iná ako fakturačná" desc="Zadajte adresu doručenia" />
+              {form.diffDelivery && (
+                <div className="fade-up" style={{ padding: '20px', background: C.bg, border: `1.5px solid ${C.cyan}`, borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
+                  <AddressBlock form={form} setField={(k, v) => set(k, v)} prefix="del" />
+                </div>
+              )}
+            </div>
+
+            <GBtn lg full onClick={() => { setStep(2); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+              Pokračovať na doručenie & platbu →
+            </GBtn>
+          </>}
+
+          {step === 2 && <>
+            <Section title="Spôsob doručenia">
+              <PayCard selected={form.shipping === 'pickup'} onSelect={() => set('shipping', 'pickup')} icon="🏪" label="Osobné vyzdvihnutie" desc="Bratislava – po dohode" badge="Zadarmo" />
+              <PayCard selected={form.shipping === 'courier'} onSelect={() => set('shipping', 'courier')} icon="📦" label="Kuriér" desc="Doručenie na adresu do 2–4 pracovných dní" badge="5,00 €" />
+            </Section>
+
+            <Section title="Spôsob platby">
+              <PayCard selected={true} onSelect={() => {}} icon="🏦" label="Bankový prevod" desc="Platba na základe zálohovej faktúry" />
+            </Section>
+
+            <Section title="Poznámka k objednávke" optional>
+              <div>
+                <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3}
+                  placeholder="Špeciálne požiadavky, preferovaný termín vyzdvihnutia..."
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.card, fontSize: 14, color: C.text, outline: 'none', resize: 'none', fontFamily: 'Inter', transition: 'border-color 0.15s' }}
+                  onFocus={e => e.target.style.borderColor = C.cyan}
+                  onBlur={e => e.target.style.borderColor = C.border}
+                />
+              </div>
+            </Section>
+
+            {/* Agreements */}
+            <label style={{ display: 'flex', gap: 12, cursor: 'pointer', marginBottom: 24, alignItems: 'flex-start' }}>
+              <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1, border: `2px solid ${C.cyan}`, background: C.cyanLite, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-5" stroke={C.cyan} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <span style={{ fontSize: 13, color: C.sub, lineHeight: 1.6 }}>
+                Súhlasím s <span style={{ color: C.cyan, fontWeight: 500, cursor: 'pointer' }}>obchodnými podmienkami</span> a spracovaním osobných údajov v súlade s <span style={{ color: C.cyan, fontWeight: 500, cursor: 'pointer' }}>GDPR</span>.
+              </span>
+            </label>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <GBtn outline onClick={() => { setStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>← Späť</GBtn>
+              <GBtn lg full onClick={() => setStep(3)}>Objednať a zaplatiť ✓</GBtn>
+            </div>
+          </>}
+        </div>
+
+        {/* Right: sticky summary */}
+        <div style={{ position: 'sticky', top: 88 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.sub, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>Prehľad objednávky</p>
+          <OrderSummary items={items} subtotal={subtotal} shippingCost={shippingCost} shipping={form.shipping} total={total} showItems={true} />
+          {step === 1 && (
+            <div style={{ marginTop: 12, padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14 }}>
+              <p style={{ fontSize: 12, color: '#15803d', fontWeight: 500 }}>✓ Doprava a platba budú v ďalšom kroku</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children, optional }) {
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{title}</p>
+        {optional && <span style={{ fontSize: 11, color: C.muted, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 20, padding: '1px 8px' }}>nepovinné</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── SUCCESS ──────────────────────────────────────────────────
+function SuccessScreen({ total, subtotal, shippingCost, shipping, onDone }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShow(true), 80); return () => clearTimeout(t); }, []);
+
+  return (
+    <div style={{ maxWidth: 640, margin: '80px auto', padding: '0 32px', textAlign: 'center' }} className="fade-up">
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%', background: C.grad, margin: '0 auto 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 8px 32px rgba(6,182,212,0.35)',
+        transform: show ? 'scale(1)' : 'scale(0)',
+        transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+      }}>
+        <svg width="34" height="26" viewBox="0 0 34 26" fill="none">
+          <path d="M2 13l10 10 20-22" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+            strokeDasharray="60" strokeDashoffset={show ? 0 : 60}
+            style={{ transition: 'stroke-dashoffset 0.5s ease-out 0.35s' }}
+          />
+        </svg>
+      </div>
+
+      <div style={{ transform: show ? 'none' : 'translateY(14px)', opacity: show ? 1 : 0, transition: 'all 0.4s ease-out 0.2s' }}>
+        <h2 style={{ fontSize: 28, fontWeight: 800, color: C.text, letterSpacing: '-0.03em', marginBottom: 8 }}>Objednávka prijatá!</h2>
+        <p style={{ fontSize: 15, color: C.muted }}>Číslo objednávky: <strong style={{ color: C.text }}>#DAS-2026-00847</strong></p>
+        <p style={{ fontSize: 14, color: C.muted, marginTop: 4 }}>Potvrdenie sme odoslali na váš e-mail.</p>
+      </div>
+
+      <div style={{
+        margin: '28px 0', background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, overflow: 'hidden',
+        transform: show ? 'none' : 'translateY(20px)', opacity: show ? 1 : 0, transition: 'all 0.4s ease-out 0.35s',
+      }}>
+        {[
+          ['Celková suma', <span key="v" style={{ fontWeight: 800, background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: 16 }}>{total.toFixed(2)} €</span>],
+          ['Spôsob platby', 'Bankový prevod'],
+          ['Doručenie', shipping === 'courier' ? `Kuriér – ${shippingCost.toFixed(2)} €` : 'Osobné vyzdvihnutie – zadarmo'],
+          ['Odhadované doručenie', shipping === 'courier' ? '2–4 pracovné dni' : 'Po dohode'],
+        ].map(([k, v], i, a) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: i < a.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+            <span style={{ fontSize: 13, color: C.sub }}>{k}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{v}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        display: 'flex', gap: 12, justifyContent: 'center',
+        transform: show ? 'none' : 'translateY(20px)', opacity: show ? 1 : 0, transition: 'all 0.4s ease-out 0.5s',
+      }}>
+        <GBtn lg onClick={onDone}>Späť do e-shopu</GBtn>
+        <GBtn outline onClick={onDone}>Zobraziť moje objednávky</GBtn>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ──────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState('cart');
+  const [items, setItems] = useState(INIT_ITEMS);
+  const [tweaks, setTweaks] = useState(false);
+  const [settings, setSettings] = useState(TWEAK_DEFAULTS);
+  const totalItems = items.reduce((s, i) => s + i.qty, 0);
+
+  useEffect(() => {
+    const handler = e => {
+      if (e.data?.type === '__activate_edit_mode') setTweaks(true);
+      if (e.data?.type === '__deactivate_edit_mode') setTweaks(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const handleReset = () => { setItems(INIT_ITEMS); setScreen('cart'); };
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter', sans-serif", WebkitFontSmoothing: 'antialiased' }}>
+      <Navbar screen={screen} setScreen={setScreen} cartCount={totalItems} onBack={() => setScreen('cart')} />
+
+      {screen === 'cart' && <CartScreen items={items} setItems={setItems} onCheckout={() => setScreen('checkout')} />}
+      {screen === 'checkout' && <CheckoutScreen items={items} onSuccess={handleReset} />}
+
+      {/* Tweaks */}
+      {tweaks && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999, background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: '16px 18px', minWidth: 220, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: 14 }}>Tweaks</p>
+          <div style={{ height: 1, background: '#334155', marginBottom: 12 }} />
+          <button onClick={handleReset} style={{ width: '100%', padding: '8px 0', borderRadius: 8, background: '#334155', border: 'none', color: '#94a3b8', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter', fontWeight: 500 }}>↺ Resetovať prototyp</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

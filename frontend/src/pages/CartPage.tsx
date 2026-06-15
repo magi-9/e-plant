@@ -167,7 +167,7 @@ export default function CartPage() {
     };
 
     const handleStockInquiry = () => {
-        const recipient = settings?.warehouse_email || 'warehouse@dentalshop.sk';
+        const recipient = settings?.warehouse_email || 'info@ebringer.sk';
         const subject = encodeURIComponent('Záujem o nedostupný produkt z košíka');
         const body = encodeURIComponent(contactMessage);
         window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
@@ -232,6 +232,8 @@ export default function CartPage() {
                                     const hasShortage = typeof available === 'number' && item.quantity > available;
                                     const disableInc = typeof available === 'number' && item.quantity >= available;
                                     const lineTotal = (parseFloat(item.price) * item.quantity).toFixed(2);
+                                    const netUnitPrice = item.netPrice ? parseFloat(item.netPrice) : null;
+                                    const netLineTotal = netUnitPrice != null ? (netUnitPrice * item.quantity).toFixed(2) : null;
 
                                     return (
                                         <li key={key} className="bg-white rounded-[18px] border border-slate-200 shadow-sm p-3 md:bg-transparent md:rounded-none md:border-0 md:shadow-none md:p-5">
@@ -269,10 +271,15 @@ export default function CartPage() {
                                                             {item.isBundledScrew ? (
                                                                 <span className="text-emerald-600 font-semibold tabular-nums w-24 text-right">zadarmo</span>
                                                             ) : (
-                                                                <span className="text-slate-500 tabular-nums w-24 text-right">{item.price} €</span>
+                                                                <span className="tabular-nums w-24 text-right">
+                                                                    {item.netPrice && (
+                                                                        <span className="block text-[10px] text-slate-400 leading-none">bez DPH {item.netPrice} €</span>
+                                                                    )}
+                                                                    <span className="text-slate-500">{item.price} € s DPH</span>
+                                                                </span>
                                                             )}
                                                             <span className={`font-semibold tabular-nums w-20 text-right ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
-                                                                {item.isBundledScrew ? 'zadarmo' : `${lineTotal} €`}
+                                                                {item.isBundledScrew ? 'zadarmo' : `${lineTotal} € s DPH`}
                                                             </span>
                                                             {!item.isBundledScrew ? (
                                                                 <button type="button"
@@ -325,7 +332,8 @@ export default function CartPage() {
                                                         {!item.isBundledScrew && (
                                                             <div className="md:hidden ml-auto text-right">
                                                                 <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
-                                                                <p className="text-xs text-slate-400">{item.price} €/ks</p>
+                                                                {netLineTotal && <p className="text-[11px] text-slate-400">bez DPH {netLineTotal} €</p>}
+                                                                <p className="text-xs text-slate-400">{item.price} €/ks s DPH</p>
                                                             </div>
                                                         )}
                                                         {item.isBundledScrew && (
@@ -348,7 +356,7 @@ export default function CartPage() {
                             <div className="md:hidden mt-2.5 bg-white rounded-[18px] border border-slate-200 p-3.5">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Súhrn objednávky</p>
                                 <div className="flex justify-between text-sm mb-1.5">
-                                    <span className="text-slate-500">Medziúčet</span>
+                                    <span className="text-slate-500">Medziúčet s DPH</span>
                                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                                 </div>
                                 <div className="flex justify-between text-sm pb-2.5 mb-2.5 border-b border-slate-100">
@@ -356,7 +364,7 @@ export default function CartPage() {
                                     <span className="text-slate-400 text-xs">Podľa spôsobu</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-slate-900">Celkom</span>
+                                    <span className="text-sm font-bold text-slate-900">Celkom s DPH</span>
                                     <span className="text-lg font-extrabold bg-clip-text text-transparent"
                                         style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
                                         {subtotal.toFixed(2)} €
@@ -379,7 +387,7 @@ export default function CartPage() {
 
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Medziúčet</span>
+                                    <span className="text-slate-500">Medziúčet s DPH</span>
                                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                                 </div>
                                 <div className="flex justify-between">
@@ -389,7 +397,7 @@ export default function CartPage() {
                             </div>
 
                             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
-                                <span className="font-semibold text-slate-900">Celkom</span>
+                                <span className="font-semibold text-slate-900">Celkom s DPH</span>
                                 <span className="text-2xl font-extrabold bg-clip-text text-transparent"
                                     style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
                                     {subtotal.toFixed(2)} €
@@ -442,7 +450,7 @@ export default function CartPage() {
                 style={{ background: 'rgba(248,250,252,0.97)', backdropFilter: 'blur(14px)' }}>
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
-                        <p className="text-xs text-slate-400 font-medium">Celkom</p>
+                        <p className="text-xs text-slate-400 font-medium">Celkom s DPH</p>
                         <p className="text-lg font-extrabold bg-clip-text text-transparent"
                             style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
                             {subtotal.toFixed(2)} €

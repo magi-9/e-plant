@@ -232,6 +232,7 @@ export default function ProductDetailModal({
     const effectiveAllCategories = activeVariant?.all_categories || product?.all_categories || product?.parameters?.all_categories || effectiveCategory || '';
     const effectiveImage = activeVariant?.image || variantImageFallback || product?.image;
     const effectivePrice = activeVariant?.gross_price ?? product?.gross_price ?? activeVariant?.price ?? product?.price;
+    const effectiveNetPrice = activeVariant?.price ?? product?.price;
     const effectiveVariantRef = activeVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
@@ -305,6 +306,7 @@ export default function ProductDetailModal({
             productId: product.id,
             name: effectiveName,
             price: effectivePrice!,
+            netPrice: effectiveNetPrice,
             image: effectiveImage,
             stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
@@ -536,9 +538,16 @@ export default function ProductDetailModal({
                                                     {/* Price */}
                                                     <div className="flex-shrink-0">
                                                         {effectivePrice ? (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                                                <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} €</p>
+                                                            <div>
+                                                                {effectiveNetPrice && (
+                                                                    <p className="text-xs text-slate-400 leading-none mb-1">
+                                                                        bez DPH {effectiveNetPrice} €
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                                    <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} € s DPH</p>
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800 whitespace-nowrap">

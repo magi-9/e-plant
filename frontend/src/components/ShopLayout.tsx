@@ -8,11 +8,19 @@ import ScrollToTop from './ScrollToTop';
 export default function ShopLayout() {
   const location = useLocation();
   const isProductsPage = location.pathname.startsWith('/products');
-  const { data: globalSettings } = useQuery({
+  const { data: globalSettings, isLoading } = useQuery({
     queryKey: ['global-settings'],
     queryFn: getGlobalSettings,
   });
   const company = getCompanyProfile(globalSettings);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-4 border-cyan-600 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pt-16">
@@ -43,7 +51,7 @@ export default function ShopLayout() {
               <Link to="/terms" className="text-slate-300/80 hover:text-white transition-colors">Obchodné podmienky</Link>
               <Link to="/privacy" className="text-slate-300/80 hover:text-white transition-colors">Ochrana osobných údajov</Link>
               <Link to="/complaints" className="text-slate-300/80 hover:text-white transition-colors">Reklamačný poriadok</Link>
-              <Link to="/withdrawal" className="text-slate-300/80 hover:text-white transition-colors">Odstúpenie od zmluvy</Link>
+              <Link to="/withdrawal" className="text-slate-300/80 hover:text-white transition-colors">Vrátenie tovaru</Link>
             </div>
           </div>
           <div className="pt-6 text-center text-xs text-slate-400/80">

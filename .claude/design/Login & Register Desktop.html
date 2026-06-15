@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Plant – Login & Register (Desktop)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.28s ease-out both; }
+    input:focus { outline: none; }
+    ::placeholder { color: #94a3b8; }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef } = React;
+
+const C = {
+  bg: '#f8fafc', card: '#ffffff', border: '#e2e8f0',
+  text: '#0f172a', sub: '#475569', muted: '#94a3b8',
+  cyan: '#0891b2', cyanLite: '#e0f7fa',
+  grad: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+  nav: '#020617', navBorder: 'rgba(6,182,212,0.18)',
+  error: '#ef4444',
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "panelSide": "right",
+  "showQuote": true,
+  "roundness": "lg"
+}/*EDITMODE-END*/;
+
+// ── ATOMS ─────────────────────────────────────────────────────
+
+function GBtn({ children, onClick, outline, disabled, full, sm, style = {} }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button onClick={onClick} disabled={disabled}
+      onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        padding: sm ? '9px 18px' : '13px 22px',
+        width: full ? '100%' : undefined, borderRadius: 9999,
+        background: outline ? 'transparent' : disabled ? '#e2e8f0' : C.grad,
+        border: outline ? `1.5px solid ${C.cyan}` : 'none',
+        color: outline ? C.cyan : disabled ? C.muted : '#fff',
+        fontSize: sm ? 13 : 14, fontWeight: 600, fontFamily: 'Inter',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transform: pressed && !disabled ? 'scale(0.98)' : 'scale(1)',
+        transition: 'transform 0.1s, box-shadow 0.2s',
+        boxShadow: outline || disabled ? 'none' : pressed ? '0 2px 8px rgba(6,182,212,0.2)' : '0 4px 16px rgba(6,182,212,0.28)',
+        letterSpacing: '-0.01em', ...style,
+      }}>{children}
+    </button>
+  );
+}
+
+function Input({ label, type = 'text', placeholder, value, onChange, error, autoFocus }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {label && <label style={{ fontSize: 13, fontWeight: 500, color: C.sub, letterSpacing: '-0.01em' }}>{label}</label>}
+      <input
+        type={type} placeholder={placeholder} value={value} onChange={onChange}
+        autoFocus={autoFocus}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={{
+          height: 44, padding: '0 14px', borderRadius: 10,
+          border: `1.5px solid ${error ? C.error : focused ? C.cyan : C.border}`,
+          background: focused ? '#f0fdff' : C.card,
+          color: C.text, fontSize: 14, fontFamily: 'Inter',
+          transition: 'border-color 0.15s, background 0.15s',
+          boxShadow: focused ? `0 0 0 3px rgba(8,145,178,0.1)` : 'none',
+        }}
+      />
+      {error && <span style={{ fontSize: 12, color: C.error }}>{error}</span>}
+    </div>
+  );
+}
+
+function Divider({ label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+      <span style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+    </div>
+  );
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+function Nav() {
+  return (
+    <nav style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+      height: 64, background: C.nav, borderBottom: `1px solid ${C.navBorder}`,
+    }}>
+      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.05em', background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>E-Plant</span>
+          {['Produkty', 'O nás', 'Kontakt'].map((l, i) => (
+            <a key={l} href="#" style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.45)', fontWeight: i === 0 ? 600 : 400, textDecoration: 'none' }}>{l}</a>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <GBtn outline sm>Prihlásiť sa</GBtn>
+          <GBtn sm>Registrovať sa</GBtn>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ── LEFT PANEL (brand) ────────────────────────────────────────
+function BrandPanel({ showQuote }) {
+  return (
+    <div style={{
+      flex: 1, background: C.nav, display: 'flex', flexDirection: 'column',
+      justifyContent: 'space-between', padding: '72px 56px 56px',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {/* subtle grid bg */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.045, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#06b6d4" strokeWidth="0.8"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+      </svg>
+      {/* glow blob */}
+      <div style={{
+        position: 'absolute', top: -120, left: -80, width: 420, height: 420,
+        background: 'radial-gradient(circle, rgba(6,182,212,0.18) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 56 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a9 9 0 0 1 9 9c0 5.25-9 13-9 13S3 16.25 3 11a9 9 0 0 1 9-9z"/><circle cx="12" cy="11" r="3"/>
+            </svg>
+          </div>
+          <span style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-0.05em', background: C.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>E-Plant</span>
+        </div>
+        <h1 style={{ fontSize: 42, fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.04em', maxWidth: 340 }}>
+          Váš partner pre dentálne implantáty
+        </h1>
+        <p style={{ marginTop: 20, fontSize: 16, color: 'rgba(255,255,255,0.5)', lineHeight: 1.65, maxWidth: 320 }}>
+          Profesionálny B2B portál pre zubných lekárov a kliniky. Rýchle objednávky, overené produkty.
+        </p>
+        <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {[
+            { icon: '✓', text: '16+ prémiových produktov' },
+            { icon: '✓', text: 'Kompatibilita Straumann, Nobel, Zimmer' },
+            { icon: '✓', text: 'Dodanie do 48 hodín' },
+          ].map(item => (
+            <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(6,182,212,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: '#06b6d4', fontWeight: 700 }}>{item.icon}</span>
+              </div>
+              <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', fontWeight: 400 }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {showQuote && (
+        <div style={{ position: 'relative', borderLeft: '2px solid rgba(6,182,212,0.4)', paddingLeft: 20 }}>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, fontStyle: 'italic' }}>
+            "E-Plant zjednodušil naše objednávky implantátov. Kvalita produktov je výborná a dodávky spoľahlivé."
+          </p>
+          <p style={{ marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>— MDDr. Karol Novák, Bratislava</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── FORM PANEL ────────────────────────────────────────────────
+function FormPanel({ roundness }) {
+  const [tab, setTab] = useState('login');
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [regData, setRegData] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const r = roundness === 'lg' ? 16 : roundness === 'md' ? 10 : 6;
+
+  function validateLogin() {
+    const e = {};
+    if (!loginData.email) e.email = 'Zadajte e-mail';
+    if (!loginData.password) e.password = 'Zadajte heslo';
+    return e;
+  }
+  function validateReg() {
+    const e = {};
+    if (!regData.name) e.name = 'Zadajte meno';
+    if (!regData.email) e.email = 'Zadajte e-mail';
+    if (!regData.password || regData.password.length < 8) e.password = 'Minimálne 8 znakov';
+    if (regData.password !== regData.confirm) e.confirm = 'Heslá sa nezhodujú';
+    return e;
+  }
+  function handleSubmit() {
+    const e = tab === 'login' ? validateLogin() : validateReg();
+    setErrors(e);
+    if (Object.keys(e).length === 0) setSubmitted(true);
+  }
+
+  if (submitted) {
+    return (
+      <div style={{ width: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 48px', gap: 16, textAlign: 'center' }} className="fade-up">
+        <div style={{ width: 64, height: 64, borderRadius: 20, background: 'linear-gradient(135deg,#06b6d4,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 32px rgba(6,182,212,0.3)' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.03em' }}>
+          {tab === 'login' ? 'Vitajte späť!' : 'Účet bol vytvorený'}
+        </h2>
+        <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.6 }}>
+          {tab === 'login' ? 'Presmerujeme vás na váš dashboard.' : 'Skontrolujte e-mail pre overenie účtu.'}
+        </p>
+        <GBtn onClick={() => { setSubmitted(false); setErrors({}); }} outline sm style={{ marginTop: 8 }}>Späť</GBtn>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: 480, padding: '80px 48px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* header */}
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: C.text, letterSpacing: '-0.04em' }}>
+          {tab === 'login' ? 'Prihláste sa' : 'Vytvorte si účet'}
+        </h2>
+        <p style={{ marginTop: 6, fontSize: 14, color: C.sub }}>
+          {tab === 'login' ? 'Zadajte svoje prihlasovacie údaje' : 'Zaregistrujte sa zadarmo za 30 sekúnd'}
+        </p>
+      </div>
+
+      {/* tabs */}
+      <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 32, gap: 4 }}>
+        {[['login','Prihlásenie'], ['register','Registrácia']].map(([key, label]) => (
+          <button key={key} onClick={() => { setTab(key); setErrors({}); setSubmitted(false); }} style={{
+            flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: tab === key ? C.card : 'transparent',
+            color: tab === key ? C.text : C.muted,
+            fontWeight: tab === key ? 600 : 400, fontSize: 14, fontFamily: 'Inter',
+            boxShadow: tab === key ? '0 1px 4px rgba(15,23,42,0.08)' : 'none',
+            transition: 'all 0.18s',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {/* form */}
+      {tab === 'login' ? (
+        <div key="login" className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input label="E-mail" type="email" placeholder="vas@email.com" value={loginData.email}
+            onChange={e => setLoginData(p => ({...p, email: e.target.value}))} error={errors.email} autoFocus />
+          <div>
+            <Input label="Heslo" type="password" placeholder="••••••••" value={loginData.password}
+              onChange={e => setLoginData(p => ({...p, password: e.target.value}))} error={errors.password} />
+            <div style={{ textAlign: 'right', marginTop: 6 }}>
+              <a href="#" style={{ fontSize: 12, color: C.cyan, textDecoration: 'none', fontWeight: 500 }}>Zabudnuté heslo?</a>
+            </div>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <GBtn full onClick={handleSubmit}>Prihlásiť sa</GBtn>
+          </div>
+          <p style={{ textAlign: 'center', fontSize: 13, color: C.muted }}>
+            Nemáte účet?{' '}
+            <a href="#" onClick={e => { e.preventDefault(); setTab('register'); setErrors({}); }} style={{ color: C.cyan, textDecoration: 'none', fontWeight: 600 }}>Zaregistrujte sa</a>
+          </p>
+        </div>
+      ) : (
+        <div key="register" className="fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input label="Celé meno" placeholder="Ján Novák" value={regData.name}
+            onChange={e => setRegData(p => ({...p, name: e.target.value}))} error={errors.name} autoFocus />
+          <Input label="E-mail" type="email" placeholder="vas@email.com" value={regData.email}
+            onChange={e => setRegData(p => ({...p, email: e.target.value}))} error={errors.email} />
+          <Input label="Heslo" type="password" placeholder="Minimálne 8 znakov" value={regData.password}
+            onChange={e => setRegData(p => ({...p, password: e.target.value}))} error={errors.password} />
+          <Input label="Potvrdiť heslo" type="password" placeholder="Zopakujte heslo" value={regData.confirm}
+            onChange={e => setRegData(p => ({...p, confirm: e.target.value}))} error={errors.confirm} />
+          {/* strength bar */}
+          {regData.password.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {[1,2,3,4].map(i => {
+                  const strength = regData.password.length >= 12 ? 4 : regData.password.length >= 10 ? 3 : regData.password.length >= 8 ? 2 : 1;
+                  const col = strength >= 3 ? '#10b981' : strength === 2 ? '#f59e0b' : '#ef4444';
+                  return <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? col : C.border, transition: 'background 0.2s' }} />;
+                })}
+              </div>
+              <span style={{ fontSize: 11, color: C.muted }}>
+                {regData.password.length < 8 ? 'Slabé' : regData.password.length < 10 ? 'Dobré' : regData.password.length < 12 ? 'Silné' : 'Veľmi silné'} heslo
+              </span>
+            </div>
+          )}
+          <div style={{ marginTop: 4 }}>
+            <GBtn full onClick={handleSubmit}>Vytvoriť účet</GBtn>
+          </div>
+          <p style={{ textAlign: 'center', fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+            Registráciou súhlasíte s{' '}
+            <a href="#" style={{ color: C.cyan, textDecoration: 'none' }}>podmienkami používania</a>
+            {' '}a{' '}
+            <a href="#" style={{ color: C.cyan, textDecoration: 'none' }}>ochranou osobných údajov</a>.
+          </p>
+          <p style={{ textAlign: 'center', fontSize: 13, color: C.muted }}>
+            Už máte účet?{' '}
+            <a href="#" onClick={e => { e.preventDefault(); setTab('login'); setErrors({}); }} style={{ color: C.cyan, textDecoration: 'none', fontWeight: 600 }}>Prihláste sa</a>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────
+function App() {
+  const [tweaks] = useState(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    window.addEventListener('message', e => {
+      if (e.data?.type === '__activate_edit_mode') {
+        document.getElementById('tweaks-panel')?.style && (document.getElementById('tweaks-panel').style.display = 'flex');
+      }
+      if (e.data?.type === '__deactivate_edit_mode') {
+        document.getElementById('tweaks-panel')?.style && (document.getElementById('tweaks-panel').style.display = 'none');
+      }
+    });
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+  }, []);
+
+  const panelRight = tweaks.panelSide !== 'left';
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: 'Inter' }}>
+      <Nav />
+      <div style={{ paddingTop: 64, minHeight: '100vh', display: 'flex', alignItems: 'stretch' }}>
+        {!panelRight && (
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', background: C.card, borderRight: `1px solid ${C.border}` }}>
+            <FormPanel roundness={tweaks.roundness} />
+          </div>
+        )}
+        <BrandPanel showQuote={tweaks.showQuote} />
+        {panelRight && (
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center', background: C.card }}>
+            <FormPanel roundness={tweaks.roundness} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
