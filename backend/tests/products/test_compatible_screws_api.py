@@ -24,12 +24,12 @@ def screws_csv(tmp_path):
         },  # screwdriver, ignored
         {
             "compatibility_code": "0001",
-            "section": "DYNAMIC",
+            "section": "DYNAMIC                                       DYNAMIC",
             "reference": "41.316.084.01-2",
         },
         {
             "compatibility_code": "0001",
-            "section": "DYNAMIC",
+            "section": "SCREW               LENGTH         SCREWDRIVER",
             "reference": "41.316.099.01-2",
         },
     ]

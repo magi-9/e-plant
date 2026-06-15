@@ -45,6 +45,16 @@ def _load_ref_to_codes():
 
 
 @lru_cache(maxsize=1)
+def _load_family_to_codes():
+    """Return {family_prefix: frozenset(codes)} for variant-family lookup."""
+    raw = {}
+    for code, families in _load().items():
+        for family in families:
+            raw.setdefault(family, set()).add(code)
+    return {k: frozenset(v) for k, v in raw.items()}
+
+
+@lru_cache(maxsize=1)
 def get_compatibility_options():
     """Return sorted list of distinct compatibility codes with a representative section."""
     if not os.path.exists(_CSV_PATH):
@@ -66,14 +76,17 @@ def get_ref_prefixes_for_code(code):
 
 
 def get_compatibility_codes_for_ref(ref):
-    """Return sorted list of compatibility codes for this exact product reference.
+    """Return sorted compatibility codes for a product reference.
 
-    Uses per-ref lookup from compatibility_options.csv so that only products
-    explicitly listed in the PDF receive compatibility codes.
+    Prefer exact rows from compatibility_options.csv; fall back to the
+    3-segment reference family so sibling variants share the same code.
     """
     if not ref:
         return []
-    return sorted(_load_ref_to_codes().get(ref, frozenset()))
+    exact_codes = _load_ref_to_codes().get(ref, frozenset())
+    if exact_codes:
+        return sorted(exact_codes)
+    return sorted(_load_family_to_codes().get(_ref_family(ref), frozenset()))
 
 
 TIBASE_CATEGORY = "TITANIUM BASE (screw included)"
@@ -91,15 +104,15 @@ def _load_screws_by_code():
     with open(_CSV_PATH, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             code = row.get("compatibility_code", "").strip()
-            section = row.get("section", "").strip()
+            section = row.get("section", "").strip().upper()
             ref = row.get("reference", "").strip()
             if not (code and ref):
                 continue
             entry = result.setdefault(code, {"straight": [], "dynamic": []})
-            if section == "STRAIGHT" and ref.startswith("40."):
+            if ref.startswith("40.") and ("STRAIGHT" in section or "SCREW" in section):
                 if ref not in entry["straight"]:
                     entry["straight"].append(ref)
-            elif section == "DYNAMIC" and ref.startswith("41."):
+            elif ref.startswith("41.") and ("DYNAMIC" in section or "SCREW" in section):
                 if ref not in entry["dynamic"]:
                     entry["dynamic"].append(ref)
     return result

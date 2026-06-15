@@ -83,6 +83,7 @@ export interface Product {
     image: string | null;
     is_visible: boolean;
     group_name?: string | null;
+    wildcard_group_name?: string | null;
     compatibility_code?: string;
     compatibility_codes?: string[];
     parameters?: {

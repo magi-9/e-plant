@@ -512,6 +512,20 @@ class TestCatalogIntegrity:
         ), "Scanbody missing for 0030"
         assert "50.313.030" in prefixes, "Adaptor missing for 0030"
 
+    def test_0030_page_114_screws(self):
+        """PDF p.114: DENTIS/OSSTEM/NEOBIOTECH 0030 screw table."""
+        from products.compatibility import (
+            _load_screws_by_code,
+            get_compatible_screws_for_tibase,
+        )
+
+        _load_screws_by_code.cache_clear()
+        screws = get_compatible_screws_for_tibase("31.323.030.01-2")
+
+        assert "41.320.079.01-2" in screws["dynamic"]
+        assert "41.320.125.01-2" in screws["dynamic"]
+        assert "40.320.003.04-2" in screws["straight"]
+
     # ── Code 0075 · ANKYLOS · pages 171-173 ──────────────────────────────────
 
     def test_0075_is_padded_code(self):
@@ -733,6 +747,8 @@ class TestCompatibilityCodePadding:
 
         with patch.object(compat_module, "_CSV_PATH", str(path)):
             compat_module._load.cache_clear()
+            compat_module._load_ref_to_codes.cache_clear()
+            compat_module._load_family_to_codes.cache_clear()
             codes_075 = compat_module.get_compatibility_codes_for_ref("31.322.075.02-2")
             codes_030 = compat_module.get_compatibility_codes_for_ref("31.323.030.02-2")
 

@@ -152,7 +152,9 @@ export default function ProductDetailModal({
     const isTiBaseProduct = (p: typeof product): p is Product =>
         !!p && (
             p.category === TIBASE_CATEGORY ||
-            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase')
+            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase') ||
+            p.name.toLowerCase().includes('tibase') ||
+            (p.wildcard_group_name || '').toLowerCase().includes('tibase')
         );
 
     useEffect(() => {
