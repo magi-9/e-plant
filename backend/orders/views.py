@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class OrderCreateView(generics.CreateAPIView):
     serializer_class = OrderCreateSerializer
-    permission_classes = (permissions.AllowAny,)  # Can be changed to IsAuthenticated
+    permission_classes = (permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
         order = serializer.save()
