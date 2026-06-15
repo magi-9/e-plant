@@ -1,7 +1,7 @@
 
 import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CursorArrowRaysIcon, ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { getProduct, getCompatibleScrews, type Product, type CompatibleScrew } from '../api/products';
 import { useCartStore } from '../store/cartStore';
@@ -431,8 +431,9 @@ export default function ProductDetailModal({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setCatalogOpen(true)}
-                                                                className="text-xs text-cyan-600 underline underline-offset-2 hover:text-cyan-800 flex-shrink-0"
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 hover:border-cyan-300 hover:bg-cyan-100 transition-colors flex-shrink-0"
                                                             >
+                                                                <CursorArrowRaysIcon className="h-3.5 w-3.5" />
                                                                 Pozrieť v katalógu
                                                             </button>
                                                         </div>
@@ -582,40 +583,52 @@ export default function ProductDetailModal({
                                                             // Prefer showing quantity controls when an item exists in cart
                                                             if (cartItem) {
                                                                 return (
-                                                                    <div className="w-full flex items-center justify-center bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 shadow-sm">
-                                                                                        <button
-                                                                            type="button"
-                                                                            aria-label="Znížiť množstvo"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (cartItem.quantity > 1) {
-                                                                                    updateQuantity(product.id, cartItem.quantity - 1, effectiveVariantRef || undefined);
-                                                                                } else {
-                                                                                    removeItem(product.id, effectiveVariantRef || undefined);
-                                                                                }
-                                                                            }}
-                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
-                                                                        >
-                                                                            -
-                                                                        </button>
-                                                                        <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                                            {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
-                                                                        </span>
+                                                                    <div className="w-full flex flex-col gap-2">
+                                                                        <div className="w-full flex items-center justify-center bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 shadow-sm">
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Znížiť množstvo"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (cartItem.quantity > 1) {
+                                                                                        updateQuantity(product.id, cartItem.quantity - 1, effectiveVariantRef || undefined);
+                                                                                    } else {
+                                                                                        removeItem(product.id, effectiveVariantRef || undefined);
+                                                                                    }
+                                                                                }}
+                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                            <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                                {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
+                                                                            </span>
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Zvýšiť množstvo"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (cartItem.quantity >= effectiveStockQuantity) {
+                                                                                        toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+                                                                                        return;
+                                                                                    }
+                                                                                    updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
+                                                                                }}
+                                                                                disabled={cartItem.quantity >= effectiveStockQuantity}
+                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
                                                                         <button
                                                                             type="button"
-                                                                            aria-label="Zvýšiť množstvo"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (cartItem.quantity >= effectiveStockQuantity) {
-                                                                                    toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
-                                                                                    return;
-                                                                                }
-                                                                                updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                navigate('/cart');
                                                                             }}
-                                                                            disabled={cartItem.quantity >= effectiveStockQuantity}
-                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            className="w-full inline-flex h-11 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
                                                                         >
-                                                                            +
+                                                                            Do košíka
                                                                         </button>
                                                                     </div>
                                                                 );

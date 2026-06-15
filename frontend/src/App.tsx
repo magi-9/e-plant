@@ -7,6 +7,7 @@ import ShopLayout from './components/ShopLayout';
 import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
+import CatalogsPage from './pages/CatalogsPage';
 import AuthPage from './pages/AuthPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -68,6 +69,11 @@ function initSentryIfConsented() {
     dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.1,
+    ignoreErrors: [
+      // iubenda-radar compliance crawler injects a script referencing its own SDK
+      // which isn't installed on this site — pure bot noise, not a real user error
+      'TrackerStorageType is not defined',
+    ],
   });
   sentryInitialized = true;
 }
@@ -127,6 +133,7 @@ function App() {
               path="/products"
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
             />
+            <Route path="/catalogs" element={<CatalogsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
