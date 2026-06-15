@@ -61,6 +61,8 @@ const damageExclusions = [
     'akékoľvek nepriame alebo následné škody',
 ];
 
+const bulletListClassName = 'list-disc pl-6 space-y-1';
+
 export default function ComplaintsPage() {
     const { data: globalSettings } = useQuery({
         queryKey: ['global-settings'],
@@ -101,7 +103,7 @@ export default function ComplaintsPage() {
 
                     <h2>2. Predmet reklamácie</h2>
                     <p>Reklamovať je možné:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {claimSubjects.map((subject) => (
                             <li key={subject}>{subject}</li>
                         ))}
@@ -112,7 +114,7 @@ export default function ComplaintsPage() {
 
                     <h2>3. Povinnosť kontroly tovaru</h2>
                     <p>Kupujúci je povinný bezodkladne po prevzatí zásielky vykonať kontrolu:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {inspectionDuties.map((duty) => (
                             <li key={duty}>{duty}</li>
                         ))}
@@ -122,7 +124,7 @@ export default function ComplaintsPage() {
 
                     <h2>4. Skryté vady</h2>
                     <p>Skryté vady je kupujúci povinný oznámiť bez zbytočného odkladu po ich zistení, najneskôr však do:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         <li>12 mesiacov od dodania tovaru pri jednorazových komponentoch,</li>
                         <li>doby stanovenej výrobcom pri produktoch, na ktoré sa vzťahuje rozšírená garancia výrobcu Dynamic Abutment Solutions.</li>
                     </ul>
@@ -130,7 +132,7 @@ export default function ComplaintsPage() {
 
                     <h2>5. Spôsob uplatnenia reklamácie</h2>
                     <p>Reklamáciu je možné uplatniť:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         <li>
                             e-mailom: <strong>{companyEmail}</strong>
                         </li>
@@ -142,7 +144,7 @@ export default function ComplaintsPage() {
                         </li>
                     </ul>
                     <p>Reklamácia musí obsahovať:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {claimRequirements.map((requirement) => (
                             <li key={requirement}>{requirement}</li>
                         ))}
@@ -150,7 +152,7 @@ export default function ComplaintsPage() {
 
                     <h2>6. Posúdenie reklamácie</h2>
                     <p>Predávajúci je oprávnený:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {claimAssessmentRights.map((right) => (
                             <li key={right}>{right}</li>
                         ))}
@@ -159,7 +161,7 @@ export default function ComplaintsPage() {
 
                     <h2>7. Spôsob vybavenia reklamácie</h2>
                     <p>V prípade uznania reklamácie môže predávajúci podľa povahy vady:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         <li>vymeniť tovar za nový,</li>
                         <li>dodať chýbajúcu časť dodávky,</li>
                         <li>poskytnúť primeranú zľavu z kúpnej ceny,</li>
@@ -175,7 +177,7 @@ export default function ComplaintsPage() {
                     <p>
                         Ak výrobca uzná výrobnú alebo materiálovú vadu, môže podľa svojich aktuálnych záručných podmienok zabezpečiť:
                     </p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {dynamicFulfillmentOptions.map((option) => (
                             <li key={option}>{option}</li>
                         ))}
@@ -184,7 +186,7 @@ export default function ComplaintsPage() {
 
                     <h2>9. Výluky z reklamácie</h2>
                     <p>Reklamáciu nie je možné uznať najmä v prípade:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {claimExclusions.map((exclusion) => (
                             <li key={exclusion}>{exclusion}</li>
                         ))}
@@ -192,7 +194,7 @@ export default function ComplaintsPage() {
 
                     <h2>10. Náhrada škody</h2>
                     <p>Predávajúci nezodpovedá za:</p>
-                    <ul>
+                    <ul className={bulletListClassName}>
                         {damageExclusions.map((exclusion) => (
                             <li key={exclusion}>{exclusion}</li>
                         ))}
