@@ -340,7 +340,7 @@ function DesktopHome() {
           <div className="home-float-slow" style={{ position: 'absolute', top: 60, right: 380, width: 300, height: 300, borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${C.peach}, transparent 70%)`, opacity: 0.5, filter: 'blur(6px)', pointerEvents: 'none' }} />
           <div style={{ width: 640, flexShrink: 0, position: 'relative', zIndex: 2 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 22 }}>
-              <img src="/uploads/tooth-icon.png" alt="" style={{ height: 26 }} />
+              <img src="/uploads/logo-small.png" alt="" style={{ height: 26 }} />
               <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.teal }}>Dental design studio Ebringer</span>
             </div>
             <h1 style={{ fontFamily: 'Marcellus, serif', fontWeight: 400, fontSize: 62, lineHeight: 1.05, letterSpacing: '-0.01em', color: C.ink, margin: '0 0 24px' }}>
@@ -560,7 +560,7 @@ function MobileHome() {
       <section style={{ padding: '98px 20px 0', position: 'relative', overflow: 'hidden' }}>
         <div className="home-float-slow" style={{ position: 'absolute', top: 20, right: -40, width: 220, height: 220, borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${C.peach}, transparent 70%)`, opacity: 0.55, filter: 'blur(6px)', pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 16, position: 'relative' }}>
-          <img src="/uploads/tooth-icon.png" alt="" style={{ height: 22 }} />
+          <img src="/uploads/logo-small.png" alt="" style={{ height: 22 }} />
           <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.teal }}>Dental design studio Ebringer</span>
         </div>
         <h1 style={{ fontFamily: 'Marcellus, serif', fontWeight: 400, fontSize: 38, lineHeight: 1.08, letterSpacing: '-0.01em', color: C.ink, margin: '0 0 18px', position: 'relative' }}>
