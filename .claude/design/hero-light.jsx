@@ -81,16 +81,9 @@ function HeroLight() {
           <h1 style={{ fontFamily:'Marcellus, serif', fontWeight:400, fontSize:62, lineHeight:1.05, letterSpacing:'-0.01em', color:LP.ink, margin:'0 0 24px' }}>
             Viac ako 25 rokov<br/>skúseností v <span style={{ color:LP.teal, fontStyle:'italic' }}>zubnej technike</span>
           </h1>
-          <p style={{ fontSize:19, lineHeight:1.6, color:LP.body, margin:'0 0 34px', maxWidth:560 }}>
+          <p style={{ fontSize:19, lineHeight:1.6, color:LP.body, margin:'0 0 30px', maxWidth:560 }}>
             Moderné digitálne riešenia pre implantoprotetiku, CAD/CAM výrobu a zubné laboratóriá — postavené na dlhoročnej praxi pri laboratórnom stole.
           </p>
-          <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:30 }}>
-            <a href={ESHOP_HREF} style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'15px 28px', borderRadius:999,
-              background:LP.teal, color:'#fff', fontSize:16, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', boxShadow:'0 10px 26px rgba(26,138,155,0.30)' }}>
-              Vstúpiť do e-shopu
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </a>
-          </div>
           <p style={{ fontSize:13.5, color:LP.body, letterSpacing:'0.01em', margin:0 }}>
             Originálne komponenty <b style={{ color:LP.ink }}>Dynamic Ti-Base®</b> · Laboratórne služby · Technická podpora
           </p>
