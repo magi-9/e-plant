@@ -59,8 +59,12 @@ def test_complete_order_creation_flow(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_payment_method_handling_sets_initial_status(api_client, product_factory):
+def test_payment_method_handling_sets_initial_status(
+    api_client, user_factory, product_factory
+):
+    user = user_factory()
     product = product_factory(price=Decimal("30.00"), stock_quantity=4)
+    api_client.force_authenticate(user=user)
 
     payload = {
         "customer_name": "Card Customer",

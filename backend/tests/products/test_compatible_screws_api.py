@@ -24,12 +24,12 @@ def screws_csv(tmp_path):
         },  # screwdriver, ignored
         {
             "compatibility_code": "0001",
-            "section": "DYNAMIC",
+            "section": "DYNAMIC                                       DYNAMIC",
             "reference": "41.316.084.01-2",
         },
         {
             "compatibility_code": "0001",
-            "section": "DYNAMIC",
+            "section": "SCREW               LENGTH         SCREWDRIVER",
             "reference": "41.316.099.01-2",
         },
     ]
@@ -71,6 +71,29 @@ def test_compatible_screws_returns_screws_for_tibase(
     assert dynamic_screw2.id in screw_ids
     # screwdriver (43.xxx) must not appear
     assert len(data["screws"]) == 3
+
+
+@pytest.mark.django_db
+def test_compatible_screws_accepts_31_reference_as_tibase(
+    api_client, product_factory, screws_csv
+):
+    tibase = product_factory(
+        category="INTERNAL MU",
+        reference="31.312.001.01-2",
+        parameters={},
+    )
+    straight_screw = product_factory(reference="40.316.003.01-2", stock_quantity=5)
+
+    from products.compatibility import _load_screws_by_code
+
+    url = reverse("product_compatible_screws", kwargs={"pk": tibase.id})
+    with patch("products.compatibility._CSV_PATH", screws_csv):
+        _load_screws_by_code.cache_clear()
+        response = api_client.get(url)
+    _load_screws_by_code.cache_clear()
+
+    assert response.status_code == status.HTTP_200_OK
+    assert straight_screw.id in [s["id"] for s in response.json()["screws"]]
 
 
 @pytest.mark.django_db

@@ -30,6 +30,10 @@ TIBASE_REFS = [
     "31.310.110.01-2",  # old-style TITANIUM BASE (screw included)
     "31.323.151.01-2",  # old-style
     "31.321.084.01-2",  # old-style
+    "31.313.030.01-2",  # 0030 standard TiBase
+    "31.313.030.21-2",  # 0030 Dynamic 3TiBase
+    "31.323.030.01-2",  # 0030 standard TiBase
+    "31.323.030.21-2",  # 0030 Dynamic 3TiBase
 ]
 
 SCREW_STOCK = 50

@@ -21,6 +21,7 @@ export default function Navbar() {
     const queryClient = useQueryClient();
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
+    const canUseCart = isLoggedIn && !userIsAdmin;
     const totalItems = useCartStore((state: CartState) => state.getTotalItems());
     const items = useCartStore((state: CartState) => state.items);
     const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
@@ -127,8 +128,8 @@ export default function Navbar() {
                         Kontakt
                     </Link>
 
-                    {/* Cart – only for non-admins */}
-                    {!userIsAdmin && (
+                    {/* Cart – only for signed-in customers */}
+                    {canUseCart && (
                         <div className="relative group/cart">
                             <Link
                                 to="/cart"
@@ -192,7 +193,7 @@ export default function Navbar() {
                     )}
 
                     {/* Logged-in user menu */}
-                    {isLoggedIn && !userIsAdmin && (
+                    {canUseCart && (
                         <Menu as="div" className="relative">
                             <Menu.Button
                                 className="flex items-center gap-2 rounded-lg px-3 py-[7px] text-sm transition-colors duration-150"

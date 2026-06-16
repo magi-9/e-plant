@@ -911,7 +911,9 @@ class CompatibleScrewsView(APIView):
 
         catalog_section = (product.parameters or {}).get("catalog_section", "")
         is_tibase = (
-            product.category == TIBASE_CATEGORY or "tibase" in catalog_section.lower()
+            product.category == TIBASE_CATEGORY
+            or (product.reference or "").startswith("31.")
+            or "tibase" in catalog_section.lower()
         )
         if not is_tibase:
             raise Http404

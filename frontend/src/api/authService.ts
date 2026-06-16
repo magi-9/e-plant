@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useCartStore } from '../store/cartStore';
 
 const API_URL =
     import.meta.env.VITE_API_URL ||
@@ -33,6 +34,7 @@ export class AuthService {
 
     clearUserMeta(): void {
         localStorage.removeItem(USER_META_KEY);
+        useCartStore.getState().clearCart();
     }
 
     isAuthenticated(): boolean {

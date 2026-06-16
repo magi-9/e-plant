@@ -149,10 +149,15 @@ export default function ProductDetailModal({
     }, [product?.id]);
 
     const TIBASE_CATEGORY = 'TITANIUM BASE (screw included)';
+    const isTiBaseReference = (ref?: string | null) => (ref || '').startsWith('31.');
     const isTiBaseProduct = (p: typeof product): p is Product =>
         !!p && (
             p.category === TIBASE_CATEGORY ||
-            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase')
+            isTiBaseReference(p.reference) ||
+            isTiBaseReference(p.parameters?.wildcard_reference) ||
+            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase') ||
+            p.name.toLowerCase().includes('tibase') ||
+            (p.wildcard_group_name || '').toLowerCase().includes('tibase')
         );
 
     useEffect(() => {

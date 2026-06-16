@@ -2,6 +2,7 @@ import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from './authService';
+import { useCartStore } from '../store/cartStore';
 
 vi.mock('axios', () => ({
     default: {
@@ -30,6 +31,7 @@ describe('AuthService', () => {
 
     beforeEach(() => {
         localStorage.clear();
+        useCartStore.setState({ items: [] });
         vi.clearAllMocks();
     });
 
@@ -50,11 +52,12 @@ describe('AuthService', () => {
         await expect(secondCall).resolves.toBeUndefined();
     });
 
-    it('rejects queued requests and clears user_meta when refresh fails', async () => {
+    it('rejects queued requests and clears session data when refresh fails', async () => {
         const deferred = createDeferred<never>();
         mockedAxios.post.mockReturnValueOnce(deferred.promise);
 
         localStorage.setItem('user_meta', JSON.stringify({ is_staff: false, email: 'test@test.com' }));
+        useCartStore.getState().addItem({ productId: 1, name: 'Implant', price: '10.00' });
         const service = new AuthService();
 
         const firstCall = service.refreshAccessToken();
@@ -66,6 +69,7 @@ describe('AuthService', () => {
         await expect(firstCall).rejects.toThrow('refresh failed');
         await expect(secondCall).rejects.toThrow('refresh failed');
         expect(localStorage.getItem('user_meta')).toBeNull();
+        expect(useCartStore.getState().items).toHaveLength(0);
     });
 
     it('returns user meta from localStorage', () => {
@@ -75,11 +79,13 @@ describe('AuthService', () => {
         expect(service.isAuthenticated()).toBe(true);
     });
 
-    it('clearUserMeta removes user_meta from localStorage', () => {
+    it('clearUserMeta removes user_meta and clears the cart', () => {
         const service = new AuthService();
         service.setUserMeta({ is_staff: false, email: 'user@test.com' });
+        useCartStore.getState().addItem({ productId: 1, name: 'Implant', price: '10.00' });
         service.clearUserMeta();
         expect(service.getUserMeta()).toBeNull();
         expect(service.isAuthenticated()).toBe(false);
+        expect(useCartStore.getState().items).toHaveLength(0);
     });
 });

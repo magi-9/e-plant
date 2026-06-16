@@ -51,7 +51,8 @@ export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
     const isLoggedIn = authService.isAuthenticated();
-    const userIsAdmin = isAdmin();
+    const userIsAdmin = isLoggedIn && isAdmin();
+    const canUseCart = isLoggedIn && !userIsAdmin;
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -249,6 +250,11 @@ export default function ProductsPage() {
 
     const handleAddToCart = (e: React.MouseEvent, product: Product) => {
         e.stopPropagation();
+
+        if (!canUseCart) {
+            toast.error('Pre nákup sa prihláste.');
+            return;
+        }
 
         if (product.parameters?.type === 'wildcard_group' && (product.parameters.options || []).length > 0) {
             setSelectedProduct(product);
@@ -975,7 +981,7 @@ export default function ProductsPage() {
                                             )}
                                         </div>
 
-                                        {!userIsAdmin && (
+                                        {canUseCart && (
                                         <div className="mt-3 sm:mt-4 flex justify-end sm:min-h-[2.25rem]">
                                             {getCustomerPrice(product) ? (() => {
                                                 const cartItem = items.find(

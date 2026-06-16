@@ -21,11 +21,11 @@ from collections import defaultdict
 # ---------------------------------------------------------------------------
 
 SKU_RE = re.compile(r"\b(\d{2}\.\d{3}\.\d{3}\.\d{2}-\d)\b")
-# Match "COMPATIBLE WITH 0040" or "COMPATIBLE WITH 0040B" — capture just the 4 digits
-CODE_INLINE_RE = re.compile(r"COMPATIBLE\s+WITH\s+(\d{4})[A-Z]?", re.IGNORECASE)
+# Match "COMPATIBLE WITH 0040" or "COMPATIBLE WITH 0040B".
+CODE_INLINE_RE = re.compile(r"COMPATIBLE\s+WITH\s+(\d{4}[A-Z]?)", re.IGNORECASE)
 CODE_SPLIT_RE = re.compile(r"^COMPATIBLE\s+WITH\s*$", re.IGNORECASE)
-# Match "0040" or "0040B" — letter suffix is a variant of the same code
-FOUR_DIGIT_RE = re.compile(r"^(\d{4})[A-Z]?$")
+# Match "0040" or "0040B".
+FOUR_DIGIT_RE = re.compile(r"^(\d{4}[A-Z]?)$")
 BACK_TO_INDEX_RE = re.compile(r"BACK\s+TO\s+INDEX", re.IGNORECASE)
 FOOTER_RE = re.compile(r"^(\d+)\s+PRODUCT REFERENCES", re.IGNORECASE)
 LIST_COMPAT_RE = re.compile(r"LIST\s+OF\s+COMPATIBILITIES\s+AVAILABLE", re.IGNORECASE)
@@ -333,7 +333,7 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
         # ---- COMPATIBLE WITH detection --------------------------------
         inline_m = CODE_INLINE_RE.search(stripped)
         if inline_m:
-            new_code = inline_m.group(1).zfill(4)
+            new_code = inline_m.group(1).upper().zfill(4)
             if new_code == code and after_back_to_index:
                 after_back_to_index = False
                 continue
@@ -368,7 +368,7 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
 
         four_m = FOUR_DIGIT_RE.fullmatch(stripped)
         if expect_4digit_code and four_m:
-            new_code = four_m.group(1)  # just the 4 digits, letter suffix stripped
+            new_code = four_m.group(1).upper()
             if not (new_code == code and after_back_to_index):
                 products.extend(scanbody_pending)
                 scanbody_pending = []
