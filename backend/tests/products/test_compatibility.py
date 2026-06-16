@@ -754,3 +754,44 @@ class TestCompatibilityCodePadding:
 
         assert codes_075 == ["0075"], f"Expected ['0075'], got {codes_075}"
         assert codes_030 == ["0030"], f"Expected ['0030'], got {codes_030}"
+
+    def test_tibase_screws_prefer_exact_csv_code_over_reference_segment(self, tmp_path):
+        """Friction-fit TiBases can live in a different PDF block than ref segment."""
+        from unittest.mock import patch
+        import products.compatibility as compat_module
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0040",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.312.042.01-2",
+            },
+            {
+                "compatibility_code": "0040",
+                "section": "DYNAMIC",
+                "reference": "41.318.071.01-2",
+            },
+            {
+                "compatibility_code": "0040",
+                "section": "STRAIGHT",
+                "reference": "40.317.004.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            compat_module._load_ref_to_codes.cache_clear()
+            compat_module._load_family_to_codes.cache_clear()
+            compat_module._load_screws_by_code.cache_clear()
+            result = compat_module.get_compatible_screws_for_tibase("31.312.042.01-2")
+
+        assert result["compatibility_code"] == "0040"
+        assert result["straight"] == ["40.317.004.01-2"]
+        assert result["dynamic"] == ["41.318.071.01-2"]

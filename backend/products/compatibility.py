@@ -121,9 +121,9 @@ def _load_screws_by_code():
 def get_compatible_screws_for_tibase(reference):
     """Return compatible screw references for a TiBase product reference.
 
-    Extracts the 4-digit compatibility code from segment 3 of the reference
-    (e.g. '31.3XX.CCCC.VV-2' → code = segment[2].zfill(4)), then returns
-    matching STRAIGHT (40.xxx) and DYNAMIC (41.xxx) screw refs from the CSV.
+    Prefer exact compatibility rows from the CSV; fall back to segment 3 of the
+    reference (e.g. '31.3XX.CCCC.VV-2' -> code = segment[2].zfill(4)). Some PDF
+    pages list friction-fit products like 0042/0043 inside 0040/0041 blocks.
 
     Returns a dict:
         {'compatibility_code': '0001', 'straight': [ref, ...], 'dynamic': [ref, ...]}
@@ -132,8 +132,19 @@ def get_compatible_screws_for_tibase(reference):
     if len(parts) < 3:
         return {"compatibility_code": "", "straight": [], "dynamic": []}
 
-    code = parts[2].zfill(4)
-    entry = _load_screws_by_code().get(code, {"straight": [], "dynamic": []})
+    fallback_code = parts[2].zfill(4)
+    candidate_codes = get_compatibility_codes_for_ref(reference) or [fallback_code]
+    screws_by_code = _load_screws_by_code()
+    code = candidate_codes[0]
+    entry = {"straight": [], "dynamic": []}
+    for candidate_code in candidate_codes:
+        candidate_entry = screws_by_code.get(
+            candidate_code, {"straight": [], "dynamic": []}
+        )
+        if candidate_entry["straight"] or candidate_entry["dynamic"]:
+            code = candidate_code
+            entry = candidate_entry
+            break
     return {
         "compatibility_code": code,
         "straight": entry["straight"],
