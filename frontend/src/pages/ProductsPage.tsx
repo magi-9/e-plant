@@ -183,7 +183,7 @@ export default function ProductsPage() {
         staleTime: Infinity,
     });
 
-    const { data: productTypeCounts = {} } = useQuery({
+    const { data: productTypeCounts = {}, isLoading: productTypeCountsLoading } = useQuery({
         queryKey: ['product-type-counts'],
         queryFn: getProductTypeCounts,
         staleTime: Infinity,
@@ -210,7 +210,7 @@ export default function ProductsPage() {
     });
     const hasProductTypeCounts = Object.keys(productTypeCounts).length > 0;
     const availableProductTypeFilters = PRODUCT_TYPE_FILTERS.filter((option) => {
-        if (!hasProductTypeCounts) return true;
+        if (productTypeCountsLoading || !hasProductTypeCounts) return false;
         return (productTypeCounts[option.value] || 0) > 0 || option.value === selectedProductType;
     });
     const selectedProductTypeOption = PRODUCT_TYPE_FILTERS.find((option) => option.value === selectedProductType);
@@ -645,67 +645,71 @@ export default function ProductsPage() {
                             </button>
                         )}
                     </div>
-                    <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
-                    <Listbox
-                        value={selectedProductType}
-                        onChange={(value: ProductTypeFilterValue | '') => setSelectedProductType(value)}
-                    >
-                        {({ open }) => (
-                            <div className="relative">
-                                <Listbox.Button
-                                    className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-sm font-medium transition-all focus:outline-none ${selectedProductType ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}
-                                >
-                                    <span className="truncate max-w-[9rem]">
-                                        {selectedProductTypeOption?.label || 'Typ produktu'}
-                                    </span>
-                                    <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-                                </Listbox.Button>
+                    {availableProductTypeFilters.length > 0 && (
+                        <>
+                            <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                            <Listbox
+                                value={selectedProductType}
+                                onChange={(value: ProductTypeFilterValue | '') => setSelectedProductType(value)}
+                            >
+                                {({ open }) => (
+                                    <div className="relative">
+                                        <Listbox.Button
+                                            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-sm font-medium transition-all focus:outline-none ${selectedProductType ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}
+                                        >
+                                            <span className="truncate max-w-[9rem]">
+                                                {selectedProductTypeOption?.label || 'Typ produktu'}
+                                            </span>
+                                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                                        </Listbox.Button>
 
-                                <Transition
-                                    as={Fragment}
-                                    enter="transition ease-out duration-120"
-                                    enterFrom="opacity-0 scale-95 translate-y-1"
-                                    enterTo="opacity-100 scale-100 translate-y-0"
-                                    leave="transition ease-in duration-90"
-                                    leaveFrom="opacity-100 scale-100 translate-y-0"
-                                    leaveTo="opacity-0 scale-95 translate-y-1"
-                                >
-                                    <Listbox.Options className="absolute left-0 top-full z-30 mt-2 w-[20rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_rgba(15,23,42,0.12)] py-2 focus:outline-none">
-                                        <Listbox.Option value="" as={Fragment}>
-                                            {({ active, selected }) => (
-                                                <button
-                                                    type="button"
-                                                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                                                >
-                                                    <span className="font-medium">Všetky typy</span>
-                                                    {!selectedProductType && <span className="text-xs font-semibold text-cyan-600">Filter</span>}
-                                                </button>
-                                            )}
-                                        </Listbox.Option>
-                                        {availableProductTypeFilters.map((option) => (
-                                            <Listbox.Option key={option.value} value={option.value} as={Fragment}>
-                                                {({ active, selected }) => (
-                                                    <button
-                                                        type="button"
-                                                        className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                                                    >
-                                                        <span className="font-medium">{option.label}</span>
-                                                        <div className="flex flex-shrink-0 items-center gap-1.5">
-                                                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${selected ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500'}`}>
-                                                                {productTypeCounts[option.value] || 0}
-                                                            </span>
-                                                            <span className="text-[11px] font-medium text-slate-400">{option.prefixes}</span>
-                                                        </div>
-                                                    </button>
-                                                )}
-                                            </Listbox.Option>
-                                        ))}
-                                    </Listbox.Options>
-                                </Transition>
-                            </div>
-                        )}
-                    </Listbox>
-                    <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                                        <Transition
+                                            as={Fragment}
+                                            enter="transition ease-out duration-120"
+                                            enterFrom="opacity-0 scale-95 translate-y-1"
+                                            enterTo="opacity-100 scale-100 translate-y-0"
+                                            leave="transition ease-in duration-90"
+                                            leaveFrom="opacity-100 scale-100 translate-y-0"
+                                            leaveTo="opacity-0 scale-95 translate-y-1"
+                                        >
+                                            <Listbox.Options className="absolute left-0 top-full z-30 mt-2 w-[20rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_rgba(15,23,42,0.12)] py-2 focus:outline-none">
+                                                <Listbox.Option value="" as={Fragment}>
+                                                    {({ active, selected }) => (
+                                                        <button
+                                                            type="button"
+                                                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                        >
+                                                            <span className="font-medium">Všetky typy</span>
+                                                            {!selectedProductType && <span className="text-xs font-semibold text-cyan-600">Filter</span>}
+                                                        </button>
+                                                    )}
+                                                </Listbox.Option>
+                                                {availableProductTypeFilters.map((option) => (
+                                                    <Listbox.Option key={option.value} value={option.value} as={Fragment}>
+                                                        {({ active, selected }) => (
+                                                            <button
+                                                                type="button"
+                                                                className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                                                            >
+                                                                <span className="font-medium">{option.label}</span>
+                                                                <div className="flex flex-shrink-0 items-center gap-1.5">
+                                                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${selected ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                        {productTypeCounts[option.value] || 0}
+                                                                    </span>
+                                                                    <span className="text-[11px] font-medium text-slate-400">{option.prefixes}</span>
+                                                                </div>
+                                                            </button>
+                                                        )}
+                                                    </Listbox.Option>
+                                                ))}
+                                            </Listbox.Options>
+                                        </Transition>
+                                    </div>
+                                )}
+                            </Listbox>
+                            <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                        </>
+                    )}
                     {/* Compatibility filter */}
                     {sortedCompatibilityOptions.length > 0 && (
                         <>
@@ -1292,45 +1296,47 @@ export default function ProductsPage() {
                         </div>
 
                         {/* Product type */}
-                        <div className="mb-6 pt-5 border-t border-slate-100">
-                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Typ produktu</h3>
-                            <div className="space-y-1.5">
-                                <button
-                                    onClick={() => setSelectedProductType('')}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                                        !selectedProductType
-                                            ? 'text-white'
-                                            : 'bg-slate-50 text-slate-700'
-                                    }`}
-                                    style={!selectedProductType ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
-                                >
-                                    Všetky typy
-                                </button>
-                                {availableProductTypeFilters.map((option) => {
-                                    const isActive = selectedProductType === option.value;
-                                    return (
-                                        <button
-                                            key={option.value}
-                                            onClick={() => setSelectedProductType(isActive ? '' : option.value)}
-                                            className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                                                isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
-                                            }`}
-                                            style={isActive ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
-                                        >
-                                            <span>{option.label}</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500'}`}>
-                                                    {productTypeCounts[option.value] || 0}
-                                                </span>
-                                                <span className={`text-[11px] font-semibold ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
-                                                    {option.prefixes}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                        {availableProductTypeFilters.length > 0 && (
+                            <div className="mb-6 pt-5 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Typ produktu</h3>
+                                <div className="space-y-1.5">
+                                    <button
+                                        onClick={() => setSelectedProductType('')}
+                                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                                            !selectedProductType
+                                                ? 'text-white'
+                                                : 'bg-slate-50 text-slate-700'
+                                        }`}
+                                        style={!selectedProductType ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
+                                    >
+                                        Všetky typy
+                                    </button>
+                                    {availableProductTypeFilters.map((option) => {
+                                        const isActive = selectedProductType === option.value;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setSelectedProductType(isActive ? '' : option.value)}
+                                                className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
+                                                }`}
+                                                style={isActive ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
+                                            >
+                                                <span>{option.label}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500'}`}>
+                                                        {productTypeCounts[option.value] || 0}
+                                                    </span>
+                                                    <span className={`text-[11px] font-semibold ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                                                        {option.prefixes}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Categories */}
                         <div className="mb-6 pt-5 border-t border-slate-100">
