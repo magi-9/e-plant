@@ -45,6 +45,25 @@ from .cache_utils import invalidate_product_stats_cache
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
 
+PRODUCT_TYPE_PREFIXES = {
+    "tibase": ("31", "35"),
+    "multi_unit": ("42", "48", "61", "62"),
+    "screws": ("40", "41"),
+    "scanbody": ("30", "52", "53", "54"),
+    "analogs": ("22", "23", "34"),
+    "abutments": ("21",),
+    "adapters": ("50",),
+    "tools": ("11", "33", "43"),
+}
+
+
+def _filter_real_compatibility_code(queryset):
+    return queryset.exclude(
+        models.Q(parameters__compatibility_code__isnull=True)
+        | models.Q(parameters__compatibility_code="")
+        | models.Q(parameters__compatibility_code="0000")
+    )
+
 
 def _parse_categories(request):
     # Handle both 'categories' and 'categories[]' (for array serialization compatibility)
@@ -70,6 +89,19 @@ def _apply_product_filters(queryset, request):
             qs = qs.filter(group_id=int(group_id))
         except (ValueError, TypeError):
             raise ValidationError({"group": "Must be a valid integer ID."})
+
+    product_type = request.query_params.get("product_type", "").strip()
+    if product_type:
+        prefixes = PRODUCT_TYPE_PREFIXES.get(product_type)
+        if prefixes is None:
+            raise ValidationError(
+                {"product_type": "Must be one of: " + ", ".join(PRODUCT_TYPE_PREFIXES)}
+            )
+        prefix_filter = models.Q()
+        for prefix in prefixes:
+            prefix_filter |= models.Q(reference__startswith=prefix + ".")
+        qs = qs.filter(prefix_filter)
+        qs = _filter_real_compatibility_code(qs)
 
     search = request.query_params.get("search", "").strip()
     if search:
@@ -392,6 +424,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             has_filters = bool(
                 request.query_params.get("search")
                 or request.query_params.get("group")
+                or request.query_params.get("product_type")
                 or request.query_params.get("ordering")
                 or request.query_params.get("min_price")
                 or request.query_params.get("max_price")
@@ -890,6 +923,34 @@ class CompatibilityCountsView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"counts": get_compatibility_counts()})
+
+
+def _get_product_type_counts():
+    """Return visible product counts for storefront product-type prefix filters."""
+    cache_key = "product_type_counts"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    base_qs = _filter_real_compatibility_code(Product.objects.filter(is_visible=True))
+    counts = {}
+    for key, prefixes in PRODUCT_TYPE_PREFIXES.items():
+        prefix_filter = models.Q()
+        for prefix in prefixes:
+            prefix_filter |= models.Q(reference__startswith=prefix + ".")
+        counts[key] = base_qs.filter(prefix_filter).count()
+
+    cache.set(cache_key, counts, 3600)
+    return counts
+
+
+class ProductTypeCountsView(APIView):
+    """Public endpoint: return product counts per storefront prefix group."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": _get_product_type_counts()})
 
 
 class CompatibleScrewsView(APIView):

@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { PRODUCT_STATS_CACHE_INVALIDATED_EVENT, getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
+import { PRODUCT_STATS_CACHE_INVALIDATED_EVENT, getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProductTypeCounts, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import DropdownSelect from '../components/DropdownSelect';
 import { Listbox, Transition } from '@headlessui/react';
@@ -30,6 +30,19 @@ const getNetPrice = (product: Product): string | null => product.price;
 
 const PAGE_SIZE = 20;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+
+const PRODUCT_TYPE_FILTERS = [
+    { value: 'tibase', label: 'TiBase', prefixes: '31, 35' },
+    { value: 'multi_unit', label: 'Multi-Unit', prefixes: '42, 48, 61, 62' },
+    { value: 'screws', label: 'Skrutky', prefixes: '40, 41' },
+    { value: 'scanbody', label: 'Scanbody', prefixes: '30, 52, 53, 54' },
+    { value: 'analogs', label: 'Analógy', prefixes: '22, 23, 34' },
+    { value: 'abutments', label: 'Abutmenty', prefixes: '21' },
+    { value: 'adapters', label: 'Adaptéry', prefixes: '50' },
+    { value: 'tools', label: 'Nástroje', prefixes: '11, 33, 43' },
+] as const;
+
+type ProductTypeFilterValue = typeof PRODUCT_TYPE_FILTERS[number]['value'];
 
 const getVariantWord = (count: number): string => {
     const lastTwoDigits = count % 100;
@@ -66,6 +79,7 @@ export default function ProductsPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedCompatibility, setSelectedCompatibility] = useState<CompatibilityOption | null>(null);
+    const [selectedProductType, setSelectedProductType] = useState<ProductTypeFilterValue | ''>('');
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
     const [maxPrice, setMaxPrice] = useState(500);
     const [inStockOnly, setInStockOnly] = useState(false);
@@ -91,6 +105,7 @@ export default function ProductsPage() {
         const params: ProductListParams = { limit: PAGE_SIZE, offset };
         if (debouncedSearch) params.search = debouncedSearch;
         if (selectedCategories.length > 0) params.categories = selectedCategories;
+        if (selectedProductType) params.product_type = selectedProductType;
         if (selectedCompatibility) {
             params.compatibility_section = selectedCompatibility.section;
             params.compatibility_code = selectedCompatibility.compatibility_code;
@@ -100,7 +115,7 @@ export default function ProductsPage() {
             params.ordering = priceSortOrder === 'asc' ? 'price' : '-price';
         }
         return params;
-    }, [debouncedSearch, selectedCategories, selectedCompatibility, maxPrice, priceSortOrder]);
+    }, [debouncedSearch, selectedCategories, selectedProductType, selectedCompatibility, maxPrice, priceSortOrder]);
 
     const {
         data,
@@ -111,7 +126,7 @@ export default function ProductsPage() {
         isLoading,
         error,
     } = useInfiniteQuery({
-        queryKey: ['products', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice, priceSortOrder],
+        queryKey: ['products', debouncedSearch, selectedCategories, selectedProductType, selectedCompatibility, maxPrice, priceSortOrder],
         queryFn: ({ pageParam = 0 }) => getProducts(buildParams(pageParam)),
         getNextPageParam: (lastPage) => {
             if (lastPage.next) {
@@ -126,10 +141,11 @@ export default function ProductsPage() {
     });
 
     const { data: databaseProductCount } = useQuery({
-        queryKey: ['products-count', debouncedSearch, selectedCategories, selectedCompatibility, maxPrice],
+        queryKey: ['products-count', debouncedSearch, selectedCategories, selectedProductType, selectedCompatibility, maxPrice],
         queryFn: () => getProductCount({
             search: debouncedSearch,
             categories: selectedCategories,
+            product_type: selectedProductType || undefined,
             compatibility_section: selectedCompatibility?.section,
             compatibility_code: selectedCompatibility?.compatibility_code,
             ...(maxPrice < 500 ? { max_price: maxPrice } : {}),
@@ -167,6 +183,12 @@ export default function ProductsPage() {
         staleTime: Infinity,
     });
 
+    const { data: productTypeCounts = {}, isLoading: productTypeCountsLoading } = useQuery({
+        queryKey: ['product-type-counts'],
+        queryFn: getProductTypeCounts,
+        staleTime: Infinity,
+    });
+
     // Keep only one option per compatibility code for storefront filters.
     // API options can include duplicate codes across different sections.
     const uniqueCompatibilityOptions = useMemo(() => {
@@ -186,6 +208,12 @@ export default function ProductsPage() {
         if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
         return a.compatibility_code.localeCompare(b.compatibility_code);
     });
+    const hasProductTypeCounts = Object.keys(productTypeCounts).length > 0;
+    const availableProductTypeFilters = PRODUCT_TYPE_FILTERS.filter((option) => {
+        if (productTypeCountsLoading || !hasProductTypeCounts) return false;
+        return (productTypeCounts[option.value] || 0) > 0 || option.value === selectedProductType;
+    });
+    const selectedProductTypeOption = PRODUCT_TYPE_FILTERS.find((option) => option.value === selectedProductType);
 
     // Show a suggestion when the search query matches a compatibility code (computed inline)
     const compatSuggestion = (() => {
@@ -220,6 +248,7 @@ export default function ProductsPage() {
         const handleStatsInvalidated = () => {
             void queryClient.invalidateQueries({ queryKey: ['category-counts'] });
             void queryClient.invalidateQueries({ queryKey: ['compatibility-counts'] });
+            void queryClient.invalidateQueries({ queryKey: ['product-type-counts'] });
             void queryClient.invalidateQueries({ queryKey: ['products-categories'] });
             void queryClient.invalidateQueries({ queryKey: ['products-count'] });
         };
@@ -328,6 +357,7 @@ export default function ProductsPage() {
         : null;
     const canUseCategoryBadgeCount = selectedCategories.length > 0
         && !debouncedSearch
+        && !selectedProductType
         && !selectedCompatibility
         && maxPrice >= 500
         && !inStockOnly;
@@ -397,7 +427,40 @@ export default function ProductsPage() {
             {/* Left Sidebar - Categories & Filters (Desktop only) */}
             <aside className="hidden lg:block w-60 bg-white border-r border-slate-200 fixed left-0 top-16 bottom-0 overflow-y-auto">
                 <div className="px-3 py-4">
+                    {/* Product types */}
+                    {availableProductTypeFilters.length > 0 && (
+                        <div className="mb-5">
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2.5">Typ produktu</p>
+                            <div className="space-y-0.5">
+                                <button
+                                    onClick={() => { setSelectedProductType(''); scrollToFilters(); }}
+                                    className="w-full text-left px-3 py-2 rounded-[10px] text-sm transition-all flex justify-between items-center"
+                                    style={!selectedProductType ? { background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.2)', color: '#0891b2', fontWeight: 600 } : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
+                                >
+                                    <span>Všetky typy</span>
+                                    <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: '#f8fafc', color: '#94a3b8' }}>{Object.values(productTypeCounts).reduce((sum, count) => sum + count, 0)}</span>
+                                </button>
+                                {availableProductTypeFilters.map((option) => {
+                                    const active = selectedProductType === option.value;
+                                    const count = productTypeCounts[option.value] || 0;
+                                    return (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => { setSelectedProductType(active ? '' : option.value); scrollToFilters(); }}
+                                            className="w-full text-left px-3 py-2 rounded-[10px] text-sm transition-all flex justify-between items-center"
+                                            style={active ? { background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.2)', color: '#0891b2', fontWeight: 600 } : { border: '1px solid transparent', color: '#475569', fontWeight: 400 }}
+                                        >
+                                            <span>{option.label}</span>
+                                            <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: active ? 'rgba(8,145,178,0.12)' : '#f8fafc', color: active ? '#0891b2' : '#94a3b8' }}>{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Categories */}
+                    <div className="h-px bg-slate-100 mb-3" />
                     <button
                         onClick={() => setCategoriesOpen(o => !o)}
                         className="w-full flex items-center justify-between mb-2.5 group"
@@ -582,7 +645,71 @@ export default function ProductsPage() {
                             </button>
                         )}
                     </div>
-                    <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                    {availableProductTypeFilters.length > 0 && (
+                        <>
+                            <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                            <Listbox
+                                value={selectedProductType}
+                                onChange={(value: ProductTypeFilterValue | '') => setSelectedProductType(value)}
+                            >
+                                {({ open }) => (
+                                    <div className="relative">
+                                        <Listbox.Button
+                                            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-sm font-medium transition-all focus:outline-none ${selectedProductType ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}
+                                        >
+                                            <span className="truncate max-w-[9rem]">
+                                                {selectedProductTypeOption?.label || 'Typ produktu'}
+                                            </span>
+                                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                                        </Listbox.Button>
+
+                                        <Transition
+                                            as={Fragment}
+                                            enter="transition ease-out duration-120"
+                                            enterFrom="opacity-0 scale-95 translate-y-1"
+                                            enterTo="opacity-100 scale-100 translate-y-0"
+                                            leave="transition ease-in duration-90"
+                                            leaveFrom="opacity-100 scale-100 translate-y-0"
+                                            leaveTo="opacity-0 scale-95 translate-y-1"
+                                        >
+                                            <Listbox.Options className="absolute left-0 top-full z-30 mt-2 w-[20rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_45px_rgba(15,23,42,0.12)] py-2 focus:outline-none">
+                                                <Listbox.Option value="" as={Fragment}>
+                                                    {({ active, selected }) => (
+                                                        <button
+                                                            type="button"
+                                                            className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                        >
+                                                            <span className="font-medium">Všetky typy</span>
+                                                            {!selectedProductType && <span className="text-xs font-semibold text-cyan-600">Filter</span>}
+                                                        </button>
+                                                    )}
+                                                </Listbox.Option>
+                                                {availableProductTypeFilters.map((option) => (
+                                                    <Listbox.Option key={option.value} value={option.value} as={Fragment}>
+                                                        {({ active, selected }) => (
+                                                            <button
+                                                                type="button"
+                                                                className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${active || selected ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                                                            >
+                                                                <span className="font-medium">{option.label}</span>
+                                                                <div className="flex flex-shrink-0 items-center gap-1.5">
+                                                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${selected ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                        {productTypeCounts[option.value] || 0}
+                                                                    </span>
+                                                                    <span className="text-[11px] font-medium text-slate-400">{option.prefixes}</span>
+                                                                </div>
+                                                            </button>
+                                                        )}
+                                                    </Listbox.Option>
+                                                ))}
+                                            </Listbox.Options>
+                                        </Transition>
+                                    </div>
+                                )}
+                            </Listbox>
+                            <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+                        </>
+                    )}
                     {/* Compatibility filter */}
                     {sortedCompatibilityOptions.length > 0 && (
                         <>
@@ -711,8 +838,15 @@ export default function ProductsPage() {
                 )}
 
                 {/* Desktop: active filter chips */}
-                {(selectedCategories.length > 0 || selectedCompatibility || inStockOnly || maxPrice < 500) && (
+                {(selectedCategories.length > 0 || selectedProductType || selectedCompatibility || inStockOnly || maxPrice < 500) && (
                     <div className="hidden lg:flex flex-wrap gap-2 mb-4">
+                        {selectedProductTypeOption && (
+                            <button onClick={() => setSelectedProductType('')}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer"
+                                style={{ background: '#e0f7fa', border: '1px solid rgba(8,145,178,0.25)', color: '#0891b2' }}>
+                                {selectedProductTypeOption.label} <span className="text-sm leading-none">×</span>
+                            </button>
+                        )}
                         {selectedCategories.map(c => (
                             <button key={c} onClick={() => setSelectedCategories(s => s.filter(x => x !== c))}
                                 className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-all"
@@ -773,18 +907,18 @@ export default function ProductsPage() {
                             onClick={() => setMobileFiltersOpen(true)}
                             className="relative flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl flex-shrink-0 transition-all"
                             style={{
-                                background: (selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility)
+                                background: (selectedCategories.length > 0 || selectedProductType || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility)
                                     ? 'linear-gradient(135deg, #06b6d4, #10b981)'
                                     : 'rgba(255,255,255,0.07)',
                                 border: 'none',
                             }}
                         >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke={(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) ? '#fff' : 'rgba(255,255,255,0.6)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke={(selectedCategories.length > 0 || selectedProductType || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) ? '#fff' : 'rgba(255,255,255,0.6)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
                             </svg>
-                            {(selectedCategories.length > 0 || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) && (
+                            {(selectedCategories.length > 0 || selectedProductType || maxPrice < 500 || inStockOnly || priceSortOrder !== 'none' || selectedCompatibility) && (
                                 <span className="text-xs font-bold text-white">
-                                    {selectedCategories.length + (selectedCompatibility ? 1 : 0) + (inStockOnly ? 1 : 0) + (maxPrice < 500 ? 1 : 0) + (priceSortOrder !== 'none' ? 1 : 0)}
+                                    {selectedCategories.length + (selectedProductType ? 1 : 0) + (selectedCompatibility ? 1 : 0) + (inStockOnly ? 1 : 0) + (maxPrice < 500 ? 1 : 0) + (priceSortOrder !== 'none' ? 1 : 0)}
                                 </span>
                             )}
                         </button>
@@ -819,7 +953,7 @@ export default function ProductsPage() {
 
                 <div className="mb-5 hidden lg:block">
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-none">Naše produkty</h1>
-                    <p className="text-sm text-slate-400 mt-1">{visibleCount} produktov{selectedCategories.length > 0 ? ` v kategórii ${selectedCategories.join(', ')}` : ''}</p>
+                    <p className="text-sm text-slate-400 mt-1">{visibleCount} produktov{selectedProductTypeOption ? ` typu ${selectedProductTypeOption.label}` : selectedCategories.length > 0 ? ` v kategórii ${selectedCategories.join(', ')}` : ''}</p>
                 </div>
                 {/* Mobile heading */}
                 <div className="mb-3 mt-3 lg:hidden flex items-center justify-between">
@@ -1102,6 +1236,7 @@ export default function ProductsPage() {
                 searchQuery={debouncedSearch}
                 onCategoryClick={(category) => {
                     setSelectedCategories([category]);
+                    setSelectedProductType('');
                     scrollToFilters();
                 }}
                 onCompatibilityCodeClick={(code) => {
@@ -1113,6 +1248,7 @@ export default function ProductsPage() {
                 onReferenceClick={(reference) => {
                     setSelectedCompatibility(null);
                     setSelectedCategories([]);
+                    setSelectedProductType('');
                     setSearchQuery(reference);
                     scrollToFilters();
                 }}
@@ -1158,6 +1294,49 @@ export default function ProductsPage() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Product type */}
+                        {availableProductTypeFilters.length > 0 && (
+                            <div className="mb-6 pt-5 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3">Typ produktu</h3>
+                                <div className="space-y-1.5">
+                                    <button
+                                        onClick={() => setSelectedProductType('')}
+                                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                                            !selectedProductType
+                                                ? 'text-white'
+                                                : 'bg-slate-50 text-slate-700'
+                                        }`}
+                                        style={!selectedProductType ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
+                                    >
+                                        Všetky typy
+                                    </button>
+                                    {availableProductTypeFilters.map((option) => {
+                                        const isActive = selectedProductType === option.value;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setSelectedProductType(isActive ? '' : option.value)}
+                                                className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
+                                                }`}
+                                                style={isActive ? { background: 'linear-gradient(135deg, #06b6d4, #10b981)' } : {}}
+                                            >
+                                                <span>{option.label}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500'}`}>
+                                                        {productTypeCounts[option.value] || 0}
+                                                    </span>
+                                                    <span className={`text-[11px] font-semibold ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                                                        {option.prefixes}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Categories */}
                         <div className="mb-6 pt-5 border-t border-slate-100">

@@ -3,6 +3,7 @@ from django.core.cache import cache
 PRODUCT_STATS_CACHE_KEYS = (
     "category_counts",
     "compatibility_counts",
+    "product_type_counts",
 )
 
 

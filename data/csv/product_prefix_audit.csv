@@ -1,0 +1,21 @@
+prefix,working_meaning,products_with_compatibility_num,compatibility_options_rows,distinct_compatibility_nums,blank_catalog_or_category,vat_5_candidate,audit_status
+11,Accessory / torque wrench,1,0,1,0,no,OK
+21,Dynamic abutment,117,0,42,117,no,"OK for prefix audit; catalog section blank, but compatibility nums exist"
+22,Lab analog,43,35,41,7,no,OK
+23,ScAnalog,31,29,29,1,no,OK
+30,Extraoral/lab scanbody for TiBase,8,8,8,0,maybe,OK
+31,Dynamic TiBase / Dynamic 3TiBase,724,638,153,80,yes,"OK; blank section rows should not override prefix rule"
+33,Dynamic Milling Tool,69,64,18,0,no,OK
+34,Digital analog,109,91,107,17,no,OK
+35,Straight TiBase / Straight 3TiBase,66,0,35,65,yes,"Check: TiBase by retail/name and compatibility nums, but no compatibility options rows"
+40,Straight screw / healing cap,104,60,11,43,no,Check: mixed straight screw/healing cap naming
+41,Dynamic screw,131,86,58,43,no,"OK; blank section rows should not override prefix rule"
+42,Straight Multi-Unit,168,148,51,20,yes,"OK; blank section rows should not override prefix rule"
+43,Screwdriver / screwdriver adaptor,20,14,12,4,no,OK
+48,Angulated Multi-Unit,54,54,20,0,yes,OK
+50,Scanbody adaptor,121,104,98,16,no,OK
+52,Dynamic scanbody,77,56,37,20,no,"OK; blank section rows should not override prefix rule"
+53,Scanbody / MU scanbody edge cases,7,3,6,1,maybe,OK
+54,Scanbody OP / reference scanbody,65,58,61,8,no,OK
+61,DAS MU4.0 straight Multi-Unit,53,1,14,52,yes,"Check: MU by name/compatibility nums, catalog section mostly blank"
+62,Internal Multi-Unit,21,21,10,0,yes,OK

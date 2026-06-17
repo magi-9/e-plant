@@ -27,6 +27,7 @@ from .views import (
     ProductCountView,
     ProductGroupListView,
     ProductInquiryView,
+    ProductTypeCountsView,
     ProductViewSet,
 )
 
@@ -49,6 +50,11 @@ urlpatterns = [
         "category-counts/",
         CategoryCountsView.as_view(),
         name="category_counts",
+    ),
+    path(
+        "product-type-counts/",
+        ProductTypeCountsView.as_view(),
+        name="product_type_counts",
     ),
     path("count/", ProductCountView.as_view(), name="product_count"),
     path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),

@@ -3,6 +3,7 @@ import csv
 import pytest
 import sys
 import types
+from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -676,6 +677,81 @@ def test_filter_active_bypasses_default_ordering():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_product_type_filter_uses_prefixes_and_real_compatibility_code():
+    tibase = make_product(
+        name="TiBase",
+        reference="31.312.001.01-2",
+        parameters={"compatibility_code": "0001"},
+    )
+    straight_tibase = make_product(
+        name="Straight TiBase",
+        reference="35.312.001.21-2",
+        parameters={"compatibility_code": "0001"},
+    )
+    make_product(
+        name="No compatibility number",
+        reference="31.312.999.01-2",
+        parameters={"compatibility_code": "0000"},
+    )
+    make_product(
+        name="Missing compatibility number",
+        reference="31.312.998.01-2",
+        parameters={},
+    )
+    make_product(
+        name="Multi Unit",
+        reference="42.302.001.01-2",
+        parameters={"compatibility_code": "0001"},
+    )
+
+    response = APIClient().get("/api/products/", {"product_type": "tibase"})
+    count_response = APIClient().get("/api/products/count/", {"product_type": "tibase"})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert count_response.status_code == status.HTTP_200_OK
+    assert response.data["count"] == 2
+    assert count_response.data["count"] == 2
+    assert {item["id"] for item in response.data["results"]} == {
+        tibase.id,
+        straight_tibase.id,
+    }
+
+
+@pytest.mark.django_db
+def test_product_type_filter_rejects_unknown_group():
+    response = APIClient().get("/api/products/", {"product_type": "unknown"})
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+def test_product_type_counts_split_adapters_and_hide_zero_groups():
+    cache.clear()
+    make_product(
+        name="Adaptor",
+        reference="50.312.001.01-2",
+        parameters={"compatibility_code": "0001"},
+    )
+    make_product(
+        name="Screwdriver",
+        reference="43.621.410.01-2",
+        parameters={"compatibility_code": "0001"},
+    )
+    make_product(
+        name="Ignored adaptor",
+        reference="50.312.999.01-2",
+        parameters={"compatibility_code": "0000"},
+    )
+
+    response = APIClient().get("/api/products/product-type-counts/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["counts"]["adapters"] == 1
+    assert response.data["counts"]["tools"] == 1
+    assert response.data["counts"]["tibase"] == 0
 
 
 @pytest.mark.django_db
