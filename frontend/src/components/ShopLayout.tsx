@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Helmet } from 'react-helmet-async';
 import { getGlobalSettings } from '../api/settings';
 import { getCompanyProfile } from '../utils/companyProfile';
 import Navbar from './Navbar';
@@ -24,6 +25,11 @@ export default function ShopLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pt-16">
+      <Helmet>
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/dynamicabutment-logo.png" />
+      </Helmet>
       <ScrollToTop />
       <Navbar />
       
