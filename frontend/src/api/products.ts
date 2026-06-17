@@ -3,6 +3,7 @@ import client from './client';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CATEGORY_COUNTS_CACHE_KEY = 'category_counts_v1';
 const COMPAT_COUNTS_CACHE_KEY = 'compat_counts_v1';
+const PRODUCT_TYPE_COUNTS_CACHE_KEY = 'product_type_counts_v1';
 
 export const PRODUCT_STATS_CACHE_INVALIDATED_EVENT = 'products:stats-cache-invalidated';
 
@@ -10,6 +11,7 @@ export function invalidateProductStatsClientCache(): void {
     try {
         localStorage.removeItem(CATEGORY_COUNTS_CACHE_KEY);
         localStorage.removeItem(COMPAT_COUNTS_CACHE_KEY);
+        localStorage.removeItem(PRODUCT_TYPE_COUNTS_CACHE_KEY);
     } catch {
         // ignore storage access issues
     }
@@ -141,6 +143,7 @@ export interface ProductListParams {
     search?: string;
     ordering?: string;
     group?: number;
+    product_type?: string;
     categories?: string[];
     limit?: number;
     offset?: number;
@@ -182,6 +185,7 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
 
     if (params?.search) query.set('search', params.search);
     if (typeof params?.group === 'number') query.set('group', String(params.group));
+    if (params?.product_type) query.set('product_type', params.product_type);
     (params?.categories || []).forEach((category) => query.append('categories', category));
     if (params?.compatibility_section) query.set('compatibility_section', params.compatibility_section);
     if (params?.compatibility_code) query.set('compatibility_code', params.compatibility_code);
@@ -217,6 +221,14 @@ export const getCategoryCounts = async (): Promise<Record<string, number>> => {
     if (cached) return cached;
     const response = await client.get<{ counts: Record<string, number> }>('/products/category-counts/');
     writeLocalCache(CATEGORY_COUNTS_CACHE_KEY, response.data.counts);
+    return response.data.counts;
+};
+
+export const getProductTypeCounts = async (): Promise<Record<string, number>> => {
+    const cached = readLocalCache<Record<string, number>>(PRODUCT_TYPE_COUNTS_CACHE_KEY);
+    if (cached) return cached;
+    const response = await client.get<{ counts: Record<string, number> }>('/products/product-type-counts/');
+    writeLocalCache(PRODUCT_TYPE_COUNTS_CACHE_KEY, response.data.counts);
     return response.data.counts;
 };
 
