@@ -27,7 +27,7 @@ function Arrow({ stroke = '#fff', size = 15 }: { stroke?: string; size?: number 
 
 function ServiceCard({ accent, title, lines }: { accent: string; title: string; lines: string[] }) {
   return (
-    <div className="home-service-card" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '26px 26px 24px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
+    <div className="home-service-card reveal" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '26px 26px 24px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
       <div style={{ width: 42, height: 42, borderRadius: 12, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ width: 14, height: 14, borderRadius: 4, background: C.surface, opacity: 0.92 }} />
       </div>
@@ -46,7 +46,7 @@ function ServiceCard({ accent, title, lines }: { accent: string; title: string; 
 
 function ReasonCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="home-service-card" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '24px 24px 22px', boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
+    <div className="home-service-card reveal" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '24px 24px 22px', boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
       <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 22, lineHeight: 1.15, color: C.ink, fontWeight: 400, margin: 0 }}>{title}</h3>
       <p style={{ margin: '12px 0 0', fontSize: 14.5, lineHeight: 1.55, color: C.body }}>{text}</p>
     </div>
@@ -335,8 +335,8 @@ function DesktopHome() {
       </nav>
 
       {/* HERO */}
-      <section id="d-top" style={{ padding: '90px 64px 0', position: 'relative', scrollMarginTop: 110 }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 56, paddingTop: 40, paddingBottom: 10, position: 'relative' }}>
+      <section id="d-top" style={{ padding: '130px 64px 0', position: 'relative', scrollMarginTop: 110 }}>
+        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 56, paddingBottom: 10, position: 'relative' }}>
           <div className="home-float-slow" style={{ position: 'absolute', top: 60, right: 380, width: 300, height: 300, borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${C.peach}, transparent 70%)`, opacity: 0.5, filter: 'blur(6px)', pointerEvents: 'none' }} />
           <div style={{ width: 640, flexShrink: 0, position: 'relative', zIndex: 2 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 22 }}>
@@ -407,7 +407,7 @@ function DesktopHome() {
 
       {/* ABOUT */}
       <section id="d-about" style={{ padding: '56px 64px 0', scrollMarginTop: 110 }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', borderRadius: 24, overflow: 'hidden', display: 'flex', background: C.surface, border: `1px solid ${C.line}` }}>
+        <div className="reveal" style={{ maxWidth: 1440, margin: '0 auto', borderRadius: 24, overflow: 'hidden', display: 'flex', background: C.surface, border: `1px solid ${C.line}` }}>
           <div style={{ width: 440, flexShrink: 0 }}>
             <img src="/uploads/smile.jpg" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
@@ -503,7 +503,7 @@ function DesktopHome() {
 // ──────────────────────────────────────────────
 function MobileServiceCard({ accent, title, lines }: { accent: string; title: string; lines: string[] }) {
   return (
-    <div className="home-mobile-card" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '22px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
+    <div className="home-mobile-card reveal" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '22px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
       <div style={{ width: 40, height: 40, borderRadius: 11, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ width: 13, height: 13, borderRadius: 4, background: '#fff', opacity: 0.92 }} />
       </div>
@@ -557,7 +557,7 @@ function MobileHome() {
       )}
 
       {/* HERO */}
-      <section style={{ padding: '98px 20px 0', position: 'relative', overflow: 'hidden' }}>
+      <section style={{ padding: '98px 20px 0', position: 'relative', overflow: 'hidden', scrollMarginTop: 84 }}>
         <div className="home-float-slow" style={{ position: 'absolute', top: 20, right: -40, width: 220, height: 220, borderRadius: '50%', background: `radial-gradient(circle at 30% 30%, ${C.peach}, transparent 70%)`, opacity: 0.55, filter: 'blur(6px)', pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 16, position: 'relative' }}>
           <img src="/uploads/logo-small.png" alt="" style={{ height: 22 }} />
@@ -605,9 +605,9 @@ function MobileHome() {
           <img src="/uploads/smile.jpg" alt="Protetická práca" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }} />
         </div>
         {ABOUT_PARAGRAPHS.map((text) => (
-          <p key={text} style={{ fontSize: 15.5, lineHeight: 1.6, color: C.body, margin: '0 0 14px' }}>{text}</p>
+          <p className="reveal" key={text} style={{ fontSize: 15.5, lineHeight: 1.6, color: C.body, margin: '0 0 14px' }}>{text}</p>
         ))}
-        <p style={{ margin: 0, padding: '16px 18px', background: C.tealSoft, borderLeft: `3px solid ${C.teal}`, borderRadius: '0 14px 14px 0', color: C.ink, fontSize: 15.5, fontStyle: 'italic', lineHeight: 1.5 }}>Našou prioritou je ponúkať produkty a služby, ktorým sami dôverujeme a ktoré využívame v každodennej laboratórnej praxi.</p>
+        <p className="reveal" style={{ margin: 0, padding: '16px 18px', background: C.tealSoft, borderLeft: `3px solid ${C.teal}`, borderRadius: '0 14px 14px 0', color: C.ink, fontSize: 15.5, fontStyle: 'italic', lineHeight: 1.5 }}>Našou prioritou je ponúkať produkty a služby, ktorým sami dôverujeme a ktoré využívame v každodennej laboratórnej praxi.</p>
       </section>
 
       {/* SERVICES */}
@@ -628,7 +628,7 @@ function MobileHome() {
         <h2 style={{ fontFamily: 'Marcellus, serif', fontWeight: 400, fontSize: 28, color: C.ink, margin: '10px 0 20px', lineHeight: 1.15 }}>Prax, technológie a individuálny prístup</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {WHY_CHOOSE.map((item) => (
-            <div key={item.title} className="home-mobile-card" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '20px 18px', boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
+            <div key={item.title} className="home-mobile-card reveal" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 18, padding: '20px 18px', boxShadow: '0 1px 2px rgba(23,56,66,0.03)' }}>
               <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 21, lineHeight: 1.15, color: C.ink, fontWeight: 400, margin: 0 }}>{item.title}</h3>
               <p style={{ margin: '10px 0 0', fontSize: 14.5, lineHeight: 1.55, color: C.body }}>{item.text}</p>
             </div>
@@ -639,6 +639,7 @@ function MobileHome() {
       {/* ESHOP CTA */}
       <section style={{ padding: '18px 20px 0' }}>
         <div className="home-sheen" style={{ background: `linear-gradient(135deg, ${C.tealDk}, ${C.teal})`, borderRadius: 22, padding: '28px 24px 26px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', right: -30, top: -50, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle at 40% 40%, rgba(255,255,255,0.2), transparent 70%)' }} />
           <img src="/uploads/das-logo-v2.png" alt="Dynamic Abutment Solutions" style={{ height: 48, borderRadius: 11, marginBottom: 14, boxShadow: '0 10px 26px rgba(0,0,0,0.18)' }} />
           <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)' }}>E-shop pre laboratóriá a ambulancie</span>
           <h2 style={{ fontFamily: 'Marcellus, serif', fontWeight: 400, fontSize: 26, color: '#fff', margin: '10px 0 0', lineHeight: 1.15 }}>Originálne komponenty Dynamic Ti-Base®</h2>
