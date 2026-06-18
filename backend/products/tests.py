@@ -269,6 +269,54 @@ def test_manual_price_override_applies_before_visibility(monkeypatch, tmp_path):
     assert products[0]["is_visible"] is True
 
 
+def test_product_import_vat_classification():
+    from products.management.commands import import_product_data
+
+    classify = import_product_data.determine_product_vat_rate
+
+    assert (
+        classify(reference="31.312.001.01-2", name="Dynamic TiBase")
+        == import_product_data.REDUCED_VAT_RATE
+    )
+    assert (
+        classify(
+            reference="49.418.000.01-2",
+            name="CAPS 3,8mm S",
+            category="CAPS system",
+            catalog_section="DYNAMIC MILLING TOOL",
+        )
+        == import_product_data.REDUCED_VAT_RATE
+    )
+    assert (
+        classify(reference="43.601.103.02-2", name="Screwdrivers for straight screws")
+        == import_product_data.STANDARD_VAT_RATE
+    )
+    assert (
+        classify(
+            reference="50.312.209.01-2",
+            name="Dynamic scanbody adaptor",
+            catalog_section="ADAPTOR",
+        )
+        == import_product_data.STANDARD_VAT_RATE
+    )
+    assert (
+        classify(
+            reference="33.390.716.01-2",
+            name="Dynamic Milling Tool",
+            catalog_section="DYNAMIC MILLING TOOL",
+        )
+        == import_product_data.STANDARD_VAT_RATE
+    )
+    assert (
+        classify(
+            reference="49.604.000.08-2",
+            name="Nobel Biocare wrench adaptor",
+            category="ACCESSORIES",
+        )
+        == import_product_data.STANDARD_VAT_RATE
+    )
+
+
 def test_manual_photo_suffix_matches_reference_number(tmp_path):
     from products.management.commands import import_product_data
 
@@ -463,6 +511,77 @@ def test_storefront_wildcard_group_exposes_masked_reference():
     results = response.data["results"]
     assert len(results) == 1
     assert results[0]["parameters"]["masked_reference"] == "AB123x5"
+
+
+@pytest.mark.django_db
+def test_storefront_screw_wildcard_options_use_total_length_labels():
+    s = GroupingSettings.get()
+    s.wildcard_grouping_enabled = True
+    s.save()
+
+    p1 = make_product(
+        name="Dynamic Screw M1.8 L7.1mm",
+        reference="41.318.071.01-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "METRIC:1.8|TOTAL LENGTH(mm):7.1|TORQUE:25 N·cm",
+        },
+    )
+    p2 = make_product(
+        name="Dynamic Screw M1.8 L10.6mm",
+        reference="41.318.106.01-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "METRIC:1.8|TOTAL LENGTH(mm):10.6|TORQUE:25 N·cm",
+        },
+    )
+
+    wg = WildcardGroup.objects.create(
+        name="Dynamic Screw Group", is_auto_generated=True
+    )
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    options = response.data["results"][0]["parameters"]["options"]
+    assert [option["label"] for option in options] == ["7.1 mm", "10.6 mm"]
+
+
+@pytest.mark.django_db
+def test_storefront_non_screw_wildcard_options_keep_default_labels():
+    s = GroupingSettings.get()
+    s.wildcard_grouping_enabled = True
+    s.save()
+
+    p1 = make_product(
+        name="TiBase G1",
+        reference="31.312.001.01-2",
+        price="10.00",
+        category="TITANIUM BASE",
+        parameters={"option_tokens": "TOTAL LENGTH(mm):7.1|GH(mm):1"},
+    )
+    p2 = make_product(
+        name="TiBase G2",
+        reference="31.312.001.02-2",
+        price="10.00",
+        category="TITANIUM BASE",
+        parameters={"option_tokens": "TOTAL LENGTH(mm):10.6|GH(mm):2"},
+    )
+
+    wg = WildcardGroup.objects.create(name="TiBase Group", is_auto_generated=True)
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    options = response.data["results"][0]["parameters"]["options"]
+    assert options[0]["label"] == "31.312.001.01-2 - TiBase G1"
+    assert options[1]["label"] == "31.312.001.02-2 - TiBase G2"
 
 
 def test_masked_variant_reference_masks_only_numeric_differences():

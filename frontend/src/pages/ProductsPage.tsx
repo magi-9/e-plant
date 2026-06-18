@@ -201,11 +201,18 @@ export default function ProductsPage() {
         return Array.from(byCode.values());
     }, [compatibilityOptions]);
 
-    // Sort compatibility options numerically (smallest to largest)
+    const compatibilitySortKey = (code: string) => {
+        const match = code.match(/^(\d+)([A-Za-z]*)$/);
+        if (!match) return { number: Number.POSITIVE_INFINITY, suffix: code };
+        return { number: Number(match[1]), suffix: match[2].toUpperCase() };
+    };
+
+    // Sort compatibility options numerically while keeping suffix variants (0041B) distinct.
     const sortedCompatibilityOptions = [...uniqueCompatibilityOptions].slice().sort((a, b) => {
-        const numA = parseFloat(a.compatibility_code.replace(/[^\d.]/g, ''));
-        const numB = parseFloat(b.compatibility_code.replace(/[^\d.]/g, ''));
-        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        const keyA = compatibilitySortKey(a.compatibility_code);
+        const keyB = compatibilitySortKey(b.compatibility_code);
+        if (keyA.number !== keyB.number) return keyA.number - keyB.number;
+        if (keyA.suffix !== keyB.suffix) return keyA.suffix.localeCompare(keyB.suffix);
         return a.compatibility_code.localeCompare(b.compatibility_code);
     });
     const hasProductTypeCounts = Object.keys(productTypeCounts).length > 0;
@@ -1234,6 +1241,7 @@ export default function ProductsPage() {
                 product={selectedProduct}
                 selectedCategories={selectedCategories}
                 searchQuery={debouncedSearch}
+                selectedCompatibilityCode={selectedCompatibility?.compatibility_code}
                 onCategoryClick={(category) => {
                     setSelectedCategories([category]);
                     setSelectedProductType('');
@@ -1390,21 +1398,27 @@ export default function ProductsPage() {
                                     >
                                         Všetky
                                     </button>
-                                    {sortedCompatibilityOptions.map((opt) => {
-                                        const isActive = selectedCompatibility?.compatibility_code === opt.compatibility_code;
-                                        return (
-                                            <button
-                                                key={opt.compatibility_code}
-                                                onClick={() => setSelectedCompatibility(isActive ? null : opt)}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
-                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
-                                                }`}
-                                                style={isActive ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
-                                            >
-                                                {opt.compatibility_code}
-                                            </button>
-                                        );
-                                    })}
+	                                    {sortedCompatibilityOptions.map((opt) => {
+	                                        const isActive = selectedCompatibility?.compatibility_code === opt.compatibility_code;
+	                                        const count = compatibilityCounts[opt.compatibility_code];
+	                                        return (
+	                                            <button
+	                                                key={opt.compatibility_code}
+	                                                onClick={() => setSelectedCompatibility(isActive ? null : opt)}
+	                                                className={`flex w-full items-center justify-between gap-3 px-3 py-2 rounded-lg text-left text-sm font-medium transition ${
+	                                                    isActive ? 'text-white' : 'bg-slate-50 text-slate-700'
+	                                                }`}
+	                                                style={isActive ? { background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' } : {}}
+	                                            >
+	                                                <span>{opt.compatibility_code}</span>
+	                                                {count != null && (
+	                                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? 'bg-white/20 text-white' : 'bg-white text-slate-500'}`}>
+	                                                        {count}
+	                                                    </span>
+	                                                )}
+	                                            </button>
+	                                        );
+	                                    })}
                                 </div>
                             </div>
                         )}

@@ -118,7 +118,7 @@ def _load_screws_by_code():
     return result
 
 
-def get_compatible_screws_for_tibase(reference):
+def get_compatible_screws_for_tibase(reference, compatibility_code=None):
     """Return compatible screw references for a TiBase product reference.
 
     Prefer exact compatibility rows from the CSV; fall back to segment 3 of the
@@ -133,7 +133,12 @@ def get_compatible_screws_for_tibase(reference):
         return {"compatibility_code": "", "straight": [], "dynamic": []}
 
     fallback_code = parts[2].zfill(4)
-    candidate_codes = get_compatibility_codes_for_ref(reference) or [fallback_code]
+    ref_codes = get_compatibility_codes_for_ref(reference)
+    requested_code = (compatibility_code or "").strip()
+    if requested_code and requested_code in ref_codes:
+        candidate_codes = [requested_code]
+    else:
+        candidate_codes = ref_codes or [fallback_code]
     screws_by_code = _load_screws_by_code()
     code = candidate_codes[0]
     entry = {"straight": [], "dynamic": []}
@@ -154,7 +159,8 @@ def get_compatible_screws_for_tibase(reference):
 
 def get_compatibility_counts():
     """Return {compatibility_code: product_count} dict. Cached with TTL."""
-    cache_key = "compatibility_counts"
+    csv_mtime = os.path.getmtime(_CSV_PATH) if os.path.exists(_CSV_PATH) else 0
+    cache_key = f"compatibility_counts:{csv_mtime}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached

@@ -270,8 +270,10 @@ export interface CompatibleScrewsResponse {
     screws: CompatibleScrew[];
 }
 
-export const getCompatibleScrews = async (productId: number): Promise<CompatibleScrewsResponse> => {
-    const response = await client.get<CompatibleScrewsResponse>(`/products/${productId}/compatible-screws/`);
+export const getCompatibleScrews = async (productId: number, compatibilityCode?: string): Promise<CompatibleScrewsResponse> => {
+    const response = await client.get<CompatibleScrewsResponse>(`/products/${productId}/compatible-screws/`, {
+        params: compatibilityCode ? { compatibility_code: compatibilityCode } : undefined,
+    });
     return response.data;
 };
 

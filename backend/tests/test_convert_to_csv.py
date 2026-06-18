@@ -94,6 +94,47 @@ def test_parse_pdf_compatibility_rows_extracts_code_and_family():
     assert rows[2]["reference_family"] == "000"
 
 
+def test_parse_pdf_compatibility_rows_preserves_letter_suffix_codes():
+    pdf_text = """
+    COMPATIBLE WITH 0041
+    DYNAMIC
+    41.317.071.01-2
+    COMPATIBLE WITH 0041B
+    DYNAMIC
+    41.318.071.01-2
+    COMPATIBLE WITH
+    0040B
+    STRAIGHT
+    40.317.004.01-2
+    """
+
+    rows = convert_to_csv.parse_pdf_compatibility_rows(pdf_text)
+
+    assert [(row["compatibility_code"], row["reference"]) for row in rows] == [
+        ("0041", "41.317.071.01-2"),
+        ("0041B", "41.318.071.01-2"),
+        ("0040B", "40.317.004.01-2"),
+    ]
+
+
+def test_parse_code_to_systems_map_preserves_letter_suffix_codes():
+    pdf_text = """
+    COMPATIBLE WITH 0041
+    LIST OF COMPATIBILITIES AVAILABLE
+    ACE - BIOHORIZONS
+
+    COMPATIBLE WITH
+    0041B
+    LIST OF COMPATIBILITIES AVAILABLE
+    ECKERMANN - RADHEX
+    """
+
+    systems = convert_to_csv.parse_code_to_systems_map(pdf_text)
+
+    assert systems["0041"] == ["ACE", "BIOHORIZONS"]
+    assert systems["0041B"] == ["ECKERMANN", "RADHEX"]
+
+
 def test_parse_pdf_compatibility_rows_stops_0268_after_dynamic_screw_table():
     pdf_text = """
     COMPATIBLE WITH 0268
