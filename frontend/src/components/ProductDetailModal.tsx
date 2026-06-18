@@ -530,7 +530,7 @@ export default function ProductDetailModal({
                                                     {isTiBaseProduct(product) && (
                                                         <div className="mb-4">
                                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                                                                Skrutka <span className="text-emerald-600 font-bold">({cartItem?.quantity ?? 1} ks zdarma)</span>
+                                                                Skrutka <span className="text-emerald-600 font-bold">({cartItem?.quantity ?? 1} ks zadarmo)</span>
                                                             </p>
                                                             {screwsLoading ? (
                                                                 <p className="text-sm text-slate-400">Načítavam skrutky…</p>

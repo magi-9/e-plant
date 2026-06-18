@@ -575,7 +575,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             )
             net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
             if item.is_free:
-                unit_price_str = "zdarma"
+                unit_price_str = "zadarmo"
                 gross_str = "0,00 €"
             else:
                 unit_price_str = f"{net_unit:.2f} €"
@@ -620,7 +620,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             vat_rate = item.vat_rate_snapshot.normalize()
             net_unit = (net_subtotal / item.quantity).quantize(Decimal("0.01"))
             if item.is_free:
-                unit_price_str = "zdarma"
+                unit_price_str = "zadarmo"
                 gross_str = "0,00 €"
             else:
                 unit_price_str = f"{net_unit:.2f} €"

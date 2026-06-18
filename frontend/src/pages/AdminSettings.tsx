@@ -185,7 +185,7 @@ export default function AdminSettings() {
                                                 <p className="mt-1 text-sm text-gray-500">Napr. 23 pre 23% DPH.</p>
                                             </div>
                                         </div>
-                                        <p className="mt-2 text-sm text-gray-500">Osobný odber je vždy zdarma (0 €).</p>
+                                        <p className="mt-2 text-sm text-gray-500">Osobný odber je vždy zadarmo (0 €).</p>
                                         <div className="mt-4">
                                             <label className="block text-sm font-medium text-gray-700">Adresa osobného odberu</label>
                                             <input type="text" value={formData.pickup_address} onChange={e => setFormData({ ...formData, pickup_address: e.target.value })} placeholder="napr. Hlavná 1, 811 01 Bratislava" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
