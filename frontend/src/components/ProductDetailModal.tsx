@@ -24,6 +24,7 @@ interface ProductDetailModalProps {
     onEdit?: (product: Product) => void;
     selectedCategories?: string[];
     searchQuery?: string;
+    selectedCompatibilityCode?: string;
     onCategoryClick?: (category: string) => void;
     onCompatibilityCodeClick?: (code: string) => void;
     onReferenceClick?: (reference: string) => void;
@@ -36,6 +37,7 @@ export default function ProductDetailModal({
     onEdit,
     selectedCategories = [],
     searchQuery = '',
+    selectedCompatibilityCode,
     onCategoryClick,
     onCompatibilityCodeClick,
     onReferenceClick,
@@ -83,6 +85,33 @@ export default function ProductDetailModal({
         [hasVariants, variantOptions]
     );
 
+    const screwTotalLengthLabels = useMemo(() => {
+        if (!hasVariants || variantOptions.length < 2) return null;
+        const isScrewVariant = (option: typeof variantOptions[number]) => {
+            const ref = option.reference || '';
+            return ref.startsWith('40.') || ref.startsWith('41.') || /screw/i.test([
+                option.category,
+                option.name,
+                option.option_tokens,
+            ].filter(Boolean).join(' '));
+        };
+        if (!variantOptions.every(isScrewVariant)) return null;
+
+        const values = variantOptions.map((option) => {
+            const token = (option.option_tokens || '').split('|').find((item) => item.startsWith('TOTAL LENGTH(mm):'));
+            return token ? token.slice('TOTAL LENGTH(mm):'.length).trim() : '';
+        });
+        const uniqueValues = new Set(values.filter(Boolean));
+        if (uniqueValues.size <= 1) return null;
+
+        return new Map(
+            variantOptions.map((option, index) => [
+                option.reference || '',
+                values[index] ? `${values[index]} mm` : option.reference || option.name || 'Unnamed variant',
+            ])
+        );
+    }, [hasVariants, variantOptions]);
+
     const variantDropdownOptions = useMemo(() => {
         const refNumberPattern = /\d+(?:\.\d+)+-\d+/g;
         const isOnlyRefNumbers = (val: string) => {
@@ -93,6 +122,9 @@ export default function ProductDetailModal({
         };
 
         return sortedVariantOptions.map((option) => {
+            const totalLengthLabel = screwTotalLengthLabels?.get(option.reference || '');
+            if (totalLengthLabel) return { value: option.reference || '', label: totalLengthLabel };
+
             const parts: string[] = [];
             if (varyingTokenKeys.size > 0) {
                 (option.option_tokens || '').split('|').forEach((token) => {
@@ -116,7 +148,7 @@ export default function ProductDetailModal({
             const label = parts.length > 0 ? parts.join(' · ') : fallbackLabel;
             return { value: option.reference || '', label };
         });
-    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries]);
+    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries, screwTotalLengthLabels]);
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || sortedVariantOptions[0]?.id || null
@@ -168,7 +200,7 @@ export default function ProductDetailModal({
         }
         let cancelled = false;
         setScrewsLoading(true);
-        getCompatibleScrews(product.id)
+        getCompatibleScrews(product.id, selectedCompatibilityCode)
             .then((data) => {
                 if (!cancelled) {
                     setCompatibleScrews(data.screws);
@@ -187,7 +219,7 @@ export default function ProductDetailModal({
             });
         return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product?.id]);
+    }, [product?.id, selectedCompatibilityCode]);
 
     const defaultVariantRef = hasVariants ? sortedVariantOptions[0]?.reference || '' : '';
 

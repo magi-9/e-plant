@@ -208,6 +208,39 @@ def _is_admin_view(request):
     )
 
 
+def _option_token_value(parameters, key):
+    prefix = f"{key}:"
+    for token in str((parameters or {}).get("option_tokens") or "").split("|"):
+        if token.startswith(prefix):
+            return token[len(prefix) :].strip()
+    return ""
+
+
+def _is_screw_product(product):
+    params = product.parameters or {}
+    haystack = " ".join(
+        str(value or "")
+        for value in [
+            product.reference,
+            product.category,
+            product.name,
+            params.get("catalog_section"),
+            params.get("option_tokens"),
+        ]
+    ).upper()
+    return (product.reference or "").startswith(("40.", "41.")) or "SCREW" in haystack
+
+
+def _use_total_length_variant_labels(members):
+    if len(members) < 2 or not all(_is_screw_product(member) for member in members):
+        return False
+    lengths = {
+        _option_token_value(member.parameters, "TOTAL LENGTH(mm)") for member in members
+    }
+    lengths.discard("")
+    return len(lengths) > 1
+
+
 def _option_entry(m):
     option_reference = m.reference or str(m.id)
     option_label = (
@@ -238,10 +271,19 @@ def _make_wildcard_group_card(members, group_name: str):
     """Return a virtual product representing a wildcard group card."""
     rep = copy(members[0])
     masked_reference = masked_variant_reference([m.reference for m in members])
+    use_total_length_labels = _use_total_length_variant_labels(members)
+    options = []
+    for member in members:
+        option = _option_entry(member)
+        if use_total_length_labels:
+            total_length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
+            if total_length:
+                option["label"] = f"{total_length} mm"
+        options.append(option)
     rep.parameters = {
         "type": "wildcard_group",
         "wildcard_reference": rep.reference or "",
-        "options": [_option_entry(m) for m in members],
+        "options": options,
         "option_fields": ["reference", "parameter_code", "name"],
         "masked_reference": masked_reference,
     }
@@ -979,7 +1021,10 @@ class CompatibleScrewsView(APIView):
         if not is_tibase:
             raise Http404
 
-        screw_refs = get_compatible_screws_for_tibase(product.reference or "")
+        screw_refs = get_compatible_screws_for_tibase(
+            product.reference or "",
+            request.query_params.get("compatibility_code"),
+        )
         all_refs = screw_refs["straight"] + screw_refs["dynamic"]
 
         if all_refs:

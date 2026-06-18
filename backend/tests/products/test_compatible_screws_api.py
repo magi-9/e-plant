@@ -97,6 +97,67 @@ def test_compatible_screws_accepts_31_reference_as_tibase(
 
 
 @pytest.mark.django_db
+def test_compatible_screws_accepts_explicit_letter_suffix_code(
+    api_client, product_factory, tmp_path
+):
+    path = tmp_path / "compatibility_options.csv"
+    rows = [
+        {
+            "compatibility_code": "0041",
+            "section": "STANDARD DYNAMIC TIBASE",
+            "reference": "31.313.041.01-2",
+        },
+        {
+            "compatibility_code": "0041",
+            "section": "DYNAMIC",
+            "reference": "41.317.071.01-2",
+        },
+        {
+            "compatibility_code": "0041B",
+            "section": "STANDARD DYNAMIC TIBASE",
+            "reference": "31.313.041.01-2",
+        },
+        {
+            "compatibility_code": "0041B",
+            "section": "DYNAMIC",
+            "reference": "41.318.071.01-2",
+        },
+    ]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f, fieldnames=["compatibility_code", "section", "reference"]
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    tibase = product_factory(category=TIBASE_CATEGORY, reference="31.313.041.01-2")
+    normal_screw = product_factory(reference="41.317.071.01-2", stock_quantity=5)
+    suffixed_screw = product_factory(reference="41.318.071.01-2", stock_quantity=4)
+
+    import products.compatibility as compat_module
+
+    url = reverse("product_compatible_screws", kwargs={"pk": tibase.id})
+    with patch.object(compat_module, "_CSV_PATH", str(path)):
+        compat_module._load.cache_clear()
+        compat_module._load_ref_to_codes.cache_clear()
+        compat_module._load_family_to_codes.cache_clear()
+        compat_module._load_screws_by_code.cache_clear()
+        response = api_client.get(url, {"compatibility_code": "0041B"})
+
+    compat_module._load.cache_clear()
+    compat_module._load_ref_to_codes.cache_clear()
+    compat_module._load_family_to_codes.cache_clear()
+    compat_module._load_screws_by_code.cache_clear()
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["compatibility_code"] == "0041B"
+    screw_ids = [s["id"] for s in data["screws"]]
+    assert screw_ids == [suffixed_screw.id]
+    assert normal_screw.id not in screw_ids
+
+
+@pytest.mark.django_db
 def test_compatible_screws_404_for_non_tibase(api_client, product_factory):
     product = product_factory(category="SCREWS", reference="40.316.003.01-2")
     url = reverse("product_compatible_screws", kwargs={"pk": product.id})
