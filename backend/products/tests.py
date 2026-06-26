@@ -951,3 +951,39 @@ def test_catalog_page_search_falls_back_to_pypdf_without_pdftotext(monkeypatch):
     monkeypatch.setattr(views.subprocess, "run", fake_run)
 
     assert views._find_reference_pages("catalog.pdf", "50.312.120.03-2") == [1]
+
+
+def test_find_multiple_reference_pages_merges_refs(monkeypatch):
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout="page one 40.316.003.01-2\fpage two 31.322.001.01-2\fpage three",
+        )
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+    refs = frozenset({"40.316.003.01-2", "31.322.001.01-2"})
+    assert views._find_multiple_reference_pages("catalog.pdf", refs) == [1, 2]
+
+
+def test_find_multiple_reference_pages_falls_back_to_pypdf(monkeypatch):
+    class Page:
+        def __init__(self, text):
+            self._text = text
+
+        def extract_text(self):
+            return self._text
+
+    class FakePdfReader:
+        def __init__(self, _path):
+            self.pages = [Page("contains 40.316.003.01-2"), Page("unrelated")]
+
+    fake_pypdf = types.SimpleNamespace(PdfReader=FakePdfReader)
+    monkeypatch.setitem(sys.modules, "pypdf", fake_pypdf)
+    monkeypatch.setattr(
+        views.subprocess,
+        "run",
+        lambda *_a, **_k: (_ for _ in ()).throw(FileNotFoundError()),
+    )
+
+    refs = frozenset({"40.316.003.01-2", "99.999.999.01-2"})
+    assert views._find_multiple_reference_pages("catalog.pdf", refs) == [1]
