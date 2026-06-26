@@ -41,6 +41,10 @@ const createError = (overrides?: {
 };
 
 describe('API refresh interceptor', () => {
+    const setPathname = (pathname: string) => {
+        window.history.pushState({}, '', pathname);
+    };
+
     it('prevents refresh retry for refresh endpoint requests', () => {
         const refreshError = createError({ url: '/auth/refresh/' });
         expect(shouldAttemptTokenRefresh(refreshError)).toBe(false);
@@ -72,6 +76,7 @@ describe('API refresh interceptor', () => {
     });
 
     it('redirects to login when refresh fails', async () => {
+        setPathname('/orders');
         const apiClient = vi.fn();
         const refreshService: MockRefreshService = {
             refreshAccessToken: vi.fn().mockRejectedValue(new Error('expired refresh')),
@@ -86,6 +91,25 @@ describe('API refresh interceptor', () => {
             'expired refresh'
         );
         expect(refreshService.redirectToLogin).toHaveBeenCalledWith('/login');
+        expect(apiClient).not.toHaveBeenCalled();
+    });
+
+    it('does not redirect public product visitors to login when refresh fails', async () => {
+        setPathname('/products');
+        const apiClient = vi.fn();
+        const refreshService: MockRefreshService = {
+            refreshAccessToken: vi.fn().mockRejectedValue(new Error('expired refresh')),
+            redirectToLogin: vi.fn(),
+        };
+        const handler = createAuthRefreshErrorHandler(
+            apiClient as never,
+            refreshService as never
+        );
+
+        await expect(handler(createError({ url: '/products/' }))).rejects.toThrow(
+            'expired refresh'
+        );
+        expect(refreshService.redirectToLogin).not.toHaveBeenCalled();
         expect(apiClient).not.toHaveBeenCalled();
     });
 });
