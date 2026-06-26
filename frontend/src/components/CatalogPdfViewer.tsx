@@ -378,7 +378,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                     >
                         <Dialog.Panel className="flex flex-col w-full h-full bg-gray-100">
                             {/* Header */}
-                            <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
+                            <div className="relative z-20 flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
                                 <div className="flex items-center gap-4 min-w-0">
                                     <Dialog.Title className="text-sm font-semibold text-gray-900 flex-shrink-0">
                                         {title}
@@ -439,8 +439,10 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                                     )}
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={onClose}
-                                    className="ml-4 flex-shrink-0 p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
+                                    aria-label="Zatvoriť katalóg"
+                                    className="relative z-30 ml-4 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
                                 >
                                     <XMarkIcon className="h-5 w-5" />
                                 </button>

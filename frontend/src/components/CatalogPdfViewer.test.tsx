@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as pdfjsLib from 'pdfjs-dist'
 import CatalogPdfViewer from './CatalogPdfViewer'
@@ -45,6 +45,7 @@ describe('CatalogPdfViewer', () => {
     })
 
     afterEach(() => {
+        cleanup()
         vi.restoreAllMocks()
         vi.unstubAllGlobals()
     })
@@ -75,6 +76,7 @@ describe('CatalogPdfViewer', () => {
 
     it('opens a direct catalog PDF without reference lookup', async () => {
         const getPage = vi.fn(async () => mockPage)
+        const onClose = vi.fn()
         vi.mocked(pdfjsLib.getDocument).mockReturnValue({
             promise: Promise.resolve({
                 numPages: 3,
@@ -85,7 +87,7 @@ describe('CatalogPdfViewer', () => {
         render(
             <CatalogPdfViewer
                 open
-                onClose={vi.fn()}
+                onClose={onClose}
                 pdfUrl="/catalogs/test.pdf"
                 title="Test katalóg"
             />,
@@ -107,6 +109,9 @@ describe('CatalogPdfViewer', () => {
         await waitFor(() => {
             expect(screen.getByText('2 / 3')).toBeTruthy()
         })
+
+        fireEvent.click(screen.getByLabelText('Zatvoriť katalóg'))
+        expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('lazy-renders nearby pages when a later page intersects', async () => {
