@@ -8,6 +8,7 @@ import { getMe, isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getGlobalSettings } from '../api/settings';
 import client from '../api/client';
+import { buildOrderNotes } from '../utils/orderNotes';
 import { isAxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
@@ -391,12 +392,6 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
-            const variantNotes = items
-                .filter(i => i.variantReference)
-                .map(i => `${i.name} x${i.quantity} -> ${i.variantLabel || i.variantReference}`);
-            const mergedNotes = [formData.notes.trim(), variantNotes.length ? `Varianty: ${variantNotes.join(' | ')}` : '']
-                .filter(Boolean).join('\n\n');
-
             const orderData: CreateOrderData = {
                 customer_name: `${formData.title} ${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email, phone: normalizedPhone,
@@ -410,7 +405,7 @@ export default function CheckoutPage() {
                 is_vat_payer: formData.is_vat_payer,
                 payment_method: formData.payment_method,
                 shipping_method: formData.shipping_method,
-                notes: mergedNotes,
+                notes: buildOrderNotes(formData.notes),
                 items: items
                     .filter(i => !i.isBundledScrew)
                     .map(i => ({

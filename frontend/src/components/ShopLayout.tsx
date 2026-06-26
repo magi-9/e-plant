@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getGlobalSettings } from '../api/settings';
 import { getCompanyProfile } from '../utils/companyProfile';
+import { getLandingHomeHref } from '../utils/landingLinks';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 
@@ -14,6 +15,7 @@ export default function ShopLayout() {
     queryFn: getGlobalSettings,
   });
   const company = getCompanyProfile(globalSettings);
+  const landingHomeHref = getLandingHomeHref();
 
   if (isLoading) {
     return (
@@ -53,7 +55,7 @@ export default function ShopLayout() {
             </div>
             <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-sm">
               <p className="col-span-2 text-[10px] text-cyan-300/70 uppercase tracking-[0.15em] font-semibold mb-1">Informácie</p>
-              <Link to="/about" className="text-slate-300/80 hover:text-white transition-colors">O nás &amp; GDPR</Link>
+              <a href={landingHomeHref} className="text-slate-300/80 hover:text-white transition-colors">O nás</a>
               <Link to="/terms" className="text-slate-300/80 hover:text-white transition-colors">Obchodné podmienky</Link>
               <Link to="/privacy" className="text-slate-300/80 hover:text-white transition-colors">Ochrana osobných údajov</Link>
               <Link to="/complaints" className="text-slate-300/80 hover:text-white transition-colors">Reklamačný poriadok</Link>
