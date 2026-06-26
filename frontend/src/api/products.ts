@@ -3,6 +3,7 @@ import client from './client';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CATEGORY_COUNTS_CACHE_KEY = 'category_counts_v1';
 const COMPAT_COUNTS_CACHE_KEY = 'compat_counts_v1';
+const PRODUCT_TYPE_COUNTS_CACHE_KEY = 'product_type_counts_v1';
 
 export const PRODUCT_STATS_CACHE_INVALIDATED_EVENT = 'products:stats-cache-invalidated';
 
@@ -10,6 +11,7 @@ export function invalidateProductStatsClientCache(): void {
     try {
         localStorage.removeItem(CATEGORY_COUNTS_CACHE_KEY);
         localStorage.removeItem(COMPAT_COUNTS_CACHE_KEY);
+        localStorage.removeItem(PRODUCT_TYPE_COUNTS_CACHE_KEY);
     } catch {
         // ignore storage access issues
     }
@@ -77,10 +79,13 @@ export interface Product {
     category: string;
     all_categories?: string;
     price: string | null;
+    vat_rate: string;
+    gross_price: string | null;
     stock_quantity: number;
     image: string | null;
     is_visible: boolean;
     group_name?: string | null;
+    wildcard_group_name?: string | null;
     compatibility_code?: string;
     compatibility_codes?: string[];
     parameters?: {
@@ -91,6 +96,7 @@ export interface Product {
         option_tokens?: string;
         all_categories?: string;
         parameter_code?: string;
+        catalog_section?: string;
         details?: unknown;
         options?: Array<{
             id?: number;
@@ -101,6 +107,8 @@ export interface Product {
             category?: string;
             all_categories?: string;
             price?: string | null;
+            vat_rate?: string;
+            gross_price?: string | null;
             image?: string | null;
             parameter_code?: string;
             option_tokens?: string;
@@ -135,6 +143,7 @@ export interface ProductListParams {
     search?: string;
     ordering?: string;
     group?: number;
+    product_type?: string;
     categories?: string[];
     limit?: number;
     offset?: number;
@@ -176,6 +185,7 @@ export const getProductCount = async (params?: ProductListParams): Promise<numbe
 
     if (params?.search) query.set('search', params.search);
     if (typeof params?.group === 'number') query.set('group', String(params.group));
+    if (params?.product_type) query.set('product_type', params.product_type);
     (params?.categories || []).forEach((category) => query.append('categories', category));
     if (params?.compatibility_section) query.set('compatibility_section', params.compatibility_section);
     if (params?.compatibility_code) query.set('compatibility_code', params.compatibility_code);
@@ -214,6 +224,14 @@ export const getCategoryCounts = async (): Promise<Record<string, number>> => {
     return response.data.counts;
 };
 
+export const getProductTypeCounts = async (): Promise<Record<string, number>> => {
+    const cached = readLocalCache<Record<string, number>>(PRODUCT_TYPE_COUNTS_CACHE_KEY);
+    if (cached) return cached;
+    const response = await client.get<{ counts: Record<string, number> }>('/products/product-type-counts/');
+    writeLocalCache(PRODUCT_TYPE_COUNTS_CACHE_KEY, response.data.counts);
+    return response.data.counts;
+};
+
 export const updateProduct = async (id: number, data: FormData): Promise<Product> => {
     const response = await client.patch<Product>(`/products/admin/${id}/`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -238,6 +256,25 @@ export const sendProductInquiry = async (productId: number, message: string): Pr
 export const getProduct = async (id: number): Promise<Product> => {
     const response = await client.get<Product>(`/products/${id}/`);
     return normalizeProductImages(response.data);
+};
+
+export interface CompatibleScrew {
+    id: number;
+    reference: string;
+    name: string;
+    stock_quantity: number;
+}
+
+export interface CompatibleScrewsResponse {
+    compatibility_code: string;
+    screws: CompatibleScrew[];
+}
+
+export const getCompatibleScrews = async (productId: number, compatibilityCode?: string): Promise<CompatibleScrewsResponse> => {
+    const response = await client.get<CompatibleScrewsResponse>(`/products/${productId}/compatible-screws/`, {
+        params: compatibilityCode ? { compatibility_code: compatibilityCode } : undefined,
+    });
+    return response.data;
 };
 
 export const createProduct = async (data: FormData): Promise<Product> => {

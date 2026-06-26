@@ -1,5 +1,7 @@
 """Tests for grouping helpers and wildcard sync group naming."""
 
+from decimal import Decimal
+
 import pytest
 
 from products.grouping import strip_gh_variant_from_name
@@ -54,6 +56,19 @@ class TestSyncGroupNameStripsGhValue:
         sync_wildcard_groups()
         wg = WildcardGroup.objects.get(is_auto_generated=True)
         assert wg.name == "Adaptor IO"
+
+
+def test_storefront_group_key_includes_vat_rate():
+    from products.grouping import storefront_group_key
+
+    low_vat = Product(
+        name="Same", price=Decimal("10.00"), vat_rate=Decimal("5.00"), category="cat"
+    )
+    high_vat = Product(
+        name="Same", price=Decimal("10.00"), vat_rate=Decimal("23.00"), category="cat"
+    )
+
+    assert storefront_group_key(low_vat) != storefront_group_key(high_vat)
 
     def test_existing_group_name_healed_on_resync(self):
         p1 = self._make_product("Adaptor IO G2", "54.315.001.01-2")

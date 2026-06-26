@@ -187,8 +187,8 @@ def order_confirmation_customer_html(
             f'<tr style="background:{bg};">'
             f'<td style="padding:10px 12px;font-size:14px;color:#1e293b;border-bottom:1px solid #f1f5f9;">{escape(item.product.name)}{batch_line}</td>'
             f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:center;border-bottom:1px solid #f1f5f9;">{item.quantity}</td>'
-            f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:right;border-bottom:1px solid #f1f5f9;">{item.price_snapshot}&nbsp;&euro;</td>'
-            f'<td style="padding:10px 12px;font-size:14px;font-weight:600;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">{item.get_subtotal()}&nbsp;&euro;</td>'
+            f'<td style="padding:10px 12px;font-size:14px;color:#475569;text-align:right;border-bottom:1px solid #f1f5f9;">{(item.get_gross_subtotal() / item.quantity):.2f}&nbsp;&euro;</td>'
+            f'<td style="padding:10px 12px;font-size:14px;font-weight:600;color:#1e293b;text-align:right;border-bottom:1px solid #f1f5f9;">{item.get_gross_subtotal()}&nbsp;&euro;</td>'
             "</tr>"
         )
     item_rows = "".join(row_parts)

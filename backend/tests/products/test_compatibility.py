@@ -244,6 +244,46 @@ class TestCompatibilityCountsEndpoint:
         counts = response.data["counts"]
         assert counts.get("0022") == 1
 
+    def test_counts_letter_suffix_compatibility_codes(
+        self, api_client, product_factory, tmp_path
+    ):
+        """Letter-suffixed compatibility codes get their own cached counts."""
+        import products.compatibility as compat_module
+        from django.core.cache import cache
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0041",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.313.043.01-2",
+            },
+            {
+                "compatibility_code": "0041B",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.313.041.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        cache.clear()
+        product_factory(reference="31.313.043.01-2", is_visible=True)
+        product_factory(reference="31.313.041.01-2", is_visible=True)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            response = api_client.get(reverse("compatibility_counts"))
+
+        assert response.status_code == status.HTTP_200_OK
+        counts = response.data["counts"]
+        assert counts.get("0041") == 1
+        assert counts.get("0041B") == 1
+
     def test_endpoint_is_public(self, api_client, product_factory):
         """Endpoint doesn't require authentication."""
         product_factory(reference="TEST-01", is_visible=True)
@@ -512,6 +552,20 @@ class TestCatalogIntegrity:
         ), "Scanbody missing for 0030"
         assert "50.313.030" in prefixes, "Adaptor missing for 0030"
 
+    def test_0030_page_114_screws(self):
+        """PDF p.114: DENTIS/OSSTEM/NEOBIOTECH 0030 screw table."""
+        from products.compatibility import (
+            _load_screws_by_code,
+            get_compatible_screws_for_tibase,
+        )
+
+        _load_screws_by_code.cache_clear()
+        screws = get_compatible_screws_for_tibase("31.323.030.01-2")
+
+        assert "41.320.079.01-2" in screws["dynamic"]
+        assert "41.320.125.01-2" in screws["dynamic"]
+        assert "40.320.003.04-2" in screws["straight"]
+
     # ── Code 0075 · ANKYLOS · pages 171-173 ──────────────────────────────────
 
     def test_0075_is_padded_code(self):
@@ -598,7 +652,7 @@ class TestCatalogIntegrity:
     # ── Cross-code integrity ──────────────────────────────────────────────────
 
     def test_all_codes_are_4_digit_padded(self):
-        """Every compatibility code in the CSV must be exactly 4 digits (zero-padded)."""
+        """Every compatibility code in the CSV must be 4 digits with an optional suffix."""
         import csv as csv_mod
         import os
 
@@ -611,14 +665,18 @@ class TestCatalogIntegrity:
                 for row in csv_mod.DictReader(f)
                 if row["compatibility_code"]
                 and not (
-                    len(row["compatibility_code"]) == 4
-                    and row["compatibility_code"].isdigit()
+                    len(row["compatibility_code"]) in (4, 5)
+                    and row["compatibility_code"][:4].isdigit()
+                    and (
+                        len(row["compatibility_code"]) == 4
+                        or row["compatibility_code"][4:].isalpha()
+                    )
                 )
             ]
         assert bad == [], f"Non-padded codes found: {bad[:10]}"
 
-    def test_141_distinct_codes_in_csv(self):
-        """CSV must contain exactly 141 distinct compatibility codes matching the PDF catalog."""
+    def test_143_distinct_codes_in_csv(self):
+        """CSV must contain exactly 143 distinct compatibility codes matching the PDF catalog."""
         import csv as csv_mod
         import os
 
@@ -632,8 +690,8 @@ class TestCatalogIntegrity:
                 if row["compatibility_code"]
             }
         assert (
-            len(codes) == 141
-        ), f"Expected 141 codes, got {len(codes)}: {sorted(codes)}"
+            len(codes) == 143
+        ), f"Expected 143 codes, got {len(codes)}: {sorted(codes)}"
 
     def test_no_ankylos_typo_in_csv(self):
         """ANKLYOS typo (transposed letters) must not appear in compatibility_options.csv sections."""
@@ -733,8 +791,108 @@ class TestCompatibilityCodePadding:
 
         with patch.object(compat_module, "_CSV_PATH", str(path)):
             compat_module._load.cache_clear()
+            compat_module._load_ref_to_codes.cache_clear()
+            compat_module._load_family_to_codes.cache_clear()
             codes_075 = compat_module.get_compatibility_codes_for_ref("31.322.075.02-2")
             codes_030 = compat_module.get_compatibility_codes_for_ref("31.323.030.02-2")
 
         assert codes_075 == ["0075"], f"Expected ['0075'], got {codes_075}"
         assert codes_030 == ["0030"], f"Expected ['0030'], got {codes_030}"
+
+    def test_tibase_screws_prefer_exact_csv_code_over_reference_segment(self, tmp_path):
+        """Friction-fit TiBases can live in a different PDF block than ref segment."""
+        from unittest.mock import patch
+        import products.compatibility as compat_module
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0040",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.312.042.01-2",
+            },
+            {
+                "compatibility_code": "0040",
+                "section": "DYNAMIC",
+                "reference": "41.318.071.01-2",
+            },
+            {
+                "compatibility_code": "0040",
+                "section": "STRAIGHT",
+                "reference": "40.317.004.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            compat_module._load_ref_to_codes.cache_clear()
+            compat_module._load_family_to_codes.cache_clear()
+            compat_module._load_screws_by_code.cache_clear()
+            result = compat_module.get_compatible_screws_for_tibase("31.312.042.01-2")
+
+        assert result["compatibility_code"] == "0040"
+        assert result["straight"] == ["40.317.004.01-2"]
+        assert result["dynamic"] == ["41.318.071.01-2"]
+
+    def test_tibase_screws_keep_letter_suffix_codes_separate(self, tmp_path):
+        """Letter-suffixed PDF blocks like 0041B must not merge into 0041."""
+        from unittest.mock import patch
+        import products.compatibility as compat_module
+
+        path = tmp_path / "compatibility_options.csv"
+        rows = [
+            {
+                "compatibility_code": "0041",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.313.041.01-2",
+            },
+            {
+                "compatibility_code": "0041",
+                "section": "DYNAMIC",
+                "reference": "41.317.071.01-2",
+            },
+            {
+                "compatibility_code": "0041B",
+                "section": "STANDARD DYNAMIC TIBASE",
+                "reference": "31.313.041.01-2",
+            },
+            {
+                "compatibility_code": "0041B",
+                "section": "DYNAMIC",
+                "reference": "41.318.071.01-2",
+            },
+            {
+                "compatibility_code": "0041B",
+                "section": "STRAIGHT",
+                "reference": "40.317.004.01-2",
+            },
+        ]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["compatibility_code", "section", "reference"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        with patch.object(compat_module, "_CSV_PATH", str(path)):
+            compat_module._load.cache_clear()
+            compat_module._load_ref_to_codes.cache_clear()
+            compat_module._load_family_to_codes.cache_clear()
+            compat_module._load_screws_by_code.cache_clear()
+            normal = compat_module.get_compatible_screws_for_tibase("31.313.041.01-2")
+            suffixed = compat_module.get_compatible_screws_for_tibase(
+                "31.313.041.01-2",
+                compatibility_code="0041B",
+            )
+
+        assert normal["compatibility_code"] == "0041"
+        assert normal["dynamic"] == ["41.317.071.01-2"]
+        assert suffixed["compatibility_code"] == "0041B"
+        assert suffixed["straight"] == ["40.317.004.01-2"]
+        assert suffixed["dynamic"] == ["41.318.071.01-2"]

@@ -167,7 +167,7 @@ export default function CartPage() {
     };
 
     const handleStockInquiry = () => {
-        const recipient = settings?.warehouse_email || 'warehouse@dentalshop.sk';
+        const recipient = settings?.warehouse_email || 'info@ebringer.sk';
         const subject = encodeURIComponent('Záujem o nedostupný produkt z košíka');
         const body = encodeURIComponent(contactMessage);
         window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
@@ -232,6 +232,8 @@ export default function CartPage() {
                                     const hasShortage = typeof available === 'number' && item.quantity > available;
                                     const disableInc = typeof available === 'number' && item.quantity >= available;
                                     const lineTotal = (parseFloat(item.price) * item.quantity).toFixed(2);
+                                    const netUnitPrice = item.netPrice ? parseFloat(item.netPrice) : null;
+                                    const netLineTotal = netUnitPrice != null ? (netUnitPrice * item.quantity).toFixed(2) : null;
 
                                     return (
                                         <li key={key} className="bg-white rounded-[18px] border border-slate-200 shadow-sm p-3 md:bg-transparent md:rounded-none md:border-0 md:shadow-none md:p-5">
@@ -250,61 +252,95 @@ export default function CartPage() {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-start justify-between gap-2">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="font-semibold text-sm text-slate-900 truncate">{item.name}</p>
+                                                            <p className={`font-semibold text-sm truncate ${item.isBundledScrew ? 'text-emerald-700' : 'text-slate-900'}`}>{item.name}</p>
+                                                            {item.isBundledScrew && (
+                                                                <p className="text-xs text-emerald-600 font-semibold mt-0.5">Skrutka zadarmo</p>
+                                                            )}
                                                             {item.variantLabel && (
                                                                 <p className="text-xs text-cyan-600 mt-0.5">{item.variantLabel}</p>
                                                             )}
-                                                            <p className="text-xs text-slate-400 mt-0.5">
-                                                                {typeof available === 'number' ? `Skladom: ${available} ks` : 'Dostupnosť: nezistená'}
-                                                            </p>
+                                                            {!item.isBundledScrew && (
+                                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                                    {typeof available === 'number' ? `Skladom: ${available} ks` : 'Dostupnosť: nezistená'}
+                                                                </p>
+                                                            )}
                                                         </div>
 
                                                         {/* Desktop: price + total columns */}
                                                         <div className="hidden md:flex items-center gap-6 text-sm flex-shrink-0">
-                                                            <span className="text-slate-500 tabular-nums w-24 text-right">{item.price} €</span>
-                                                            <span className="font-semibold text-slate-900 tabular-nums w-20 text-right">{lineTotal} €</span>
+                                                            {item.isBundledScrew ? (
+                                                                <span className="text-emerald-600 font-semibold tabular-nums w-24 text-right">zadarmo</span>
+                                                            ) : (
+                                                                <span className="tabular-nums w-24 text-right">
+                                                                    {item.netPrice && (
+                                                                        <span className="block text-[10px] text-slate-400 leading-none">bez DPH {item.netPrice} €</span>
+                                                                    )}
+                                                                    <span className="text-slate-500">{item.price} € s DPH</span>
+                                                                </span>
+                                                            )}
+                                                            <span className={`font-semibold tabular-nums w-20 text-right ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                                {item.isBundledScrew ? 'zadarmo' : `${lineTotal} € s DPH`}
+                                                            </span>
+                                                            {!item.isBundledScrew ? (
+                                                                <button type="button"
+                                                                    onClick={() => removeItem(item.productId, item.variantReference)}
+                                                                    className="text-slate-300 hover:text-red-400 transition-colors w-9 flex justify-end"
+                                                                    aria-label="Odstrániť">
+                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
+                                                                    </svg>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="w-9" />
+                                                            )}
+                                                        </div>
+
+                                                        {/* Mobile: remove button */}
+                                                        {!item.isBundledScrew && (
                                                             <button type="button"
                                                                 onClick={() => removeItem(item.productId, item.variantReference)}
-                                                                className="text-slate-300 hover:text-red-400 transition-colors w-9 flex justify-end"
+                                                                className="md:hidden text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
                                                                 aria-label="Odstrániť">
                                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
                                                                 </svg>
                                                             </button>
-                                                        </div>
-
-                                                        {/* Mobile: remove button */}
-                                                        <button type="button"
-                                                            onClick={() => removeItem(item.productId, item.variantReference)}
-                                                            className="md:hidden text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
-                                                            aria-label="Odstrániť">
-                                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/>
-                                                            </svg>
-                                                        </button>
+                                                        )}
                                                     </div>
 
                                                     {/* Qty + mobile total */}
                                                     <div className="mt-2.5 md:mt-3 pt-2 md:pt-0 border-t md:border-0 border-slate-100 flex items-center gap-3">
-                                                        <QtyStepper
-                                                            value={item.quantity}
-                                                            onDec={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
-                                                            onInc={() => {
-                                                                if (disableInc) {
-                                                                    toast.error(`Pre položku '${item.name}' je skladom iba ${available} ks.`);
-                                                                    return;
-                                                                }
-                                                                updateQuantity(item.productId, item.quantity + 1, item.variantReference);
-                                                            }}
-                                                            disableInc={disableInc}
-                                                        />
+                                                        {item.isBundledScrew ? (
+                                                            <span className="text-sm font-semibold text-emerald-700 px-1">{item.quantity} ks</span>
+                                                        ) : (
+                                                            <QtyStepper
+                                                                value={item.quantity}
+                                                                onDec={() => updateQuantity(item.productId, item.quantity - 1, item.variantReference)}
+                                                                onInc={() => {
+                                                                    if (disableInc) {
+                                                                        toast.error(`Pre položku '${item.name}' je skladom iba ${available} ks.`);
+                                                                        return;
+                                                                    }
+                                                                    updateQuantity(item.productId, item.quantity + 1, item.variantReference);
+                                                                }}
+                                                                disableInc={disableInc}
+                                                            />
+                                                        )}
                                                         {hasShortage && (
                                                             <span className="hidden md:inline text-xs font-medium text-red-500">Nie je toľko skladom</span>
                                                         )}
-                                                        <div className="md:hidden ml-auto text-right">
-                                                            <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
-                                                            <p className="text-xs text-slate-400">{item.price} €/ks</p>
-                                                        </div>
+                                                        {!item.isBundledScrew && (
+                                                            <div className="md:hidden ml-auto text-right">
+                                                                <p className="text-sm font-bold text-slate-900">{lineTotal} €</p>
+                                                                {netLineTotal && <p className="text-[11px] text-slate-400">bez DPH {netLineTotal} €</p>}
+                                                                <p className="text-xs text-slate-400">{item.price} €/ks s DPH</p>
+                                                            </div>
+                                                        )}
+                                                        {item.isBundledScrew && (
+                                                            <div className="md:hidden ml-auto text-right">
+                                                                <p className="text-sm font-bold text-emerald-600">zadarmo</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     {hasShortage && (
                                                         <p className="md:hidden text-xs font-medium text-red-500 mt-1.5">Nie je toľko skladom</p>
@@ -320,7 +356,7 @@ export default function CartPage() {
                             <div className="md:hidden mt-2.5 bg-white rounded-[18px] border border-slate-200 p-3.5">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Súhrn objednávky</p>
                                 <div className="flex justify-between text-sm mb-1.5">
-                                    <span className="text-slate-500">Medziúčet</span>
+                                    <span className="text-slate-500">Medziúčet s DPH</span>
                                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                                 </div>
                                 <div className="flex justify-between text-sm pb-2.5 mb-2.5 border-b border-slate-100">
@@ -328,7 +364,7 @@ export default function CartPage() {
                                     <span className="text-slate-400 text-xs">Podľa spôsobu</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-slate-900">Celkom</span>
+                                    <span className="text-sm font-bold text-slate-900">Celkom s DPH</span>
                                     <span className="text-lg font-extrabold bg-clip-text text-transparent"
                                         style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
                                         {subtotal.toFixed(2)} €
@@ -351,7 +387,7 @@ export default function CartPage() {
 
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Medziúčet</span>
+                                    <span className="text-slate-500">Medziúčet s DPH</span>
                                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                                 </div>
                                 <div className="flex justify-between">
@@ -361,7 +397,7 @@ export default function CartPage() {
                             </div>
 
                             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
-                                <span className="font-semibold text-slate-900">Celkom</span>
+                                <span className="font-semibold text-slate-900">Celkom s DPH</span>
                                 <span className="text-2xl font-extrabold bg-clip-text text-transparent"
                                     style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
                                     {subtotal.toFixed(2)} €
@@ -414,7 +450,7 @@ export default function CartPage() {
                 style={{ background: 'rgba(248,250,252,0.97)', backdropFilter: 'blur(14px)' }}>
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
-                        <p className="text-xs text-slate-400 font-medium">Celkom</p>
+                        <p className="text-xs text-slate-400 font-medium">Celkom s DPH</p>
                         <p className="text-lg font-extrabold bg-clip-text text-transparent"
                             style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
                             {subtotal.toFixed(2)} €

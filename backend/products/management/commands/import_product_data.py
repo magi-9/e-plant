@@ -55,6 +55,71 @@ MANUAL_PRICE_OVERRIDES = {
     "43.632.201.01-2": Decimal("60.1"),
 }
 
+STANDARD_VAT_RATE = Decimal("23.00")
+REDUCED_VAT_RATE = Decimal("5.00")
+
+STANDARD_VAT_CATEGORIES = {"ACCESSORIES", "SCREWDRIVERS"}
+REDUCED_VAT_CATEGORIES = {"CAPS SYSTEM"}
+REDUCED_VAT_REFERENCE_PREFIXES = ("49.418.", "49.419.", "49.420.")
+STANDARD_VAT_SECTION_KEYWORDS = (
+    "SCREWDRIVER",
+    "SCREWDIVER",
+    "ADAPTOR",
+    "ADAPTER",
+    "DYNAMIC MILLING TOOL",
+)
+STANDARD_VAT_NAME_KEYWORDS = (
+    "SCREWDRIVER",
+    "SCREWDIVER",
+    "SCREW DRIVER",
+    "ADAPTOR",
+    "ADAPTER",
+    "MILLING TOOL",
+    "WRENCH ADAPTOR",
+    "WRENCH ADAPTER",
+)
+
+
+def determine_product_vat_rate(
+    *,
+    reference="",
+    name="",
+    category="",
+    catalog_section="",
+    all_categories="",
+):
+    """Return the product VAT rate from catalogue classification."""
+
+    reference = str(reference or "")
+    category_tokens = {
+        token.strip().upper()
+        for value in (category, all_categories)
+        for token in str(value or "").replace(",", ";").split(";")
+        if token.strip()
+    }
+    text = " ".join(
+        [
+            str(name or ""),
+            str(category or ""),
+            str(catalog_section or ""),
+            str(all_categories or ""),
+        ]
+    ).upper()
+
+    if category_tokens & REDUCED_VAT_CATEGORIES:
+        return REDUCED_VAT_RATE
+    if reference.startswith(REDUCED_VAT_REFERENCE_PREFIXES):
+        return REDUCED_VAT_RATE
+
+    if category_tokens & STANDARD_VAT_CATEGORIES:
+        return STANDARD_VAT_RATE
+    if any(keyword in text for keyword in STANDARD_VAT_SECTION_KEYWORDS):
+        return STANDARD_VAT_RATE
+    if any(keyword in text for keyword in STANDARD_VAT_NAME_KEYWORDS):
+        return STANDARD_VAT_RATE
+
+    return REDUCED_VAT_RATE
+
 
 def normalize_ref(ref_str):
     """Strip all non-alphanumeric chars, lowercase → used for matching."""
@@ -402,6 +467,13 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
             engaging_raw = row.get("engaging", "").strip()
             engaging = int(engaging_raw) if engaging_raw in ("0", "1") else None
             catalog_section = row.get("catalog_section", "").strip()
+            vat_rate = determine_product_vat_rate(
+                reference=ref,
+                name=name,
+                category=category,
+                catalog_section=catalog_section,
+                all_categories=all_categories,
+            )
             params = {
                 "type": "single",
                 "reference_num": reference_num,
@@ -423,6 +495,7 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
                     "reference_num": reference_num,
                     "category": category or "Uncategorized",
                     "price": price if price is not None else Decimal("0.00"),
+                    "vat_rate": vat_rate,
                     "description": description,
                     "is_visible": is_visible,
                     "parameters": params,
@@ -641,6 +714,13 @@ def load_master_products(master_csv_path):
         compatibility_codes = row.get("compatibility_codes", "").strip()
         raw_systems = row.get("raw_systems", "").strip()
         sections = row.get("sections", "").strip()
+        vat_rate = determine_product_vat_rate(
+            reference=reference,
+            name=name,
+            category=category,
+            catalog_section=sections,
+            all_categories=categories,
+        )
 
         description_parts = [
             f"Product name: {product_name}" if product_name else "",
@@ -663,6 +743,7 @@ def load_master_products(master_csv_path):
             "reference_num": reference_num,
             "category": category or "Uncategorized",
             "price": price,
+            "vat_rate": vat_rate,
             "description": " | ".join([p for p in description_parts if p]),
             "is_active": parse_bool(row.get("active", "false")),
             "is_visible": parse_bool(row.get("chosen", "false")),
@@ -699,6 +780,7 @@ def load_master_products(master_csv_path):
                     "reference_num": row["reference_num"],
                     "category": row["category"],
                     "price": row["price"],
+                    "vat_rate": row["vat_rate"],
                     "description": row["description"],
                     "is_active": row["is_active"],
                     "is_visible": row["is_visible"],
@@ -746,6 +828,7 @@ def load_master_products(master_csv_path):
                 "reference_num": representative["reference_num"],
                 "category": representative["category"],
                 "price": representative["price"],
+                "vat_rate": representative["vat_rate"],
                 "description": representative["description"],
                 "is_active": representative["is_active"],
                 "is_visible": representative["is_visible"],
@@ -1018,6 +1101,7 @@ class Command(BaseCommand):
         for prod in products:
             ref = prod["reference"]
             ref_for_image = prod.get("reference_num") or ref
+            vat_rate = prod.get("vat_rate", REDUCED_VAT_RATE)
 
             # Find image
             image_key = find_image_for_ref(ref_for_image, image_index)
@@ -1032,6 +1116,7 @@ class Command(BaseCommand):
             if existing:
                 if do_update:
                     existing.price = prod["price"]
+                    existing.vat_rate = vat_rate
                     existing.category = prod["category"]
                     existing.is_visible = prod["is_visible"]
                     existing.description = prod.get("description", "")
@@ -1056,6 +1141,7 @@ class Command(BaseCommand):
                     "description": prod.get("description", ""),
                     "category": prod["category"],
                     "price": prod["price"],
+                    "vat_rate": vat_rate,
                     "stock_quantity": 0,
                     "image": image_relative or "",
                     "is_visible": prod.get("is_visible", True),
@@ -1117,6 +1203,7 @@ class Command(BaseCommand):
             if to_update:
                 update_fields = [
                     "price",
+                    "vat_rate",
                     "category",
                     "image",
                     "description",

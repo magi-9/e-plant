@@ -385,9 +385,9 @@ function RegisterForm() {
 
             <p className="text-center text-xs text-slate-400 leading-relaxed">
                 Registráciou súhlasíte s{' '}
-                <a href="#" className="text-cyan-600 hover:text-cyan-700">podmienkami používania</a>
+                <a href="/terms" className="text-cyan-600 hover:text-cyan-700">podmienkami používania</a>
                 {' '}a{' '}
-                <a href="#" className="text-cyan-600 hover:text-cyan-700">ochranou osobných údajov</a>.
+                <a href="/privacy" className="text-cyan-600 hover:text-cyan-700">ochranou osobných údajov</a>.
             </p>
             <p className="text-center text-sm text-slate-400">
                 Už máte účet?{' '}

@@ -13,6 +13,7 @@ import { getMe, isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
+import { getLandingHomeHref } from '../utils/landingLinks';
 import ConfirmModal from './ConfirmModal';
 
 export default function Navbar() {
@@ -21,11 +22,13 @@ export default function Navbar() {
     const queryClient = useQueryClient();
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
+    const canUseCart = isLoggedIn && !userIsAdmin;
     const totalItems = useCartStore((state: CartState) => state.getTotalItems());
     const items = useCartStore((state: CartState) => state.items);
     const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [cartPulse, setCartPulse] = useState(false);
+    const landingHomeHref = getLandingHomeHref();
 
     const { data: me } = useQuery({
         queryKey: ['me'],
@@ -64,7 +67,6 @@ export default function Navbar() {
     const navLinks = [
         { to: '/products', label: 'Produkty' },
         { to: '/catalogs', label: 'Katalógy' },
-        { to: '/about', label: 'O nás' },
     ];
 
     return (
@@ -105,6 +107,17 @@ export default function Navbar() {
                                 {label}
                             </Link>
                         ))}
+                        <a
+                            href={landingHomeHref}
+                            className="text-sm font-medium transition-colors duration-150"
+                            style={{
+                                color: 'rgba(255,255,255,0.45)',
+                                fontWeight: 400,
+                                textDecoration: 'none',
+                            }}
+                        >
+                            O nás
+                        </a>
                     </div>
                 </div>
 
@@ -119,16 +132,16 @@ export default function Navbar() {
                         Katalógy
                     </Link>
 
-                    <Link
-                        to="/about"
+                    <a
+                        href={landingHomeHref}
                         className="hidden min-[380px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
                         style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: 'rgba(255,255,255,0.04)' }}
                     >
                         Kontakt
-                    </Link>
+                    </a>
 
-                    {/* Cart – only for non-admins */}
-                    {!userIsAdmin && (
+                    {/* Cart – only for signed-in customers */}
+                    {canUseCart && (
                         <div className="relative group/cart">
                             <Link
                                 to="/cart"
@@ -192,7 +205,7 @@ export default function Navbar() {
                     )}
 
                     {/* Logged-in user menu */}
-                    {isLoggedIn && !userIsAdmin && (
+                    {canUseCart && (
                         <Menu as="div" className="relative">
                             <Menu.Button
                                 className="flex items-center gap-2 rounded-lg px-3 py-[7px] text-sm transition-colors duration-150"

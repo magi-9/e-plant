@@ -1,0 +1,16 @@
+## Changes
+
+### ProductDetailModal.tsx improvements
+- Extracted magic number `6` as `VISIBLE_CATEGORIES_COUNT` constant for maintainability
+- Fixed useMemo dependency from `[product?.parameters?.options]` to `[product?.parameters]` for proper tracking
+- Enhanced stock quantity null safety with additional null coalescing: `?? 0`
+- Optimized cart feedback animation timing from 600ms to 300ms for better UX alignment with CSS transitions
+- Refactored product change detection to use `useRef` pattern, eliminating ESLint anti-patterns
+
+### CheckoutPage.tsx fixes
+- Added missing `normalizedPostalCode` variable that was causing TypeScript build failures
+- Normalizes postal code input by removing whitespace and hyphens for API consistency
+
+## Validation
+✅ All checks passing: eslint, black, flake8, pytest
+✅ Production build succeeds

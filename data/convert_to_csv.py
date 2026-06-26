@@ -23,6 +23,7 @@ RAW_DIR = os.path.join(BASE_DIR, "raw")
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 PRODUCT_STUBS_CSV = os.path.join(CSV_DIR, "product_stubs.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
+DEALER_PRICES_CSV = os.path.join(CSV_DIR, "dealer_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
 VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
@@ -58,7 +59,9 @@ def normalize_ref(ref_str):
 def ref_to_regex(ref_str):
     """Convert wildcard reference to a regex, matching x/y wildcard groups."""
     normalized = normalize_ref(ref_str)
-    pattern = re.sub(r"[xy]+", lambda m: r"\\d{" + str(len(m.group())) + r"}", normalized)
+    pattern = re.sub(
+        r"[xy]+", lambda m: r"\\d{" + str(len(m.group())) + r"}", normalized
+    )
     return re.compile(r"^" + pattern + r"$")
 
 
@@ -130,6 +133,50 @@ def convert_products():
     print(f"products.csv: {count} rows → {out_path}")
 
 
+def convert_dealer_prices():
+    path = resolve_source_file("DEALER PRICES 2025.xlsx")
+    wb = openpyxl.load_workbook(path)
+    ws = wb["Dealer 2025"]
+
+    count = 0
+    current_section = ""
+
+    with open(DEALER_PRICES_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+
+        for row in ws.iter_rows(values_only=True):
+            col_a, col_b, col_c, col_d = row[0], row[1], row[2], row[3]
+
+            if all(v is None for v in [col_a, col_b, col_c, col_d]):
+                continue
+            if col_a in ("DEALER PRICES 2026", "DEALER PRICES 2025"):
+                continue
+            if isinstance(col_d, datetime.datetime) or isinstance(
+                col_c, datetime.datetime
+            ):
+                continue
+
+            # Section header: col_a has a name but no numeric price (check before skipping "Item reference")
+            if (
+                col_a
+                and col_c in (None, "Item reference")
+                and not isinstance(col_d, (int, float))
+            ):
+                current_section = str(col_a).strip()
+                continue
+
+            if col_c and isinstance(col_d, (int, float)):
+                name = str(col_a).strip() if col_a else ""
+                detail = str(col_b).strip() if col_b else ""
+                reference = str(col_c).strip()
+                price = float(col_d)
+                writer.writerow([current_section, name, detail, reference, price])
+                count += 1
+
+    print(f"dealer_prices.csv: {count} rows → {DEALER_PRICES_CSV}")
+
+
 def convert_retail_prices():
     path = resolve_source_file("DEALER PRICES 2025.xlsx")
     wb = openpyxl.load_workbook(path)
@@ -155,7 +202,11 @@ def convert_retail_prices():
                 continue
 
             # Section header: col_a has a name but no usable price data
-            if col_a and col_c in (None, "Item reference") and not isinstance(col_d, (int, float)):
+            if (
+                col_a
+                and col_c in (None, "Item reference")
+                and not isinstance(col_d, (int, float))
+            ):
                 current_section = str(col_a).strip()
                 continue
 
@@ -173,7 +224,15 @@ def convert_retail_prices():
                 if not name and price is None:
                     continue
 
-                writer.writerow([current_section, name, detail, reference, price if price is not None else ""])
+                writer.writerow(
+                    [
+                        current_section,
+                        name,
+                        detail,
+                        reference,
+                        price if price is not None else "",
+                    ]
+                )
                 count += 1
             elif col_d is not None:
                 # Rows with price but no reference (e.g. Novox Pack)
@@ -276,25 +335,33 @@ def parse_pdf_compatibility_rows(pdf_text):
     current_section = ""
     current_ch_vals: list = []
     expect_code_next_line = False
-    current_engaging: int | None = None   # 0=non-engaging, 1=engaging (single-column sections)
-    engaging_col_positions = None         # (ne_col, e_col) char positions for two-column tables
+    current_engaging: int | None = (
+        None  # 0=non-engaging, 1=engaging (single-column sections)
+    )
+    engaging_col_positions = (
+        None  # (ne_col, e_col) char positions for two-column tables
+    )
 
     for raw_line in pdf_text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
 
-        compatible = re.search(r"COMPATIBLE\s+WITH\s*([0-9]{4})", line, flags=re.IGNORECASE)
+        compatible = re.search(
+            r"COMPATIBLE\s+WITH\s*([0-9]{4}[A-Z]?)", line, flags=re.IGNORECASE
+        )
         if compatible:
-            current_code = compatible.group(1)
+            current_code = compatible.group(1).upper()
             continue
 
         if re.fullmatch(r"COMPATIBLE\s+WITH", line, flags=re.IGNORECASE):
             expect_code_next_line = True
             continue
 
-        if expect_code_next_line and re.fullmatch(r"\d{4}", line):
-            current_code = line
+        if expect_code_next_line and re.fullmatch(
+            r"\d{4}[A-Z]?", line, flags=re.IGNORECASE
+        ):
+            current_code = line.upper()
             expect_code_next_line = False
             continue
 
@@ -401,9 +468,11 @@ def parse_code_to_systems_map(pdf_text):
                 collect_systems = False
             continue
 
-        compatible = re.search(r"COMPATIBLE\s+WITH\s*([0-9]{4})", line, flags=re.IGNORECASE)
+        compatible = re.search(
+            r"COMPATIBLE\s+WITH\s*([0-9]{4}[A-Z]?)", line, flags=re.IGNORECASE
+        )
         if compatible:
-            current_code = compatible.group(1)
+            current_code = compatible.group(1).upper()
             code_to_systems.setdefault(current_code, [])
             collect_systems = False
             continue
@@ -413,8 +482,10 @@ def parse_code_to_systems_map(pdf_text):
             collect_systems = False
             continue
 
-        if expect_code_next_line and re.fullmatch(r"\d{4}", line):
-            current_code = line
+        if expect_code_next_line and re.fullmatch(
+            r"\d{4}[A-Z]?", line, flags=re.IGNORECASE
+        ):
+            current_code = line.upper()
             code_to_systems.setdefault(current_code, [])
             expect_code_next_line = False
             continue
@@ -446,7 +517,9 @@ def parse_code_to_systems_map(pdf_text):
             collect_systems = False
             continue
 
-        candidates = [s.strip(" -") for s in re.split(r"\s+-\s+", line) if s.strip(" -")]
+        candidates = [
+            s.strip(" -") for s in re.split(r"\s+-\s+", line) if s.strip(" -")
+        ]
         if len(candidates) == 1 and "-" in line and " - " not in line:
             candidates = [s.strip(" -") for s in line.split("-") if s.strip(" -")]
 
@@ -552,7 +625,11 @@ def _merge_option_token(tokens: list[str], token: str) -> None:
         if key in {"H(mm)", "GH(mm)", "LENGTH"}:
             merged_values = sorted(
                 merged_values,
-                key=lambda item: float(item.replace(",", ".")) if re.fullmatch(r"\d+(?:[\.,]\d+)?", item) else 9999,
+                key=lambda item: (
+                    float(item.replace(",", "."))
+                    if re.fullmatch(r"\d+(?:[\.,]\d+)?", item)
+                    else 9999
+                ),
             )
         tokens[index] = f"{key}:{'/'.join(merged_values)}"
         return
@@ -698,9 +775,7 @@ def _parse_dynamic_milling_tool_spec_line(line: str) -> dict | None:
         ("TOTAL LENGTH(mm)", total_length),
     ]
     options = "|".join(
-        f"{key}:{_normalize_spec_number(value)}"
-        for key, value in specs
-        if value
+        f"{key}:{_normalize_spec_number(value)}" for key, value in specs if value
     )
     return {"reference": ref, "options": options}
 
@@ -910,9 +985,13 @@ def build_merged_import_csv(
                 for system in systems
                 if normalize_system_name(system) in active_categories
             ]
-            primary_system = active_systems[0] if active_systems else (systems[0] if systems else "")
+            primary_system = (
+                active_systems[0] if active_systems else (systems[0] if systems else "")
+            )
             is_active = 1 if active_systems else 0
-            catalog_section = (product_type_map or {}).get(ref) or ref_to_section.get(ref, "")
+            catalog_section = (product_type_map or {}).get(ref) or ref_to_section.get(
+                ref, ""
+            )
             if name.upper().startswith("DMT "):
                 catalog_section = "DYNAMIC MILLING TOOL"
             retail_name = price_payload.get("name", "")
@@ -1020,7 +1099,11 @@ def _row_to_option_tokens(row: dict) -> str:
     if row.get("height_mm"):
         parts.append(f"H(mm):{row['height_mm']}")
     if row.get("type_label"):
-        if row.get("product_type") in {"DYNAMIC MILLING TOOL", "ANALOG", "DIGITAL ANALOG"}:
+        if row.get("product_type") in {
+            "DYNAMIC MILLING TOOL",
+            "ANALOG",
+            "DIGITAL ANALOG",
+        }:
             parts.append(f"SHANK:{row['type_label']}")
         elif "SCREW" in str(row.get("product_type", "")):
             parts.append(f"TYPE:{row['type_label']}")
@@ -1187,6 +1270,7 @@ def _build_product_type_map(catalog_rows: list[dict]) -> dict[str, str]:
 def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
     import sys
+
     pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
     active_categories = load_active_categories(VISIBLE_CATEGORIES_TXT)
 
@@ -1194,7 +1278,11 @@ def convert_catalog_pdf_options():
     try:
         if BASE_DIR not in sys.path:
             sys.path.insert(0, BASE_DIR)
-        from parse_catalog import extract_text as _extract_text, parse_products as _parse_products
+        from parse_catalog import (
+            extract_text as _extract_text,
+            parse_products as _parse_products,
+        )
+
         product_text = _extract_text(pdf_path, first_page=43, last_page=329)
         catalog_rows = _parse_products(product_text, pdf_first_page=43)
         product_type_map = _build_product_type_map(catalog_rows)
@@ -1210,8 +1298,10 @@ def convert_catalog_pdf_options():
             for row in catalog_rows
             if row.get("sku") and row.get("engaging") is not None
         }
-        print(f"parse_catalog: {len(catalog_rows)} rows, {len(option_map)} option tokens, "
-              f"{len(engaging_map)} engaging values")
+        print(
+            f"parse_catalog: {len(catalog_rows)} rows, {len(option_map)} option tokens, "
+            f"{len(engaging_map)} engaging values"
+        )
     except Exception as exc:
         print(f"Warning: parse_catalog failed ({exc}), falling back to legacy parser")
         pdf_text = load_pdf_text(pdf_path)
@@ -1232,7 +1322,9 @@ def convert_catalog_pdf_options():
         else:
             print("compatibility_options.csv: skipped (could not parse PDF text)")
 
-    code_to_systems = parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
+    code_to_systems = (
+        parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
+    )
     code_to_systems = _apply_system_name_corrections(code_to_systems)
     if pdf_text_for_systems:
         technical_spec_rows = parse_pdf_technical_spec_options(pdf_text_for_systems)
@@ -1248,8 +1340,15 @@ def convert_catalog_pdf_options():
 
 
 if __name__ == "__main__":
-    print("Converting Excel files to CSV...\n")
-    convert_products()
-    convert_retail_prices()
-    convert_catalog_pdf_options()
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "dealer":
+        print("Converting dealer prices...\n")
+        convert_dealer_prices()
+    else:
+        print("Converting Excel files to CSV...\n")
+        convert_products()
+        convert_retail_prices()
+        convert_dealer_prices()
+        convert_catalog_pdf_options()
     print("\nDone. Files are in data/csv/ (gitignored).")

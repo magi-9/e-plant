@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import ShopLayout from './components/ShopLayout';
@@ -20,7 +21,6 @@ import AdminSettings from './pages/AdminSettings';
 import AdminGrouping from './pages/AdminGrouping';
 import AdminCategories from './pages/AdminCategories';
 import AdminInventory from './pages/AdminInventory';
-import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ComplaintsPage from './pages/ComplaintsPage';
@@ -32,6 +32,9 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConstructionPage from './pages/ConstructionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { parseBooleanEnv } from './utils/env';
+import { getLandingHomeHref } from './utils/landingLinks';
+import { isAdmin } from './api/auth';
+import { authService } from './api/authService';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -56,6 +59,18 @@ function ExternalRedirect({ to }: { to: string }) {
     }
   }, [to]);
   return null;
+}
+
+function CustomerOnlyRoute({ children }: { children: ReactElement }) {
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isAdmin()) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return children;
 }
 
 function initSentryIfConsented() {
@@ -96,6 +111,7 @@ function App() {
   const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
   const isShopHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedShopHost);
   const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
+  const landingHomeHref = getLandingHomeHref();
   const landingPageElement = HOME_PAGE_READY ? <HomePage /> : <ConstructionPage />;
 
   useEffect(() => {
@@ -134,9 +150,9 @@ function App() {
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
             />
             <Route path="/catalogs" element={<CatalogsPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/about" element={<ExternalRedirect to={landingHomeHref} />} />
+            <Route path="/cart" element={<CustomerOnlyRoute><CartPage /></CustomerOnlyRoute>} />
+            <Route path="/checkout" element={<CustomerOnlyRoute><CheckoutPage /></CustomerOnlyRoute>} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/login" element={<AuthPage />} />

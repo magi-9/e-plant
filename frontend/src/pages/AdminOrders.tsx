@@ -42,6 +42,9 @@ const PAYMENT_LABELS: Record<string, string> = {
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+const grossUnitPrice = (priceSnapshot: string, vatRateSnapshot: string) =>
+    Number(priceSnapshot) * (1 + Number(vatRateSnapshot || '0') / 100);
+
 const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
     return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
 };
@@ -554,9 +557,9 @@ export default function AdminOrders() {
                                                                         className="w-20 rounded border border-slate-300 px-2 py-1 text-center"
                                                                     />
                                                                 </td>
-                                                                <td className="px-4 py-2.5 text-right text-slate-600">{Number(item.price_snapshot).toFixed(2)} €</td>
+                                                                <td className="px-4 py-2.5 text-right text-slate-600">{grossUnitPrice(item.price_snapshot, item.vat_rate_snapshot).toFixed(2)} €</td>
                                                                 <td className="px-4 py-2.5 text-right font-semibold text-slate-900">
-                                                                    {(Number(item.price_snapshot) * (draft.items.find((d) => d.product_id === item.product)?.quantity ?? item.quantity)).toFixed(2)} €
+                                                                    {(grossUnitPrice(item.price_snapshot, item.vat_rate_snapshot) * (draft.items.find((d) => d.product_id === item.product)?.quantity ?? item.quantity)).toFixed(2)} €
                                                                 </td>
                                                             </tr>
                                                         ))}

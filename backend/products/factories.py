@@ -12,5 +12,6 @@ class ProductFactory(factory.django.DjangoModelFactory):
     description = "Test description"
     category = "Test Category"
     price = 100.00
+    vat_rate = 5.00
     stock_quantity = 10
     is_visible = True

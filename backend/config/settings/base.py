@@ -177,6 +177,6 @@ SIMPLE_JWT = {
 # Email configuration
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 EMAIL_DOMAIN = os.environ.get("EMAIL_DOMAIN", "ebringer.sk")
-CONTACT_EMAIL_LOCAL_PART = os.environ.get("CONTACT_EMAIL_LOCAL_PART", "martin")
-DEFAULT_FROM_EMAIL = f"noreply@{EMAIL_DOMAIN}"
-WAREHOUSE_EMAIL = f"warehouse@{EMAIL_DOMAIN}"
+DEFAULT_CONTACT_EMAIL = "info@ebringer.sk"
+DEFAULT_FROM_EMAIL = DEFAULT_CONTACT_EMAIL
+WAREHOUSE_EMAIL = DEFAULT_CONTACT_EMAIL

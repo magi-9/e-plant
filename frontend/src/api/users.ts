@@ -17,6 +17,11 @@ export interface User {
     is_staff: boolean;
     is_active: boolean;
     date_joined: string;
+    annual_discount_percent?: string | number;
+    annual_discount_year?: number | null;
+    annual_discount_valid_until?: string | null;
+    turnover_last_12_months?: number;
+    turnover_monthly?: Array<{ month: string; turnover: number }>;
 }
 
 export const getAdminUsers = async (): Promise<User[]> => {

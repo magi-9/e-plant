@@ -40,6 +40,7 @@ class TestStockService:
         assert prepared_items[0]["product"] == product1
         assert prepared_items[0]["quantity"] == 2
         assert prepared_items[0]["price_snapshot"] == Decimal("100.00")
+        assert prepared_items[0]["vat_rate_snapshot"] == Decimal("5.00")
 
         # Verify stock was deducted
         product1.refresh_from_db()
@@ -239,6 +240,25 @@ class TestPricingService:
 
         assert total == Decimal("99.99")
 
+    def test_calculate_order_total_with_vat_rates(self):
+        """Order total is gross: net item totals plus per-product VAT."""
+        prepared_items = [
+            {
+                "price_snapshot": Decimal("100.00"),
+                "vat_rate_snapshot": Decimal("5.00"),
+                "quantity": 2,
+            },
+            {
+                "price_snapshot": Decimal("50.00"),
+                "vat_rate_snapshot": Decimal("23.00"),
+                "quantity": 1,
+            },
+        ]
+
+        total = PricingService.calculate_order_total(prepared_items)
+
+        assert total == Decimal("271.50")
+
     def test_calculate_order_total_empty_list(self):
         """Test total price calculation for empty order."""
         prepared_items = []
@@ -299,7 +319,7 @@ class TestOrderService:
         assert order.user == user
         assert order.customer_name == "John Doe"
         assert order.email == "john@example.com"
-        assert order.total_price == Decimal("250.00")  # (100 * 2) + (50 * 1)
+        assert order.total_price == Decimal("262.50")  # gross with default 5% VAT
         assert order.status == "awaiting_payment"  # bank_transfer status
         assert re.fullmatch(rf"{timezone.now().year}X\d{{4}}", order.order_number)
 
@@ -308,12 +328,43 @@ class TestOrderService:
         item1 = order.items.get(product=product1)
         assert item1.quantity == 2
         assert item1.price_snapshot == Decimal("100.00")
+        assert item1.vat_rate_snapshot == Decimal("5.00")
 
         # Verify stock was deducted
         product1.refresh_from_db()
         product2.refresh_from_db()
         assert product1.stock_quantity == 8
         assert product2.stock_quantity == 4
+
+    @pytest.mark.django_db
+    def test_create_order_applies_current_year_customer_discount(
+        self, user_factory, product_factory, zero_shipping
+    ):
+        """Current-year customer discount reduces the goods total before shipping."""
+        user = user_factory(
+            annual_discount_percent=Decimal("10.00"),
+            annual_discount_year=timezone.localdate().year,
+        )
+        product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+        order_data = {
+            "customer_name": "Discount Customer",
+            "email": "discount@example.com",
+            "phone": "+421900123456",
+            "street": "Test Street 123",
+            "city": "Bratislava",
+            "postal_code": "811 01",
+            "is_company": False,
+            "payment_method": "bank_transfer",
+            "items": [
+                {"product_id": product.id, "quantity": 2},
+            ],
+        }
+
+        order = OrderService(user=user).create_order(order_data)
+
+        assert order.discount_percent == Decimal("10.00")
+        assert order.discount_amount == Decimal("21.00")
+        assert order.total_price == Decimal("189.00")
 
     @pytest.mark.django_db
     def test_create_order_unauthenticated_user(self, product_factory, zero_shipping):
@@ -340,7 +391,7 @@ class TestOrderService:
 
         assert order.id is not None
         assert order.user is None  # No user associated
-        assert order.total_price == Decimal("75.00")
+        assert order.total_price == Decimal("78.75")
 
     @pytest.mark.django_db
     def test_create_order_card_payment_status(self, user_factory, product_factory):

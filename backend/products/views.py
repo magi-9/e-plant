@@ -35,13 +35,34 @@ from .serializers import (
     WildcardGroupSerializer,
 )
 from .compatibility import (
+    TIBASE_CATEGORY,
     get_compatibility_counts,
     get_compatibility_options,
+    get_compatible_screws_for_tibase,
     get_ref_prefixes_for_code,
 )
 from .cache_utils import invalidate_product_stats_cache
 from .services import ProductService
 from .services.wildcard_sync import sync_wildcard_groups
+
+PRODUCT_TYPE_PREFIXES = {
+    "tibase": ("31", "35"),
+    "multi_unit": ("42", "48", "61", "62"),
+    "screws": ("40", "41"),
+    "scanbody": ("30", "52", "53", "54"),
+    "analogs": ("22", "23", "34"),
+    "abutments": ("21",),
+    "adapters": ("50",),
+    "tools": ("11", "33", "43"),
+}
+
+
+def _filter_real_compatibility_code(queryset):
+    return queryset.exclude(
+        models.Q(parameters__compatibility_code__isnull=True)
+        | models.Q(parameters__compatibility_code="")
+        | models.Q(parameters__compatibility_code="0000")
+    )
 
 
 def _parse_categories(request):
@@ -68,6 +89,19 @@ def _apply_product_filters(queryset, request):
             qs = qs.filter(group_id=int(group_id))
         except (ValueError, TypeError):
             raise ValidationError({"group": "Must be a valid integer ID."})
+
+    product_type = request.query_params.get("product_type", "").strip()
+    if product_type:
+        prefixes = PRODUCT_TYPE_PREFIXES.get(product_type)
+        if prefixes is None:
+            raise ValidationError(
+                {"product_type": "Must be one of: " + ", ".join(PRODUCT_TYPE_PREFIXES)}
+            )
+        prefix_filter = models.Q()
+        for prefix in prefixes:
+            prefix_filter |= models.Q(reference__startswith=prefix + ".")
+        qs = qs.filter(prefix_filter)
+        qs = _filter_real_compatibility_code(qs)
 
     search = request.query_params.get("search", "").strip()
     if search:
@@ -174,6 +208,39 @@ def _is_admin_view(request):
     )
 
 
+def _option_token_value(parameters, key):
+    prefix = f"{key}:"
+    for token in str((parameters or {}).get("option_tokens") or "").split("|"):
+        if token.startswith(prefix):
+            return token[len(prefix) :].strip()
+    return ""
+
+
+def _is_screw_product(product):
+    params = product.parameters or {}
+    haystack = " ".join(
+        str(value or "")
+        for value in [
+            product.reference,
+            product.category,
+            product.name,
+            params.get("catalog_section"),
+            params.get("option_tokens"),
+        ]
+    ).upper()
+    return (product.reference or "").startswith(("40.", "41.")) or "SCREW" in haystack
+
+
+def _use_total_length_variant_labels(members):
+    if len(members) < 2 or not all(_is_screw_product(member) for member in members):
+        return False
+    lengths = {
+        _option_token_value(member.parameters, "TOTAL LENGTH(mm)") for member in members
+    }
+    lengths.discard("")
+    return len(lengths) > 1
+
+
 def _option_entry(m):
     option_reference = m.reference or str(m.id)
     option_label = (
@@ -189,6 +256,8 @@ def _option_entry(m):
         "category": m.category,
         "all_categories": (m.parameters or {}).get("all_categories", ""),
         "price": str(m.price) if m.price is not None else None,
+        "vat_rate": str(m.vat_rate),
+        "gross_price": str(m.get_gross_price()) if m.price is not None else None,
         "image": m.image.url if getattr(m, "image", None) and m.image else "",
         "stock_quantity": m.stock_quantity,
         "label": option_label,
@@ -202,10 +271,19 @@ def _make_wildcard_group_card(members, group_name: str):
     """Return a virtual product representing a wildcard group card."""
     rep = copy(members[0])
     masked_reference = masked_variant_reference([m.reference for m in members])
+    use_total_length_labels = _use_total_length_variant_labels(members)
+    options = []
+    for member in members:
+        option = _option_entry(member)
+        if use_total_length_labels:
+            total_length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
+            if total_length:
+                option["label"] = f"{total_length} mm"
+        options.append(option)
     rep.parameters = {
         "type": "wildcard_group",
         "wildcard_reference": rep.reference or "",
-        "options": [_option_entry(m) for m in members],
+        "options": options,
         "option_fields": ["reference", "parameter_code", "name"],
         "masked_reference": masked_reference,
     }
@@ -388,6 +466,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             has_filters = bool(
                 request.query_params.get("search")
                 or request.query_params.get("group")
+                or request.query_params.get("product_type")
                 or request.query_params.get("ordering")
                 or request.query_params.get("min_price")
                 or request.query_params.get("max_price")
@@ -500,8 +579,8 @@ class ProductCountView(APIView):
                 )
 
                 seen: set = set()
-                for name, price, category, wc_gid in qs.values_list(
-                    "name", "price", "category", "wildcard_group_id"
+                for name, price, vat_rate, category, wc_gid in qs.values_list(
+                    "name", "price", "vat_rate", "category", "wildcard_group_id"
                 ):
                     if wc_gid and wc_gid in active_wc_ids:
                         key = ("wc_db", wc_gid)
@@ -510,6 +589,7 @@ class ProductCountView(APIView):
                             "wc_mem",
                             normalized_storefront_name(name),
                             str(price) if price is not None else "",
+                            str(vat_rate) if vat_rate is not None else "",
                             (category or "").strip().casefold(),
                         )
                     seen.add(key)
@@ -887,6 +967,95 @@ class CompatibilityCountsView(APIView):
         return Response({"counts": get_compatibility_counts()})
 
 
+def _get_product_type_counts():
+    """Return visible product counts for storefront product-type prefix filters."""
+    cache_key = "product_type_counts"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    base_qs = _filter_real_compatibility_code(Product.objects.filter(is_visible=True))
+    counts = {}
+    for key, prefixes in PRODUCT_TYPE_PREFIXES.items():
+        prefix_filter = models.Q()
+        for prefix in prefixes:
+            prefix_filter |= models.Q(reference__startswith=prefix + ".")
+        counts[key] = base_qs.filter(prefix_filter).count()
+
+    cache.set(cache_key, counts, 3600)
+    return counts
+
+
+class ProductTypeCountsView(APIView):
+    """Public endpoint: return product counts per storefront prefix group."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        return Response({"counts": _get_product_type_counts()})
+
+
+class CompatibleScrewsView(APIView):
+    """Return compatible straight and dynamic screws for a TiBase product.
+
+    GET /api/products/<pk>/compatible-screws/
+
+    Returns 404 if the product does not exist or is not a TiBase.
+    Returns 200 with screws list (may be empty when no CSV data matches).
+    """
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, pk, *args, **kwargs):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            raise Http404
+
+        catalog_section = (product.parameters or {}).get("catalog_section", "")
+        is_tibase = (
+            product.category == TIBASE_CATEGORY
+            or (product.reference or "").startswith("31.")
+            or "tibase" in catalog_section.lower()
+        )
+        if not is_tibase:
+            raise Http404
+
+        screw_refs = get_compatible_screws_for_tibase(
+            product.reference or "",
+            request.query_params.get("compatibility_code"),
+        )
+        all_refs = screw_refs["straight"] + screw_refs["dynamic"]
+
+        if all_refs:
+            screw_products = {
+                p.reference: p for p in Product.objects.filter(reference__in=all_refs)
+            }
+        else:
+            screw_products = {}
+
+        # Build ordered list preserving straight-first, then dynamic order
+        screws = []
+        for ref in all_refs:
+            p = screw_products.get(ref)
+            if p:
+                screws.append(
+                    {
+                        "id": p.id,
+                        "reference": p.reference,
+                        "name": p.name,
+                        "stock_quantity": p.stock_quantity,
+                    }
+                )
+
+        return Response(
+            {
+                "compatibility_code": screw_refs["compatibility_code"],
+                "screws": screws,
+            }
+        )
+
+
 # Cached category counts
 
 
@@ -1045,6 +1214,7 @@ class AdminProductImport(APIView):
                     product.description = ""
                     product.category = "Uncategorized"
                     product.price = Decimal("0.00")
+                    product.vat_rate = Decimal("5.00")
                     product.stock_quantity = 0
                     product.low_stock_threshold = 5
                     product.low_stock_alert_sent = False
@@ -1063,6 +1233,15 @@ class AdminProductImport(APIView):
                     except (ValueError, InvalidOperation):
                         raise ValidationError(
                             f"Invalid price for product {name}: {price_value}"
+                        )
+
+                vat_rate_value = row.get("vat_rate")
+                if vat_rate_value is not None and str(vat_rate_value).strip():
+                    try:
+                        product.vat_rate = Decimal(vat_rate_value)
+                    except (ValueError, InvalidOperation):
+                        raise ValidationError(
+                            f"Invalid vat_rate for product {name}: {vat_rate_value}"
                         )
 
                 stock_value = row.get("stock_quantity")
@@ -1111,6 +1290,7 @@ class AdminProductImport(APIView):
                         "description",
                         "category",
                         "price",
+                        "vat_rate",
                         "stock_quantity",
                         "low_stock_threshold",
                         "low_stock_alert_sent",
@@ -1151,6 +1331,7 @@ class AdminProductExport(APIView):
                 "description": p.description,
                 "category": p.category,
                 "price": str(p.price),
+                "vat_rate": str(p.vat_rate),
                 "stock_quantity": p.stock_quantity,
                 "low_stock_threshold": p.low_stock_threshold,
                 "low_stock_alert_sent": p.low_stock_alert_sent,
@@ -1247,6 +1428,12 @@ class AdminProductFullImport(APIView):
             except (InvalidOperation, TypeError):
                 price = Decimal("0.00")
 
+            vat_rate_str = row.get("vat_rate", "5.00") or "5.00"
+            try:
+                vat_rate = Decimal(str(vat_rate_str))
+            except (InvalidOperation, TypeError):
+                vat_rate = Decimal("5.00")
+
             params = row.get("parameters") or {}
             if not isinstance(params, dict):
                 params = {}
@@ -1260,6 +1447,7 @@ class AdminProductFullImport(APIView):
                 "description": row.get("description") or "",
                 "category": row.get("category") or "",
                 "price": price,
+                "vat_rate": vat_rate,
                 "stock_quantity": int(row.get("stock_quantity") or 0),
                 "low_stock_threshold": int(row.get("low_stock_threshold") or 5),
                 "low_stock_alert_sent": bool(row.get("low_stock_alert_sent", False)),
@@ -1288,6 +1476,7 @@ class AdminProductFullImport(APIView):
             "description",
             "category",
             "price",
+            "vat_rate",
             "stock_quantity",
             "low_stock_threshold",
             "low_stock_alert_sent",

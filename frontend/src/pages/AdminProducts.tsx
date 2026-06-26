@@ -249,6 +249,7 @@ export default function AdminProducts() {
         fd.append('description', payload.description);
         fd.append('category', payload.cats[0] || '');
         fd.append('price', payload.price);
+        fd.append('vat_rate', payload.vatRate);
         fd.append('is_visible', payload.visible.toString());
         fd.append('reference', payload.ref);
         if (payload.imageFile) {
@@ -508,7 +509,8 @@ export default function AdminProducts() {
                                         <th style={thStyle}>Produkt</th>
                                         <th style={thStyle}>Ref. číslo</th>
                                         <th className="hidden md:table-cell" style={thStyle}>Kategória</th>
-                                        <th style={thStyle}>Cena</th>
+                                        <th style={thStyle}>Cena bez DPH</th>
+                                        <th style={thStyle}>DPH</th>
                                         <th style={thStyle}>Sklad</th>
                                         <th className="hidden lg:table-cell" style={thStyle}>Stav</th>
                                         <th style={{ ...thStyle, textAlign: 'right' }}><span className="sr-only">Akcie</span></th>
@@ -563,6 +565,11 @@ export default function AdminProducts() {
                                                 </span>
                                             </td>
                                             <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                                                <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>
+                                                    {product.vat_rate} %
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
                                                 <span style={{
                                                     display: 'inline-flex', alignItems: 'center', padding: '3px 9px',
                                                     borderRadius: 20, fontSize: 11.5, fontWeight: 600,
@@ -603,7 +610,7 @@ export default function AdminProducts() {
                                     ))}
                                     {products.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                                            <td colSpan={10} style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
                                                 Nenašli sa žiadne produkty pre zadané filtre.
                                             </td>
                                         </tr>

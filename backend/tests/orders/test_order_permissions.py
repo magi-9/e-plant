@@ -6,6 +6,29 @@ from rest_framework import status
 
 
 @pytest.mark.django_db
+def test_order_create_requires_authentication(api_client, product_factory):
+    product = product_factory(price=Decimal("100.00"), stock_quantity=10)
+
+    response = api_client.post(
+        reverse("order_create"),
+        {
+            "customer_name": "Guest User",
+            "email": "guest@example.com",
+            "phone": "+421900123456",
+            "street": "Test Street 123",
+            "city": "Bratislava",
+            "postal_code": "811 01",
+            "is_company": False,
+            "payment_method": "bank_transfer",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
 def test_order_detail_idor_fix(api_client, user_factory, product_factory):
     """Test that order detail endpoint uses order_number and not integer pk"""
     user = user_factory()

@@ -23,6 +23,7 @@ def storefront_group_key(product):
     return (
         normalized_storefront_name(product.name or ""),
         str(product.price) if product.price is not None else "",
+        str(product.vat_rate) if getattr(product, "vat_rate", None) is not None else "",
         (product.category or "").strip().casefold(),
     )
 

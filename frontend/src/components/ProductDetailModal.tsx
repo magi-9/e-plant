@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { CursorArrowRaysIcon, ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { getProduct, type Product } from '../api/products';
+import { getProduct, getCompatibleScrews, type Product, type CompatibleScrew } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
@@ -12,6 +12,7 @@ import CatalogPdfViewer from './CatalogPdfViewer';
 import toast from 'react-hot-toast';
 import { authService } from '../api/authService';
 import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
+import { getOrderedCategories } from '../utils/productCategories';
 
 const HEADER_CATEGORIES = 3;
 const HEADER_COMPAT_CODES = 3;
@@ -22,6 +23,8 @@ interface ProductDetailModalProps {
     product: Product | null;
     onEdit?: (product: Product) => void;
     selectedCategories?: string[];
+    searchQuery?: string;
+    selectedCompatibilityCode?: string;
     onCategoryClick?: (category: string) => void;
     onCompatibilityCodeClick?: (code: string) => void;
     onReferenceClick?: (reference: string) => void;
@@ -33,6 +36,8 @@ export default function ProductDetailModal({
     product,
     onEdit,
     selectedCategories = [],
+    searchQuery = '',
+    selectedCompatibilityCode,
     onCategoryClick,
     onCompatibilityCodeClick,
     onReferenceClick,
@@ -44,6 +49,9 @@ export default function ProductDetailModal({
     const [openRequestModal, setOpenRequestModal] = useState(false);
     const [catalogOpen, setCatalogOpen] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
+    const [compatibleScrews, setCompatibleScrews] = useState<CompatibleScrew[]>([]);
+    const [screwsLoading, setScrewsLoading] = useState(false);
+    const [selectedScrewId, setSelectedScrewId] = useState<number | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
     const sortedVariantOptions = useMemo(() => sortByFirstOptionTokenValue(variantOptions), [variantOptions]);
     const isGroupType = product?.parameters?.type === 'wildcard_group';
@@ -77,6 +85,33 @@ export default function ProductDetailModal({
         [hasVariants, variantOptions]
     );
 
+    const screwTotalLengthLabels = useMemo(() => {
+        if (!hasVariants || variantOptions.length < 2) return null;
+        const isScrewVariant = (option: typeof variantOptions[number]) => {
+            const ref = option.reference || '';
+            return ref.startsWith('40.') || ref.startsWith('41.') || /screw/i.test([
+                option.category,
+                option.name,
+                option.option_tokens,
+            ].filter(Boolean).join(' '));
+        };
+        if (!variantOptions.every(isScrewVariant)) return null;
+
+        const values = variantOptions.map((option) => {
+            const token = (option.option_tokens || '').split('|').find((item) => item.startsWith('TOTAL LENGTH(mm):'));
+            return token ? token.slice('TOTAL LENGTH(mm):'.length).trim() : '';
+        });
+        const uniqueValues = new Set(values.filter(Boolean));
+        if (uniqueValues.size <= 1) return null;
+
+        return new Map(
+            variantOptions.map((option, index) => [
+                option.reference || '',
+                values[index] ? `${values[index]} mm` : option.reference || option.name || 'Unnamed variant',
+            ])
+        );
+    }, [hasVariants, variantOptions]);
+
     const variantDropdownOptions = useMemo(() => {
         const refNumberPattern = /\d+(?:\.\d+)+-\d+/g;
         const isOnlyRefNumbers = (val: string) => {
@@ -87,6 +122,9 @@ export default function ProductDetailModal({
         };
 
         return sortedVariantOptions.map((option) => {
+            const totalLengthLabel = screwTotalLengthLabels?.get(option.reference || '');
+            if (totalLengthLabel) return { value: option.reference || '', label: totalLengthLabel };
+
             const parts: string[] = [];
             if (varyingTokenKeys.size > 0) {
                 (option.option_tokens || '').split('|').forEach((token) => {
@@ -110,7 +148,7 @@ export default function ProductDetailModal({
             const label = parts.length > 0 ? parts.join(' · ') : fallbackLabel;
             return { value: option.reference || '', label };
         });
-    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries]);
+    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries, screwTotalLengthLabels]);
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
         ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || sortedVariantOptions[0]?.id || null
@@ -137,8 +175,51 @@ export default function ProductDetailModal({
             setSelectedVariantRef('');
         }
         setHydratedVariant(null);
+        setCompatibleScrews([]);
+        setSelectedScrewId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product?.id]);
+
+    const TIBASE_CATEGORY = 'TITANIUM BASE (screw included)';
+    const isTiBaseReference = (ref?: string | null) => (ref || '').startsWith('31.');
+    const isTiBaseProduct = (p: typeof product): p is Product =>
+        !!p && (
+            p.category === TIBASE_CATEGORY ||
+            isTiBaseReference(p.reference) ||
+            isTiBaseReference(p.parameters?.wildcard_reference) ||
+            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase') ||
+            p.name.toLowerCase().includes('tibase') ||
+            (p.wildcard_group_name || '').toLowerCase().includes('tibase')
+        );
+
+    useEffect(() => {
+        if (!isTiBaseProduct(product)) {
+            setCompatibleScrews([]);
+            setSelectedScrewId(null);
+            return;
+        }
+        let cancelled = false;
+        setScrewsLoading(true);
+        getCompatibleScrews(product.id, selectedCompatibilityCode)
+            .then((data) => {
+                if (!cancelled) {
+                    setCompatibleScrews(data.screws);
+                    const firstInStock = data.screws.find((s) => s.stock_quantity > 0);
+                    setSelectedScrewId(firstInStock?.id ?? (data.screws[0]?.id ?? null));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setCompatibleScrews([]);
+                    setSelectedScrewId(null);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setScrewsLoading(false);
+            });
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product?.id, selectedCompatibilityCode]);
 
     const defaultVariantRef = hasVariants ? sortedVariantOptions[0]?.reference || '' : '';
 
@@ -187,22 +268,24 @@ export default function ProductDetailModal({
     const effectiveCategory = activeVariant?.category || product?.category || '';
     const effectiveAllCategories = activeVariant?.all_categories || product?.all_categories || product?.parameters?.all_categories || effectiveCategory || '';
     const effectiveImage = activeVariant?.image || variantImageFallback || product?.image;
-    const effectivePrice = activeVariant?.price ?? product?.price;
+    const effectivePrice = activeVariant?.gross_price ?? product?.gross_price ?? activeVariant?.price ?? product?.price;
+    const effectiveNetPrice = activeVariant?.price ?? product?.price;
     const effectiveVariantRef = activeVariant?.reference || '';
     const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
 
-    // Sort so active filter categories appear first, then the rest.
+    const cartItem = items.find(
+        (item) => item.productId === product?.id && (item.variantReference || '') === (effectiveVariantRef || '')
+    );
+
     const sortedCategoryList = useMemo(() => {
-        const list = effectiveAllCategories
-            .split(';')
-            .map((value) => value.trim())
-            .filter(Boolean);
-        if (!selectedCategories.length) return list;
-        const active = selectedCategories.filter((c) => list.includes(c));
-        const rest = list.filter((c) => !active.includes(c));
-        return [...active, ...rest];
-    }, [effectiveAllCategories, selectedCategories]);
+        if (!product) return [];
+        return getOrderedCategories(
+            { ...product, category: effectiveCategory, all_categories: effectiveAllCategories },
+            selectedCategories,
+            searchQuery,
+        );
+    }, [effectiveAllCategories, effectiveCategory, product, searchQuery, selectedCategories]);
 
     if (!product) return null;
 
@@ -245,15 +328,29 @@ export default function ProductDetailModal({
             return;
         }
 
+        const isTiBase = isTiBaseProduct(product);
+        const selectedScrew = isTiBase
+            ? compatibleScrews.find((s) => s.id === selectedScrewId) ?? null
+            : null;
+
+        if (isTiBase && compatibleScrews.length > 0 && (!selectedScrew || selectedScrew.stock_quantity === 0)) {
+            toast.error('Vybraná skrutka nie je skladom.');
+            return;
+        }
+
         setIsAdding(true);
         addItem({
             productId: product.id,
             name: effectiveName,
             price: effectivePrice!,
+            netPrice: effectiveNetPrice,
             image: effectiveImage,
             stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
             variantLabel: effectiveVariantLabel || undefined,
+            bundledScrew: selectedScrew
+                ? { productId: selectedScrew.id, name: selectedScrew.name, reference: selectedScrew.reference }
+                : undefined,
         });
 
         // Show action buttons after adding
@@ -430,6 +527,47 @@ export default function ProductDetailModal({
                                                             />
                                                         </div>
                                                     )}
+                                                    {isTiBaseProduct(product) && (
+                                                        <div className="mb-4">
+                                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                                                                Skrutka <span className="text-emerald-600 font-bold">({cartItem?.quantity ?? 1} ks zadarmo)</span>
+                                                            </p>
+                                                            {screwsLoading ? (
+                                                                <p className="text-sm text-slate-400">Načítavam skrutky…</p>
+                                                            ) : compatibleScrews.length === 0 ? (
+                                                                <p className="text-sm text-slate-400">Kompatibilná skrutka nie je k dispozícii</p>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    {compatibleScrews.map((screw) => (
+                                                                        <label
+                                                                            key={screw.id}
+                                                                            className={`flex items-center gap-2.5 cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                                                                selectedScrewId === screw.id
+                                                                                    ? 'border-cyan-500 bg-cyan-50 text-cyan-900'
+                                                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300'
+                                                                            } ${screw.stock_quantity === 0 ? 'opacity-50' : ''}`}
+                                                                        >
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="bundled-screw"
+                                                                                value={screw.id}
+                                                                                checked={selectedScrewId === screw.id}
+                                                                                onChange={() => setSelectedScrewId(screw.id)}
+                                                                                disabled={screw.stock_quantity === 0}
+                                                                                className="accent-cyan-600"
+                                                                            />
+                                                                            <span className="flex-1 min-w-0">
+                                                                                {screw.name}
+                                                                                {screw.stock_quantity === 0 && (
+                                                                                    <span className="ml-1.5 text-xs text-red-500">(nie je skladom)</span>
+                                                                                )}
+                                                                            </span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="mt-auto pt-4 border-t border-gray-100">
@@ -437,9 +575,16 @@ export default function ProductDetailModal({
                                                     {/* Price */}
                                                     <div className="flex-shrink-0">
                                                         {effectivePrice ? (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                                                <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} €</p>
+                                                            <div>
+                                                                {effectiveNetPrice && (
+                                                                    <p className="text-xs text-slate-400 leading-none mb-1">
+                                                                        bez DPH {effectiveNetPrice} €
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                                    <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} € s DPH</p>
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800 whitespace-nowrap">
@@ -471,10 +616,6 @@ export default function ProductDetailModal({
 
                                                                 return null;
                                                             }
-
-                                                            const cartItem = items.find(
-                                                                item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
-                                                            );
 
                                                             // Prefer showing quantity controls when an item exists in cart
                                                             if (cartItem) {

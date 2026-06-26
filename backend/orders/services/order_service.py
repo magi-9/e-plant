@@ -11,8 +11,10 @@ from typing import Any, Dict, List, Optional
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from rest_framework import serializers
 
 from orders.models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
+from products.models import Product
 from services.email import OrderEmailService
 from users.models import GlobalSettings
 
@@ -92,11 +94,34 @@ class OrderService:
         self, validated_data: Dict[str, Any], items_data: List[Dict[str, Any]]
     ) -> "Order":
         with transaction.atomic():
+            # Separate bundled screw requests from regular item data
+            bundled_screw_requests = []  # list of (tibase_item_data, screw_product_id)
+            clean_items_data = []
+            for item in items_data:
+                screw_id = item.pop("bundled_screw_product_id", None)
+                clean_items_data.append(item)
+                if screw_id is not None:
+                    bundled_screw_requests.append((item, screw_id))
+
             # Validate stock and prepare items (locks products)
-            prepared_items = self.stock_service.validate_and_reserve_stock(items_data)
+            prepared_items = self.stock_service.validate_and_reserve_stock(
+                clean_items_data
+            )
+
+            # Process free bundled screws
+            if bundled_screw_requests:
+                free_screw_items = self._prepare_free_screw_items(
+                    bundled_screw_requests, prepared_items
+                )
+                prepared_items.extend(free_screw_items)
 
             # Calculate items total
             items_total = self.pricing_service.calculate_order_total(prepared_items)
+            discount_percent = self._get_customer_discount_percent()
+            discount_amount = self.pricing_service.calculate_discount_amount(
+                items_total, discount_percent
+            )
+            discounted_items_total = items_total - discount_amount
 
             # Resolve shipping cost
             shipping_method = validated_data.get("shipping_method", "courier")
@@ -110,7 +135,7 @@ class OrderService:
                 shipping_rate = ShippingRate.objects.filter(country=country).first()
                 if shipping_rate is not None:
                     shipping_cost = self.pricing_service.calculate_shipping(
-                        items_total, shipping_rate
+                        discounted_items_total, shipping_rate
                     )
                     shipping_carrier = shipping_rate.carrier
                 else:
@@ -118,7 +143,7 @@ class OrderService:
                     shipping_cost = Decimal(str(shop.shipping_cost))
                     shipping_carrier = ""
 
-            total_price = items_total + shipping_cost
+            total_price = discounted_items_total + shipping_cost
 
             # All new orders start in awaiting_payment status
             status = "awaiting_payment"
@@ -134,6 +159,8 @@ class OrderService:
                             validated_data=validated_data,
                             order_number=order_number,
                             total_price=total_price,
+                            discount_percent=discount_percent,
+                            discount_amount=discount_amount,
                             status=status,
                             shipping_cost=shipping_cost,
                             shipping_carrier=shipping_carrier,
@@ -181,6 +208,104 @@ class OrderService:
 
             return order
 
+    def _prepare_free_screw_items(
+        self,
+        bundled_screw_requests: List[Any],
+        prepared_items: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Validate and prepare free screw OrderItems for TiBase bundling.
+
+        For each (tibase_item_data, screw_product_id) pair:
+          - Confirm the screw is compatible with the TiBase reference.
+          - Confirm screw stock >= tibase quantity.
+          - Deduct stock and allocate batches FIFO (same as regular items).
+          - Return prepared item dicts with price_snapshot=0, vat_rate_snapshot=0,
+            is_free=True.
+
+        Raises serializers.ValidationError on any validation failure.
+        """
+        from products.compatibility import (
+            TIBASE_CATEGORY,
+            get_compatible_screws_for_tibase,
+        )
+
+        # Build a map from product_id -> prepared_item for quick lookup
+        prepared_by_pid = {item["product"].id: item for item in prepared_items}
+
+        free_items = []
+        for tibase_item_data, screw_product_id in bundled_screw_requests:
+            tibase_product_id = tibase_item_data["product_id"]
+            tibase_quantity = tibase_item_data["quantity"]
+
+            # Resolve TiBase from prepared items (already locked)
+            tibase_prepared = prepared_by_pid.get(tibase_product_id)
+            if not tibase_prepared:
+                raise serializers.ValidationError(
+                    f"TiBase product id={tibase_product_id} not found in order items."
+                )
+
+            tibase_product = tibase_prepared["product"]
+            catalog_section = (
+                (tibase_product.parameters or {}).get("catalog_section") or ""
+            ).lower()
+            if (
+                tibase_product.category != TIBASE_CATEGORY
+                and "tibase" not in catalog_section
+            ):
+                raise serializers.ValidationError(
+                    f"Product '{tibase_product.name}' is not a TiBase product and "
+                    "cannot have a bundled screw."
+                )
+
+            # Validate screw exists
+            try:
+                screw_product = Product.objects.select_for_update().get(
+                    pk=screw_product_id
+                )
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Screw product id={screw_product_id} does not exist."
+                )
+
+            # Validate screw is compatible
+            compat = get_compatible_screws_for_tibase(tibase_product.reference or "")
+            all_compat_refs = compat["straight"] + compat["dynamic"]
+            if screw_product.reference not in all_compat_refs:
+                raise serializers.ValidationError(
+                    f"Screw '{screw_product.reference}' is not compatible with "
+                    f"TiBase '{tibase_product.reference}'."
+                )
+
+            # Validate screw stock
+            if screw_product.stock_quantity < tibase_quantity:
+                raise serializers.ValidationError(
+                    f"Not enough screw stock for '{screw_product.name}'. "
+                    f"Available: {screw_product.stock_quantity}, "
+                    f"Required: {tibase_quantity}."
+                )
+
+            # Deduct screw stock
+            screw_product.stock_quantity -= tibase_quantity
+            screw_product.save(update_fields=["stock_quantity"])
+
+            # FIFO batch allocation for the screw
+            allocations = self.stock_service._allocate_batches_fifo(
+                screw_product, tibase_quantity
+            )
+
+            free_items.append(
+                {
+                    "product": screw_product,
+                    "quantity": tibase_quantity,
+                    "price_snapshot": Decimal("0.00"),
+                    "vat_rate_snapshot": Decimal("0.00"),
+                    "is_free": True,
+                    "batch_allocations": allocations,
+                }
+            )
+
+        return free_items
+
     def _generate_order_number(self) -> str:
         """
         Generate a unique order number in format YYYYX0001.
@@ -221,11 +346,19 @@ class OrderService:
         message = str(exc).lower()
         return "order_number" in message and "unique" in message
 
+    def _get_customer_discount_percent(self, user: Optional[User] = None) -> Decimal:
+        customer = user if user is not None else self.user
+        if customer is None or not hasattr(customer, "get_active_discount_percent"):
+            return Decimal("0.00")
+        return Decimal(str(customer.get_active_discount_percent()))
+
     def _create_order_instance(
         self,
         validated_data: Dict[str, Any],
         order_number: str,
         total_price: Decimal,
+        discount_percent: Decimal,
+        discount_amount: Decimal,
         status: str,
         shipping_cost: Decimal = Decimal("0.00"),
         shipping_carrier: str = "",
@@ -249,6 +382,8 @@ class OrderService:
             order_number=order_number,
             status=status,
             total_price=total_price,
+            discount_percent=discount_percent,
+            discount_amount=discount_amount,
             shipping_cost=shipping_cost,
             shipping_carrier=shipping_carrier,
             **validated_data,
@@ -352,6 +487,11 @@ class OrderService:
             self._create_order_items(order, prepared_items)
 
             items_total = self.pricing_service.calculate_order_total(prepared_items)
+            discount_percent = self._get_customer_discount_percent(order.user)
+            discount_amount = self.pricing_service.calculate_discount_amount(
+                items_total, discount_percent
+            )
+            discounted_items_total = items_total - discount_amount
             shipping_method = (
                 validated_data.get("shipping_method")
                 or order.shipping_method
@@ -365,7 +505,7 @@ class OrderService:
                 shipping_rate = ShippingRate.objects.filter(country=country).first()
                 if shipping_rate is not None:
                     shipping_cost = self.pricing_service.calculate_shipping(
-                        items_total, shipping_rate
+                        discounted_items_total, shipping_rate
                     )
                     shipping_carrier = shipping_rate.carrier
                 else:
@@ -378,7 +518,9 @@ class OrderService:
 
             order.shipping_cost = shipping_cost
             order.shipping_carrier = shipping_carrier
-            order.total_price = items_total + shipping_cost
+            order.discount_percent = discount_percent
+            order.discount_amount = discount_amount
+            order.total_price = discounted_items_total + shipping_cost
             order.save()
 
             transaction.on_commit(

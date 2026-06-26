@@ -23,6 +23,8 @@ def test_admin_create_product_price_issue(api_client, user_factory):
     assert response.status_code == 201
     product = Product.objects.get(name="Test Product")
     assert product.price == 100.00
+    assert product.vat_rate == 5.00
+    assert response.data["gross_price"] == "105.00"
 
 
 @pytest.mark.django_db
@@ -47,6 +49,24 @@ def test_admin_update_product(api_client, user_factory, product_factory):
     product.refresh_from_db()
     assert product.name == "Updated Name"
     assert product.price == 75.00
+
+
+@pytest.mark.django_db
+def test_admin_update_product_vat_rate(api_client, user_factory, product_factory):
+    user = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=user)
+    product = product_factory(vat_rate=5.00)
+
+    response = api_client.patch(
+        reverse("admin_product_update", args=[product.id]),
+        {"vat_rate": "23.00"},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    product.refresh_from_db()
+    assert product.vat_rate == 23.00
+    assert response.data["gross_price"] == "123.00"
 
 
 @pytest.mark.django_db

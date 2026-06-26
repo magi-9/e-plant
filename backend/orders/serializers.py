@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 class OrderItemInputSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1)
+    bundled_screw_product_id = serializers.IntegerField(required=False, allow_null=True)
 
 
 class OrderItemBatchSerializer(serializers.ModelSerializer):
@@ -26,6 +27,12 @@ class OrderItemBatchSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
+    net_subtotal = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True, source="get_net_subtotal"
+    )
+    vat_amount = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True, source="get_vat_amount"
+    )
     subtotal = serializers.DecimalField(
         max_digits=10, decimal_places=2, read_only=True, source="get_subtotal"
     )
@@ -39,10 +46,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "product_name",
             "quantity",
             "price_snapshot",
+            "vat_rate_snapshot",
+            "is_free",
+            "net_subtotal",
+            "vat_amount",
             "subtotal",
             "batch_allocations",
         )
-        read_only_fields = ("id", "product", "price_snapshot")
+        read_only_fields = (
+            "id",
+            "product",
+            "price_snapshot",
+            "vat_rate_snapshot",
+            "is_free",
+        )
 
 
 class ShippingRateSerializer(serializers.ModelSerializer):
@@ -174,6 +191,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_method",
             "status",
             "total_price",
+            "discount_percent",
+            "discount_amount",
             "shipping_cost",
             "shipping_carrier",
             "notes",
@@ -186,6 +205,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_number",
             "status",
             "total_price",
+            "discount_percent",
+            "discount_amount",
             "created_at",
             "updated_at",
         )

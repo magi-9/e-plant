@@ -8,6 +8,7 @@ import { getMe, isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getGlobalSettings } from '../api/settings';
 import client from '../api/client';
+import { buildOrderNotes } from '../utils/orderNotes';
 import { isAxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
@@ -244,18 +245,18 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
                 {items.map((item) => (
                     <div key={`${item.productId}:${item.variantReference || 'default'}`}
                         className="flex justify-between gap-2 text-sm">
-                        <span className="text-slate-600 min-w-0 truncate">
+                        <span className={`min-w-0 truncate ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-600'}`}>
                             {item.name}{item.variantLabel ? ` (${item.variantLabel})` : ''} ×{item.quantity}
                         </span>
-                        <span className="font-medium text-slate-900 flex-shrink-0 tabular-nums">
-                            {(parseFloat(item.price) * item.quantity).toFixed(2)} €
+                        <span className={`font-medium flex-shrink-0 tabular-nums ${item.isBundledScrew ? 'text-emerald-600' : 'text-slate-900'}`}>
+                            {item.isBundledScrew ? 'zadarmo' : `${(parseFloat(item.price) * item.quantity).toFixed(2)} € s DPH`}
                         </span>
                     </div>
                 ))}
             </div>
             <div className="border-t border-slate-100 pt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
-                    <span className="text-slate-500">Medziúčet</span>
+                    <span className="text-slate-500">Medziúčet s DPH</span>
                     <span className="font-medium text-slate-900">{subtotal.toFixed(2)} €</span>
                 </div>
                 <div className="flex justify-between">
@@ -266,7 +267,7 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
                 </div>
             </div>
             <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-                <span className="font-bold text-slate-900">Celkom</span>
+                <span className="font-bold text-slate-900">Celkom s DPH</span>
                 <span className="text-xl font-extrabold bg-clip-text text-transparent"
                     style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
                     {total.toFixed(2)} €
@@ -391,12 +392,6 @@ export default function CheckoutPage() {
         setError(null);
 
         try {
-            const variantNotes = items
-                .filter(i => i.variantReference)
-                .map(i => `${i.name} x${i.quantity} -> ${i.variantLabel || i.variantReference}`);
-            const mergedNotes = [formData.notes.trim(), variantNotes.length ? `Varianty: ${variantNotes.join(' | ')}` : '']
-                .filter(Boolean).join('\n\n');
-
             const orderData: CreateOrderData = {
                 customer_name: `${formData.title} ${formData.first_name} ${formData.last_name}`.trim(),
                 email: formData.email, phone: normalizedPhone,
@@ -410,8 +405,14 @@ export default function CheckoutPage() {
                 is_vat_payer: formData.is_vat_payer,
                 payment_method: formData.payment_method,
                 shipping_method: formData.shipping_method,
-                notes: mergedNotes,
-                items: items.map(i => ({ product_id: i.productId, quantity: i.quantity })),
+                notes: buildOrderNotes(formData.notes),
+                items: items
+                    .filter(i => !i.isBundledScrew)
+                    .map(i => ({
+                        product_id: i.productId,
+                        quantity: i.quantity,
+                        ...(i.bundledScrew ? { bundled_screw_product_id: i.bundledScrew.productId } : {}),
+                    })),
             };
 
             const order = await createOrder(orderData);

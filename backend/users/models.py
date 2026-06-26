@@ -3,15 +3,13 @@ from django.db import IntegrityError, models, transaction
 
 from common.models import AddressModel
 
-
-from django.conf import settings
-
 _old_warehouse_email = "warehouse@ebringer.sk"
 _old_company_email = "martin.ebringer@swanmail.sk"
+DEFAULT_CONTACT_EMAIL = "info@ebringer.sk"
 
 
 DEFAULT_COMPANY_PROFILE = {
-    "warehouse_email": f"warehouse@{settings.EMAIL_DOMAIN}",
+    "warehouse_email": DEFAULT_CONTACT_EMAIL,
     "company_name": "Martin Ebringer s.r.o.",
     "company_ico": "52595684",
     "company_dic": "2121087859",
@@ -21,16 +19,13 @@ DEFAULT_COMPANY_PROFILE = {
     "company_postal_code": "84107",
     "company_state": "Slovensko",
     "company_phone": "+421 903 428 948",
-    "company_email": (
-        f"{getattr(settings, 'CONTACT_EMAIL_LOCAL_PART', 'martin')}"
-        f"@{settings.EMAIL_DOMAIN}"
-    ),
+    "company_email": DEFAULT_CONTACT_EMAIL,
     "iban": "SK78 1100 0000 0029 4107 6639",
     "bank_name": "Tatra banka, a.s.",
     "bank_swift": "TATRSKBX",
 }
 
-DEFAULT_SENDER_EMAIL = f"noreply@{settings.EMAIL_DOMAIN}"
+DEFAULT_SENDER_EMAIL = DEFAULT_CONTACT_EMAIL
 
 
 class CustomUserManager(BaseUserManager):
@@ -88,6 +83,18 @@ class CustomUser(AbstractUser, AddressModel):
     vat_id = models.CharField(
         max_length=20, blank=True, default="", verbose_name="IČ DPH"
     )
+    annual_discount_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0
+    )
+    annual_discount_year = models.PositiveIntegerField(null=True, blank=True)
+
+    def get_active_discount_percent(self):
+        from django.utils import timezone
+
+        current_year = timezone.localdate().year
+        if self.annual_discount_year == current_year:
+            return self.annual_discount_percent
+        return 0
 
     def clean(self):
         super().clean()

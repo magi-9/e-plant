@@ -16,7 +16,7 @@ def _create_order_with_item(product, qty, order_status="paid"):
         email="t@t.com",
         phone="+421",
         order_number=f"ORD-{Order.objects.count() + 1:04d}",
-        total_price=product.price * qty,
+        total_price=product.get_gross_price() * qty,
         payment_method="bank_transfer",
         status=order_status,
         street="A",
@@ -29,6 +29,7 @@ def _create_order_with_item(product, qty, order_status="paid"):
         product=product,
         quantity=qty,
         price_snapshot=product.price,
+        vat_rate_snapshot=product.vat_rate,
     )
     return order
 
@@ -63,7 +64,7 @@ def test_stats_returns_counts(api_client, user_factory, product_factory):
     assert data["unpaid_orders"] == 1
     assert len(data["top_products"]) == 1
     assert data["top_products"][0]["total_qty"] == 2
-    assert data["top_products"][0]["total_revenue"] == 40.0
+    assert data["top_products"][0]["total_revenue"] == 42.0
 
 
 @pytest.mark.django_db

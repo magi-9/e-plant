@@ -36,15 +36,20 @@ class PricingService:
 
         for item in prepared_items:
             price_snapshot = item["price_snapshot"]
+            vat_rate = Decimal(str(item.get("vat_rate_snapshot", "0")))
             quantity = item["quantity"]
-            subtotal = price_snapshot * quantity
+            net_subtotal = price_snapshot * quantity
+            subtotal = (
+                net_subtotal * (Decimal("1.00") + vat_rate / Decimal("100"))
+            ).quantize(Decimal("0.01"))
             total_price += subtotal
 
             logger.debug(
-                "Item pricing: %s - %s × %s = %s",
+                "Item pricing: %s - %s × %s + %s%% VAT = %s",
                 item.get("product", "Unknown"),
                 quantity,
                 price_snapshot,
+                vat_rate,
                 subtotal,
             )
 
@@ -64,6 +69,16 @@ class PricingService:
         ):
             return Decimal("0.00")
         return Decimal(str(shipping_rate.price))
+
+    @staticmethod
+    def calculate_discount_amount(
+        order_total: Decimal, discount_percent: Decimal
+    ) -> Decimal:
+        if discount_percent <= 0:
+            return Decimal("0.00")
+        return (order_total * discount_percent / Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     @staticmethod
     def calculate_item_subtotal(price: Decimal, quantity: int) -> Decimal:

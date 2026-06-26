@@ -1,8 +1,9 @@
 import logging
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Avg, DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Avg, DecimalField, ExpressionWrapper, F, Sum, Value
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class OrderCreateView(generics.CreateAPIView):
     serializer_class = OrderCreateSerializer
-    permission_classes = (permissions.AllowAny,)  # Can be changed to IsAuthenticated
+    permission_classes = (permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
         order = serializer.save()
@@ -263,7 +264,12 @@ class AdminStatsView(APIView):
                 total_qty=Sum("quantity"),
                 total_revenue=Sum(
                     ExpressionWrapper(
-                        F("quantity") * F("price_snapshot"),
+                        F("quantity")
+                        * F("price_snapshot")
+                        * (
+                            Value(Decimal("1.00"))
+                            + F("vat_rate_snapshot") / Value(Decimal("100.00"))
+                        ),
                         output_field=DecimalField(max_digits=12, decimal_places=2),
                     )
                 ),

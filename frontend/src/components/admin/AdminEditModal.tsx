@@ -20,6 +20,7 @@ interface Draft {
     name: string;
     variant: string;
     price: string;
+    vatRate: string;
     cats: string[];
     compat: string[];
     details: DetailRow[];
@@ -42,6 +43,7 @@ function normalize(p: Product | null): Draft {
         name: p?.name ?? '',
         variant,
         price: p?.price ?? '',
+        vatRate: p?.vat_rate ?? '5.00',
         cats,
         compat,
         details,
@@ -180,6 +182,7 @@ export interface EditSavePayload {
     name: string;
     variant: string;
     price: string;
+    vatRate: string;
     cats: string[];
     compat: string[];
     details: Record<string, string>;
@@ -260,6 +263,9 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
         const priceValue = draft.price.trim();
         if (!priceValue) { toast.error('Doplň cenu produktu.'); return; }
         if (Number.isNaN(Number(priceValue))) { toast.error('Cena musí byť číslo.'); return; }
+        const vatRateValue = draft.vatRate.trim();
+        if (!vatRateValue) { toast.error('Doplň DPH produktu.'); return; }
+        if (Number.isNaN(Number(vatRateValue))) { toast.error('DPH musí byť číslo.'); return; }
         if (!draft.cats[0]) { toast.error('Vyber kategóriu produktu.'); return; }
         if (refConflict === 'duplicate') { toast.error('Toto referenčné číslo už existuje.'); return; }
         if (refChanged && !refConflict && !showRefWarn) { setShowRefWarn(true); return; }
@@ -268,6 +274,7 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
             name: draft.name.trim(),
             variant: draft.variant.trim(),
             price: draft.price,
+            vatRate: draft.vatRate,
             cats: draft.cats,
             compat: draft.compat,
             details: draft.details
@@ -380,12 +387,21 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
                                             />
                                         </div>
                                         <div>
-                                            <Label required hint="EUR">Cena</Label>
+                                            <Label required hint="EUR bez DPH">Cena bez DPH</Label>
                                             <StyledInput
                                                 value={draft.price}
                                                 onChange={e => set('price', e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
                                                 placeholder="0.00"
                                                 suffix="€"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label required hint="%">DPH</Label>
+                                            <StyledInput
+                                                value={draft.vatRate}
+                                                onChange={e => set('vatRate', e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+                                                placeholder="5.00"
+                                                suffix="%"
                                             />
                                         </div>
                                     </div>

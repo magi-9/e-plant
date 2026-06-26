@@ -35,6 +35,34 @@ def _make_order(is_vat_payer=False, country="SK", **extra):
     return service.create_order(base)
 
 
+def _make_order_with_products(products, **extra):
+    from orders.services.order_service import OrderService
+
+    base = dict(
+        customer_name="Test User",
+        email="test@example.com",
+        phone="0900000000",
+        street="Test 1",
+        city="Bratislava",
+        postal_code="81101",
+        is_company=True,
+        company_name="Test s.r.o.",
+        ico="12345678",
+        dic="SK1234567890",
+        dic_dph="SK1234567890",
+        payment_method="bank_transfer",
+        notes="",
+        country="SK",
+        is_vat_payer=True,
+        items=[
+            {"product_id": product.pk, "quantity": quantity}
+            for product, quantity in products
+        ],
+    )
+    base.update(extra)
+    return OrderService().create_order(base)
+
+
 @pytest.mark.django_db
 class TestVATInvoice:
     def test_non_vat_payer_invoice_has_no_vat_breakdown(self):
@@ -53,6 +81,29 @@ class TestVATInvoice:
         shop = GlobalSettings.load()
         pdf = generate_invoice_pdf(order, shop)
         assert isinstance(pdf, bytes)
+
+    def test_invoice_handles_mixed_product_vat_rates(self):
+        from orders.invoice import generate_invoice_pdf
+
+        low_vat = ProductFactory(
+            price=Decimal("100.00"), vat_rate=Decimal("5.00"), stock_quantity=10
+        )
+        high_vat = ProductFactory(
+            price=Decimal("100.00"), vat_rate=Decimal("23.00"), stock_quantity=10
+        )
+        order = _make_order_with_products([(low_vat, 1), (high_vat, 1)])
+        original_shipping_cost = order.shipping_cost
+        order.shipping_cost = Decimal("12.30")
+        order.total_price = (
+            order.total_price - original_shipping_cost + order.shipping_cost
+        )
+        order.save(update_fields=["shipping_cost", "total_price"])
+
+        pdf = generate_invoice_pdf(order, GlobalSettings.load())
+
+        assert order.total_price == Decimal("240.30")
+        assert isinstance(pdf, bytes)
+        assert len(pdf) > 100
 
     def test_order_vat_payer_flag_persists(self):
         order = _make_order(is_vat_payer=True)
