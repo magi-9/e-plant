@@ -21,7 +21,6 @@ import AdminSettings from './pages/AdminSettings';
 import AdminGrouping from './pages/AdminGrouping';
 import AdminCategories from './pages/AdminCategories';
 import AdminInventory from './pages/AdminInventory';
-import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ComplaintsPage from './pages/ComplaintsPage';
@@ -33,6 +32,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ConstructionPage from './pages/ConstructionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { parseBooleanEnv } from './utils/env';
+import { getLandingHomeHref } from './utils/landingLinks';
 import { isAdmin } from './api/auth';
 import { authService } from './api/authService';
 
@@ -111,6 +111,7 @@ function App() {
   const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
   const isShopHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedShopHost);
   const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
+  const landingHomeHref = getLandingHomeHref();
   const landingPageElement = HOME_PAGE_READY ? <HomePage /> : <ConstructionPage />;
 
   useEffect(() => {
@@ -149,7 +150,7 @@ function App() {
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
             />
             <Route path="/catalogs" element={<CatalogsPage />} />
-            <Route path="/about" element={<AboutPage />} />
+            <Route path="/about" element={<ExternalRedirect to={landingHomeHref} />} />
             <Route path="/cart" element={<CustomerOnlyRoute><CartPage /></CustomerOnlyRoute>} />
             <Route path="/checkout" element={<CustomerOnlyRoute><CheckoutPage /></CustomerOnlyRoute>} />
             <Route path="/profile" element={<ProfilePage />} />
