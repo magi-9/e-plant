@@ -1024,6 +1024,10 @@ def test_catalog_pages_include_compatible_uses_real_adaptor_0050_code(monkeypatc
     from products import views as v
 
     monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+    monkeypatch.setattr(
+        "products.compatibility.get_compatibility_codes_for_ref",
+        lambda ref: ["0050"],
+    )
 
     captured = {}
 
