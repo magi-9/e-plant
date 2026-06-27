@@ -1640,11 +1640,22 @@ class CatalogPdfPagesView(APIView):
             )  # noqa: PLC0415
 
             codes = get_compatibility_codes_for_ref(reference)
+            codes = _prefer_specific_catalog_codes(codes)
             refs_to_search = frozenset(codes) if codes else frozenset({reference})
             matching = _find_multiple_reference_pages(path, refs_to_search)
         else:
             matching = _find_reference_pages(path, reference)
         return Response({"pages": matching})
+
+
+def _prefer_specific_catalog_codes(codes: list) -> list:
+    """Drop generic code prefixes when a suffixed catalog block also matches."""
+    code_set = set(codes)
+    return [
+        code
+        for code in codes
+        if not any(other != code and other.startswith(code) for other in code_set)
+    ]
 
 
 def _find_multiple_reference_pages(pdf_path: str, references: frozenset) -> list:

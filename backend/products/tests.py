@@ -1046,6 +1046,32 @@ def test_catalog_pages_include_compatible_uses_real_adaptor_0050_code(monkeypatc
     assert captured["refs"] == frozenset({"0050"})
 
 
+def test_catalog_pages_include_compatible_prefers_0041b_for_tibase(monkeypatch):
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [137, 138]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "31.323.041.02-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [137, 138]}
+    assert captured["refs"] == frozenset({"0041B"})
+
+
 def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkeypatch):
     pages = ["unrelated page"] * 153
     pages[9] = "S/RI/RS/RSX        3,25/3,75        3,67       0050            151"
@@ -1062,3 +1088,19 @@ def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkey
 
     assert result == [151, 152]
     assert not any(page <= 42 for page in result)
+
+
+def test_find_multiple_reference_pages_distinguishes_suffixed_codes(monkeypatch):
+    pages = ["COMPATIBLE WITH 0041", "COMPATIBLE WITH\n0041B"]
+
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(returncode=0, stdout="\f".join(pages))
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    assert views._find_multiple_reference_pages("catalog.pdf", frozenset({"0041"})) == [
+        1
+    ]
+    assert views._find_multiple_reference_pages(
+        "catalog.pdf", frozenset({"0041B"})
+    ) == [2]
