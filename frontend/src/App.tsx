@@ -8,6 +8,7 @@ import ShopLayout from './components/ShopLayout';
 import CookieConsent from './components/CookieConsent';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import CatalogsPage from './pages/CatalogsPage';
 import AuthPage from './pages/AuthPage';
 import CartPage from './pages/CartPage';
@@ -148,6 +149,10 @@ function App() {
             <Route
               path="/products"
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductsPage />}
+            />
+            <Route
+              path="/products/:id"
+              element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductDetailPage />}
             />
             <Route path="/catalogs" element={<CatalogsPage />} />
             <Route path="/about" element={<ExternalRedirect to={landingHomeHref} />} />
