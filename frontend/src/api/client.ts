@@ -25,6 +25,24 @@ type ErrorWithConfig = AxiosError & {
 type RefreshService = Pick<AuthService, 'refreshAccessToken' | 'redirectToLogin'>;
 
 const isAdminRequest = (requestUrl: string): boolean => requestUrl.includes('/admin/');
+const PUBLIC_ROUTES = [
+    '/',
+    '/products',
+    '/catalogs',
+    '/about',
+    '/login',
+    '/register',
+    '/verify-email',
+    '/forgot-password',
+    '/reset-password',
+    '/terms',
+    '/privacy',
+    '/complaints',
+    '/withdrawal',
+];
+
+const isPublicRoute = (pathname: string): boolean =>
+    PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
 export const shouldAttemptTokenRefresh = (error: ErrorWithConfig): boolean => {
     const originalRequest = error.config;
@@ -64,7 +82,9 @@ export const createAuthRefreshErrorHandler = (
         await refreshService.refreshAccessToken();
         return apiClient(originalRequest);
     } catch (refreshError) {
-        refreshService.redirectToLogin('/login');
+        if (!isPublicRoute(window.location.pathname)) {
+            refreshService.redirectToLogin('/login');
+        }
         return Promise.reject(refreshError);
     }
 };

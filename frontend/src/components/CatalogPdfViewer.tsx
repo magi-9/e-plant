@@ -54,8 +54,10 @@ function waitForContainer(
     })
 }
 
-async function fetchMatchPages(reference: string): Promise<number[]> {
-    const url = `${CATALOG_PAGES_URL}?reference=${encodeURIComponent(reference)}`
+async function fetchMatchPages(reference: string, includeCompatible = false): Promise<number[]> {
+    const params = new URLSearchParams({ reference })
+    if (includeCompatible) params.set('include_compatible', '1')
+    const url = `${CATALOG_PAGES_URL}?${params.toString()}`
     catalogDebug('fetch match pages', { reference, url })
     const res = await fetch(url, {
         credentials: 'include',
@@ -233,7 +235,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
 
                 const [pdfDoc, apiPages] = await Promise.all([
                     pdfjsLib.getDocument({ url: activePdfUrl, withCredentials: true }).promise,
-                    fetchMatchPages(reference),
+                    fetchMatchPages(reference, true),
                 ])
 
                 if (cancelled) return

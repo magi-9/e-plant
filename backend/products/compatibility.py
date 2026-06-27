@@ -157,6 +157,32 @@ def get_compatible_screws_for_tibase(reference, compatibility_code=None):
     }
 
 
+@lru_cache(maxsize=1)
+def _load_code_to_refs():
+    """Return {code: frozenset(refs)} for direct ref lookup by compatibility code."""
+    if not os.path.exists(_CSV_PATH):
+        return {}
+    raw = {}
+    with open(_CSV_PATH, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            code = row.get("compatibility_code", "").strip()
+            ref = row.get("reference", "").strip()
+            if code and ref:
+                raw.setdefault(code, set()).add(ref)
+    return {k: frozenset(v) for k, v in raw.items()}
+
+
+def get_all_compatible_refs(ref):
+    """Return all refs that share a compatibility code with *ref* (excluding *ref* itself)."""
+    codes = get_compatibility_codes_for_ref(ref)
+    code_to_refs = _load_code_to_refs()
+    result: set[str] = set()
+    for code in codes:
+        result.update(code_to_refs.get(code, frozenset()))
+    result.discard(ref)
+    return frozenset(result)
+
+
 def get_compatibility_counts():
     """Return {compatibility_code: product_count} dict. Cached with TTL."""
     csv_mtime = os.path.getmtime(_CSV_PATH) if os.path.exists(_CSV_PATH) else 0

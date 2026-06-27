@@ -1622,6 +1622,10 @@ class CatalogPdfPagesView(APIView):
 
     def get(self, request):
         reference = request.query_params.get("reference", "").strip()
+        include_compatible = request.query_params.get("include_compatible", "") in (
+            "1",
+            "true",
+        )
         if not reference:
             return Response({"pages": []})
 
@@ -1629,8 +1633,54 @@ class CatalogPdfPagesView(APIView):
         if not path:
             return Response({"pages": [], "error": "Catalog PDF not found"}, status=404)
 
-        matching = _find_reference_pages(path, reference)
+        if include_compatible:
+            from products.compatibility import get_all_compatible_refs  # noqa: PLC0415
+
+            all_refs = frozenset({reference}) | get_all_compatible_refs(reference)
+            matching = _find_multiple_reference_pages(path, all_refs)
+        else:
+            matching = _find_reference_pages(path, reference)
         return Response({"pages": matching})
+
+
+def _find_multiple_reference_pages(pdf_path: str, references: frozenset) -> list:
+    """Return sorted 1-based page numbers whose text contains any of the given references."""
+    try:
+        result = subprocess.run(
+            ["pdftotext", "-layout", pdf_path, "-"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+        )
+        if result.returncode == 0:
+            pages_text = result.stdout.split("\f")
+            return sorted(
+                i + 1
+                for i, page_text in enumerate(pages_text)
+                if any(
+                    _catalog_page_contains_reference(page_text, ref)
+                    for ref in references
+                )
+            )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    try:
+        from pypdf import PdfReader  # noqa: PLC0415
+
+        reader = PdfReader(pdf_path)
+        return sorted(
+            i + 1
+            for i, page in enumerate(reader.pages)
+            if any(
+                _catalog_page_contains_reference(page.extract_text() or "", ref)
+                for ref in references
+            )
+        )
+    except Exception:
+        return []
 
 
 def _find_reference_pages(pdf_path: str, reference: str) -> list:
