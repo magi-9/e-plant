@@ -1596,6 +1596,7 @@ _CATALOG_PDF_CANDIDATES = [
     "/data/raw/PRODUCT-REFERENCE-0326_01.pdf",
 ]
 _CATALOG_REFERENCE_RE = re.compile(r"[^0-9A-Za-z]+")
+_CATALOG_COMPATIBILITY_CODE_RE = re.compile(r"\d{4}[A-Za-z]?")
 
 
 def _catalog_pdf_path():
@@ -1634,10 +1635,13 @@ class CatalogPdfPagesView(APIView):
             return Response({"pages": [], "error": "Catalog PDF not found"}, status=404)
 
         if include_compatible:
-            from products.compatibility import get_all_compatible_refs  # noqa: PLC0415
+            from products.compatibility import (
+                get_compatibility_codes_for_ref,
+            )  # noqa: PLC0415
 
-            all_refs = frozenset({reference}) | get_all_compatible_refs(reference)
-            matching = _find_multiple_reference_pages(path, all_refs)
+            codes = get_compatibility_codes_for_ref(reference)
+            refs_to_search = frozenset(codes) if codes else frozenset({reference})
+            matching = _find_multiple_reference_pages(path, refs_to_search)
         else:
             matching = _find_reference_pages(path, reference)
         return Response({"pages": matching})
@@ -1731,6 +1735,14 @@ def _normalise_catalog_reference(value: str) -> str:
 
 
 def _catalog_page_contains_reference(page_text: str, reference: str) -> bool:
+    if _CATALOG_COMPATIBILITY_CODE_RE.fullmatch(reference):
+        return bool(
+            re.search(
+                rf"\bCOMPATIBLE\s+WITH\s+{re.escape(reference)}(?![0-9A-Za-z])",
+                page_text,
+                flags=re.IGNORECASE,
+            )
+        )
     if reference in page_text:
         return True
     return _normalise_catalog_reference(reference) in _normalise_catalog_reference(

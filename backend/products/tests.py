@@ -987,3 +987,78 @@ def test_find_multiple_reference_pages_falls_back_to_pypdf(monkeypatch):
 
     refs = frozenset({"40.316.003.01-2", "99.999.999.01-2"})
     assert views._find_multiple_reference_pages("catalog.pdf", refs) == [1]
+
+
+def test_catalog_pages_include_compatible_uses_compatibility_codes(monkeypatch):
+    """include_compatible=1 should search for compatibility codes, not all compatible product refs."""
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+    monkeypatch.setattr(
+        "products.compatibility.get_compatibility_codes_for_ref",
+        lambda ref: ["0001"],
+    )
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [43, 44]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "31.322.001.01-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [43, 44]}
+    assert captured["refs"] == frozenset({"0001"})
+
+
+def test_catalog_pages_include_compatible_uses_real_adaptor_0050_code(monkeypatch):
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [151, 152]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "50.312.050.04-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [151, 152]}
+    assert captured["refs"] == frozenset({"0050"})
+
+
+def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkeypatch):
+    pages = ["unrelated page"] * 153
+    pages[9] = "S/RI/RS/RSX        3,25/3,75        3,67       0050            151"
+    pages[150] = "COMPATIBLE WITH\n0050\nLIST OF COMPATIBILITIES AVAILABLE"
+    pages[151] = "COMPATIBLE WITH 0050\n50.312.050.04-2"
+    pages[152] = "COMPATIBLE WITH\n0051\nLIST OF COMPATIBILITIES AVAILABLE"
+
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(returncode=0, stdout="\f".join(pages))
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    result = views._find_multiple_reference_pages("catalog.pdf", frozenset({"0050"}))
+
+    assert result == [151, 152]
+    assert not any(page <= 42 for page in result)
