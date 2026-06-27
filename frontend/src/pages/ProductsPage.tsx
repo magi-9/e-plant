@@ -1,6 +1,7 @@
 import { Fragment, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { PRODUCT_STATS_CACHE_INVALIDATED_EVENT, getCategoryCounts, getCompatibilityCounts, getCompatibilityOptions, getProductCategories, getProductCount, getProductTypeCounts, getProducts, type CompatibilityOption, type Product, type ProductListParams } from '../api/products';
 import { MagnifyingGlassIcon, ArrowUpIcon, ChevronDownIcon, TagIcon } from '@heroicons/react/24/outline';
 import DropdownSelect from '../components/DropdownSelect';
@@ -12,18 +13,9 @@ import { isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
 import { getCardCategories, getCategoryList } from '../utils/productCategories';
+import { getProductPreviewImage } from '../utils/productImages';
+import { clearProductsBrowseState, readProductsBrowseState, writeProductsBrowseState, type ProductsBrowseState } from '../utils/productBrowseState';
 import toast from 'react-hot-toast';
-
-const getProductPreviewImage = (product: Product): string | null => {
-    if (product.image) return product.image;
-
-    if (product.parameters?.type === 'wildcard_group') {
-        const firstVariantWithImage = (product.parameters.options || []).find((option) => !!option.image);
-        return firstVariantWithImage?.image || null;
-    }
-
-    return null;
-};
 
 const getCustomerPrice = (product: Product): string | null => product.gross_price ?? product.price;
 const getNetPrice = (product: Product): string | null => product.price;
@@ -62,7 +54,9 @@ const getVariantWord = (count: number): string => {
 
 export default function ProductsPage() {
     const loadMoreRef = useRef<HTMLDivElement>(null);
+    const [restoredBrowseState, setRestoredBrowseState] = useState<ProductsBrowseState | null>(() => readProductsBrowseState());
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
     const canUseCart = isLoggedIn && !userIsAdmin;
@@ -75,15 +69,17 @@ export default function ProductsPage() {
     const [productToRequest, setProductToRequest] = useState<Product | null>(null);
     const [openRequestModal, setOpenRequestModal] = useState(false);
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [selectedCompatibility, setSelectedCompatibility] = useState<CompatibilityOption | null>(null);
-    const [selectedProductType, setSelectedProductType] = useState<ProductTypeFilterValue | ''>('');
-    const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>('none');
-    const [maxPrice, setMaxPrice] = useState(500);
-    const [inStockOnly, setInStockOnly] = useState(false);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [searchQuery, setSearchQuery] = useState(restoredBrowseState?.searchQuery || '');
+    const [debouncedSearch, setDebouncedSearch] = useState(restoredBrowseState?.searchQuery || '');
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(restoredBrowseState?.selectedCategories || []);
+    const [selectedCompatibility, setSelectedCompatibility] = useState<CompatibilityOption | null>(restoredBrowseState?.selectedCompatibility || null);
+    const [selectedProductType, setSelectedProductType] = useState<ProductTypeFilterValue | ''>(
+        (restoredBrowseState?.selectedProductType || '') as ProductTypeFilterValue | ''
+    );
+    const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc' | 'none'>(restoredBrowseState?.priceSortOrder || 'none');
+    const [maxPrice, setMaxPrice] = useState(restoredBrowseState?.maxPrice ?? 500);
+    const [inStockOnly, setInStockOnly] = useState(restoredBrowseState?.inStockOnly || false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>(restoredBrowseState?.viewMode || 'grid');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [categoriesOpen, setCategoriesOpen] = useState(false);
     const [compatOpen, setCompatOpen] = useState(false);
@@ -175,6 +171,32 @@ export default function ProductsPage() {
     const allProducts = useMemo(() => {
         return data?.pages.flatMap(page => page.results) || [];
     }, [data]);
+
+    useEffect(() => {
+        const restoredState = restoredBrowseState;
+        if (!restoredState) return;
+
+        const hasTargetProduct = allProducts.some((product) => product.id === restoredState.targetProductId);
+        const needsMoreProducts = allProducts.length < restoredState.loadedProductCount && hasNextPage;
+
+        if (!hasTargetProduct && needsMoreProducts && !isFetchingNextPage) {
+            void fetchNextPage();
+            return;
+        }
+
+        if (!hasTargetProduct && isFetchingNextPage) return;
+
+        window.requestAnimationFrame(() => {
+            const target = document.querySelector<HTMLElement>(`[data-product-id="${restoredState.targetProductId}"]`);
+            if (target) {
+                target.scrollIntoView({ block: 'center' });
+            } else {
+                window.scrollTo({ top: restoredState.scrollY });
+            }
+            clearProductsBrowseState();
+            setRestoredBrowseState(null);
+        });
+    }, [allProducts, fetchNextPage, hasNextPage, isFetchingNextPage, restoredBrowseState]);
 
     // Fetch cached category counts from backend (pre-computed + cached server-side)
     const { data: categoryCounts = {} } = useQuery({
@@ -280,8 +302,20 @@ export default function ProductsPage() {
     }, []);
 
     const handleProductClick = (product: Product) => {
-        setSelectedProduct(product);
-        setOpenModal(true);
+        writeProductsBrowseState({
+            searchQuery,
+            selectedCategories,
+            selectedCompatibility,
+            selectedProductType,
+            priceSortOrder,
+            maxPrice,
+            inStockOnly,
+            viewMode,
+            targetProductId: product.id,
+            scrollY: window.scrollY,
+            loadedProductCount: allProducts.length,
+        });
+        navigate(`/products/${product.id}`);
     };
 
     const handleAddToCart = (e: React.MouseEvent, product: Product) => {
@@ -996,6 +1030,7 @@ export default function ProductsPage() {
                                     return (
                                 <div
                                     key={product.id}
+                                    data-product-id={product.id}
                                     onClick={() => handleProductClick(product)}
                                     style={{
                                         animation: `slideUp 0.5s ease-out ${Math.min((index % PAGE_SIZE) * 40, 320)}ms both`,
