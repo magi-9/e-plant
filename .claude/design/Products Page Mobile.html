@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E-Plant – Products Mobile</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>DAS – Produkty (Mobile)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
@@ -12,15 +12,15 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
-    body { font-family: 'Inter', sans-serif; background: #060e1e; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    @keyframes sheetBg { from { opacity: 0; } to { opacity: 1; } }
-    .fade-up { animation: fadeUp 0.22s ease-out; }
-    input[type=range] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #e2e8f0; outline: none; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #0891b2; cursor: pointer; box-shadow: 0 1px 4px rgba(8,145,178,0.35); }
-    ::-webkit-scrollbar { width: 0; height: 0; }
-    .removing { animation: fadeUp 0.3s ease reverse forwards; }
+    body { font-family: 'Inter', sans-serif; background: #0a0f1e; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 16px; overflow: hidden; }
+    #root { transform-origin: top center; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    ::-webkit-scrollbar { width:0; height:0; }
+    input[type=range] { -webkit-appearance:none; height:4px; border-radius:2px; background:#334155; outline:none; width:100%; cursor:pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#0891b2; cursor:pointer; box-shadow:0 1px 4px rgba(8,145,178,0.35); }
+    button, select { cursor:pointer; font-family:inherit; }
   </style>
 </head>
 <body>
@@ -28,201 +28,95 @@
 <script type="text/babel">
 const { useState, useMemo, useEffect, useRef } = React;
 
-const C = {
-  bg: '#f8fafc', card: '#ffffff', border: '#e2e8f0',
-  text: '#0f172a', sub: '#475569', muted: '#94a3b8',
-  cyan: '#0891b2', cyanLite: '#e0f7fa',
-  grad: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
-  nav: '#020617', navBorder: 'rgba(6,182,212,0.18)',
-};
-
-// ── DATA ──────────────────────────────────────────────────────
-const COMPAT_SYSTEMS = ['Straumann BL', 'Nobel Active', 'Nobel Biocare', 'Zimmer Biomet', 'Universal'];
-const PRODUCT_COMPAT = {
-  1:['Straumann BL'], 2:['Straumann BL'], 3:['Nobel Active'],
-  4:['Straumann BL','Nobel Active','Nobel Biocare','Zimmer Biomet'],
-  5:['Straumann BL','Nobel Active','Nobel Biocare','Zimmer Biomet'],
-  6:['Straumann BL'], 7:['Straumann BL','Nobel Active'],
-  8:['Nobel Active','Nobel Biocare'], 9:['Universal'],
-  10:['Straumann BL','Nobel Active','Nobel Biocare'],
-  11:['Nobel Biocare'], 12:['Straumann BL','Nobel Active','Nobel Biocare','Zimmer Biomet'],
-  13:['Straumann BL','Nobel Active'], 14:['Universal'], 15:['Universal'], 16:['Universal'],
-};
-const PRODUCT_VARIANTS = {
-  7:[{id:'lp1',label:'Low Profile 1 mm',price:142},{id:'lp2',label:'Low Profile 2 mm',price:148},{id:'lp3',label:'Standard 3 mm',price:155},{id:'lp4',label:'High Profile 4 mm',price:162}],
-  8:[{id:'st0',label:'0° Straight',price:156},{id:'st17',label:'17° Angled',price:168},{id:'st30',label:'30° Angled',price:178}],
-  10:[{id:'gs-s',label:'Starter Set (3 impl.)',price:320},{id:'gs-m',label:'Medium Set (5 impl.)',price:480},{id:'gs-l',label:'Pro Set (8 impl.)',price:720},{id:'gs-xl',label:'Full Arch Set',price:980},{id:'gs-d',label:'Digital Integration',price:1100},{id:'gs-c',label:'Custom Template',price:null}],
-  12:[{id:'ot-35',label:'Ø 3.5 Open Tray',price:32},{id:'ot-40',label:'Ø 4.0 Open Tray',price:34},{id:'ot-45',label:'Ø 4.5 Open Tray',price:36},{id:'ct-35',label:'Ø 3.5 Closed Tray',price:30},{id:'ct-40',label:'Ø 4.0 Closed Tray',price:32}],
-  15:[{id:'a1',label:'Shade A1',price:54},{id:'a2',label:'Shade A2',price:54},{id:'b1',label:'Shade B1',price:56}],
-};
-const PRODUCTS = [
-  {id:1,name:'TiBase Ø 3.5 – Straumann BL',cat:'TiBase',price:79,stock:12,ref:'DAS-TB-035-SBL'},
-  {id:2,name:'TiBase Ø 4.0 – Straumann BL',cat:'TiBase',price:89,stock:8,ref:'DAS-TB-040-SBL'},
-  {id:3,name:'TiBase Ø 4.5 – Nobel Active',cat:'TiBase',price:89,stock:0,ref:'DAS-TB-045-NA'},
-  {id:4,name:'Skenovacie telo Multi-Unit Ø 5.0',cat:'Skenovacie telá',price:45.5,stock:15,ref:'DAS-ST-MU-050'},
-  {id:5,name:'Skenovacie telo Ø 3.5',cat:'Skenovacie telá',price:38,stock:22,ref:'DAS-ST-035'},
-  {id:6,name:'Uhľový Abutment 17° – Straumann BL',cat:'Abutmenty',price:124,stock:3,ref:'DAS-UA-17-SBL'},
-  {id:7,name:'Multi-Unit Abutment Ø 4.0 Low Profile',cat:'Multi-Unit',price:null,stock:5,ref:'DAS-MUA-040-LP'},
-  {id:8,name:'Multi-Unit Abutment Ø 5.0 Standard',cat:'Multi-Unit',price:156,stock:2,ref:'DAS-MUA-050-ST'},
-  {id:9,name:'CAD/CAM Blank Titanium Grade 5',cat:'CAD/CAM',price:67,stock:30,ref:'DAS-CC-TI5'},
-  {id:10,name:'Guided Surgery Template System',cat:'Chirurgia',price:null,stock:7,ref:'DAS-GS-TSS'},
-  {id:11,name:'Drill Protocol Set – Nobel Biocare',cat:'Chirurgia',price:298,stock:1,ref:'DAS-DP-NB'},
-  {id:12,name:'Impression Coping Open Tray',cat:'Odtlačky',price:32,stock:18,ref:'DAS-IC-OT'},
-  {id:13,name:'Healing Abutment Ø 4.0 H4',cat:'Hojenie',price:28.5,stock:25,ref:'DAS-HA-040-H4'},
-  {id:14,name:'Torque Wrench 35 Ncm Kit',cat:'Nástroje',price:189,stock:4,ref:'DAS-TW-35K'},
-  {id:15,name:'Zirconia Blank 98 mm Full Contour',cat:'CAD/CAM',price:54,stock:11,ref:'DAS-ZB-98FC'},
-  {id:16,name:'PMMA Blank 98 mm A2',cat:'CAD/CAM',price:18,stock:40,ref:'DAS-PMMA-98-A2'},
+const PRODUCT_TYPES = [
+  { value:'tibase',     label:'TiBase',    count:48 },
+  { value:'multi_unit', label:'Multi-Unit', count:32 },
+  { value:'screws',     label:'Skrutky',   count:24 },
+  { value:'scanbody',   label:'Scanbody',  count:18 },
+  { value:'analogs',    label:'Analógy',   count:15 },
+  { value:'abutments',  label:'Abutmenty', count:12 },
+  { value:'adapters',   label:'Adaptéry',  count:8 },
+  { value:'tools',      label:'Nástroje',  count:6 },
 ];
-const CATS = [...new Set(PRODUCTS.map(p => p.cat))];
+const CATEGORIES = [
+  'TITANIUM BASE (screw included)', 'MULTI-UNIT', 'SCREWS',
+  'SCANBODY TIBASE', 'SCANBODY MULTI-UNIT', 'ANALOGS',
+  'ABUTMENTS', 'ADAPTERS CAD/CAM', 'TOOLS',
+];
+const COMPAT_CODES = [
+  {code:'0041',count:86},{code:'0041B',count:32},{code:'0052',count:48},
+  {code:'0063',count:31},{code:'0074',count:24},{code:'0085',count:18},
+];
+const COMPATIBLE_SCREWS = [
+  {id:101,name:'Prosthetic Screw M2 L10',ref:'40.001',stock:50},
+  {id:102,name:'Prosthetic Screw M2 L14',ref:'40.002',stock:32},
+  {id:103,name:'Carrier Screw M1.6 L12',ref:'41.001',stock:0},
+];
+const VARIANT_OPTIONS = [
+  {ref:'31.001-35',label:'Ø3.5 NP · PLATFORM(mm): 3.5'},
+  {ref:'31.001-40',label:'Ø4.0 RP · PLATFORM(mm): 4.0'},
+  {ref:'31.001-45',label:'Ø4.5 WP · PLATFORM(mm): 4.5'},
+  {ref:'31.001-50',label:'Ø5.0 WP · PLATFORM(mm): 5.0'},
+];
+const PRODUCTS = [
+  {id:1, name:'TiBase NP Ø3.5 Screw Included',  ref:'31.001-35', type:'tibase',     cat:'TITANIUM BASE (screw included)', net:'89.00',  gross:'106.80', stock:12, compat:['0041','0052']},
+  {id:2, name:'TiBase WP Ø4.0 Screw Included',  ref:'31.002-40', type:'tibase',     cat:'TITANIUM BASE (screw included)', net:'89.00',  gross:'106.80', stock:4,  compat:['0041']},
+  {id:3, name:'TiBase EWP Ø5.0 Screw Included', ref:'31.003-50', type:'tibase',     cat:'TITANIUM BASE (screw included)', net:'92.00',  gross:'110.40', stock:0,  compat:['0041']},
+  {id:4, name:'Multi-Unit Abutment 0° Standard', ref:'42.001-0S', type:'multi_unit', cat:'MULTI-UNIT',                    net:'134.00', gross:'160.80', stock:5,  compat:['0041','0041B']},
+  {id:5, name:'Multi-Unit Abutment 17° Angled',  ref:'42.001-17', type:'multi_unit', cat:'MULTI-UNIT',                    net:'148.00', gross:'177.60', stock:0,  compat:['0041']},
+  {id:6, name:'Prosthetic Screw M2 L10',         ref:'40.001',    type:'screws',     cat:'SCREWS',                        net:'8.50',   gross:'10.20',  stock:50, compat:['0041']},
+  {id:7, name:'Carrier Screw M1.6 L12',          ref:'41.001',    type:'screws',     cat:'SCREWS',                        net:'7.20',   gross:'8.64',   stock:45, compat:['0041','0052']},
+  {id:8, name:'Scanbody TiBase NP',              ref:'30.001-NP', type:'scanbody',   cat:'SCANBODY TIBASE',               net:'52.00',  gross:'62.40',  stock:20, compat:['0041','0052']},
+  {id:9, name:'Analog Implant Level NP',         ref:'22.001',    type:'analogs',    cat:'ANALOGS',                       net:'18.00',  gross:'21.60',  stock:30, compat:['0041','0063']},
+  {id:10,name:'Angled Abutment 17° NP',          ref:'21.001-17', type:'abutments',  cat:'ABUTMENTS',                     net:'178.00', gross:'213.60', stock:3,  compat:['0041','0052','0063']},
+  {id:15,name:'TiBase Multi-System Pack',        ref:null, type:'tibase',     cat:'TITANIUM BASE (screw included)', net:'89.00', gross:'106.80', stock:28, isGroup:true, variantCount:8,  maskedRef:'31.XXX', compat:['0041','0052','0063']},
+  {id:16,name:'Multi-Unit Complete Pack',        ref:null, type:'multi_unit', cat:'MULTI-UNIT',                    net:'134.00',gross:'160.80', stock:18, isGroup:true, variantCount:12, maskedRef:'42.XXX', compat:['0041','0041B']},
+];
 
-// ── ATOMS ─────────────────────────────────────────────────────
-function GBtn({ children, onClick, outline, sm, full, disabled, style={} }) {
-  const [pressed, setPressed] = useState(false);
+const getVariantWord = n => {
+  const l2=n%100,l1=n%10;
+  if(l2>=11&&l2<=14) return 'variantov';
+  if(l1===1) return 'variant';
+  if(l1>=2&&l1<=4) return 'varianty';
+  return 'variantov';
+};
+
+// ── PRODUCT CARD (mobile) ─────────────────────────────────────────────────────
+function MobileCard({product,cart,onAddToCart,onOpen}) {
+  const qty=cart[product.id]||0;
+  const stockDot=product.stock>5?'#10b981':product.stock>0?'#f59e0b':'#ef4444';
   return (
-    <button onClick={onClick} disabled={disabled}
-      onPointerDown={() => setPressed(true)} onPointerUp={() => setPressed(false)} onPointerLeave={() => setPressed(false)}
-      style={{
-        display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
-        padding: sm ? '9px 18px' : '13px 22px', width: full ? '100%' : undefined,
-        borderRadius:9999, background: outline ? 'transparent' : disabled ? '#e2e8f0' : C.grad,
-        border: outline ? `1.5px solid ${C.cyan}` : 'none',
-        color: outline ? C.cyan : disabled ? C.muted : '#fff',
-        fontSize: sm ? 13 : 14, fontWeight:600, fontFamily:'Inter',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transform: pressed && !disabled ? 'scale(0.97)' : 'scale(1)',
-        transition:'transform 0.1s, box-shadow 0.2s',
-        boxShadow: outline || disabled ? 'none' : '0 4px 16px rgba(6,182,212,0.25)',
-        letterSpacing:'-0.01em', whiteSpace:'nowrap', ...style,
-      }}>{children}</button>
-  );
-}
-
-function StockDot({ stock }) {
-  const bg = stock >= 5 ? '#10b981' : stock >= 1 ? '#f59e0b' : '#ef4444';
-  return <span style={{ width:7, height:7, borderRadius:'50%', background:bg, flexShrink:0, display:'inline-block' }} />;
-}
-
-function ImgPlaceholder({ cat }) {
-  return (
-    <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#f0fdfe 0%,#ecfdf5 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4 }}>
-      <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-        <rect x="4" y="10" width="28" height="20" rx="3" stroke="#94a3b8" strokeWidth="1.5" fill="none"/>
-        <circle cx="13" cy="17" r="3" stroke="#94a3b8" strokeWidth="1.5" fill="none"/>
-        <path d="M4 26l7-6 5 4 5-5 11 8" stroke="#94a3b8" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <span style={{ fontFamily:'monospace', fontSize:7, color:'#94a3b8', textAlign:'center', lineHeight:1.3 }}>photo{'\n'}{cat}</span>
-    </div>
-  );
-}
-
-// ── NAV — consistent with checkout ────────────────────────────
-function AppNav({ cartCount, onCartTap }) {
-  return (
-    <div style={{
-      height:54, display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'0 14px', background:C.nav, borderBottom:`1px solid ${C.navBorder}`,
-      flexShrink:0,
-    }}>
-      <span style={{ fontWeight:800, fontSize:15, letterSpacing:'-0.04em', background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>DAS</span>
-      <span style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Produkty</span>
-      <div style={{ position:'relative', cursor:'pointer' }} onClick={onCartTap}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
-        </svg>
-        {cartCount > 0 && (
-          <span style={{ position:'absolute', top:-5, right:-5, background:'#ef4444', color:'#fff', borderRadius:'50%', width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, fontWeight:700 }}>{cartCount}</span>
+    <div onClick={()=>onOpen(product)} style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid #e2e8f0',boxShadow:'0 1px 4px rgba(0,0,0,0.05)',display:'flex',flexDirection:'column',cursor:'pointer',animation:'fadeUp 0.3s ease-out both'}}>
+      <div style={{height:130,background:'linear-gradient(135deg,#f0fdfe,#ecfdf5)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="#cbd5e1"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        {!product.isGroup&&(
+          <div style={{position:'absolute',top:8,right:8}}>
+            {product.stock>5?<span style={{fontSize:10,fontWeight:600,background:'#ecfdf5',color:'#166534',padding:'2px 6px',borderRadius:5}}>Na sklade</span>
+            :product.stock>0?<span style={{fontSize:10,fontWeight:600,background:'#fffbeb',color:'#92400e',padding:'2px 6px',borderRadius:5}}>Posl. {product.stock} ks</span>
+            :<span style={{fontSize:10,fontWeight:600,background:'#fef2f2',color:'#dc2626',padding:'2px 6px',borderRadius:5}}>Vypredané</span>}
+          </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// ── SEARCH BAR ────────────────────────────────────────────────
-function SearchBar({ value, onChange, onFilterTap, activeFilters }) {
-  return (
-    <div style={{ padding:'10px 12px 8px', background:C.nav, borderBottom:`1px solid ${C.navBorder}`, flexShrink:0, display:'flex', gap:8 }}>
-      <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'0 12px', height:40 }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input value={value} onChange={e => onChange(e.target.value)} placeholder="Hľadať produkt, ref..."
-          style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:13, color:'#fff', fontFamily:'Inter' }}
-        />
-        {value && <button onClick={() => onChange('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontSize:16, lineHeight:1, padding:0 }}>×</button>}
-      </div>
-      <button onClick={onFilterTap} style={{
-        height:40, minWidth:40, borderRadius:12, border:'none', cursor:'pointer',
-        background: activeFilters > 0 ? C.grad : 'rgba(255,255,255,0.07)',
-        display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'0 10px',
-        position:'relative',
-      }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeFilters > 0 ? '#fff' : 'rgba(255,255,255,0.6)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
-        </svg>
-        {activeFilters > 0 && <span style={{ fontSize:11, color:'#fff', fontWeight:700 }}>{activeFilters}</span>}
-      </button>
-    </div>
-  );
-}
-
-// ── CATEGORY STRIP ────────────────────────────────────────────
-function CatStrip({ cats, selected, onSelect }) {
-  return (
-    <div style={{ display:'flex', gap:6, padding:'8px 12px', overflowX:'auto', flexShrink:0, background:C.nav }}>
-      {['Všetko', ...cats].map(cat => {
-        const active = cat === 'Všetko' ? selected.length === 0 : selected.includes(cat);
-        return (
-          <button key={cat} onClick={() => cat === 'Všetko' ? onSelect([]) : onSelect(s => s.includes(cat) ? s.filter(c=>c!==cat) : [...s,cat])} style={{
-            flexShrink:0, padding:'5px 12px', borderRadius:20, border:'none', cursor:'pointer',
-            background: active ? C.grad : 'rgba(255,255,255,0.08)',
-            color: active ? '#fff' : 'rgba(255,255,255,0.6)',
-            fontSize:12, fontWeight: active ? 600 : 400, fontFamily:'Inter',
-            boxShadow: active ? '0 2px 8px rgba(6,182,212,0.3)' : 'none',
-            transition:'all 0.15s',
-          }}>{cat}</button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── PRODUCT CARD (2-col) ──────────────────────────────────────
-function ProductCard({ product, onTap, onAdd, inCart }) {
-  const variants = PRODUCT_VARIANTS[product.id] || [];
-  return (
-    <div onClick={() => onTap(product)} style={{
-      background:C.card, borderRadius:18, border:`1px solid ${C.border}`,
-      overflow:'hidden', display:'flex', flexDirection:'column',
-      boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
-    }}>
-      <div style={{ height:110, background:'#f8fafc', position:'relative' }}>
-        <ImgPlaceholder cat={product.cat} />
-        {product.stock === 0 && <div style={{ position:'absolute', top:6, right:6, background:'#fee2e2', border:'1px solid #fca5a5', borderRadius:6, padding:'2px 6px', fontSize:9, fontWeight:600, color:'#991b1b' }}>Vypredané</div>}
-        {product.stock > 0 && product.stock <= 3 && <div style={{ position:'absolute', top:6, right:6, background:'#fef3c7', border:'1px solid #fcd34d', borderRadius:6, padding:'2px 6px', fontSize:9, fontWeight:600, color:'#92400e' }}>Posl. {product.stock} ks</div>}
-        {variants.length > 0 && <div style={{ position:'absolute', top:6, left:6, background:'rgba(8,145,178,0.88)', borderRadius:6, padding:'2px 6px', fontSize:9, fontWeight:600, color:'#fff' }}>{variants.length} var.</div>}
-      </div>
-      <div style={{ padding:'10px 10px 10px', flex:1, display:'flex', flexDirection:'column' }}>
-        <p style={{ fontSize:9, fontWeight:600, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:3 }}>{product.cat}</p>
-        <p style={{ fontSize:12, fontWeight:600, color:C.text, lineHeight:1.3, flex:1, marginBottom:6 }}>{product.name}</p>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:8, borderTop:`1px solid ${C.border}` }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-            <StockDot stock={product.stock} />
-            {product.price
-              ? <span style={{ fontSize:13, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{product.price.toFixed(0)}€</span>
-              : <span style={{ fontSize:10, color:C.cyan, fontWeight:600, background:C.cyanLite, padding:'1px 6px', borderRadius:20 }}>Člen.</span>
-            }
+      <div style={{padding:'10px 12px 12px',flex:1,display:'flex',flexDirection:'column'}}>
+        <h3 style={{fontSize:12,fontWeight:600,color:'#0f172a',lineHeight:1.4,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',marginBottom:3}}>{product.name}</h3>
+        {product.isGroup?<p style={{fontSize:10,color:'#0891b2',fontWeight:600}}>{product.variantCount} {getVariantWord(product.variantCount)}</p>:product.ref&&<p style={{fontSize:10,color:'#64748b',fontWeight:500}}>{product.ref}</p>}
+        <div style={{marginTop:'auto',paddingTop:8,borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
+          <div>
+            <p style={{fontSize:9,color:'#94a3b8',marginBottom:1}}>bez DPH {product.net} €</p>
+            <p style={{fontSize:13,fontWeight:700,background:'linear-gradient(135deg,#0891b2,#059669)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>{product.gross} €</p>
           </div>
-          {product.stock > 0 && (
-            inCart > 0
-              ? <div style={{ display:'flex', alignItems:'center', border:`1.5px solid ${C.cyan}`, borderRadius:20, overflow:'hidden', background:C.cyanLite }}>
-                  <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,-1);}} style={{ width:24, height:24, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-                  <span style={{ fontSize:11, fontWeight:700, color:C.cyan, padding:'0 4px' }}>{inCart}</span>
-                  <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,1);}} style={{ width:24, height:24, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-                </div>
-              : <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,1);}} style={{
-                  width:28, height:28, borderRadius:'50%', background:C.grad, border:'none', cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(6,182,212,0.35)',
-                }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
+          {qty>0?(
+            <div style={{display:'inline-flex',alignItems:'center',borderRadius:999,border:'1.5px solid #06b6d4',background:'#e0f7fa'}} onClick={e=>e.stopPropagation()}>
+              <button onClick={e=>{e.stopPropagation();onAddToCart(product.id,-1);}} style={{width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',color:'#0891b2',fontSize:15,fontWeight:300}}>−</button>
+              <span style={{fontSize:11,fontWeight:700,color:'#0891b2',padding:'0 4px'}}>{qty}</span>
+              <button onClick={e=>{e.stopPropagation();onAddToCart(product.id,1);}} style={{width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',color:'#0891b2',fontSize:15,fontWeight:300}}>+</button>
+            </div>
+          ):product.stock>0?(
+            <button onClick={e=>{e.stopPropagation();onAddToCart(product.id,1);}} style={{width:30,height:30,borderRadius:'50%',background:'linear-gradient(135deg,#06b6d4,#10b981)',border:'none',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',flexShrink:0}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          ):(
+            <button onClick={e=>e.stopPropagation()} style={{fontSize:10,color:'#94a3b8',background:'none',border:'none',textDecoration:'underline'}}>Požiadať</button>
           )}
         </div>
       </div>
@@ -230,429 +124,330 @@ function ProductCard({ product, onTap, onAdd, inCart }) {
   );
 }
 
-// ── PRODUCT ROW (list) ────────────────────────────────────────
-function ProductRow({ product, onTap, onAdd, inCart }) {
-  const variants = PRODUCT_VARIANTS[product.id] || [];
+// ── SPEC ROWS (course-style detail rows) ──────────────────────────────────────
+const ICON_PATHS = {
+  layers:'M12 2l9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5',
+  tag:'M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01',
+  hash:'M4 9h16M4 15h16M10 3L8 21M16 3l-2 18',
+  doc:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8',
+  ruler:'M21.3 8.7l-8.6-8.6a1 1 0 00-1.4 0L.7 10.7a1 1 0 000 1.4l8.6 8.6a1 1 0 001.4 0l10.6-10.6a1 1 0 000-1.4zM7 9l2 2M11 5l2 2M15 9l2 2',
+};
+function SpecRow({icon,label,value,mono}) {
   return (
-    <div onClick={() => onTap(product)} style={{
-      background:C.card, borderRadius:16, border:`1px solid ${C.border}`,
-      padding:'11px 12px', display:'flex', alignItems:'center', gap:10,
-      boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
-    }}>
-      <div style={{ width:52, height:52, borderRadius:12, overflow:'hidden', flexShrink:0, background:'#f0fdfe' }}>
-        <ImgPlaceholder cat={product.cat} />
+    <div style={{display:'flex',gap:11,alignItems:'flex-start',marginBottom:14}}>
+      <div style={{width:34,height:34,flexShrink:0,borderRadius:'50%',background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 3px 8px rgba(6,182,212,0.22)'}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON_PATHS[icon]||ICON_PATHS.hash}/></svg>
       </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          <p style={{ fontSize:13, fontWeight:600, color:C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{product.name}</p>
-          <StockDot stock={product.stock} />
-        </div>
-        <div style={{ display:'flex', gap:6, marginTop:2 }}>
-          <span style={{ fontSize:10, color:C.cyan, fontWeight:600 }}>{product.cat}</span>
-          {variants.length > 0 && <span style={{ fontSize:10, color:'#8b5cf6', fontWeight:500 }}>{variants.length} var.</span>}
-        </div>
-      </div>
-      <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:8 }}>
-        {product.price
-          ? <span style={{ fontSize:14, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{product.price.toFixed(0)}€</span>
-          : <span style={{ fontSize:10, color:C.cyan, fontWeight:600, background:C.cyanLite, padding:'2px 7px', borderRadius:20 }}>Člen.</span>
-        }
-        {product.stock > 0 && (
-          inCart > 0
-            ? <div style={{ display:'flex', alignItems:'center', border:`1.5px solid ${C.cyan}`, borderRadius:20, overflow:'hidden', background:C.cyanLite }}>
-                <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,-1);}} style={{ width:26, height:26, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-                <span style={{ fontSize:12, fontWeight:700, color:C.cyan, padding:'0 5px' }}>{inCart}</span>
-                <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,1);}} style={{ width:26, height:26, background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-              </div>
-            : <button onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAdd(product,1);}} style={{
-                width:30, height:30, borderRadius:'50%', background:C.grad, border:'none', cursor:'pointer',
-                display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px rgba(6,182,212,0.3)',
-              }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
-        )}
+      <div style={{minWidth:0,paddingTop:1}}>
+        <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:2}}>{label}</p>
+        <p style={{fontSize:13,fontWeight:600,color:'#1e293b',lineHeight:1.4,fontFamily:mono?'monospace':'inherit',wordBreak:'break-word'}}>{value}</p>
       </div>
     </div>
   );
 }
 
-// ── FILTER BOTTOM SHEET ───────────────────────────────────────
-function FilterSheet({ open, onClose, selectedCats, setSelectedCats, selectedCompats, setSelectedCompats, maxPrice, setMaxPrice, inStockOnly, setInStockOnly, sortPrice, setSortPrice, availableCompats, availableCats, onReset }) {
-  if (!open) return null;
+// ── PRODUCT DETAIL SHEET ──────────────────────────────────────────────────────
+function DetailSheet({product,onClose,cart,onAddToCart}) {
+  const [selVariant,setSelVariant]=useState(VARIANT_OPTIONS[0].ref);
+  const [selScrew,setSelScrew]=useState(COMPATIBLE_SCREWS[0].id);
+  const qty=cart[product.id]||0;
+  const isTiBase=product.type==='tibase';
+  const activeVar=VARIANT_OPTIONS.find(v=>v.ref===selVariant)||VARIANT_OPTIONS[0];
+  const platform=(activeVar.label.match(/PLATFORM\(mm\):\s*([\d.]+)/)||[])[1];
+  const refValue=product.isGroup?selVariant:(product.ref||product.maskedRef);
   return (
-    <>
-      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', zIndex:200, backdropFilter:'blur(2px)', animation:'sheetBg 0.2s ease' }} />
-      <div style={{
-        position:'absolute', bottom:0, left:0, right:0, background:C.card,
-        borderRadius:'20px 20px 0 0', zIndex:201, maxHeight:'80%', overflowY:'auto',
-        animation:'slideUp 0.28s cubic-bezier(0.32,0.72,0,1)',
-        paddingBottom:28,
-      }}>
-        {/* Handle */}
-        <div style={{ display:'flex', justifyContent:'center', padding:'10px 0 6px' }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:C.border }} />
+    <div style={{position:'absolute',inset:0,zIndex:50}}>
+      <div style={{position:'absolute',inset:0,background:'rgba(2,6,23,0.7)',animation:'fadeIn 0.2s ease-out both'}} onClick={onClose} />
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'#fff',borderRadius:'22px 22px 0 0',maxHeight:'88%',display:'flex',flexDirection:'column',animation:'sheetUp 0.28s ease-out both',overflow:'hidden'}}>
+        {/* Drag handle */}
+        <div style={{display:'flex',justifyContent:'center',padding:'10px 0 6px',flexShrink:0}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'#e2e8f0'}} />
         </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 16px 14px' }}>
-          <p style={{ fontSize:16, fontWeight:700, color:C.text }}>Filtre</p>
-          <button onClick={onReset} style={{ background:'none', border:'none', cursor:'pointer', fontSize:12, color:C.cyan, fontWeight:600, fontFamily:'Inter' }}>Resetovať</button>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 16px 10px',flexShrink:0}}>
+          <p style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.1em'}}>Detail produktu</p>
+          <button onClick={onClose} style={{width:28,height:28,borderRadius:8,background:'#f8fafc',border:'none',display:'flex',alignItems:'center',justifyContent:'center',color:'#94a3b8'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-
-        {/* Sort */}
-        <div style={{ padding:'0 16px 16px' }}>
-          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Zoradiť</p>
-          <div style={{ display:'flex', gap:6 }}>
-            {[['none','Predvolené'],['asc','Cena ↑'],['desc','Cena ↓']].map(([v,l]) => (
-              <button key={v} onClick={() => setSortPrice(v)} style={{
-                flex:1, padding:'8px 0', borderRadius:10, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'Inter',
-                background: sortPrice===v ? C.grad : C.bg,
-                color: sortPrice===v ? '#fff' : C.sub,
-              }}>{l}</button>
-            ))}
+        <div style={{overflowY:'auto',flex:1,paddingBottom:32}}>
+          {/* Image */}
+          <div style={{margin:'0 16px 12px',borderRadius:14,height:160,background:'linear-gradient(135deg,#f0fdfe,#ecfdf5)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="#cbd5e1"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+          </div>
+          <div style={{padding:'0 16px'}}>
+            <h3 style={{fontSize:18,fontWeight:700,color:'#0f172a',marginBottom:4,lineHeight:1.2}}>{product.name}</h3>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,flexWrap:'wrap'}}>
+              {product.isGroup?<span style={{fontSize:13,color:'#64748b'}}>{product.maskedRef}</span>:product.ref&&<span style={{fontSize:13,color:'#64748b'}}>{product.ref}</span>}
+              <span style={{width:7,height:7,borderRadius:'50%',background:product.stock>5?'#10b981':product.stock>0?'#f59e0b':'#ef4444'}} />
+              <span style={{fontSize:12,color:'#64748b'}}>{product.stock>0?`${product.stock} ks`:'Vypredané'}</span>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0891b2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span style={{fontSize:12,color:'#0891b2',fontWeight:500}}>{product.cat}</span>
+            </div>
+            {(product.compat||[]).length>0&&(
+              <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:14}}>
+                {product.compat.map(c=><span key={c} style={{padding:'3px 7px',borderRadius:5,fontSize:11,fontWeight:700,background:'rgba(139,92,246,0.09)',color:'#7c3aed',border:'1px solid rgba(139,92,246,0.2)'}}>⬡ {c}</span>)}
+              </div>
+            )}
+            {product.isGroup&&(
+              <div style={{marginBottom:16}}>
+                <select value={selVariant} onChange={e=>setSelVariant(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid #e2e8f0',fontSize:13,color:'#0f172a',background:'#fff',fontFamily:'inherit',outline:'none'}}>
+                  {VARIANT_OPTIONS.map(v=><option key={v.ref} value={v.ref}>{v.label}</option>)}
+                </select>
+              </div>
+            )}
+            {isTiBase&&(
+              <div style={{marginBottom:16}}>
+                <p style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Skrutka <span style={{color:'#059669'}}>({qty||1} ks zadarmo)</span></p>
+                {COMPATIBLE_SCREWS.map(sc=>(
+                  <label key={sc.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:8,border:'1px solid',fontSize:13,marginBottom:6,cursor:sc.stock>0?'pointer':'not-allowed',opacity:sc.stock===0?0.5:1,borderColor:selScrew===sc.id?'#06b6d4':'#e2e8f0',background:selScrew===sc.id?'#e0f7fa':'#fff'}}>
+                    <input type="radio" name="mscrew" value={sc.id} checked={selScrew===sc.id} onChange={()=>sc.stock>0&&setSelScrew(sc.id)} disabled={sc.stock===0} style={{accentColor:'#0891b2'}} />
+                    <span style={{flex:1}}>{sc.name}{sc.stock===0&&<span style={{marginLeft:6,fontSize:10,color:'#ef4444'}}>(nie je skladom)</span>}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {/* Detaily a vlastnosti */}
+            <div style={{marginBottom:16,paddingTop:14,borderTop:'1px solid #f1f5f9'}}>
+              <p style={{fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:14}}>Detaily a vlastnosti</p>
+              <SpecRow icon="layers" label="Systémy" value={product.cat} />
+              {(product.compat||[]).length>0&&<SpecRow icon="tag" label="Kódy kompatibility" value={product.compat.join(', ')} mono />}
+              {product.isGroup&&platform&&<SpecRow icon="ruler" label="Platforma" value={`Ø ${platform} mm`} mono />}
+              <SpecRow icon="hash" label="Referencia" value={refValue} mono />
+            </div>
+            {/* Price + CTA */}
+            <div style={{paddingTop:14,borderTop:'1px solid #f1f5f9'}}>
+              <p style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>bez DPH {product.net} €</p>
+              <p style={{fontSize:22,fontWeight:700,color:'#0891b2',marginBottom:14}}>{product.gross} € <span style={{fontSize:13,fontWeight:400,color:'#64748b'}}>s DPH</span></p>
+              {qty>0?(
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  <div style={{display:'flex',alignItems:'center',height:48,borderRadius:10,border:'1px solid #a5f3fc',background:'#e0f7fa',overflow:'hidden'}}>
+                    <button onClick={()=>onAddToCart(product.id,-1)} style={{width:48,height:'100%',background:'none',border:'none',color:'#0891b2',fontSize:20,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>-</button>
+                    <span style={{flex:1,textAlign:'center',fontWeight:700,color:'#0c4a6e',borderLeft:'1px solid #a5f3fc',borderRight:'1px solid #a5f3fc',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#fff',gap:4}}>
+                      {qty}<span style={{fontSize:10,color:'#0891b2',fontWeight:400}}>v košíku</span>
+                    </span>
+                    <button onClick={()=>onAddToCart(product.id,1)} style={{width:48,height:'100%',background:'none',border:'none',color:'#0891b2',fontSize:20,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                  </div>
+                  <button onClick={onClose} style={{height:48,borderRadius:10,background:'linear-gradient(135deg,#06b6d4,#0891b2)',border:'none',color:'#fff',fontSize:14,fontWeight:600}}>Do košíka →</button>
+                </div>
+              ):product.stock<=0?(
+                <button style={{width:'100%',height:48,borderRadius:10,background:'#64748b',border:'none',color:'#fff',fontSize:14,fontWeight:600}}>Požiadať produkt</button>
+              ):(
+                <button onClick={()=>onAddToCart(product.id,1)} style={{width:'100%',height:48,borderRadius:10,background:'linear-gradient(135deg,#06b6d4,#10b981)',border:'none',color:'#fff',fontSize:14,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                  Pridať do košíka
+                </button>
+              )}
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
+// ── MOBILE FILTERS SHEET ──────────────────────────────────────────────────────
+function FiltersSheet({onClose,selType,setSelType,selCats,setSelCats,selCompat,setSelCompat,sortOrder,setSortOrder,maxPrice,setMaxPrice,inStock,setInStock}) {
+  const activeCount=[selType,selCats.length>0,selCompat,inStock,maxPrice<500,sortOrder!=='none'].filter(Boolean).length;
+  const sec=(title)=><h3 style={{fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:12}}>{title}</h3>;
+  const gradBtn=(active)=>({width:'100%',textAlign:'left',padding:'11px 14px',borderRadius:10,fontSize:14,fontWeight:500,border:'none',background:active?'linear-gradient(135deg,#06b6d4,#10b981)':'#f8fafc',color:active?'#fff':'#475569',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'});
+  return (
+    <div style={{position:'absolute',inset:0,zIndex:60}}>
+      <div style={{position:'absolute',inset:0,background:'rgba(2,6,23,0.6)',animation:'fadeIn 0.2s both'}} onClick={onClose} />
+      <div style={{position:'absolute',bottom:0,left:0,right:0,background:'#fff',borderRadius:'22px 22px 0 0',maxHeight:'82%',display:'flex',flexDirection:'column',animation:'sheetUp 0.28s ease-out both'}}>
+        <div style={{display:'flex',justifyContent:'center',padding:'10px 0 4px',flexShrink:0}}>
+          <div style={{width:36,height:4,borderRadius:2,background:'#e2e8f0'}} />
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 16px 12px',flexShrink:0}}>
+          <h2 style={{fontSize:18,fontWeight:700,color:'#0f172a'}}>Filtre</h2>
+          <button onClick={onClose} style={{width:30,height:30,borderRadius:8,background:'#f1f5f9',border:'none',display:'flex',alignItems:'center',justifyContent:'center',color:'#64748b'}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div style={{overflowY:'auto',flex:1,padding:'0 16px 24px'}}>
+          {/* Sort */}
+          <div style={{marginBottom:20}}>{sec('Zoradiť')}
+            {[['none','Predvolené'],['asc','Cena: vzostupne'],['desc','Cena: zostupne']].map(([v,l])=>(
+              <button key={v} onClick={()=>setSortOrder(v)} style={gradBtn(sortOrder===v)}>{l}</button>
+            ))}
+          </div>
+          {/* Type */}
+          <div style={{marginBottom:20,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>{sec('Typ produktu')}
+            <button onClick={()=>setSelType('')} style={gradBtn(!selType)}><span>Všetky typy</span></button>
+            {PRODUCT_TYPES.map(opt=>{
+              const a=selType===opt.value;
+              return <button key={opt.value} onClick={()=>setSelType(a?'':opt.value)} style={gradBtn(a)}>
+                <span>{opt.label}</span>
+                <span style={{fontSize:11,background:a?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.06)',color:a?'#fff':'#64748b',padding:'2px 8px',borderRadius:999,fontWeight:600}}>{opt.count}</span>
+              </button>;
+            })}
+          </div>
+          {/* Categories */}
+          <div style={{marginBottom:20,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>{sec('Kategórie')}
+            <button onClick={()=>setSelCats([])} style={gradBtn(selCats.length===0)}><span>Všetko</span></button>
+            {CATEGORIES.map(cat=>{
+              const a=selCats.includes(cat);
+              return <button key={cat} onClick={()=>setSelCats(a?selCats.filter(c=>c!==cat):[...selCats,cat])} style={{...gradBtn(a),fontSize:13}}>{cat}</button>;
+            })}
+          </div>
+          {/* Compat */}
+          <div style={{marginBottom:20,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>{sec('Kompatibilita')}
+            <button onClick={()=>setSelCompat(null)} style={{...gradBtn(!selCompat),background:!selCompat?'linear-gradient(135deg,#7c3aed,#6d28d9)':'#f8fafc',color:!selCompat?'#fff':'#475569'}}>Všetky</button>
+            {COMPAT_CODES.map(opt=>{
+              const a=selCompat===opt.code;
+              return <button key={opt.code} onClick={()=>setSelCompat(a?null:opt.code)} style={{...gradBtn(a),background:a?'linear-gradient(135deg,#7c3aed,#6d28d9)':'#f8fafc',color:a?'#fff':'#475569'}}>
+                <span>{opt.code}</span>
+                <span style={{fontSize:11,background:a?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.06)',color:a?'#fff':'#64748b',padding:'2px 8px',borderRadius:999,fontWeight:600}}>{opt.count}</span>
+              </button>;
+            })}
+          </div>
+          {/* Price */}
+          <div style={{marginBottom:20,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>{sec('Cena')}
+            <input type="range" min="0" max="500" step="10" value={maxPrice} onChange={e=>setMaxPrice(Number(e.target.value))} />
+            <p style={{fontSize:12,color:'#64748b',marginTop:8}}>{maxPrice>=500?'Všetky ceny':`do ${maxPrice} €`}</p>
+          </div>
+          {/* In-stock */}
+          <div style={{paddingTop:16,borderTop:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontSize:14,fontWeight:500,color:'#334155'}}>Iba skladom</span>
+            <button onClick={()=>setInStock(!inStock)} style={{width:44,height:24,borderRadius:12,background:inStock?'linear-gradient(135deg,#06b6d4,#10b981)':'#e2e8f0',border:'none',position:'relative',transition:'background 0.2s'}}>
+              <span style={{position:'absolute',top:3,width:18,height:18,borderRadius:9,background:'#fff',boxShadow:'0 1px 3px rgba(0,0,0,0.2)',transition:'left 0.2s',left:inStock?23:3}} />
+            </button>
+          </div>
+        </div>
+        {/* Apply */}
+        <div style={{padding:'12px 16px',borderTop:'1px solid #f1f5f9',flexShrink:0}}>
+          <button onClick={onClose} style={{width:'100%',padding:'14px',borderRadius:999,background:'linear-gradient(135deg,#06b6d4,#10b981)',border:'none',color:'#fff',fontSize:14,fontWeight:700,boxShadow:'0 4px 16px rgba(6,182,212,0.3)'}}>Zobraziť výsledky</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Categories */}
-        <div style={{ padding:'0 16px 16px' }}>
-          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Kategórie</p>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {CATS.map(cat => {
-              const active = selectedCats.includes(cat);
-              const avail = availableCats.includes(cat);
-              return (
-                <button key={cat} onClick={() => (avail || active) && setSelectedCats(s => s.includes(cat) ? s.filter(c=>c!==cat) : [...s,cat])} style={{
-                  padding:'7px 13px', borderRadius:20, border:'none', cursor: avail || active ? 'pointer' : 'default',
-                  background: active ? C.grad : avail ? C.bg : '#fafafa',
-                  color: active ? '#fff' : avail ? C.sub : C.muted,
-                  fontSize:12, fontWeight: active ? 600 : 400, fontFamily:'Inter',
-                  opacity: avail || active ? 1 : 0.4, transition:'all 0.15s',
-                  boxShadow: active ? '0 2px 8px rgba(6,182,212,0.25)' : 'none',
-                  border: `1px solid ${active ? 'transparent' : C.border}`,
-                }}>{cat}</button>
-              );
+// ── MAIN MOBILE APP ───────────────────────────────────────────────────────────
+function MobileApp() {
+  const [selType,setSelType]=useState('');
+  const [selCats,setSelCats]=useState([]);
+  const [selCompat,setSelCompat]=useState(null);
+  const [maxPrice,setMaxPrice]=useState(500);
+  const [inStock,setInStock]=useState(false);
+  const [sortOrder,setSortOrder]=useState('none');
+  const [search,setSearch]=useState('');
+  const [selProduct,setSelProduct]=useState(null);
+  const [filtersOpen,setFiltersOpen]=useState(false);
+  const [cart,setCart]=useState({});
+
+  const onAddToCart=(id,delta)=>setCart(prev=>{
+    const cur=prev[id]||0,next=Math.max(0,cur+delta);
+    if(next===0){const{[id]:_,...rest}=prev;return rest;}
+    return{...prev,[id]:next};
+  });
+  const cartCount=Object.values(cart).reduce((s,q)=>s+q,0);
+  const activeFilters=[selType,selCats.length>0,selCompat,inStock,maxPrice<500,sortOrder!=='none'].filter(Boolean).length;
+
+  const filtered=useMemo(()=>{
+    let ps=[...PRODUCTS];
+    if(selType) ps=ps.filter(p=>p.type===selType);
+    if(selCats.length) ps=ps.filter(p=>selCats.includes(p.cat));
+    if(selCompat) ps=ps.filter(p=>(p.compat||[]).includes(selCompat));
+    if(inStock) ps=ps.filter(p=>p.stock>0);
+    if(maxPrice<500) ps=ps.filter(p=>parseFloat(p.gross)<=maxPrice);
+    if(search) ps=ps.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||(p.ref||'').toLowerCase().includes(search.toLowerCase()));
+    if(sortOrder==='asc') ps.sort((a,b)=>parseFloat(a.gross)-parseFloat(b.gross));
+    if(sortOrder==='desc') ps.sort((a,b)=>parseFloat(b.gross)-parseFloat(a.gross));
+    return ps;
+  },[selType,selCats,selCompat,inStock,maxPrice,search,sortOrder]);
+
+  return (
+    <IOSDevice dark>
+      <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#f8fafc',overflow:'hidden',position:'relative'}}>
+        {/* Navbar */}
+        <div style={{background:'#020617',borderBottom:'1px solid rgba(6,182,212,0.18)',flexShrink:0}}>
+          {/* logo row */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'48px 12px 0'}}>
+            <img src="assets/dynamicabutment-logo.png" alt="Dynamic Abutment Solutions" style={{height:22,width:'auto',objectFit:'contain',filter:'brightness(0) invert(1)',opacity:0.92}} />
+            {cartCount>0&&(
+              <button style={{position:'relative',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',borderRadius:10,padding:'6px 11px',display:'flex',alignItems:'center',gap:6,color:'#fff'}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                <span style={{fontSize:12,fontWeight:600}}>{cartCount}</span>
+              </button>
+            )}
+          </div>
+          {/* Dark search + filter row */}
+          <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px 0'}}>
+            <div style={{flex:1,display:'flex',alignItems:'center',gap:8,padding:'0 12px',height:40,borderRadius:12,background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Hľadať produkt, ref..." style={{flex:1,background:'transparent',border:'none',outline:'none',fontSize:14,color:'#fff',fontFamily:'inherit'}} />
+              {search&&<button onClick={()=>setSearch('')} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:16,lineHeight:1,padding:0}}>×</button>}
+            </div>
+            <button onClick={()=>setFiltersOpen(true)} style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',gap:6,height:40,padding:'0 12px',borderRadius:12,border:'none',background:activeFilters>0?'linear-gradient(135deg,#06b6d4,#10b981)':'rgba(255,255,255,0.07)',flexShrink:0}}>
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke={activeFilters>0?'#fff':'rgba(255,255,255,0.6)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+              {activeFilters>0&&<span style={{fontSize:12,fontWeight:700,color:'#fff'}}>{activeFilters}</span>}
+            </button>
+          </div>
+          {/* Category strip */}
+          <div style={{display:'flex',gap:6,padding:'8px 12px',overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+            {(['Všetko',...CATEGORIES]).map(cat=>{
+              const a=cat==='Všetko'?selCats.length===0:selCats.includes(cat);
+              return <button key={cat} onClick={()=>cat==='Všetko'?setSelCats([]):setSelCats(selCats.includes(cat)?selCats.filter(c=>c!==cat):[...selCats,cat])}
+                style={{flexShrink:0,padding:'6px 12px',borderRadius:999,fontSize:11,fontWeight:600,whiteSpace:'nowrap',border:'none',background:a?'linear-gradient(135deg,#06b6d4,#10b981)':'rgba(255,255,255,0.08)',color:a?'#fff':'rgba(255,255,255,0.6)',boxShadow:a?'0 2px 8px rgba(6,182,212,0.3)':'none'}}>
+                {cat}
+              </button>;
             })}
           </div>
         </div>
 
-        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
-
-        {/* Compatibility */}
-        <div style={{ padding:'0 16px 16px' }}>
-          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Kompatibilita</p>
-          {COMPAT_SYSTEMS.map(sys => {
-            const active = selectedCompats.includes(sys);
-            const avail = availableCompats.includes(sys);
-            return (
-              <button key={sys} onClick={() => (avail || active) && setSelectedCompats(s => s.includes(sys) ? s.filter(x=>x!==sys) : [...s,sys])} style={{
-                width:'100%', textAlign:'left', padding:'10px 12px', borderRadius:12, marginBottom:6,
-                background: active ? 'rgba(139,92,246,0.1)' : avail ? C.bg : '#fafafa',
-                border: `1.5px solid ${active ? 'rgba(139,92,246,0.3)' : C.border}`,
-                color: active ? '#7c3aed' : avail ? C.sub : C.muted,
-                fontSize:13, fontWeight: active ? 600 : 400, cursor: avail || active ? 'pointer' : 'default',
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-                opacity: avail || active ? 1 : 0.45, transition:'all 0.15s',
-              }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background: active ? '#7c3aed' : avail ? '#a78bfa' : C.border, flexShrink:0 }} />
-                  {sys}
-                </div>
-                {active && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-              </button>
-            );
-          })}
+        {/* Products count */}
+        <div style={{padding:'8px 12px 4px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <p style={{fontSize:13,fontWeight:700,color:'#0f172a'}}>Produkty</p>
+          <span style={{fontSize:11,color:'#94a3b8'}}>{filtered.length} produktov</span>
         </div>
 
-        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
-
-        {/* Price */}
-        <div style={{ padding:'0 16px 16px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-            <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em' }}>Max. cena</p>
-            <span style={{ fontSize:12, fontWeight:600, color: maxPrice < 300 ? C.cyan : C.muted }}>{maxPrice < 300 ? `do ${maxPrice} €` : 'Všetky'}</span>
+        {/* Product grid */}
+        <div style={{flex:1,overflowY:'auto',padding:'4px 12px 24px',WebkitOverflowScrolling:'touch'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            {filtered.map(p=><MobileCard key={p.id} product={p} cart={cart} onAddToCart={onAddToCart} onOpen={setSelProduct} />)}
           </div>
-          <input type="range" min={0} max={300} step={10} value={maxPrice} onChange={e => setMaxPrice(+e.target.value)} style={{ width:'100%', accentColor:C.cyan }} />
-        </div>
-
-        <div style={{ height:1, background:C.border, margin:'0 16px 16px' }} />
-
-        {/* Stock */}
-        <div style={{ padding:'0 16px' }}>
-          <div onClick={() => setInStockOnly(v => !v)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}>
-            <div>
-              <p style={{ fontSize:13, fontWeight:500, color:C.text }}>Len skladom</p>
-              <p style={{ fontSize:11, color:C.muted }}>Skryť vypredané</p>
-            </div>
-            <div style={{ width:44, height:24, borderRadius:12, background: inStockOnly ? C.grad : '#334155', position:'relative', transition:'background 0.2s' }}>
-              <div style={{ position:'absolute', top:3, left: inStockOnly ? 23 : 3, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ padding:'16px 16px 0' }}>
-          <GBtn full onClick={onClose}>Zobraziť výsledky</GBtn>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── DETAIL BOTTOM SHEET ───────────────────────────────────────
-function DetailSheet({ product, onClose, onAdd, inCart }) {
-  const [selVariant, setSelVariant] = useState(null);
-  const variants = product ? (PRODUCT_VARIANTS[product.id] || []) : [];
-  const compats = product ? (PRODUCT_COMPAT[product.id] || []) : [];
-
-  useEffect(() => {
-    if (product && variants.length > 0) setSelVariant(variants[0].id);
-    else setSelVariant(null);
-  }, [product?.id]);
-
-  if (!product) return null;
-  const activeVariant = variants.find(v => v.id === selVariant);
-  const displayPrice = activeVariant ? activeVariant.price : product.price;
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', zIndex:200, backdropFilter:'blur(3px)', animation:'sheetBg 0.2s ease' }} />
-      <div style={{
-        position:'absolute', bottom:0, left:0, right:0, background:C.card,
-        borderRadius:'22px 22px 0 0', zIndex:201, maxHeight:'88%',
-        animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)',
-        display:'flex', flexDirection:'column',
-      }}>
-        {/* Handle + close */}
-        <div style={{ display:'flex', justifyContent:'center', padding:'10px 0 4px', flexShrink:0 }}>
-          <div style={{ width:36, height:4, borderRadius:2, background:C.border }} />
-        </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 16px 10px', flexShrink:0 }}>
-          <p style={{ fontSize:11, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.1em' }}>Detail produktu</p>
-          <button onClick={onClose} style={{ background:C.bg, border:'none', cursor:'pointer', color:C.muted, width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-
-        <div style={{ overflowY:'auto', flex:1 }}>
-          {/* Image */}
-          <div style={{ height:160, margin:'0 16px 16px', borderRadius:16, overflow:'hidden', background:'#f0fdfe' }}>
-            <ImgPlaceholder cat={product.cat} />
-          </div>
-
-          <div style={{ padding:'0 16px 28px' }}>
-            <span style={{ fontSize:10, fontWeight:600, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.08em' }}>{product.cat}</span>
-            <h2 style={{ fontSize:18, fontWeight:800, color:C.text, letterSpacing:'-0.02em', marginTop:5, lineHeight:1.25 }}>{product.name}</h2>
-            <p style={{ fontSize:12, color:C.muted, marginTop:3 }}>Ref: {product.ref}</p>
-
-            {/* Stock */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, margin:'14px 0', padding:'11px 14px', background:C.bg, borderRadius:12, border:`1px solid ${C.border}` }}>
-              <StockDot stock={product.stock} />
-              <span style={{ fontSize:13, color:C.sub }}>
-                {product.stock >= 5 ? `Na sklade: ${product.stock} ks` : product.stock > 0 ? `Posledné: ${product.stock} ks` : 'Vypredané'}
-              </span>
-            </div>
-
-            {/* Compatibility */}
-            {compats.length > 0 && (
-              <div style={{ marginBottom:14 }}>
-                <p style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:7 }}>Kompatibilita</p>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                  {compats.map(c => (
-                    <span key={c} style={{ fontSize:11, fontWeight:500, color:'#7c3aed', background:'rgba(139,92,246,0.09)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:20, padding:'3px 9px' }}>{c}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Variants */}
-            {variants.length > 0 && (
-              <div style={{ marginBottom:16 }}>
-                <p style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Variant</p>
-                <div style={{ position:'relative' }}>
-                  <select value={selVariant||''} onChange={e => setSelVariant(e.target.value)} style={{
-                    width:'100%', padding:'12px 38px 12px 14px', borderRadius:13,
-                    border:`1.5px solid ${C.border}`, background:C.card, color:C.text,
-                    fontSize:14, fontFamily:'Inter', fontWeight:500, cursor:'pointer',
-                    appearance:'none', WebkitAppearance:'none', outline:'none',
-                    boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
-                  }}>
-                    {variants.map(v => (
-                      <option key={v.id} value={v.id}>{v.label}{v.price ? ` — ${v.price.toFixed(2)} €` : ' — Člen. cena'}</option>
-                    ))}
-                  </select>
-                  <svg style={{ position:'absolute', right:13, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-              </div>
-            )}
-
-            {/* Description */}
-            <p style={{ fontSize:12, color:C.muted, lineHeight:1.7, marginBottom:16 }}>
-              Prémiový komponent Dynamic Abutment Solutions, kompatibilný s viacerými implantátnymi systémami. Testovaný v reálnej laboratórnej praxi pred zaradením do portfólia.
-            </p>
-
-            {/* Price */}
-            {displayPrice
-              ? <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, padding:'13px 16px', background:C.bg, borderRadius:13, border:`1px solid ${C.border}` }}>
-                  <span style={{ fontSize:13, color:C.sub }}>Cena bez DPH</span>
-                  <span style={{ fontSize:24, fontWeight:800, background:C.grad, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>{displayPrice.toFixed(2)} €</span>
-                </div>
-              : <div style={{ background:C.cyanLite, border:`1px solid rgba(8,145,178,0.2)`, borderRadius:13, padding:'12px 16px', marginBottom:16, textAlign:'center' }}>
-                  <p style={{ fontSize:13, color:C.cyan, fontWeight:600 }}>Cena dostupná po prihlásení</p>
-                </div>
-            }
-
-            {/* Cart action */}
-            {product.stock > 0 && (
-              inCart > 0
-                ? <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', border:`2px solid ${C.cyan}`, borderRadius:14, overflow:'hidden', background:C.cyanLite, height:52 }}>
-                    <button style={{ flex:1, height:'100%', background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:22, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => onAdd(product, -1)}>−</button>
-                    <span style={{ fontSize:16, fontWeight:700, color:C.cyan, padding:'0 16px' }}>{inCart} v košíku</span>
-                    <button style={{ flex:1, height:'100%', background:'none', border:'none', cursor:'pointer', color:C.cyan, fontSize:22, fontWeight:300, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => onAdd(product, 1)}>+</button>
-                  </div>
-                : <GBtn full onClick={() => onAdd(product, 1)} style={{ height:52, fontSize:15 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-                    Pridať do košíka
-                  </GBtn>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── SORT/VIEW TOOLBAR ─────────────────────────────────────────
-function Toolbar({ count, viewMode, setViewMode }) {
-  return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px 6px', flexShrink:0 }}>
-      <span style={{ fontSize:12, color:C.muted }}>{count} produktov</span>
-      <div style={{ display:'flex', gap:4 }}>
-        {[['grid','⊞'],['list','☰']].map(([m,icon]) => (
-          <button key={m} onClick={() => setViewMode(m)} style={{
-            width:30, height:30, borderRadius:8, border:'none', cursor:'pointer',
-            background: viewMode===m ? C.cyanLite : 'none',
-            color: viewMode===m ? C.cyan : C.muted, fontSize:16,
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>{icon}</button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── APP ───────────────────────────────────────────────────────
-function App() {
-  const [search, setSearch] = useState('');
-  const [selectedCats, setSelectedCats] = useState([]);
-  const [selectedCompats, setSelectedCompats] = useState([]);
-  const [sortPrice, setSortPrice] = useState('none');
-  const [maxPrice, setMaxPrice] = useState(300);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [detail, setDetail] = useState(null);
-  const [cart, setCart] = useState({});
-
-  const handleAdd = (product, delta) => {
-    setCart(c => {
-      const cur = c[product.id] || 0;
-      const next = Math.max(0, cur + delta);
-      if (next === 0) { const n = {...c}; delete n[product.id]; return n; }
-      return { ...c, [product.id]: next };
-    });
-  };
-
-  const cartCount = Object.values(cart).reduce((s,v) => s+v, 0);
-
-  // bi-directional
-  const byCats = useMemo(() => PRODUCTS.filter(p => selectedCats.length === 0 || selectedCats.includes(p.cat)), [selectedCats]);
-  const availableCompats = useMemo(() => { const s = new Set(); byCats.forEach(p => (PRODUCT_COMPAT[p.id]||[]).forEach(c => s.add(c))); return [...s]; }, [byCats]);
-  const byCompats = useMemo(() => PRODUCTS.filter(p => selectedCompats.length === 0 || (PRODUCT_COMPAT[p.id]||[]).some(c => selectedCompats.includes(c))), [selectedCompats]);
-  const availableCats = useMemo(() => [...new Set(byCompats.map(p => p.cat))], [byCompats]);
-
-  const products = useMemo(() => {
-    let p = PRODUCTS.filter(pr =>
-      (!search || pr.name.toLowerCase().includes(search.toLowerCase()) || pr.ref.toLowerCase().includes(search.toLowerCase())) &&
-      (selectedCats.length === 0 || selectedCats.includes(pr.cat)) &&
-      (selectedCompats.length === 0 || (PRODUCT_COMPAT[pr.id]||[]).some(c => selectedCompats.includes(c))) &&
-      (!inStockOnly || pr.stock > 0) &&
-      (maxPrice >= 300 || !pr.price || pr.price <= maxPrice)
-    );
-    if (sortPrice === 'asc') p = [...p].sort((a,b) => (a.price||999)-(b.price||999));
-    if (sortPrice === 'desc') p = [...p].sort((a,b) => (b.price||0)-(a.price||0));
-    return p;
-  }, [search, selectedCats, selectedCompats, sortPrice, maxPrice, inStockOnly]);
-
-  const activeFilters = selectedCats.length + selectedCompats.length + (inStockOnly ? 1 : 0) + (maxPrice < 300 ? 1 : 0) + (sortPrice !== 'none' ? 1 : 0);
-  const resetFilters = () => { setSelectedCats([]); setSelectedCompats([]); setMaxPrice(300); setInStockOnly(false); setSortPrice('none'); };
-
-  return (
-    <IOSDevice dark={true} width={390} height={844}>
-      <div style={{ position:'absolute', top:0, left:0, right:0, bottom:0, display:'flex', flexDirection:'column', overflow:'hidden', paddingTop:59, background:C.bg }}>
-        <AppNav cartCount={cartCount} onCartTap={() => {}} />
-        <SearchBar value={search} onChange={setSearch} onFilterTap={() => setFilterOpen(true)} activeFilters={activeFilters} />
-
-
-        {/* Active filter chips */}
-        {(selectedCats.length > 0 || selectedCompats.length > 0) && (
-          <div style={{ display:'flex', gap:6, padding:'7px 12px 4px', overflowX:'auto', flexShrink:0 }}>
-            {selectedCats.map(c => (
-              <button key={c} onClick={() => setSelectedCats(s => s.filter(x=>x!==c))} style={{
-                flexShrink:0, display:'flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:20,
-                background:C.cyanLite, border:`1px solid rgba(8,145,178,0.25)`, color:C.cyan,
-                fontSize:11, fontWeight:500, cursor:'pointer', fontFamily:'Inter',
-              }}>{c} <span style={{ fontSize:13 }}>×</span></button>
-            ))}
-            {selectedCompats.map(c => (
-              <button key={c} onClick={() => setSelectedCompats(s => s.filter(x=>x!==c))} style={{
-                flexShrink:0, display:'flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:20,
-                background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.25)', color:'#7c3aed',
-                fontSize:11, fontWeight:500, cursor:'pointer', fontFamily:'Inter',
-              }}>{c} <span style={{ fontSize:13 }}>×</span></button>
-            ))}
-          </div>
-        )}
-
-        <Toolbar count={products.length} viewMode={viewMode} setViewMode={setViewMode} />
-
-        {/* Product list */}
-        <div style={{ flex:1, overflowY:'auto', padding:'4px 12px 24px' }}>
-          {products.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'60px 20px', color:C.muted }}>
-              <p style={{ fontSize:16, fontWeight:600, color:C.text, marginBottom:6 }}>Žiadne produkty</p>
-              <p style={{ fontSize:13 }}>Skúste zmeniť filtre alebo hľadaný výraz.</p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="fade-up" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {products.map(p => <ProductCard key={p.id} product={p} onTap={setDetail} onAdd={handleAdd} inCart={cart[p.id]||0} />)}
-            </div>
-          ) : (
-            <div className="fade-up" style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {products.map(p => <ProductRow key={p.id} product={p} onTap={setDetail} onAdd={handleAdd} inCart={cart[p.id]||0} />)}
+          {filtered.length===0&&(
+            <div style={{textAlign:'center',paddingTop:40}}>
+              <p style={{fontSize:14,color:'#94a3b8'}}>Žiadne produkty</p>
+              <button onClick={()=>{setSearch('');setSelCats([]);setSelCompat(null);setSelType('');}} style={{marginTop:12,color:'#0891b2',background:'none',border:'none',fontSize:13}}>Zrušiť filtre</button>
             </div>
           )}
         </div>
 
+        {/* Floating cart */}
+        {cartCount>0&&(
+          <div style={{position:'absolute',bottom:24,right:16,zIndex:30}}>
+            <button style={{display:'flex',alignItems:'center',gap:8,padding:'10px 16px',borderRadius:999,background:'linear-gradient(135deg,#06b6d4,#10b981)',border:'none',boxShadow:'0 4px 20px rgba(6,182,212,0.4)',color:'#fff'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              <span style={{fontSize:14,fontWeight:700}}>{cartCount}</span>
+            </button>
+          </div>
+        )}
+
         {/* Sheets */}
-        <FilterSheet
-          open={filterOpen} onClose={() => setFilterOpen(false)}
-          selectedCats={selectedCats} setSelectedCats={setSelectedCats}
-          selectedCompats={selectedCompats} setSelectedCompats={setSelectedCompats}
-          maxPrice={maxPrice} setMaxPrice={setMaxPrice}
-          inStockOnly={inStockOnly} setInStockOnly={setInStockOnly}
-          sortPrice={sortPrice} setSortPrice={setSortPrice}
-          availableCompats={availableCompats} availableCats={availableCats}
-          onReset={resetFilters}
-        />
-        <DetailSheet
-          product={detail} onClose={() => setDetail(null)}
-          onAdd={handleAdd} inCart={detail ? (cart[detail.id]||0) : 0}
-        />
+        {selProduct&&<DetailSheet product={selProduct} onClose={()=>setSelProduct(null)} cart={cart} onAddToCart={onAddToCart} />}
+        {filtersOpen&&<FiltersSheet onClose={()=>setFiltersOpen(false)} selType={selType} setSelType={setSelType} selCats={selCats} setSelCats={setSelCats} selCompat={selCompat} setSelCompat={setSelCompat} sortOrder={sortOrder} setSortOrder={setSortOrder} maxPrice={maxPrice} setMaxPrice={setMaxPrice} inStock={inStock} setInStock={setInStock} />}
       </div>
     </IOSDevice>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<MobileApp />);
+</script>
+<script>
+(function(){
+  function fit(){
+    var root=document.getElementById('root');
+    if(!root) return;
+    var s=Math.min((window.innerHeight-32)/874,(window.innerWidth-32)/402,1);
+    root.style.transform='scale('+s+')';
+  }
+  window.addEventListener('resize',fit);
+  fit(); setTimeout(fit,300); setTimeout(fit,1000);
+})();
 </script>
 </body>
 </html>

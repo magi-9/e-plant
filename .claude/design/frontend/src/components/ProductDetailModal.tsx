@@ -1,45 +1,164 @@
 
 import { Fragment, useMemo, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CursorArrowRaysIcon, ShoppingCartIcon, XMarkIcon, PencilIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import { getProduct, type Product } from '../api/products';
+import { getProduct, getCompatibleScrews, type Product, type CompatibleScrew } from '../api/products';
 import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import RequestProductModal from './RequestProductModal';
+import DropdownSelect from './DropdownSelect';
+import CatalogPdfViewer from './CatalogPdfViewer';
 import toast from 'react-hot-toast';
+import { authService } from '../api/authService';
+import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
+import { getOrderedCategories } from '../utils/productCategories';
 
-const VISIBLE_CATEGORIES_COUNT = 6;
+const HEADER_CATEGORIES = 3;
+const HEADER_COMPAT_CODES = 3;
 
 interface ProductDetailModalProps {
     open: boolean;
     setOpen: (open: boolean) => void;
     product: Product | null;
     onEdit?: (product: Product) => void;
+    selectedCategories?: string[];
+    searchQuery?: string;
+    selectedCompatibilityCode?: string;
+    onCategoryClick?: (category: string) => void;
+    onCompatibilityCodeClick?: (code: string) => void;
+    onReferenceClick?: (reference: string) => void;
 }
 
-export default function ProductDetailModal({ open, setOpen, product, onEdit }: ProductDetailModalProps) {
+export default function ProductDetailModal({
+    open,
+    setOpen,
+    product,
+    onEdit,
+    selectedCategories = [],
+    searchQuery = '',
+    selectedCompatibilityCode,
+    onCategoryClick,
+    onCompatibilityCodeClick,
+    onReferenceClick,
+}: ProductDetailModalProps) {
     const navigate = useNavigate();
-    const isLoggedIn = !!localStorage.getItem('access_token');
+    const isLoggedIn = authService.isAuthenticated();
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
     const [isAdding, setIsAdding] = useState(false);
-    const [showActionButtons, setShowActionButtons] = useState(false);
     const [openRequestModal, setOpenRequestModal] = useState(false);
+    const [catalogOpen, setCatalogOpen] = useState(false);
     const [hydratedVariant, setHydratedVariant] = useState<Product | null>(null);
+    const [compatibleScrews, setCompatibleScrews] = useState<CompatibleScrew[]>([]);
+    const [screwsLoading, setScrewsLoading] = useState(false);
+    const [selectedScrewId, setSelectedScrewId] = useState<number | null>(null);
     const variantOptions = useMemo(() => product?.parameters?.options || [], [product?.parameters]);
+    const sortedVariantOptions = useMemo(() => sortByFirstOptionTokenValue(variantOptions), [variantOptions]);
     const isGroupType = product?.parameters?.type === 'wildcard_group';
     const hasVariants = isGroupType && variantOptions.length > 0;
+
+    const varyingTokenKeys = useMemo(() => {
+        if (!hasVariants || variantOptions.length < 2) return new Set<string>();
+        const allKeys = new Set<string>();
+        variantOptions.forEach((opt) => {
+            (opt.option_tokens || '').split('|').forEach((token) => {
+                const ci = token.indexOf(':');
+                if (ci !== -1) allKeys.add(token.slice(0, ci));
+            });
+        });
+        const varying = new Set<string>();
+        allKeys.forEach((key) => {
+            const values = new Set(
+                variantOptions.map((opt) => {
+                    const token = (opt.option_tokens || '').split('|').find((t) => t.startsWith(key + ':'));
+                    return token ? token.slice(key.length + 1) : '';
+                })
+            );
+            if (values.size > 1) varying.add(key);
+        });
+        return varying;
+    }, [hasVariants, variantOptions]);
+
+    const engagingVaries = useMemo(
+        () => hasVariants && variantOptions.length > 1
+            && new Set(variantOptions.map((o) => o.engaging)).size > 1,
+        [hasVariants, variantOptions]
+    );
+
+    const screwTotalLengthLabels = useMemo(() => {
+        if (!hasVariants || variantOptions.length < 2) return null;
+        const isScrewVariant = (option: typeof variantOptions[number]) => {
+            const ref = option.reference || '';
+            return ref.startsWith('40.') || ref.startsWith('41.') || /screw/i.test([
+                option.category,
+                option.name,
+                option.option_tokens,
+            ].filter(Boolean).join(' '));
+        };
+        if (!variantOptions.every(isScrewVariant)) return null;
+
+        const values = variantOptions.map((option) => {
+            const token = (option.option_tokens || '').split('|').find((item) => item.startsWith('TOTAL LENGTH(mm):'));
+            return token ? token.slice('TOTAL LENGTH(mm):'.length).trim() : '';
+        });
+        const uniqueValues = new Set(values.filter(Boolean));
+        if (uniqueValues.size <= 1) return null;
+
+        return new Map(
+            variantOptions.map((option, index) => [
+                option.reference || '',
+                values[index] ? `${values[index]} mm` : option.reference || option.name || 'Unnamed variant',
+            ])
+        );
+    }, [hasVariants, variantOptions]);
+
+    const variantDropdownOptions = useMemo(() => {
+        const refNumberPattern = /\d+(?:\.\d+)+-\d+/g;
+        const isOnlyRefNumbers = (val: string) => {
+            const withoutRefNumbers = val.trim()
+                .replace(refNumberPattern, '')
+                .replace(/[/,;\s]+/g, '');
+            return withoutRefNumbers.length === 0;
+        };
+
+        return sortedVariantOptions.map((option) => {
+            const totalLengthLabel = screwTotalLengthLabels?.get(option.reference || '');
+            if (totalLengthLabel) return { value: option.reference || '', label: totalLengthLabel };
+
+            const parts: string[] = [];
+            if (varyingTokenKeys.size > 0) {
+                (option.option_tokens || '').split('|').forEach((token) => {
+                    const ci = token.indexOf(':');
+                    if (ci === -1) return;
+                    const key = token.slice(0, ci);
+                    const val = token.slice(ci + 1);
+                    if (varyingTokenKeys.has(key) && !isOnlyRefNumbers(val)) parts.push(`${key}: ${val}`);
+                });
+            }
+            if (engagingVaries) {
+                if (option.engaging === 1) parts.push('ENGAGING');
+                else if (option.engaging === 0) parts.push('NON-ENGAGING');
+            }
+            const fallbackLabel = [
+                option.parameter_code,
+                option.label,
+                option.reference,
+                option.name,
+            ].find((value) => typeof value === 'string' && value.trim().length > 0)?.trim() || 'Unnamed variant';
+            const label = parts.length > 0 ? parts.join(' · ') : fallbackLabel;
+            return { value: option.reference || '', label };
+        });
+    }, [sortedVariantOptions, varyingTokenKeys, engagingVaries, screwTotalLengthLabels]);
     const [selectedVariantRef, setSelectedVariantRef] = useState<string>('');
     const selectedVariantId = hasVariants
-        ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || variantOptions[0]?.id || null
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef)?.id || sortedVariantOptions[0]?.id || null
         : null;
 
     // Reset UI states when product changes; auto-select first in-stock variant
     useEffect(() => {
         setIsAdding(false);
-        setShowActionButtons(false);
         if (isGroupType) {
-            const options = product?.parameters?.options || [];
+            const options = sortByFirstOptionTokenValue(product?.parameters?.options || []);
             const firstInStockWithImage = options.find(
                 (v) => (v.stock_quantity ?? 0) > 0 && !!v.image
             );
@@ -56,13 +175,56 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             setSelectedVariantRef('');
         }
         setHydratedVariant(null);
+        setCompatibleScrews([]);
+        setSelectedScrewId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [product?.id]);
 
-    const defaultVariantRef = hasVariants ? variantOptions[0]?.reference || '' : '';
+    const TIBASE_CATEGORY = 'TITANIUM BASE (screw included)';
+    const isTiBaseReference = (ref?: string | null) => (ref || '').startsWith('31.');
+    const isTiBaseProduct = (p: typeof product): p is Product =>
+        !!p && (
+            p.category === TIBASE_CATEGORY ||
+            isTiBaseReference(p.reference) ||
+            isTiBaseReference(p.parameters?.wildcard_reference) ||
+            (p.parameters?.catalog_section || '').toLowerCase().includes('tibase') ||
+            p.name.toLowerCase().includes('tibase') ||
+            (p.wildcard_group_name || '').toLowerCase().includes('tibase')
+        );
+
+    useEffect(() => {
+        if (!isTiBaseProduct(product)) {
+            setCompatibleScrews([]);
+            setSelectedScrewId(null);
+            return;
+        }
+        let cancelled = false;
+        setScrewsLoading(true);
+        getCompatibleScrews(product.id, selectedCompatibilityCode)
+            .then((data) => {
+                if (!cancelled) {
+                    setCompatibleScrews(data.screws);
+                    const firstInStock = data.screws.find((s) => s.stock_quantity > 0);
+                    setSelectedScrewId(firstInStock?.id ?? (data.screws[0]?.id ?? null));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setCompatibleScrews([]);
+                    setSelectedScrewId(null);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setScrewsLoading(false);
+            });
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product?.id, selectedCompatibilityCode]);
+
+    const defaultVariantRef = hasVariants ? sortedVariantOptions[0]?.reference || '' : '';
 
     const selectedVariant = hasVariants
-        ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || variantOptions[0]
+        ? variantOptions.find((opt) => opt.reference === selectedVariantRef) || sortedVariantOptions[0]
         : null;
 
     useEffect(() => {
@@ -96,29 +258,42 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
         };
     }, [hasVariants, selectedVariantId]);
 
-    if (!product) return null;
-
     const activeVariant = hydratedVariant || selectedVariant;
 
     const variantImageFallback =
-        variantOptions.find((opt) => !!opt.image)?.image || product.image;
+        variantOptions.find((opt) => !!opt.image)?.image || product?.image;
 
-    const effectiveName = activeVariant?.name || product.name;
-    const effectiveDescription = activeVariant?.description || product.description;
-    const effectiveCategory = activeVariant?.category || product.category;
-    const effectiveAllCategories = activeVariant?.all_categories || product.all_categories || product.parameters?.all_categories || effectiveCategory || '';
-    const effectiveImage = activeVariant?.image || variantImageFallback || product.image;
-    const effectivePrice = activeVariant?.price ?? product.price;
+    const effectiveName = activeVariant?.name || product?.name || '';
+    const effectiveDescription = activeVariant?.description || product?.description || '';
+    const effectiveCategory = activeVariant?.category || product?.category || '';
+    const effectiveAllCategories = activeVariant?.all_categories || product?.all_categories || product?.parameters?.all_categories || effectiveCategory || '';
+    const effectiveImage = activeVariant?.image || variantImageFallback || product?.image;
+    const effectivePrice = activeVariant?.gross_price ?? product?.gross_price ?? activeVariant?.price ?? product?.price;
+    const effectiveNetPrice = activeVariant?.price ?? product?.price;
     const effectiveVariantRef = activeVariant?.reference || '';
-    const effectiveProductCode = effectiveVariantRef || product.reference || '';
+    const effectiveProductCode = effectiveVariantRef || product?.reference || '';
     const effectiveVariantLabel = selectedVariant?.label || '';
 
-    const categoryList = effectiveAllCategories
-        .split(';')
-        .map((value) => value.trim())
-        .filter(Boolean);
-    const visibleCategories = categoryList.slice(0, VISIBLE_CATEGORIES_COUNT);
-    const hiddenCategories = categoryList.slice(VISIBLE_CATEGORIES_COUNT);
+    const cartItem = items.find(
+        (item) => item.productId === product?.id && (item.variantReference || '') === (effectiveVariantRef || '')
+    );
+
+    const sortedCategoryList = useMemo(() => {
+        if (!product) return [];
+        return getOrderedCategories(
+            { ...product, category: effectiveCategory, all_categories: effectiveAllCategories },
+            selectedCategories,
+            searchQuery,
+        );
+    }, [effectiveAllCategories, effectiveCategory, product, searchQuery, selectedCategories]);
+
+    if (!product) return null;
+
+    const visibleCategories = sortedCategoryList.slice(0, HEADER_CATEGORIES);
+    const extraCategoryCount = Math.max(0, sortedCategoryList.length - HEADER_CATEGORIES);
+    const compatibilityCodes = (activeVariant?.compatibility_codes && activeVariant.compatibility_codes.length ? activeVariant.compatibility_codes : product.compatibility_codes) || [];
+    const visibleCompatCodes = compatibilityCodes.slice(0, HEADER_COMPAT_CODES);
+    const extraCompatCount = Math.max(0, compatibilityCodes.length - HEADER_COMPAT_CODES);
     // Variant stock takes priority; fall back to parent when all variants are 0 but parent has stock
     // (handles products stocked before per-variant tracking was available)
     const effectiveStockQuantity = (() => {
@@ -153,21 +328,34 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             return;
         }
 
+        const isTiBase = isTiBaseProduct(product);
+        const selectedScrew = isTiBase
+            ? compatibleScrews.find((s) => s.id === selectedScrewId) ?? null
+            : null;
+
+        if (isTiBase && compatibleScrews.length > 0 && (!selectedScrew || selectedScrew.stock_quantity === 0)) {
+            toast.error('Vybraná skrutka nie je skladom.');
+            return;
+        }
+
         setIsAdding(true);
         addItem({
             productId: product.id,
             name: effectiveName,
             price: effectivePrice!,
+            netPrice: effectiveNetPrice,
             image: effectiveImage,
             stockQuantity: effectiveStockQuantity,
             variantReference: effectiveVariantRef || undefined,
             variantLabel: effectiveVariantLabel || undefined,
+            bundledScrew: selectedScrew
+                ? { productId: selectedScrew.id, name: selectedScrew.name, reference: selectedScrew.reference }
+                : undefined,
         });
 
         // Show action buttons after adding
         setTimeout(() => {
             setIsAdding(false);
-            setShowActionButtons(true);
         }, 300);
     };
 
@@ -177,217 +365,307 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             <Dialog as="div" className="relative z-50" onClose={setOpen}>
                 <Transition.Child
                     as={Fragment}
-                    enter="ease-out duration-300"
+                    enter="ease-out duration-200"
                     enterFrom="opacity-0"
                     enterTo="opacity-100"
-                    leave="ease-in duration-200"
+                    leave="ease-in duration-150"
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+                    <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity" />
                 </Transition.Child>
 
-                <div className="fixed inset-0 z-10 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
+                {/* Mobile: bottom sheet | Desktop: right-side panel */}
+                <div className="fixed inset-0 z-10 flex items-end lg:items-stretch lg:justify-end overflow-hidden">
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
-                        enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                        enterTo="opacity-100 translate-y-0 sm:scale-100"
+                        enterFrom="opacity-0 translate-y-full lg:translate-y-0 lg:translate-x-full"
+                        enterTo="opacity-100 translate-y-0 lg:translate-x-0"
                         leave="ease-in duration-200"
-                        leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                        leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                        leaveFrom="opacity-100 translate-y-0 lg:translate-x-0"
+                        leaveTo="opacity-0 translate-y-full lg:translate-y-0 lg:translate-x-full"
                     >
-                        <Dialog.Panel className="relative transform overflow-hidden rounded-t-2xl sm:rounded-lg bg-white text-left shadow-xl transition-all w-full h-[95vh] sm:h-auto sm:max-w-5xl lg:max-w-6xl sm:max-h-[92dvh] flex flex-col">
-                                <div className="absolute right-0 top-0 pr-3 pt-3 z-10 flex items-center gap-2">
-                                    {onEdit && product && (
-                                        <button
-                                            type="button"
-                                            className="inline-flex items-center gap-1.5 rounded-md bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 px-2.5 py-1.5 text-sm font-medium shadow-sm transition-colors"
-                                            onClick={() => { setOpen(false); onEdit(product); }}
-                                        >
-                                            <PencilIcon className="h-4 w-4" />
-                                            Upraviť
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        className="rounded-full bg-white/90 backdrop-blur-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 p-1.5 shadow-sm"
-                                        onClick={() => setOpen(false)}
-                                    >
-                                        <span className="sr-only">Zavrieť</span>
-                                        <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-                                    </button>
+                        <Dialog.Panel className="relative bg-white text-left shadow-xl transition-all w-full rounded-t-[22px] lg:rounded-none max-h-[88vh] lg:max-h-none lg:h-full lg:w-[580px] flex flex-col overflow-hidden">
+                                {/* Mobile drag handle */}
+                                <div className="flex justify-center pt-2.5 pb-1 flex-shrink-0 lg:hidden">
+                                    <div className="w-9 h-1 rounded-full bg-slate-200" />
                                 </div>
 
-                                <div className="bg-white flex flex-col min-h-0 flex-1 overflow-hidden">
-                                    <div className="px-4 pt-5 sm:p-6 overflow-y-auto overflow-x-hidden flex-1">
-                                        {/* Full Scrollable Content */}
-                                        <div className="w-full min-w-0">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 min-w-0">
-                                            {/* Image Section */}
-                                            <div className="relative aspect-square w-full rounded-lg bg-gray-100 overflow-hidden">
-                                                {effectiveImage ? (
-                                                    <img
-                                                        src={effectiveImage}
-                                                        alt={effectiveName}
-                                                        className="h-full w-full object-cover object-center"
-                                                    />
-                                                ) : (
-                                                    <div className="flex h-full items-center justify-center bg-blue-50 text-blue-200">
-                                                        <svg className="h-24 w-24" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                            </div>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">Detail produktu</p>
+                                    <div className="flex items-center gap-2">
+                                        {onEdit && product && (
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-700 px-2.5 py-1.5 text-xs font-medium transition-colors"
+                                                onClick={() => { setOpen(false); onEdit(product); }}
+                                            >
+                                                <PencilIcon className="h-3.5 w-3.5" />
+                                                Upraviť
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            style={{ background: '#f8fafc' }}
+                                            onClick={() => setOpen(false)}
+                                            aria-label="Zavrieť"
+                                        >
+                                            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                                            {/* Content Section */}
-                                            <div className="flex flex-col h-full min-w-0">
-                                                <div className="min-w-0">
+                                <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
+                                    {/* Image */}
+                                    <div className="mx-4 mb-4 rounded-2xl overflow-hidden flex-shrink-0" style={{ height: 200, background: '#f0fdfe' }}>
+                                        {effectiveImage ? (
+                                            <img src={effectiveImage} alt={effectiveName} className="h-full w-full object-contain object-center p-3" />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center" style={{ background: 'linear-gradient(135deg, #f0fdfe, #ecfdf5)' }}>
+                                                <svg className="h-16 w-16 text-slate-300" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="px-4 pb-8">
+                                        <div className="min-w-0">
                                                     <Dialog.Title as="h3" className="text-2xl font-bold leading-tight text-gray-900 mb-1 break-words">
                                                         {effectiveName}
                                                     </Dialog.Title>
                                                     {effectiveProductCode && (
-                                                        <p className="text-sm text-gray-500 font-medium mb-2 break-words">{effectiveProductCode}</p>
-                                                    )}
-                                                    <div className="flex items-start gap-1.5 mb-4 flex-wrap">
-                                                        <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
-                                                        <p className="text-sm text-cyan-700 font-medium break-words">
-                                                            {visibleCategories.join(', ') || effectiveCategory}
-                                                            {hiddenCategories.length > 0 && (
-                                                                <span className="text-slate-400"> {`+${hiddenCategories.length} ďalších`}</span>
+                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                            {onReferenceClick ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => onReferenceClick(effectiveProductCode)}
+                                                                    className="text-sm text-gray-500 font-medium break-words text-left hover:text-cyan-700 transition-colors"
+                                                                >
+                                                                    {effectiveProductCode}
+                                                                </button>
+                                                            ) : (
+                                                                <p className="text-sm text-gray-500 font-medium break-words">{effectiveProductCode}</p>
                                                             )}
-                                                        </p>
-                                                    </div>
-                                                    {hasVariants && (
-                                                        <div className="mb-5">
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Vyber variant podľa parametrov
-                                                            </label>
-                                                            <select
-                                                                value={selectedVariant?.reference || defaultVariantRef}
-                                                                onChange={(e) => setSelectedVariantRef(e.target.value)}
-                                                                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                                                            {isLoggedIn && (
+                                                                <>
+                                                                    {effectiveStockQuantity >= 5 ? (
+                                                                        <span className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                                    ) : effectiveStockQuantity >= 1 ? (
+                                                                        <span className="h-2 w-2 rounded-full bg-amber-500 flex-shrink-0" />
+                                                                    ) : (
+                                                                        <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                                                                    )}
+                                                                    <span className="text-xs text-slate-500">
+                                                                        {effectiveStockQuantity > 0 ? `${effectiveStockQuantity} ks` : 'Vypredané'}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setCatalogOpen(true)}
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 hover:border-cyan-300 hover:bg-cyan-100 transition-colors flex-shrink-0"
                                                             >
-                                                                {variantOptions.map((option) => {
-                                                                    const qty = option.stock_quantity ?? null;
-                                                                    const stockLabel = !isLoggedIn
-                                                                        ? ''
-                                                                        : qty === null
-                                                                            ? ''
-                                                                            : qty > 0
-                                                                                ? ` · ${qty} ks`
-                                                                                : ' · vypredané';
-                                                                    const displayLabel = option.reference && option.name
-                                                                        ? `${option.reference} – ${option.name}`
-                                                                        : option.reference || option.name || option.label || '';
-                                                                    return (
-                                                                        <option key={option.reference} value={option.reference}>
-                                                                            {`${displayLabel}${stockLabel}`}
-                                                                        </option>
-                                                                    );
-                                                                })}
-                                                            </select>
+                                                                <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                                                                Pozrieť v katalógu
+                                                            </button>
                                                         </div>
                                                     )}
-                                                    {isLoggedIn && (
-                                                        <div className="flex items-center gap-2 mt-3">
-                                                            {effectiveStockQuantity >= 5 ? (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                                                            ) : effectiveStockQuantity >= 1 ? (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 flex-shrink-0" />
-                                                            ) : (
-                                                                <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                                                    <div className="flex items-start gap-1.5 mb-3 flex-wrap">
+                                                        <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
+                                                        <div className="flex flex-wrap gap-1 text-sm text-cyan-700 font-medium">
+                                                            {(visibleCategories.length ? visibleCategories : [effectiveCategory]).filter(Boolean).map((category) => (
+                                                                onCategoryClick ? (
+                                                                    <button
+                                                                        key={category}
+                                                                        type="button"
+                                                                        onClick={() => onCategoryClick(category)}
+                                                                        className="hover:text-cyan-900 transition-colors"
+                                                                    >
+                                                                        {category}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span key={category}>{category}</span>
+                                                                )
+                                                            ))}
+                                                            {extraCategoryCount > 0 && (
+                                                                <span className="text-slate-400">+{extraCategoryCount} ďalších</span>
                                                             )}
-                                                            <span className="text-sm text-slate-600">
-                                                                {effectiveStockQuantity > 0
-                                                                    ? `${effectiveStockQuantity} ks skladom`
-                                                                    : 'Vypredané'}
-                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    {visibleCompatCodes.length > 0 && (
+                                                        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                                                            {visibleCompatCodes.map((code: string) => (
+                                                                onCompatibilityCodeClick ? (
+                                                                    <button key={code} type="button" onClick={() => onCompatibilityCodeClick(code)} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
+                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        ⬡ {code}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
+                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        ⬡ {code}
+                                                                    </span>
+                                                                )
+                                                            ))}
+                                                            {extraCompatCount > 0 && (
+                                                                <span className="text-xs text-slate-400">+{extraCompatCount} ďalších</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {hasVariants && (
+                                                        <div className="mb-5">
+                                                            <DropdownSelect
+                                                                value={selectedVariant?.reference || defaultVariantRef}
+                                                                onChange={(value) => setSelectedVariantRef(value)}
+                                                                options={variantDropdownOptions}
+                                                                placeholder="Vybrať variant"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {isTiBaseProduct(product) && (
+                                                        <div className="mb-4">
+                                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                                                                Skrutka <span className="text-emerald-600 font-bold">({cartItem?.quantity ?? 1} ks zadarmo)</span>
+                                                            </p>
+                                                            {screwsLoading ? (
+                                                                <p className="text-sm text-slate-400">Načítavam skrutky…</p>
+                                                            ) : compatibleScrews.length === 0 ? (
+                                                                <p className="text-sm text-slate-400">Kompatibilná skrutka nie je k dispozícii</p>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    {compatibleScrews.map((screw) => (
+                                                                        <label
+                                                                            key={screw.id}
+                                                                            className={`flex items-center gap-2.5 cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                                                                selectedScrewId === screw.id
+                                                                                    ? 'border-cyan-500 bg-cyan-50 text-cyan-900'
+                                                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300'
+                                                                            } ${screw.stock_quantity === 0 ? 'opacity-50' : ''}`}
+                                                                        >
+                                                                            <input
+                                                                                type="radio"
+                                                                                name="bundled-screw"
+                                                                                value={screw.id}
+                                                                                checked={selectedScrewId === screw.id}
+                                                                                onChange={() => setSelectedScrewId(screw.id)}
+                                                                                disabled={screw.stock_quantity === 0}
+                                                                                className="accent-cyan-600"
+                                                                            />
+                                                                            <span className="flex-1 min-w-0">
+                                                                                {screw.name}
+                                                                                {screw.stock_quantity === 0 && (
+                                                                                    <span className="ml-1.5 text-xs text-red-500">(nie je skladom)</span>
+                                                                                )}
+                                                                            </span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 <div className="mt-auto pt-4 border-t border-gray-100">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            {effectivePrice ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <SparklesIcon className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                                                                    <p className="text-3xl font-bold text-cyan-700">{effectivePrice} €</p>
+                                                    <div className="flex items-center gap-3">
+                                                    {/* Price */}
+                                                    <div className="flex-shrink-0">
+                                                        {effectivePrice ? (
+                                                            <div>
+                                                                {effectiveNetPrice && (
+                                                                    <p className="text-xs text-slate-400 leading-none mb-1">
+                                                                        bez DPH {effectiveNetPrice} €
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                                                    <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} € s DPH</p>
                                                                 </div>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800">
-                                                                    <SparklesIcon className="h-3.5 w-3.5" />
-                                                                    Členská cena
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {effectivePrice && (() => {
-                                                            const cartItem = items.find(
-                                                                item => item.productId === product.id && (item.variantReference || '') === (effectiveVariantRef || '')
-                                                            );
+                                                            </div>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800 whitespace-nowrap">
+                                                                <SparklesIcon className="h-3.5 w-3.5" />
+                                                                Členská cena
+                                                            </span>
+                                                        )}
+                                                    </div>
 
-                                                            if (showActionButtons) {
-                                                                return (
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                navigate('/cart');
-                                                                                setOpen(false);
-                                                                                setShowActionButtons(false);
-                                                                            }}
-                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 shadow-sm transition-all sm:w-auto"
-                                                                        >
-                                                                            Prejsť do košíka
-                                                                        </button>
+                                                    {/* Action button */}
+                                                    <div className="flex-1 min-w-0">
+                                                    <div className="flex gap-2">
+                                                        {(() => {
+                                                            if (!effectivePrice) {
+                                                                if (!isLoggedIn) {
+                                                                    return (
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => {
                                                                                 setOpen(false);
-                                                                                setShowActionButtons(false);
+                                                                                navigate('/login');
                                                                             }}
-                                                                            className="inline-flex h-12 justify-center items-center rounded-md px-4 text-sm font-semibold text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 shadow-sm transition-all sm:w-auto"
+                                                                            className="w-full sm:w-auto inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
                                                                         >
-                                                                            Pokračovať v nákupe
+                                                                            Prihlásiť sa
                                                                         </button>
-                                                                    </div>
-                                                                );
+                                                                    );
+                                                                }
+
+                                                                return null;
                                                             }
 
+                                                            // Prefer showing quantity controls when an item exists in cart
                                                             if (cartItem) {
                                                                 return (
-                                                                    <div className="flex items-center justify-between bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 w-48 shadow-sm">
+                                                                    <div className="w-full flex flex-col gap-2">
+                                                                        <div className="w-full flex items-center justify-center bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 shadow-sm">
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Znížiť množstvo"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (cartItem.quantity > 1) {
+                                                                                        updateQuantity(product.id, cartItem.quantity - 1, effectiveVariantRef || undefined);
+                                                                                    } else {
+                                                                                        removeItem(product.id, effectiveVariantRef || undefined);
+                                                                                    }
+                                                                                }}
+                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                            <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                                {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
+                                                                            </span>
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Zvýšiť množstvo"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (cartItem.quantity >= effectiveStockQuantity) {
+                                                                                        toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
+                                                                                        return;
+                                                                                    }
+                                                                                    updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
+                                                                                }}
+                                                                                disabled={cartItem.quantity >= effectiveStockQuantity}
+                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
                                                                         <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (cartItem.quantity > 1) {
-                                                                                    updateQuantity(product.id, cartItem.quantity - 1, effectiveVariantRef || undefined);
-                                                                                } else {
-                                                                                    removeItem(product.id, effectiveVariantRef || undefined);
-                                                                                }
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setOpen(false);
+                                                                                navigate('/cart');
                                                                             }}
-                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                            className="w-full inline-flex h-11 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
                                                                         >
-                                                                            -
-                                                                        </button>
-                                                                        <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                                            {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
-                                                                        </span>
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (cartItem.quantity >= effectiveStockQuantity) {
-                                                                                    toast.error(`Na sklade je iba ${effectiveStockQuantity} ks.`);
-                                                                                    return;
-                                                                                }
-                                                                                updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
-                                                                            }}
-                                                                            disabled={cartItem.quantity >= effectiveStockQuantity}
-                                                                            className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
-                                                                        >
-                                                                            +
+                                                                            Do košíka
                                                                         </button>
                                                                     </div>
                                                                 );
@@ -398,7 +676,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => setOpenRequestModal(true)}
-                                                                        className="inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto bg-slate-500 hover:bg-slate-600 transition-all duration-300"
+                                                                        className="w-full inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-slate-500 hover:bg-slate-600 transition-all duration-300"
                                                                     >
                                                                         Požiadať produkt
                                                                     </button>
@@ -410,7 +688,7 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                                     type="button"
                                                                     onClick={handleAddToCart}
                                                                     disabled={isAdding}
-                                                                    className={`inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm sm:w-auto transition-all duration-300 ${isAdding
+                                                                    className={`w-full inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm transition-all duration-300 ${isAdding
                                                                         ? 'bg-emerald-500 scale-105 cursor-not-allowed opacity-60'
                                                                         : 'bg-cyan-600 hover:bg-cyan-700'
                                                                         }`}
@@ -433,38 +711,107 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
                                                             );
                                                         })()}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                    </div>{/* end action button flex-1 */}
+                                                    </div>{/* end price+button flex row */}
+                                                </div>{/* end mt-auto */}
+                                            </div>{/* end min-w-0 content */}
 
                                     {/* Scrollable Description Section */}
-                                    {(descriptionParts.length > 0 || hiddenCategories.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
-                                        <div className="mt-6 rounded-md border border-gray-100 bg-gray-50/70 p-3 sm:p-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-                                            <dl className="space-y-1.5 min-w-0">
-                                                {descriptionParts.map((p, i) => (
-                                                    <div key={i} className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        {p.key && <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">{p.key}:</dt>}
-                                                        <dd className={`text-gray-700 break-all text-sm min-w-0${!p.key ? ' col-span-2' : ''}`}>{p.value}</dd>
-                                                    </div>
-                                                ))}
-                                                {hasVariants && selectedVariant?.option_tokens && (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Parametre:</dt>
-                                                        <dd className="text-gray-700 break-all text-sm min-w-0">{selectedVariant.option_tokens}</dd>
+                                    {(descriptionParts.length > 0 || sortedCategoryList.length > 0 || (hasVariants && !!selectedVariant?.option_tokens)) && (
+                                        <div className="mt-6 rounded-md border border-gray-100 bg-gray-50/70 p-3 sm:p-5 overflow-y-auto overflow-x-hidden flex-1 min-h-0" style={{ minHeight: '25%' }}>
+                                            <dl className="space-y-2.5 min-w-0">
+                                                {sortedCategoryList.length > 0 && (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                        <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Systémy:</dt>
+                                                        <dd className="text-gray-700 break-words text-sm min-w-0">
+                                                            {sortedCategoryList.map((cat, i) => (
+                                                                <span key={cat}>
+                                                                    <span className={selectedCategories.includes(cat) ? 'font-semibold text-cyan-700' : ''}>{cat}</span>
+                                                                    {i < sortedCategoryList.length - 1 && <span className="text-gray-400">, </span>}
+                                                                </span>
+                                                            ))}
+                                                        </dd>
                                                     </div>
                                                 )}
-                                                {hiddenCategories.length > 0 && (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm min-w-0">
-                                                        <dt className="text-xs font-medium text-gray-500 whitespace-nowrap pt-0.5">Ďalšie kategórie:</dt>
-                                                        <dd className="text-gray-700 break-all text-sm min-w-0">{hiddenCategories.join(', ')}</dd>
+                                                {compatibilityCodes.length > 0 && (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                        <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Kódy:</dt>
+                                                        <dd className="text-gray-700 break-words text-sm min-w-0">
+                                                            {compatibilityCodes.join(', ')}
+                                                        </dd>
                                                     </div>
+                                                )}
+                                                {(() => {
+                                                    const section = (product?.parameters as Record<string, unknown> | undefined)?.catalog_section as string | undefined;
+                                                    if (section) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{section}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {(() => {
+                                                    const variantEng = hasVariants
+                                                        ? hydratedVariant
+                                                            ? (hydratedVariant.parameters as Record<string, unknown> | undefined)?.engaging
+                                                            : (selectedVariant as Record<string, unknown> | null | undefined)?.engaging
+                                                        : undefined;
+                                                    const eng = variantEng !== undefined ? variantEng : (product?.parameters as Record<string, unknown> | undefined)?.engaging;
+                                                    if (eng === 0 || eng === 1) {
+                                                        return (
+                                                            <div className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">Typ spojenia:</dt>
+                                                                <dd className="text-gray-700 text-sm min-w-0">{eng === 1 ? 'ENGAGING' : 'NON-ENGAGING'}</dd>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                                {descriptionParts.map((p, i) => {
+                                                    if (p.key === 'Parametre' && p.value.includes(':')) {
+                                                        return (
+                                                            <Fragment key={i}>
+                                                                {p.value.split('|').map((token, ti) => {
+                                                                    const ci = token.indexOf(':');
+                                                                    if (ci === -1) return null;
+                                                                    return (
+                                                                        <div key={ti} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                            <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{token.slice(0, ci)}:</dt>
+                                                                            <dd className="text-gray-700 text-sm font-mono min-w-0">{token.slice(ci + 1)}</dd>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </Fragment>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div key={i} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                            {p.key && <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{p.key}:</dt>}
+                                                            <dd className={`text-gray-700 break-words text-sm min-w-0${!p.key ? ' col-span-2' : ''}`}>{p.value}</dd>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {hasVariants && selectedVariant?.option_tokens && (
+                                                    <>
+                                                        {selectedVariant.option_tokens.split('|').map((token, ti) => {
+                                                            const ci = token.indexOf(':');
+                                                            if (ci === -1) return null;
+                                                            return (
+                                                                <div key={ti} className="grid grid-cols-[auto_1fr] gap-x-3 min-w-0">
+                                                                    <dt className="text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap pt-0.5">{token.slice(0, ci)}:</dt>
+                                                                    <dd className="text-gray-700 text-sm font-mono min-w-0">{token.slice(ci + 1)}</dd>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </>
                                                 )}
                                             </dl>
                                         </div>
                                     )}
                                     </div>
-                                </div>
                             </Dialog.Panel>
                         </Transition.Child>
                 </div>
@@ -478,6 +825,11 @@ export default function ProductDetailModal({ open, setOpen, product, onEdit }: P
             productId={product?.id || 0}
             productName={effectiveName || ''}
             productReference={effectiveProductCode}
+        />
+        <CatalogPdfViewer
+            open={catalogOpen}
+            onClose={() => setCatalogOpen(false)}
+            reference={effectiveProductCode}
         />
         </>
     )
