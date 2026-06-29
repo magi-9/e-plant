@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 
-const CYAN = '#0891b2';
-const CYAN_LITE = '#e0f7fa';
+const CYAN = '#2196f3';
+const CYAN_LITE = '#eaf4fe';
 const BORDER = '#e2e8f0';
 const TEXT = '#0f172a';
 
@@ -61,7 +61,7 @@ export default function MultiSelectInput({ values, options, onChange, placeholde
                     borderRadius: 10, border: `1.5px solid ${open ? CYAN : BORDER}`,
                     background: '#fff', cursor: 'text',
                     transition: 'border-color 0.15s, box-shadow 0.15s',
-                    boxShadow: open ? '0 0 0 4px rgba(6,182,212,0.10)' : 'none',
+                    boxShadow: open ? '0 0 0 4px rgba(33,150,243,0.10)' : 'none',
                 }}
             >
                 {values.map(v => (

@@ -73,7 +73,7 @@ export default function Navbar() {
         <>
         <nav
             className="fixed top-0 left-0 right-0 z-50 h-16"
-            style={{ background: '#020617', borderBottom: '1px solid rgba(6,182,212,0.18)' }}
+            style={{ background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(15,23,42,0.06)' }}
         >
             <div className="w-full h-full px-2 sm:px-3 flex items-center justify-between gap-2 min-w-0">
 
@@ -81,14 +81,14 @@ export default function Navbar() {
                 <div className="flex items-center gap-4 sm:gap-8 min-w-0">
                     <button
                         type="button"
-                        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/products'); }}
+                        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/home'); }}
                         className="flex-shrink-0 opacity-90 hover:opacity-100 transition-opacity"
                         aria-label="Dynamic Abutment Solutions – e-shop"
                     >
                         <img
                             src={logoUrl}
                             alt="Dynamic Abutment Solutions"
-                            className="h-7 w-auto max-w-[132px] sm:max-w-none object-contain brightness-0 invert"
+                            className="h-7 w-auto max-w-[132px] sm:max-w-none object-contain"
                         />
                     </button>
 
@@ -99,9 +99,11 @@ export default function Navbar() {
                                 to={to}
                                 className="text-sm font-medium transition-colors duration-150"
                                 style={{
-                                    color: isActive(to.split('#')[0]) ? '#fff' : 'rgba(255,255,255,0.45)',
-                                    fontWeight: isActive(to.split('#')[0]) ? 600 : 400,
+                                    color: isActive(to.split('#')[0]) ? '#1a1c1e' : '#45474c',
+                                    fontWeight: isActive(to.split('#')[0]) ? 700 : 500,
                                     textDecoration: 'none',
+                                    paddingBottom: 2,
+                                    borderBottom: isActive(to.split('#')[0]) ? '2px solid #1a1c1e' : '2px solid transparent',
                                 }}
                             >
                                 {label}
@@ -111,8 +113,8 @@ export default function Navbar() {
                             href={landingHomeHref}
                             className="text-sm font-medium transition-colors duration-150"
                             style={{
-                                color: 'rgba(255,255,255,0.45)',
-                                fontWeight: 400,
+                                color: '#45474c',
+                                fontWeight: 500,
                                 textDecoration: 'none',
                             }}
                         >
@@ -127,7 +129,7 @@ export default function Navbar() {
                     <Link
                         to="/catalogs"
                         className="hidden min-[430px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
-                        style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: isActive('/catalogs') ? 'rgba(6,182,212,0.16)' : 'rgba(255,255,255,0.04)' }}
+                        style={{ border: '1px solid #e2e8f0', color: '#45474c', background: isActive('/catalogs') ? '#eaf4fe' : '#f4f5f6' }}
                     >
                         Katalógy
                     </Link>
@@ -135,7 +137,7 @@ export default function Navbar() {
                     <a
                         href={landingHomeHref}
                         className="hidden min-[380px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
-                        style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.78)', background: 'rgba(255,255,255,0.04)' }}
+                        style={{ border: '1px solid #e2e8f0', color: '#45474c', background: '#f4f5f6' }}
                     >
                         Kontakt
                     </a>
@@ -148,11 +150,11 @@ export default function Navbar() {
                                 aria-label="Košík"
                                 className={`relative flex items-center gap-1.5 rounded-[10px] px-2.5 sm:px-3.5 py-2 transition-all duration-200 ${cartPulse ? 'scale-105' : ''}`}
                                 style={{
-                                    background: isActive('/cart') ? 'rgba(6,182,212,0.2)' : 'rgba(6,182,212,0.1)',
-                                    border: '1px solid rgba(6,182,212,0.25)',
+                                    background: isActive('/cart') ? 'rgba(33,150,243,0.15)' : 'rgba(33,150,243,0.08)',
+                                    border: '1px solid rgba(33,150,243,0.25)',
                                 }}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                                     <line x1="3" y1="6" x2="21" y2="6" />
                                     <path d="M16 10a4 4 0 01-8 0" />
@@ -182,7 +184,7 @@ export default function Navbar() {
                                         </ul>
                                         <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
                                             <span className="text-sm text-slate-600">Spolu</span>
-                                            <span className="text-sm font-bold text-cyan-700">
+                                            <span className="text-sm font-bold" style={{ color: '#1565c0' }}>
                                                 {totalPrice.toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                                             </span>
                                         </div>
@@ -198,7 +200,7 @@ export default function Navbar() {
                             to="/admin"
                             aria-label="Admin panel"
                             className="flex items-center justify-center p-2 rounded-lg transition-colors"
-                            style={{ color: location.pathname.startsWith('/admin') ? '#06b6d4' : 'rgba(255,255,255,0.6)' }}
+                            style={{ color: location.pathname.startsWith('/admin') ? '#2196f3' : '#94a3b8' }}
                         >
                             <ShieldCheckIcon className="h-5 w-5" />
                         </Link>
@@ -209,7 +211,7 @@ export default function Navbar() {
                         <Menu as="div" className="relative">
                             <Menu.Button
                                 className="flex items-center gap-2 rounded-lg px-3 py-[7px] text-sm transition-colors duration-150"
-                                style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', background: 'none' }}
+                                style={{ border: '1px solid #e2e8f0', color: '#45474c', background: 'none' }}
                             >
                                 <UserCircleIcon className="h-5 w-5 flex-shrink-0" />
                                 <span className="hidden md:inline max-w-[160px] truncate">{userLabel}</span>
@@ -265,7 +267,7 @@ export default function Navbar() {
                             onClick={() => setShowLogoutConfirm(true)}
                             aria-label="Odhlásiť sa"
                             className="flex items-center justify-center p-2 rounded-lg transition-colors"
-                            style={{ color: 'rgba(255,255,255,0.5)' }}
+                            style={{ color: '#94a3b8' }}
                         >
                             <ArrowRightOnRectangleIcon className="h-5 w-5" />
                         </button>
@@ -276,7 +278,7 @@ export default function Navbar() {
                         <Link
                             to="/login"
                             className="flex items-center rounded-lg px-3.5 py-[7px] text-[13px] transition-colors duration-150"
-                            style={{ border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', background: 'none' }}
+                            style={{ border: '1px solid #e2e8f0', color: '#45474c', background: 'none' }}
                         >
                             Prihlásiť sa
                         </Link>

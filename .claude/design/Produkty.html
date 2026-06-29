@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produkty — Dynamic Abutment Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  .shell{display:grid;grid-template-columns:272px 1fr;gap:32px;align-items:start}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .filterCol{position:sticky;top:88px}
+  .mFilterBtn{display:none}
+  .heroRow{display:flex;justify-content:space-between;align-items:flex-end;gap:40px}
+  .heroBadge{width:430px;flex-shrink:0}
+  .toolbar{display:flex;align-items:center;gap:14px}
+  .toolSearch{flex:1;min-width:0}
+  @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:900px){
+    .shell{grid-template-columns:1fr}
+    .filterCol{display:none}
+    .mFilterBtn{display:flex}
+    .heroRow{flex-direction:column;align-items:flex-start;gap:24px}
+    .heroBadge{width:100%}
+    .grid{grid-template-columns:repeat(2,1fr);gap:14px}
+    .toolbar{flex-wrap:wrap}
+    .toolSearch{flex:1 1 100%;order:-1}
+  }
+  @media(max-width:560px){.grid{grid-template-columns:1fr 1fr;gap:12px}.h1{font-size:30px!important;line-height:36px!important}}
+  @media(max-width:400px){.grid{grid-template-columns:1fr}}
+  .pcard{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+  .pcard:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(15,23,42,.10);border-color:#cfe6fb}
+  .pcard:hover .pimg{transform:scale(1.05)}
+  .pimg{transition:transform .5s ease}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="shop-data.js"></script>
+<script type="text/babel" src="shop-ui.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef } = React;
+const { TYPES, BRANDS, MATERIALS, PRODUCTS, variantWord } = ShopData;
+
+/* ---------- HERO ---------- */
+function Hero(){
+  return (
+    <section style={{background:'var(--card)',borderRadius:20,padding:32,boxShadow:'inset 0 0 0 1px rgba(255,255,255,.5),0 1px 2px rgba(0,0,0,.05)'}}>
+      <div className="heroRow">
+        <div style={{flex:1,minWidth:0}}>
+          <h1 className="h1" style={{fontSize:40,lineHeight:'50px',fontWeight:700,letterSpacing:'-0.8px'}}>Dynamic Abutment Solutions</h1>
+          <p style={{marginTop:8,maxWidth:672,fontSize:18,lineHeight:'28px',color:'var(--ink2)'}}>Líder v uhlových abutmentoch a digitálnych workflow pre modernú implantológiu. Komplexné riešenia – od skenovacích tiel TiBase, Multi‑Unit abutmentov, až po CAD/CAM individuálne suprakonštrukcie.</p>
+        </div>
+        <div className="heroBadge" style={{paddingTop:8,borderTop:'1px solid var(--line)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:24,color:'var(--blue)'}}><I.badge/><span style={{fontSize:12,fontWeight:700,letterSpacing:'.6px'}}>OFICIÁLNY DISTRIBÚTOR</span></div>
+          <p style={{marginTop:8,fontSize:14,lineHeight:'20px',color:'var(--ink2)'}}>Všetky produkty sú originálne z oficálneho distribútora</p>
+          <a href="#" style={{display:'inline-flex',alignItems:'center',gap:4,marginTop:8,fontSize:12,fontWeight:700,letterSpacing:'.6px',color:'var(--blue)'}}>Navštíviť stránku <I.ext/></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- FILTER PANEL ---------- */
+function Check({on}){return <span style={{width:20,height:20,borderRadius:4,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:on?'var(--blue)':'#fff',border:on?'1px solid var(--blue)':'1.5px solid #cbd5e1',color:'#fff',transition:'all .12s'}}>{on&&<I.check/>}</span>;}
+function FilterGroup({title,children,open,onToggle}){
+  return (<div><button onClick={onToggle} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:12,fontWeight:700,letterSpacing:'.6px'}}>{title}</span><I.chev style={{transform:open?'rotate(180deg)':'none',transition:'transform .2s'}}/></button>{open&&<div style={{marginTop:16,display:'flex',flexDirection:'column',gap:12}}>{children}</div>}</div>);
+}
+function CheckRow({label,count,on,onClick}){
+  return (<button onClick={onClick} style={{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left'}}><Check on={on}/><span style={{fontSize:14,color:'var(--ink2)',flex:1}}>{label}</span>{count!=null&&<span style={{fontSize:10,fontWeight:700,color:'var(--ink2)',opacity:.5}}>{count}</span>}</button>);
+}
+function FilterPanel({F,setF,reset}){
+  const [open,setOpen]=useState({t:true,c:true,k:true});
+  const tg=k=>setOpen(o=>({...o,[k]:!o[k]}));
+  const togArr=(key,val)=>setF(f=>{const a=f[key];return{...f,[key]:a.includes(val)?a.filter(x=>x!==val):[...a,val]};});
+  const div=<div style={{height:1,background:'var(--line)'}}/>;
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:24}}>
+      <span style={{fontSize:12,fontWeight:700,letterSpacing:'1px',color:'var(--muted)'}}>FILTER PRODUKTOV</span>{div}
+      <FilterGroup title="Typ produktu" open={open.t} onToggle={()=>tg('t')}>{TYPES.map(t=><CheckRow key={t.key} label={t.label} count={t.count} on={F.types.includes(t.key)} onClick={()=>togArr('types',t.key)}/>)}</FilterGroup>{div}
+      <FilterGroup title="Kategórie" open={open.c} onToggle={()=>tg('c')}>{BRANDS.map(b=><CheckRow key={b.key} label={b.label} on={F.brands.includes(b.key)} onClick={()=>togArr('brands',b.key)}/>)}</FilterGroup>{div}
+      <FilterGroup title="Kompatibilita" open={open.k} onToggle={()=>tg('k')}>{MATERIALS.map(m=><CheckRow key={m.key} label={m.label} on={F.materials.includes(m.key)} onClick={()=>togArr('materials',m.key)}/>)}</FilterGroup>{div}
+      <div>
+        <span style={{fontSize:12,fontWeight:700,letterSpacing:'.6px'}}>Cena</span>
+        <div style={{display:'flex',gap:12,marginTop:14}}>
+          {[['MIN','min','0'],['MAX','max','1000']].map(([lab,key,ph])=>(
+            <label key={key} style={{flex:1}}><span style={{display:'block',fontSize:10,fontWeight:700,letterSpacing:'.6px',color:'var(--muted)',marginBottom:6}}>{lab}</span>
+              <input type="number" placeholder={ph} value={F[key]} onChange={e=>setF(f=>({...f,[key]:e.target.value}))} style={{width:'100%',height:42,border:'1px solid var(--line2)',borderRadius:10,padding:'0 12px',fontSize:14,outline:'none',background:'#fff'}}/></label>
+          ))}
+        </div>
+      </div>
+      <button onClick={reset} style={{height:46,borderRadius:12,background:'#f4f5f6',color:'var(--ink)',fontSize:14,fontWeight:600}}>Resetovať všetky filtre</button>
+    </div>
+  );
+}
+
+/* ---------- PRODUCT CARD ---------- */
+function ProductCard({p,index,list}){
+  return (
+    <a className="pcard" href={`Detail produktu.html?id=${p.id}`} style={{position:'relative',background:'var(--card)',border:'1px solid var(--line2)',borderRadius:16,overflow:'hidden',display:'flex',flexDirection:list?'row':'column',animation:`fadeUp .4s ease-out ${Math.min(index*35,300)}ms both`}}>
+      <div style={{position:'relative',flexShrink:0,width:list?160:'100%',height:list?160:200,background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',borderRight:list?'1px solid var(--line)':'none'}}>
+        {p.stock&&<span style={{position:'absolute',top:12,left:12,zIndex:2,fontSize:11,fontWeight:700,letterSpacing:'.4px',color:'var(--ink2)',background:'#f1f3f5',padding:'4px 9px',borderRadius:7}}>IN STOCK</span>}
+        <img className="pimg" src={p.img} alt={p.name} style={{maxWidth:'72%',maxHeight:'82%',objectFit:'contain'}}/>
+      </div>
+      <div style={{padding:'18px',display:'flex',flexDirection:'column',flex:1}}>
+        <span style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)'}}>{p.brandLabel}</span>
+        <h3 style={{marginTop:8,fontSize:18,fontWeight:700,lineHeight:'24px'}}>{p.name}</h3>
+        <p style={{marginTop:8,fontSize:13,color:'var(--muted)'}}>Kód: <span className="mono" style={{color:'var(--ink2)'}}>{p.code}</span> | {p.variants} {variantWord(p.variants)}</p>
+        <span style={{marginTop:list?14:18,width:'100%',height:46,borderRadius:10,background:'var(--blue)',color:'#fff',fontSize:14,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>Prihláste sa pre cenu</span>
+      </div>
+    </a>
+  );
+}
+
+/* ---------- TOOLBAR ---------- */
+function Toolbar({F,setF,sort,setSort,view,setView}){
+  const [sortOpen,setSortOpen]=useState(false);const sortRef=useRef(null);
+  useEffect(()=>{const h=e=>{if(sortRef.current&&!sortRef.current.contains(e.target))setSortOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const SORTS=[['pop','Popularita'],['asc','Cena: vzostupne'],['desc','Cena: zostupne'],['new','Najnovšie']];
+  const cur=SORTS.find(s=>s[0]===sort)[1];
+  const vbtn=on=>({width:38,height:38,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',color:on?'#fff':'var(--muted)',background:on?'var(--ink)':'transparent'});
+  return (
+    <div style={{background:'var(--card)',border:'1px solid var(--line2)',borderRadius:16,padding:'10px 12px 10px 18px'}}>
+      <div className="toolbar">
+        <div className="toolSearch" style={{display:'flex',alignItems:'center',gap:10,color:'var(--muted)'}}><I.search width="18" height="18"/><input value={F.q} onChange={e=>setF(f=>({...f,q:e.target.value}))} placeholder="Hľadať produkt . . ." style={{flex:1,border:'none',outline:'none',fontSize:15,color:'var(--ink)',background:'transparent'}}/></div>
+        <div style={{display:'flex',alignItems:'center',gap:14,marginLeft:'auto'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:13,color:'var(--muted)',whiteSpace:'nowrap'}}>Zoradiť podľa</span>
+            <div ref={sortRef} style={{position:'relative'}}>
+              <button onClick={()=>setSortOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:'1px solid var(--line2)',borderRadius:10,fontSize:14,fontWeight:600,background:'#fff'}}>{cur}<I.chev style={{color:'var(--muted)',transform:sortOpen?'rotate(180deg)':'none',transition:'transform .2s'}}/></button>
+              {sortOpen&&<div style={{position:'absolute',top:'100%',right:0,marginTop:8,width:200,background:'#fff',border:'1px solid var(--line2)',borderRadius:12,boxShadow:'0 18px 40px rgba(15,23,42,.14)',padding:'6px 0',zIndex:30}}>{SORTS.map(([v,l])=><button key={v} onClick={()=>{setSort(v);setSortOpen(false);}} style={{display:'block',width:'100%',textAlign:'left',padding:'9px 14px',fontSize:14,fontWeight:sort===v?700:500,color:sort===v?'var(--blue)':'var(--ink2)',background:sort===v?'#eaf4fe':'transparent'}}>{l}</button>)}</div>}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:4,background:'#f4f5f6',borderRadius:11,padding:4}}>
+            <button style={vbtn(view==='grid')} onClick={()=>setView('grid')} aria-label="Mriežka"><I.grid/></button>
+            <button style={vbtn(view==='list')} onClick={()=>setView('list')} aria-label="Zoznam"><I.list/></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActiveFilters({F,setF,reset}){
+  const chips=[];
+  F.types.forEach(t=>chips.push([TYPES.find(x=>x.key===t).label,()=>setF(f=>({...f,types:f.types.filter(x=>x!==t)}))]));
+  F.brands.forEach(b=>chips.push([BRANDS.find(x=>x.key===b).label,()=>setF(f=>({...f,brands:f.brands.filter(x=>x!==b)}))]));
+  F.materials.forEach(m=>chips.push([MATERIALS.find(x=>x.key===m).label,()=>setF(f=>({...f,materials:f.materials.filter(x=>x!==m)}))]));
+  if(F.min)chips.push([`od ${F.min} €`,()=>setF(f=>({...f,min:''}))]);
+  if(F.max)chips.push([`do ${F.max} €`,()=>setF(f=>({...f,max:''}))]);
+  if(!chips.length)return null;
+  return (<div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10}}><span style={{fontSize:11,fontWeight:700,letterSpacing:'.6px',color:'var(--muted)'}}>AKTÍVNE FILTRE:</span>{chips.map(([l,rm],i)=>(<button key={i} onClick={rm} style={{display:'inline-flex',alignItems:'center',gap:7,height:32,padding:'0 12px',borderRadius:9,fontSize:13,fontWeight:600,background:'#fff',border:'1px solid var(--line2)'}}>{l}<I.close width="12" height="12" style={{color:'var(--muted)'}}/></button>))}<button onClick={reset} style={{fontSize:13,fontWeight:600,color:'var(--blue)'}}>Vymazať všetky filtre</button></div>);
+}
+
+function Pager({page,pages,setPage}){
+  if(pages<=1)return null;const nums=[];for(let i=1;i<=pages;i++)nums.push(i);
+  return (<div style={{display:'flex',justifyContent:'center',gap:8,marginTop:40}}>{nums.map(n=><button key={n} onClick={()=>{setPage(n);window.scrollTo({top:0,behavior:'smooth'});}} style={{minWidth:44,height:44,borderRadius:12,fontSize:15,fontWeight:700,color:n===page?'#fff':'var(--ink)',background:n===page?'var(--ink)':'#fff',border:n===page?'none':'1px solid var(--line2)'}}>{n}</button>)}</div>);
+}
+
+/* ---------- APP ---------- */
+const PER_PAGE=12;
+const EMPTY={types:[],brands:[],materials:[],min:'',max:'',q:''};
+function App(){
+  const [F,setF]=useState({...EMPTY});
+  const [sort,setSort]=useState('pop');
+  const [view,setView]=useState('grid');
+  const [page,setPage]=useState(1);
+  const [drawer,setDrawer]=useState(false);
+  const [menu,setMenu]=useState(false);
+  useEffect(()=>{setPage(1);},[F,sort]);
+  const filtered=useMemo(()=>{
+    let ps=PRODUCTS.filter(p=>{
+      if(F.types.length&&!F.types.includes(p.type))return false;
+      if(F.brands.length&&!F.brands.includes(p.brand))return false;
+      if(F.materials.length&&!F.materials.includes(p.material))return false;
+      if(F.min&&p.price<Number(F.min))return false;
+      if(F.max&&p.price>Number(F.max))return false;
+      if(F.q){const q=F.q.toLowerCase();if(!p.name.toLowerCase().includes(q)&&!p.code.toLowerCase().includes(q)&&!p.brandLabel.toLowerCase().includes(q))return false;}
+      return true;
+    });
+    if(sort==='asc')ps=[...ps].sort((a,b)=>a.price-b.price);
+    if(sort==='desc')ps=[...ps].sort((a,b)=>b.price-a.price);
+    if(sort==='new')ps=[...ps].sort((a,b)=>b.id-a.id);
+    return ps;
+  },[F,sort]);
+  const reset=()=>setF({...EMPTY});
+  const pages=Math.ceil(filtered.length/PER_PAGE)||1;
+  const start=(page-1)*PER_PAGE;
+  const shown=filtered.slice(start,start+PER_PAGE);
+  const typeLabel=F.types.length===1?` ${TYPES.find(t=>t.key===F.types[0]).label}`:'';
+  return (
+    <div>
+      <Header active="produkty" onMenu={()=>setMenu(true)}/>
+      <MobileNav open={menu} onClose={()=>setMenu(false)} active="produkty"/>
+      <main className="wrap" style={{paddingTop:32,paddingBottom:8}}>
+        <Hero/>
+        <div className="shell" style={{marginTop:32}}>
+          <aside className="filterCol"><div style={{background:'var(--card)',border:'1px solid var(--line2)',borderRadius:16,padding:24}}><FilterPanel F={F} setF={setF} reset={reset}/></div></aside>
+          <section>
+            <Toolbar F={F} setF={setF} sort={sort} setSort={setSort} view={view} setView={setView}/>
+            <div className="mFilterBtn" style={{marginTop:14}}>
+              <button onClick={()=>setDrawer(true)} style={{display:'inline-flex',alignItems:'center',gap:8,height:42,padding:'0 16px',borderRadius:11,background:'#fff',border:'1px solid var(--line2)',fontSize:14,fontWeight:600}}><I.filter/>Filtre</button>
+            </div>
+            <p style={{margin:'20px 0 14px',fontSize:14,color:'var(--ink2)'}}>Zobrazených <b>{filtered.length?start+1:0} – {Math.min(start+PER_PAGE,filtered.length)}</b> z <b>{filtered.length}</b>{typeLabel} produktov</p>
+            <div style={{marginBottom:18}}><ActiveFilters F={F} setF={setF} reset={reset}/></div>
+            {shown.length?(
+              <div className="grid" style={view==='list'?{gridTemplateColumns:'1fr',gap:14}:undefined}>{shown.map((p,i)=><ProductCard key={p.id} p={p} index={i} list={view==='list'}/>)}</div>
+            ):(
+              <div style={{textAlign:'center',padding:'72px 20px',background:'#fff',borderRadius:16,border:'1px solid var(--line2)'}}><p style={{fontSize:16,color:'var(--ink2)'}}>Žiadne produkty nevyhovujú zvoleným filtrom.</p><button onClick={reset} style={{marginTop:14,fontSize:14,fontWeight:600,color:'var(--blue)'}}>Vymazať filtre</button></div>
+            )}
+            <Pager page={page} pages={pages} setPage={setPage}/>
+          </section>
+        </div>
+      </main>
+      <Footer/>
+      {drawer&&(
+        <div style={{position:'fixed',inset:0,zIndex:80}}>
+          <div onClick={()=>setDrawer(false)} style={{position:'absolute',inset:0,background:'rgba(15,18,22,.45)',animation:'overlayIn .2s ease'}}/>
+          <div style={{position:'absolute',left:0,right:0,bottom:0,maxHeight:'88vh',overflowY:'auto',background:'#fff',borderRadius:'20px 20px 0 0',padding:'20px 22px 32px',animation:'sheetUp .28s cubic-bezier(.22,1,.36,1)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}><strong style={{fontSize:16}}>Filtre</strong><button onClick={()=>setDrawer(false)} style={{width:36,height:36,borderRadius:10,background:'#f4f5f6',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--ink2)'}}><I.close/></button></div>
+            <FilterPanel F={F} setF={setF} reset={reset}/>
+            <button onClick={()=>setDrawer(false)} style={{marginTop:20,width:'100%',height:48,borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700}}>Zobraziť {filtered.length} produktov</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

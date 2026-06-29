@@ -2,7 +2,6 @@ import { Fragment, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeftIcon, CursorArrowRaysIcon, MagnifyingGlassIcon, ShoppingCartIcon, SparklesIcon, TagIcon } from '@heroicons/react/24/outline';
 import { getCompatibleScrews, getProduct, getProducts, type Product } from '../api/products';
 import CatalogPdfViewer from '../components/CatalogPdfViewer';
 import DropdownSelect from '../components/DropdownSelect';
@@ -25,55 +24,61 @@ const getNetPrice = (product: Product | ProductVariant): string | null => produc
 
 const isTiBaseProduct = (product: Product): boolean => {
     const haystack = [
-        product.reference,
-        product.category,
-        product.name,
-        product.wildcard_group_name,
-        product.parameters?.wildcard_reference,
+        product.reference, product.category, product.name,
+        product.wildcard_group_name, product.parameters?.wildcard_reference,
         product.parameters?.catalog_section,
     ].filter(Boolean).join(' ').toLowerCase();
-
     return haystack.includes('tibase') || haystack.includes('titanium base') || (product.reference || '').startsWith('31.');
 };
 
 const getVariantLabel = (option: ProductVariant): string => {
-    const tokens = (option.option_tokens || '')
-        .split('|')
-        .map((token) => token.trim())
-        .filter(Boolean);
-
-    if (tokens.length > 0) {
-        return tokens.slice(0, 2).join(' · ');
-    }
-
+    const tokens = (option.option_tokens || '').split('|').map(t => t.trim()).filter(Boolean);
+    if (tokens.length > 0) return tokens.slice(0, 2).join(' · ');
     return option.label || option.parameter_code || option.reference || option.name || 'Variant';
 };
 
+/* ── Design tokens ─────────────────────────────────────────── */
+const T = {
+    bg: '#f0f1f3', card: '#fff', ink: '#1a1c1e', ink2: '#45474c',
+    muted: '#94a3b8', line: '#eef0f2', line2: '#e2e8f0',
+    blue: '#2196f3', blueD: '#1565c0',
+    purpleBg: '#f6f0fd', purpleText: '#6b3fa0', purpleBorder: '#e6d9f5',
+    greenBg: '#f1fbf6', greenBorder: '#cdeede', greenText: '#1f9d55',
+};
+
+/* ── SVG icons ─────────────────────────────────────────────── */
+const IBack    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>;
+const IBook    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>;
+const ITag     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
+const IStar    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const ICart    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M2.5 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.6L23 7H6"/></svg>;
+const IZoom    = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35M11 8v6M8 11h6"/></svg>;
+
+/* ── RelatedProductCard (vertical) ──────────────────────────── */
 function RelatedProductCard({ product }: { product: Product }) {
     const image = getProductPreviewImage(product);
     const price = getCustomerPrice(product);
-
     return (
-        <Link
-            to={`/products/${product.id}`}
-            className="group flex min-h-[144px] gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-300 hover:shadow-md"
-        >
-            <div className="h-28 w-28 flex-shrink-0 overflow-hidden rounded-md bg-slate-100">
-                {image ? (
-                    <img src={image} alt={product.name} className="h-full w-full object-contain p-2 transition group-hover:scale-105" />
-                ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">Bez obrázka</div>
-                )}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col">
-                <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 group-hover:text-cyan-700">{product.name}</h3>
-                {product.reference && <p className="mt-1 truncate text-xs font-medium text-slate-500">{product.reference}</p>}
-                <div className="mt-auto">
-                    {price ? (
-                        <p className="text-sm font-bold text-cyan-700">{price} € s DPH</p>
-                    ) : (
-                        <span className="inline-flex rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-semibold text-cyan-700">Členská cena</span>
-                    )}
+        <Link to={`/products/${product.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+            <div style={{ background: T.card, border: `1px solid ${T.line2}`, borderRadius: 16, overflow: 'hidden', transition: 'transform .2s,box-shadow .2s,border-color .2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 28px rgba(15,23,42,.10)'; (e.currentTarget as HTMLElement).style.borderColor = '#cfe6fb'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; (e.currentTarget as HTMLElement).style.borderColor = T.line2; }}
+            >
+                <div style={{ height: 160, background: '#f7f8fa', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {image
+                        ? <img src={image} alt={product.name} style={{ maxWidth: '70%', maxHeight: '80%', objectFit: 'contain' }} />
+                        : <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke={T.muted} strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    }
+                </div>
+                <div style={{ padding: '14px 16px 18px' }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: T.ink, margin: 0, lineHeight: '20px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{product.name}</h3>
+                    {product.reference && <p style={{ marginTop: 4, fontSize: 12, color: T.muted, fontFamily: 'monospace' }}>{product.reference}</p>}
+                    <div style={{ marginTop: 12 }}>
+                        {price
+                            ? <p style={{ fontSize: 14, fontWeight: 700, color: T.blueD }}>{price} € s DPH</p>
+                            : <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 20, background: '#eaf4fe', fontSize: 12, fontWeight: 700, color: T.blueD }}>Členská cena</span>
+                        }
+                    </div>
                 </div>
             </div>
         </Link>
@@ -89,6 +94,7 @@ export default function ProductDetailPage() {
     const [selectedVariantRef, setSelectedVariantRef] = useState('');
     const [selectedScrewId, setSelectedScrewId] = useState<number | null>(null);
     const [imageZoomOrigin, setImageZoomOrigin] = useState('50% 50%');
+    const [imageHovered, setImageHovered] = useState(false);
     const [catalogOpen, setCatalogOpen] = useState(false);
     const [requestOpen, setRequestOpen] = useState(false);
 
@@ -104,7 +110,7 @@ export default function ProductDetailPage() {
         () => sortByFirstOptionTokenValue(product?.parameters?.options || []),
         [product?.parameters?.options]
     );
-    const activeVariant = variantOptions.find((option) => option.reference === selectedVariantRef) || variantOptions[0] || null;
+    const activeVariant = variantOptions.find(o => o.reference === selectedVariantRef) || variantOptions[0] || null;
     const hasVariants = product?.parameters?.type === 'wildcard_group' && variantOptions.length > 0;
     const effectiveItem = hasVariants && activeVariant ? activeVariant : product;
     const effectiveName = effectiveItem?.name || product?.name || '';
@@ -119,11 +125,7 @@ export default function ProductDetailPage() {
     const compatibilityCodes = (activeVariant?.compatibility_codes?.length ? activeVariant.compatibility_codes : product?.compatibility_codes) || [];
     const selectedCompatibilityCode = compatibilityCodes[0] || product?.compatibility_code || '';
     const categories = product
-        ? getOrderedCategories(
-            { ...product, category: effectiveCategory, all_categories: effectiveAllCategories },
-            [],
-            '',
-        )
+        ? getOrderedCategories({ ...product, category: effectiveCategory, all_categories: effectiveAllCategories }, [], '')
         : [];
     const descriptionParts = effectiveDescription
         ? buildDescriptionParts(effectiveDescription, hasVariants, activeVariant, effectiveReference)
@@ -134,7 +136,7 @@ export default function ProductDetailPage() {
         queryFn: async () => {
             if (!selectedCompatibilityCode) return [];
             const data = await getProducts({ compatibility_code: selectedCompatibilityCode, limit: 12 });
-            return data.results.filter((item) => item.id !== product?.id);
+            return data.results.filter(item => item.id !== product?.id);
         },
         enabled: !!product && !!selectedCompatibilityCode,
     });
@@ -144,7 +146,7 @@ export default function ProductDetailPage() {
         queryFn: async () => {
             if (!categories[0]) return [];
             const data = await getProducts({ categories: [categories[0]], limit: 12 });
-            return data.results.filter((item) => item.id !== product?.id);
+            return data.results.filter(item => item.id !== product?.id);
         },
         enabled: !!product && !!categories[0],
     });
@@ -158,73 +160,59 @@ export default function ProductDetailPage() {
 
     const relatedProducts = useMemo(() => {
         const byId = new Map<number, Product>();
-        [...(compatibleProductsQuery.data || []), ...(similarProductsQuery.data || [])].forEach((item) => {
+        [...(compatibleProductsQuery.data || []), ...(similarProductsQuery.data || [])].forEach(item => {
             if (item.id !== product?.id) byId.set(item.id, item);
         });
         return Array.from(byId.values()).slice(0, 8);
     }, [compatibleProductsQuery.data, product?.id, similarProductsQuery.data]);
 
     const cartItem = product ? items.find(
-        (item) => item.productId === product.id && (item.variantReference || '') === (activeVariant?.reference || '')
+        item => item.productId === product.id && (item.variantReference || '') === (activeVariant?.reference || '')
     ) : null;
-    const defaultScrew = compatibleScrews.find((screw) => screw.stock_quantity > 0) || compatibleScrews[0] || null;
-    const selectedScrew = compatibleScrews.find((screw) => screw.id === selectedScrewId) || defaultScrew;
+    const defaultScrew = compatibleScrews.find(s => s.stock_quantity > 0) || compatibleScrews[0] || null;
+    const selectedScrew = compatibleScrews.find(s => s.id === selectedScrewId) || defaultScrew;
     const selectedEffectiveScrewId = selectedScrew?.id ?? null;
 
     const handleAddToCart = () => {
         if (!product || !effectiveItem || !effectivePrice) return;
-
-        if (!canUseCart) {
-            navigate('/login');
-            return;
-        }
-
-        if (effectiveStock <= 0) {
-            toast.error('Produkt nie je skladom.');
-            return;
-        }
-
+        if (!canUseCart) { navigate('/login'); return; }
+        if (effectiveStock <= 0) { toast.error('Produkt nie je skladom.'); return; }
         if (compatibleScrews.length > 0 && (!selectedScrew || selectedScrew.stock_quantity === 0)) {
-            toast.error('Vybraná skrutka nie je skladom.');
-            return;
+            toast.error('Vybraná skrutka nie je skladom.'); return;
         }
-
         addItem({
-            productId: product.id,
-            name: effectiveName,
-            price: effectivePrice,
-            netPrice: effectiveNetPrice,
-            image: effectiveImage,
-            stockQuantity: effectiveStock,
+            productId: product.id, name: effectiveName, price: effectivePrice,
+            netPrice: effectiveNetPrice, image: effectiveImage, stockQuantity: effectiveStock,
             variantReference: activeVariant?.reference || undefined,
             variantLabel: activeVariant ? getVariantLabel(activeVariant) : undefined,
-            bundledScrew: selectedScrew
-                ? { productId: selectedScrew.id, name: selectedScrew.name, reference: selectedScrew.reference }
-                : undefined,
+            bundledScrew: selectedScrew ? { productId: selectedScrew.id, name: selectedScrew.name, reference: selectedScrew.reference } : undefined,
         });
     };
 
     if (productQuery.isLoading) {
         return (
-            <div className="min-h-[60vh] px-4 py-16">
-                <div className="mx-auto max-w-6xl text-slate-500">Načítavam produkt...</div>
+            <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${T.line2}`, borderTopColor: T.blue, animation: 'spin .8s linear infinite' }} />
+                <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
             </div>
         );
     }
 
     if (!product) {
         return (
-            <div className="min-h-[60vh] px-4 py-16">
-                <div className="mx-auto max-w-6xl">
-                    <button type="button" onClick={() => navigate('/products')} className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700">
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        Späť na produkty
+            <div style={{ minHeight: '60vh', padding: '64px 32px', background: T.bg }}>
+                <div style={{ maxWidth: 1440, margin: '0 auto' }}>
+                    <button type="button" onClick={() => navigate('/products')}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: T.blueD, background: 'none', border: 'none', cursor: 'pointer' }}>
+                        <IBack /> Späť na produkty
                     </button>
-                    <p className="mt-8 text-lg font-semibold text-slate-900">Produkt sa nepodarilo nájsť.</p>
+                    <p style={{ marginTop: 32, fontSize: 18, fontWeight: 600, color: T.ink }}>Produkt sa nepodarilo nájsť.</p>
                 </div>
             </div>
         );
     }
+
+    const hasDetails = descriptionParts.length > 0 || categories.length > 0 || activeVariant?.option_tokens;
 
     return (
         <>
@@ -233,250 +221,215 @@ export default function ProductDetailPage() {
                 <meta name="description" content={effectiveDescription || product.name} />
             </Helmet>
 
-            <main className="bg-slate-50">
-                <section className="border-b border-slate-200 bg-white px-4 py-5">
-                    <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-                        <button type="button" onClick={() => navigate('/products')} className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 hover:text-cyan-800">
-                            <ArrowLeftIcon className="h-4 w-4" />
-                            Produkty
+            <style>{`
+                @keyframes spin{to{transform:rotate(360deg)}}
+                @media(max-width:900px){.detail-grid{grid-template-columns:1fr!important}}
+                @media(max-width:700px){.related-grid{grid-template-columns:1fr 1fr!important}}
+                @media(max-width:480px){.related-grid{grid-template-columns:1fr!important}}
+                @media(max-width:900px){.details-table{grid-template-columns:1fr!important}}
+            `}</style>
+
+            <main style={{ background: T.bg, minHeight: '100vh', fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif" }}>
+
+                {/* Breadcrumb bar */}
+                <div style={{ background: '#fff', borderBottom: `1px solid ${T.line2}`, height: 58, display: 'flex', alignItems: 'center' }}>
+                    <div style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
+                        <button type="button" onClick={() => navigate('/products')}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: T.ink2, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            <IBack /> Produkty
                         </button>
                         {effectiveReference && (
-                            <button
-                                type="button"
-                                onClick={() => setCatalogOpen(true)}
-                                className="inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-100"
-                            >
-                                <CursorArrowRaysIcon className="h-4 w-4" />
-                                Pozrieť v katalógu
+                            <button type="button" onClick={() => setCatalogOpen(true)}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 36, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, color: T.blueD, background: '#eaf4fe', border: `1px solid rgba(33,150,243,0.2)`, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <IBook /> Pozrieť v katalógu
                             </button>
                         )}
                     </div>
-                </section>
+                </div>
 
-                <section className="px-4 py-8 sm:py-10">
-                    <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-                        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                {/* Main section */}
+                <section style={{ maxWidth: 1440, margin: '0 auto', padding: '32px 32px 0', boxSizing: 'border-box' }}>
+                    <div className="detail-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(380px,.9fr)', gap: 28, alignItems: 'start' }}>
+
+                        {/* Image panel */}
+                        <div style={{ background: T.card, borderRadius: 18, border: `1px solid ${T.line2}`, overflow: 'hidden' }}>
                             <div
-                                className="group relative aspect-[4/3] min-h-[300px] overflow-hidden bg-slate-100 sm:min-h-[420px]"
-                                onMouseMove={(event) => {
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    const x = ((event.clientX - rect.left) / rect.width) * 100;
-                                    const y = ((event.clientY - rect.top) / rect.height) * 100;
-                                    setImageZoomOrigin(`${x}% ${y}%`);
-                                }}
-                                onMouseLeave={() => setImageZoomOrigin('50% 50%')}
+                                style={{ position: 'relative', aspectRatio: '4/3', minHeight: 300, background: '#f7f8fa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: effectiveImage ? 'zoom-in' : 'default', overflow: 'hidden' }}
+                                onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); setImageZoomOrigin(`${((e.clientX-r.left)/r.width)*100}% ${((e.clientY-r.top)/r.height)*100}%`); }}
+                                onMouseEnter={() => setImageHovered(true)}
+                                onMouseLeave={() => { setImageHovered(false); setImageZoomOrigin('50% 50%'); }}
                             >
                                 {effectiveImage ? (
                                     <>
-                                        <img
-                                            src={effectiveImage}
-                                            alt={effectiveName}
-                                            className="h-full w-full cursor-zoom-in object-contain p-5 transition-transform duration-200 ease-out group-hover:scale-[1.75]"
-                                            style={{ transformOrigin: imageZoomOrigin }}
-                                        />
-                                        <div className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-slate-600 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                                            <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-                                            Zoom
-                                        </div>
+                                        <img src={effectiveImage} alt={effectiveName}
+                                            style={{ maxWidth: '72%', maxHeight: '80%', objectFit: 'contain', transition: 'transform .3s ease', transform: imageHovered ? `scale(1.6)` : 'scale(1)', transformOrigin: imageZoomOrigin }} />
+                                        {imageHovered && (
+                                            <div style={{ position: 'absolute', top: 12, right: 12, display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 8, background: 'rgba(255,255,255,.9)', padding: '6px 10px', fontSize: 12, fontWeight: 600, color: T.ink2 }}>
+                                                <IZoom /> Zoom
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
-                                    <div className="flex h-full w-full items-center justify-center text-slate-400">Bez obrázka</div>
+                                    <svg width="72" height="72" fill="none" viewBox="0 0 24 24" stroke={T.muted} strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                                 )}
                             </div>
                         </div>
 
-                        <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                                {categories.slice(0, 4).map((category) => (
-                                    <span key={category} className="inline-flex items-center gap-1 rounded-md bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">
-                                        <TagIcon className="h-3.5 w-3.5" />
-                                        {category}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <h1 className="mt-4 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">{effectiveName}</h1>
-                            {effectiveReference && <p className="mt-2 text-sm font-semibold text-slate-500">{effectiveReference}</p>}
-
-                            {compatibilityCodes.length > 0 && (
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                    {compatibilityCodes.map((code) => (
-                                        <span key={code} className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-bold text-violet-700">
-                                            {code}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-
-                            {hasVariants && (
-                                <div className="mt-6">
-                                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Variant</p>
-                                    <DropdownSelect
-                                        value={activeVariant?.reference || ''}
-                                        onChange={setSelectedVariantRef}
-                                        options={variantOptions.map((option) => ({ value: option.reference, label: getVariantLabel(option) }))}
-                                        placeholder="Vybrať variant"
-                                    />
-                                </div>
-                            )}
-
-                            {isTiBaseProduct(product) && (
-                                <div className="mt-6 rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
-                                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                                        Skrutka <span className="text-emerald-700">({cartItem?.quantity ?? 1} ks zadarmo)</span>
-                                    </p>
-                                    {compatibleScrewsQuery.isLoading ? (
-                                        <p className="mt-3 text-sm text-slate-500">Načítavam skrutky...</p>
-                                    ) : compatibleScrews.length === 0 ? (
-                                        <p className="mt-3 text-sm text-slate-500">Kompatibilná skrutka nie je k dispozícii.</p>
-                                    ) : (
-                                        <div className="mt-3 grid gap-2">
-                                            {compatibleScrews.map((screw) => (
-                                                <label
-                                                    key={screw.id}
-                                                    className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition ${
-                                                        selectedEffectiveScrewId === screw.id
-                                                            ? 'border-cyan-500 bg-white text-cyan-900 shadow-sm'
-                                                            : 'border-emerald-100 bg-white/70 text-slate-700 hover:border-cyan-300'
-                                                    } ${screw.stock_quantity === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
-                                                >
-                                                    <input
-                                                        type="radio"
-                                                        name="detail-bundled-screw"
-                                                        value={screw.id}
-                                                        checked={selectedEffectiveScrewId === screw.id}
-                                                        onChange={() => setSelectedScrewId(screw.id)}
-                                                        disabled={screw.stock_quantity === 0}
-                                                        className="accent-cyan-600"
-                                                    />
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block font-semibold">{screw.name}</span>
-                                                        <span className="block text-xs text-slate-500">{screw.reference}</span>
-                                                    </span>
-                                                    <span className={`text-xs font-semibold ${screw.stock_quantity > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                                                        {screw.stock_quantity > 0 ? `${screw.stock_quantity} ks` : 'Nie je skladom'}
-                                                    </span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="mt-7 border-t border-slate-200 pt-6">
-                                {effectivePrice ? (
-                                    <div>
-                                        {effectiveNetPrice && <p className="text-sm text-slate-400">bez DPH {effectiveNetPrice} €</p>}
-                                        <p className="flex items-center gap-2 text-3xl font-bold text-cyan-700">
-                                            <SparklesIcon className="h-6 w-6 text-amber-500" />
-                                            {effectivePrice} € s DPH
-                                        </p>
+                        {/* Info panel */}
+                        <div>
+                            <div style={{ background: T.card, borderRadius: 18, border: `1px solid ${T.line2}`, padding: 28 }}>
+                                {/* Category chips */}
+                                {categories.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                                        {categories.slice(0, 4).map(cat => (
+                                            <span key={cat} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 26, padding: '0 10px', borderRadius: 8, background: '#eaf4fe', color: T.blueD, fontSize: 12, fontWeight: 700 }}>
+                                                <ITag /> {cat}
+                                            </span>
+                                        ))}
                                     </div>
-                                ) : (
-                                    <span className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-sm font-semibold text-cyan-700">Členská cena</span>
                                 )}
 
-                                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                                    {cartItem ? (
-                                        <div className="flex h-12 overflow-hidden rounded-md border border-cyan-200 bg-cyan-50">
-                                            <button
-                                                type="button"
-                                                aria-label="Znížiť množstvo"
-                                                onClick={() => cartItem.quantity > 1
-                                                    ? updateQuantity(product.id, cartItem.quantity - 1, activeVariant?.reference || undefined)
-                                                    : removeItem(product.id, activeVariant?.reference || undefined)}
-                                                className="w-12 text-lg font-bold text-cyan-700 hover:bg-cyan-100"
-                                            >
-                                                -
-                                            </button>
-                                            <span className="flex min-w-28 items-center justify-center bg-white px-4 text-sm font-bold text-cyan-900">{cartItem.quantity} v košíku</span>
-                                            <button
-                                                type="button"
-                                                aria-label="Zvýšiť množstvo"
-                                                onClick={() => {
-                                                    if (cartItem.quantity >= effectiveStock) {
-                                                        toast.error(`Na sklade je iba ${effectiveStock} ks.`);
-                                                        return;
-                                                    }
-                                                    updateQuantity(product.id, cartItem.quantity + 1, activeVariant?.reference || undefined);
-                                                }}
-                                                disabled={cartItem.quantity >= effectiveStock}
-                                                className="w-12 text-lg font-bold text-cyan-700 hover:bg-cyan-100 disabled:opacity-40"
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    ) : effectiveStock <= 0 ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => setRequestOpen(true)}
-                                            className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-slate-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-slate-700"
-                                        >
-                                            <ShoppingCartIcon className="h-5 w-5" />
-                                            Požiadať produkt
-                                        </button>
+                                <h1 style={{ fontSize: 28, fontWeight: 700, lineHeight: '36px', color: T.ink, margin: 0 }}>{effectiveName}</h1>
+                                {effectiveReference && <p style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: T.muted, fontFamily: 'monospace' }}>{effectiveReference}</p>}
+
+                                {/* Compatibility badges — PURPLE */}
+                                {compatibilityCodes.length > 0 && (
+                                    <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                        {compatibilityCodes.map(code => (
+                                            <span key={code} style={{ display: 'inline-flex', height: 28, padding: '0 10px', borderRadius: 8, border: `1px solid ${T.purpleBorder}`, background: T.purpleBg, color: T.purpleText, fontSize: 12, fontWeight: 700, alignItems: 'center' }}>
+                                                {code}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Variant selector */}
+                                {hasVariants && (
+                                    <div style={{ marginTop: 20 }}>
+                                        <p style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted }}>VARIANT</p>
+                                        <DropdownSelect
+                                            value={activeVariant?.reference || ''}
+                                            onChange={setSelectedVariantRef}
+                                            options={variantOptions.map(o => ({ value: o.reference, label: getVariantLabel(o) }))}
+                                            placeholder="Vybrať variant"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* TiBase screw section — green */}
+                                {isTiBaseProduct(product) && (
+                                    <div style={{ marginTop: 20, borderRadius: 12, border: `1px solid ${T.greenBorder}`, background: T.greenBg, padding: 16 }}>
+                                        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, marginBottom: 12 }}>
+                                            SKRUTKA <span style={{ color: T.greenText }}>({cartItem?.quantity ?? 1} ks zadarmo)</span>
+                                        </p>
+                                        {compatibleScrewsQuery.isLoading ? (
+                                            <p style={{ fontSize: 14, color: T.ink2 }}>Načítavam skrutky...</p>
+                                        ) : compatibleScrews.length === 0 ? (
+                                            <p style={{ fontSize: 14, color: T.ink2 }}>Kompatibilná skrutka nie je k dispozícii.</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                {compatibleScrews.map(screw => (
+                                                    <label key={screw.id} style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 10, border: `1px solid ${selectedEffectiveScrewId === screw.id ? T.blue : T.greenBorder}`, background: '#fff', padding: '10px 14px', cursor: screw.stock_quantity === 0 ? 'not-allowed' : 'pointer', opacity: screw.stock_quantity === 0 ? 0.5 : 1 }}>
+                                                        <input type="radio" name="detail-bundled-screw" value={screw.id} checked={selectedEffectiveScrewId === screw.id} onChange={() => setSelectedScrewId(screw.id)} disabled={screw.stock_quantity === 0} style={{ accentColor: T.blue }} />
+                                                        <span style={{ flex: 1, minWidth: 0 }}>
+                                                            <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: T.ink }}>{screw.name}</span>
+                                                            <span style={{ display: 'block', fontSize: 12, color: T.muted, fontFamily: 'monospace' }}>{screw.reference}</span>
+                                                        </span>
+                                                        <span style={{ fontSize: 12, fontWeight: 700, color: screw.stock_quantity > 0 ? T.greenText : '#c0392b', whiteSpace: 'nowrap' }}>
+                                                            {screw.stock_quantity > 0 ? `${screw.stock_quantity} ks` : 'Nie je skladom'}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Price + CTA */}
+                                <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.line}` }}>
+                                    {effectivePrice ? (
+                                        <div>
+                                            {effectiveNetPrice && <p style={{ fontSize: 13, color: T.muted, marginBottom: 4 }}>bez DPH {effectiveNetPrice} €</p>}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <IStar />
+                                                <p style={{ fontSize: 30, fontWeight: 800, color: T.blueD, margin: 0 }}>{effectivePrice} € s DPH</p>
+                                            </div>
+                                                </div>
                                     ) : (
-                                        <button
-                                            type="button"
-                                            onClick={handleAddToCart}
-                                            className="inline-flex h-12 items-center justify-center rounded-md bg-cyan-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-cyan-700"
-                                        >
-                                            <ShoppingCartIcon className="mr-2 h-5 w-5" />
-                                            {canUseCart ? 'Pridať do košíka' : 'Prihlásiť sa'}
-                                        </button>
+                                        <div style={{ display: 'inline-flex', height: 32, padding: '0 14px', borderRadius: 20, background: '#eaf4fe', alignItems: 'center', fontSize: 14, fontWeight: 700, color: T.blueD }}>Členská cena</div>
                                     )}
-                                    <Link to="/cart" className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                                        <ShoppingCartIcon className="h-5 w-5" />
-                                        Do košíka
-                                    </Link>
+
+                                    <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {cartItem ? (
+                                            <div style={{ display: 'flex', height: 50, overflow: 'hidden', borderRadius: 12, border: `1px solid rgba(33,150,243,0.25)`, background: '#eaf4fe' }}>
+                                                <button type="button" aria-label="Znížiť" onClick={() => cartItem.quantity > 1 ? updateQuantity(product.id, cartItem.quantity - 1, activeVariant?.reference || undefined) : removeItem(product.id, activeVariant?.reference || undefined)} style={{ width: 50, fontSize: 22, fontWeight: 700, color: T.blueD, background: 'none', border: 'none', cursor: 'pointer' }}>−</button>
+                                                <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontSize: 14, fontWeight: 700, color: T.blueD }}>{cartItem.quantity} v košíku</span>
+                                                <button type="button" aria-label="Zvýšiť" onClick={() => { if (cartItem.quantity >= effectiveStock) { toast.error(`Na sklade je iba ${effectiveStock} ks.`); return; } updateQuantity(product.id, cartItem.quantity + 1, activeVariant?.reference || undefined); }} disabled={cartItem.quantity >= effectiveStock} style={{ width: 50, fontSize: 22, fontWeight: 700, color: T.blueD, background: 'none', border: 'none', cursor: 'pointer', opacity: cartItem.quantity >= effectiveStock ? 0.4 : 1 }}>+</button>
+                                            </div>
+                                        ) : effectiveStock <= 0 ? (
+                                            <button type="button" onClick={() => setRequestOpen(true)}
+                                                style={{ height: 50, borderRadius: 12, background: '#64748b', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+                                                <ICart /> Požiadať produkt
+                                            </button>
+                                        ) : (
+                                            <button type="button" onClick={handleAddToCart}
+                                                style={{ height: 50, borderRadius: 12, background: T.blue, color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+                                                <ICart /> {canUseCart ? 'Pridať do košíka' : 'Prihlásiť sa'}
+                                            </button>
+                                        )}
+                                        <Link to="/cart" style={{ height: 50, borderRadius: 12, background: '#fff', color: T.ink2, fontSize: 15, fontWeight: 700, border: `1px solid ${T.line2}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit' }}>
+                                            <ICart /> Do košíka
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {(descriptionParts.length > 0 || categories.length > 0 || activeVariant?.option_tokens) && (
-                            <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6 lg:col-span-2">
-                                <h2 className="text-lg font-bold text-slate-950">Detaily a vlastnosti</h2>
-                                <dl className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
+                        {/* Details table — full width */}
+                        {hasDetails && (
+                            <div style={{ gridColumn: '1 / -1', background: T.card, borderRadius: 18, border: `1px solid ${T.line2}`, padding: 28 }}>
+                                <h2 style={{ fontSize: 18, fontWeight: 700, color: T.ink, margin: '0 0 20px' }}>Detaily a vlastnosti</h2>
+                                <dl className="details-table" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: '12px 32px', margin: 0 }}>
                                     {categories.length > 0 && (
-                                        <div className="grid gap-1 sm:grid-cols-[150px_1fr]">
-                                            <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Systémy</dt>
-                                            <dd className="text-sm text-slate-700">{categories.join(', ')}</dd>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                            <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>Systémy</dt>
+                                            <dd style={{ fontSize: 14, color: T.ink2, margin: 0 }}>{categories.join(', ')}</dd>
                                         </div>
                                     )}
                                     {compatibilityCodes.length > 0 && (
-                                        <div className="grid gap-1 sm:grid-cols-[150px_1fr]">
-                                            <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Kódy</dt>
-                                            <dd className="text-sm text-slate-700">{compatibilityCodes.join(', ')}</dd>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                            <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>Kódy</dt>
+                                            <dd style={{ fontSize: 14, color: T.ink2, margin: 0 }}>{compatibilityCodes.join(', ')}</dd>
                                         </div>
                                     )}
                                     {descriptionParts.map((part, index) => (
                                         <Fragment key={`${part.key}-${index}`}>
                                             {part.key === 'Parametre' && part.value.includes(':') ? (
                                                 part.value.split('|').map((token, tokenIndex) => {
-                                                    const separator = token.indexOf(':');
-                                                    if (separator === -1) return null;
+                                                    const sep = token.indexOf(':');
+                                                    if (sep === -1) return null;
                                                     return (
-                                                        <div key={`${token}-${tokenIndex}`} className="grid gap-1 sm:grid-cols-[150px_1fr]">
-                                                            <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{token.slice(0, separator)}</dt>
-                                                            <dd className="text-sm font-mono text-slate-700">{token.slice(separator + 1)}</dd>
+                                                        <div key={`${token}-${tokenIndex}`} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                                            <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>{token.slice(0, sep)}</dt>
+                                                            <dd style={{ fontSize: 14, color: T.ink2, margin: 0, fontFamily: 'monospace' }}>{token.slice(sep + 1)}</dd>
                                                         </div>
                                                     );
                                                 })
                                             ) : (
-                                                <div className={`grid gap-1 sm:grid-cols-[150px_1fr] ${!part.key ? 'md:col-span-2' : ''}`}>
-                                                    {part.key && <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{part.key}</dt>}
-                                                    <dd className={`text-sm text-slate-700 ${!part.key ? 'sm:col-span-2' : ''}`}>{part.value}</dd>
+                                                <div style={{ display: 'grid', gridTemplateColumns: part.key ? '150px 1fr' : '1fr', gap: 4, alignItems: 'start', gridColumn: part.key ? undefined : '1 / -1' }}>
+                                                    {part.key && <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>{part.key}</dt>}
+                                                    <dd style={{ fontSize: 14, color: T.ink2, margin: 0 }}>{part.value}</dd>
                                                 </div>
                                             )}
                                         </Fragment>
                                     ))}
                                     {activeVariant?.option_tokens?.split('|').map((token, index) => {
-                                        const separator = token.indexOf(':');
-                                        if (separator === -1) return null;
+                                        const sep = token.indexOf(':');
+                                        if (sep === -1) return null;
                                         return (
-                                            <div key={`${token}-${index}`} className="grid gap-1 sm:grid-cols-[150px_1fr]">
-                                                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{token.slice(0, separator)}</dt>
-                                                <dd className="text-sm font-mono text-slate-700">{token.slice(separator + 1)}</dd>
+                                            <div key={`${token}-${index}`} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                                <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>{token.slice(0, sep)}</dt>
+                                                <dd style={{ fontSize: 14, color: T.ink2, margin: 0, fontFamily: 'monospace' }}>{token.slice(sep + 1)}</dd>
                                             </div>
                                         );
                                     })}
@@ -484,35 +437,26 @@ export default function ProductDetailPage() {
                             </div>
                         )}
                     </div>
-                </section>
 
-                {relatedProducts.length > 0 && (
-                    <section className="border-t border-slate-200 bg-white px-4 py-8 sm:py-10">
-                        <div className="mx-auto max-w-7xl">
-                            <h2 className="text-xl font-bold text-slate-950">Súvisiace produkty</h2>
-                            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                                {relatedProducts.map((related) => (
+                    {/* Related products */}
+                    {relatedProducts.length > 0 && (
+                        <section style={{ marginTop: 40, paddingBottom: 48 }}>
+                            <h2 style={{ fontSize: 22, fontWeight: 700, color: T.ink, marginBottom: 20 }}>Súvisiace produkty</h2>
+                            <div className="related-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+                                {relatedProducts.map(related => (
                                     <RelatedProductCard key={related.id} product={related} />
                                 ))}
                             </div>
-                        </div>
-                    </section>
-                )}
+                        </section>
+                    )}
+                </section>
             </main>
 
             <RequestProductModal
-                open={requestOpen}
-                onClose={() => setRequestOpen(false)}
-                onSuccess={() => setRequestOpen(false)}
-                productId={product.id}
-                productName={effectiveName}
-                productReference={effectiveReference}
+                open={requestOpen} onClose={() => setRequestOpen(false)} onSuccess={() => setRequestOpen(false)}
+                productId={product.id} productName={effectiveName} productReference={effectiveReference}
             />
-            <CatalogPdfViewer
-                open={catalogOpen}
-                onClose={() => setCatalogOpen(false)}
-                reference={effectiveReference}
-            />
+            <CatalogPdfViewer open={catalogOpen} onClose={() => setCatalogOpen(false)} reference={effectiveReference} />
         </>
     );
 }

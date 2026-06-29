@@ -18,7 +18,7 @@ export default function ConstructionPage() {
           />
 
           <div className="space-y-5">
-            <p className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-semibold text-cyan-800 shadow-sm">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[rgba(33,150,243,0.25)] bg-white px-4 py-2 text-sm font-semibold text-[#1565c0] shadow-sm">
               <ClockIcon className="h-5 w-5" />
               Pripravujeme novú hlavnú stránku
             </p>
@@ -36,7 +36,7 @@ export default function ConstructionPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               to="/products"
-              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg bg-cyan-700 px-6 py-4 text-base font-bold text-white shadow-lg shadow-cyan-900/15 transition hover:bg-cyan-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 focus-visible:ring-offset-2"
+              className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg bg-[#1565c0] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[rgba(33,150,243,0.15)] transition hover:bg-[#1565c0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2196f3] focus-visible:ring-offset-2"
             >
               Prejsť do e-shopu
               <ArrowRightIcon className="h-5 w-5" />
@@ -57,7 +57,7 @@ export default function ConstructionPage() {
                   <p className="text-sm font-semibold text-slate-500">Dynamic Abutment Solutions</p>
                   <p className="text-xl font-black text-slate-950">E-shop dostupný</p>
                 </div>
-                <div className="rounded-lg bg-cyan-50 p-3 text-cyan-700">
+                <div className="rounded-lg bg-[#eaf4fe] p-3 text-[#1565c0]">
                   <ShoppingBagIcon className="h-7 w-7" />
                 </div>
               </div>

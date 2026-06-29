@@ -21,7 +21,7 @@ export function ProfileSidebar({ active }: { active: 'profile' | 'orders' }) {
                     {[me?.title, me?.first_name, me?.last_name].filter(Boolean).join(' ') || me?.email || '—'}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5 truncate">{me?.email}</p>
-                <span className="mt-2.5 inline-block px-3 py-1 rounded-lg bg-cyan-50 text-xs font-semibold text-cyan-700">
+                <span className="mt-2.5 inline-block px-3 py-1 rounded-lg bg-[#eaf4fe] text-xs font-semibold text-[#1565c0]">
                     Overený zákazník
                 </span>
             </div>
@@ -57,12 +57,12 @@ export function ProfileSidebar({ active }: { active: 'profile' | 'orders' }) {
                             to={link.href}
                             className={`flex items-center gap-3 px-4 py-3.5 transition-all
                                 ${i < arr.length - 1 ? 'border-b border-slate-100' : ''}
-                                ${isActive ? 'bg-cyan-50 text-cyan-700' : 'text-slate-500 hover:bg-slate-50'}`}
+                                ${isActive ? 'bg-[#eaf4fe] text-[#1565c0]' : 'text-slate-500 hover:bg-slate-50'}`}
                         >
-                            <span className={isActive ? 'text-cyan-600' : 'opacity-60'}>{link.icon}</span>
+                            <span className={isActive ? 'text-[#2196f3]' : 'opacity-60'}>{link.icon}</span>
                             <span className={`text-sm flex-1 ${isActive ? 'font-semibold' : 'font-normal'}`}>{link.label}</span>
                             {isActive && (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#2196f3]">
                                     <polyline points="9 18 15 12 9 6"/>
                                 </svg>
                             )}

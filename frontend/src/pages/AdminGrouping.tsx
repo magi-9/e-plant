@@ -163,7 +163,7 @@ export default function AdminGrouping() {
                                     onChange={(e) => settingsMutation.mutate({ wildcard_grouping_enabled: e.target.checked })}
                                     disabled={settingsMutation.isPending}
                                 />
-                                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-cyan-300 rounded-full peer peer-checked:bg-cyan-600 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-[rgba(33,150,243,0.3)] rounded-full peer peer-checked:bg-[#2196f3] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
                                 <span className="ml-3 text-sm font-medium text-slate-700">
                                     {settings?.wildcard_grouping_enabled ? 'Zapnutý' : 'Vypnutý'}
                                 </span>
@@ -193,7 +193,7 @@ export default function AdminGrouping() {
                             <button
                                 onClick={() => syncMutation.mutate()}
                                 disabled={syncMutation.isPending}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700 disabled:opacity-60 transition-colors flex-shrink-0"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2196f3] text-white text-sm font-medium rounded-lg hover:bg-[#1565c0] disabled:opacity-60 transition-colors flex-shrink-0"
                             >
                                 <ArrowPathIcon className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
                                 Synchronizovať
@@ -226,7 +226,7 @@ export default function AdminGrouping() {
                                                     type="text"
                                                     value={editWcForm.name}
                                                     onChange={(e) => setEditWcForm({ ...editWcForm, name: e.target.value })}
-                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500"
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2196f3]"
                                                     placeholder="Názov skupiny"
                                                 />
                                                 <div className="flex items-center gap-3">
@@ -235,7 +235,7 @@ export default function AdminGrouping() {
                                                             type="checkbox"
                                                             checked={editWcForm.is_enabled}
                                                             onChange={(e) => setEditWcForm({ ...editWcForm, is_enabled: e.target.checked })}
-                                                            className="h-4 w-4 rounded border-slate-300 text-cyan-600"
+                                                            className="h-4 w-4 rounded border-slate-300 text-[#2196f3]"
                                                         />
                                                         Aktívna
                                                     </label>
@@ -246,7 +246,7 @@ export default function AdminGrouping() {
                                                         <button
                                                             onClick={() => updateWcMutation.mutate({ id: group.id, data: editWcForm })}
                                                             disabled={updateWcMutation.isPending}
-                                                            className="p-1.5 text-cyan-600 hover:text-cyan-800"
+                                                            className="p-1.5 text-[#2196f3] hover:text-[#1565c0]"
                                                         >
                                                             <CheckIcon className="h-4 w-4" />
                                                         </button>
@@ -277,7 +277,7 @@ export default function AdminGrouping() {
                                                     <button
                                                         onClick={() => { setManagingWcGroup(group); setWcProductSearch(''); }}
                                                         title="Spravovať produkty"
-                                                        className="p-2 text-slate-400 hover:text-cyan-600 transition-colors"
+                                                        className="p-2 text-slate-400 hover:text-[#2196f3] transition-colors"
                                                     >
                                                         <UsersIcon className="h-4 w-4" />
                                                     </button>
@@ -348,7 +348,7 @@ export default function AdminGrouping() {
                                     placeholder="Hľadať produkt..."
                                     value={wcProductSearch}
                                     onChange={(e) => setWcProductSearch(e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm mb-3 focus:ring-2 focus:ring-cyan-500"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm mb-3 focus:ring-2 focus:ring-[#2196f3]"
                                 />
                                 {wcCandidateProducts.length === 0 ? (
                                     <p className="text-sm text-slate-400">
@@ -357,13 +357,13 @@ export default function AdminGrouping() {
                                 ) : (
                                     <ul className="space-y-1 max-h-80 overflow-y-auto">
                                         {wcCandidateProducts.map((p) => (
-                                            <li key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:border-cyan-300 hover:bg-cyan-50 transition-colors">
+                                            <li key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:border-[rgba(33,150,243,0.4)] hover:bg-[#eaf4fe] transition-colors">
                                                 <span className="flex-1 text-sm text-slate-800 truncate">{p.name}</span>
                                                 <span className="text-xs font-mono text-slate-400 flex-shrink-0">{p.reference || '—'}</span>
                                                 <button
                                                     onClick={() => addWcProductsMutation.mutate({ groupId: managingWcGroup.id, ids: [p.id] })}
                                                     disabled={addWcProductsMutation.isPending}
-                                                    className="p-1 text-slate-400 hover:text-cyan-600 flex-shrink-0"
+                                                    className="p-1 text-slate-400 hover:text-[#2196f3] flex-shrink-0"
                                                     title="Pridať do skupiny"
                                                 >
                                                     <PlusIcon className="h-4 w-4" />

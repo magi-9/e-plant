@@ -186,7 +186,7 @@ export default function RequestProductModal({
                                 setIsDefaultMessage(false);
                             }}
                             maxLength={2000}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#2196f3] focus:border-transparent resize-none"
                             rows={7}
                         />
                         <p className="text-xs text-slate-500 mt-1">
@@ -207,7 +207,7 @@ export default function RequestProductModal({
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || !message.trim()}
-                        className="flex-1 px-4 py-2 rounded-lg bg-cyan-600 text-white font-medium hover:bg-cyan-700 transition disabled:opacity-50"
+                        className="flex-1 px-4 py-2 rounded-lg bg-[#2196f3] text-white font-medium hover:bg-[#1565c0] transition disabled:opacity-50"
                     >
                         {isSubmitting ? 'Odosielam...' : 'Odoslať'}
                     </button>

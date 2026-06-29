@@ -42,14 +42,14 @@ const menuItems = [
         description: 'Pridávať, upravovať a odstraňovať produkty',
         icon: CubeIcon,
         href: '/admin/products',
-        color: 'bg-cyan-500',
+        color: 'bg-[#eaf4fe]0',
     },
     {
         name: 'Správa používateľov',
         description: 'Spravovať používateľské účty a oprávnenia',
         icon: UsersIcon,
         href: '/admin/users',
-        color: 'bg-violet-500',
+        color: 'bg-[#eaf4fe]0',
     },
     {
         name: 'Objednávky',
@@ -151,8 +151,8 @@ export default function AdminDashboard() {
             subValue: visibleProductsGrouped,
             subLabel: 'Po grupovaní',
             icon: CubeIcon,
-            iconColor: 'text-cyan-500',
-            bg: 'bg-cyan-50',
+            iconColor: 'text-[#2196f3]',
+            bg: 'bg-[#eaf4fe]',
             href: '/admin/products',
             isProductCard: true,
         },
@@ -160,8 +160,8 @@ export default function AdminDashboard() {
             label: 'Celkom používateľov',
             value: totalUsers,
             icon: UsersIcon,
-            iconColor: 'text-violet-500',
-            bg: 'bg-violet-50',
+            iconColor: 'text-[#2196f3]',
+            bg: 'bg-[#eaf4fe]',
             href: '/admin/users',
         },
         {
@@ -220,8 +220,8 @@ export default function AdminDashboard() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-8 flex items-center gap-3">
-                    <div className="p-2.5 bg-cyan-100 rounded-xl">
-                        <ShieldCheckIcon className="h-7 w-7 text-cyan-600" />
+                    <div className="p-2.5 bg-[#eaf4fe] rounded-xl">
+                        <ShieldCheckIcon className="h-7 w-7 text-[#2196f3]" />
                     </div>
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
                         onClick={() => setActiveTab('overview')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                             activeTab === 'overview'
-                                ? 'bg-cyan-600 text-white border-cyan-600'
+                                ? 'bg-[#2196f3] text-white border-[#2196f3]'
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
                         onClick={() => setActiveTab('stats')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                             activeTab === 'stats'
-                                ? 'bg-cyan-600 text-white border-cyan-600'
+                                ? 'bg-[#2196f3] text-white border-[#2196f3]'
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
@@ -270,7 +270,7 @@ export default function AdminDashboard() {
                                                 <div className="space-y-3">
                                                     <div>
                                                         <p className="text-sm text-slate-600 mb-1">Viditeľné</p>
-                                                        <p className="text-3xl font-bold text-cyan-600">{stat.value}</p>
+                                                        <p className="text-3xl font-bold text-[#2196f3]">{stat.value}</p>
                                                     </div>
                                                     <div className="pt-2 border-t border-slate-100">
                                                         <p className="text-sm text-slate-600 mb-1">{stat.subLabel}</p>
@@ -308,13 +308,13 @@ export default function AdminDashboard() {
                                         <item.icon className="h-6 w-6 text-white" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-base font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">
+                                        <h3 className="text-base font-semibold text-slate-900 group-hover:text-[#1565c0] transition-colors">
                                             {item.name}
                                         </h3>
                                         <p className="mt-0.5 text-sm text-slate-500">{item.description}</p>
                                     </div>
                                     <svg
-                                        className="h-5 w-5 text-slate-300 group-hover:text-cyan-500 transition-colors flex-shrink-0 mt-0.5"
+                                        className="h-5 w-5 text-slate-300 group-hover:text-[#2196f3] transition-colors flex-shrink-0 mt-0.5"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke="currentColor"
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
                                         onClick={() => setStatsPeriod(days)}
                                         className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
                                             statsPeriod === days
-                                                ? 'bg-cyan-600 text-white border-cyan-600'
+                                                ? 'bg-[#2196f3] text-white border-[#2196f3]'
                                                 : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                                         }`}
                                     >
