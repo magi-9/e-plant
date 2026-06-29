@@ -7,7 +7,7 @@ import { ArrowPathIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24
 import logoUrl from '../assets/dynamicabutment-logo.png';
 
 const GRAD = '#2196f3';
-const NAV_BG = '#fff';
+const NAV_BG = '#020617';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ── shared atoms ────────────────────────────────────────────────

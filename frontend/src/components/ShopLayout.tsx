@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getGlobalSettings } from '../api/settings';
@@ -8,8 +8,6 @@ import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 
 export default function ShopLayout() {
-  const location = useLocation();
-  const isProductsListPage = location.pathname === '/products';
   const { data: globalSettings, isLoading } = useQuery({
     queryKey: ['global-settings'],
     queryFn: getGlobalSettings,
@@ -39,8 +37,8 @@ export default function ShopLayout() {
         <Outlet />
       </main>
 
-      <footer className={`mt-auto text-slate-300 ${isProductsListPage ? 'lg:ml-60' : ''}`} style={{ background: '#0f1216', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <footer className="mt-auto text-slate-300" style={{ background: '#0f1216', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="w-full px-8 py-10">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 pb-8 border-b border-slate-800/70">
             <div className="flex items-center gap-3">
               <svg className="h-9 w-9 flex-shrink-0" fill="#2196f3" viewBox="0 0 24 24">
