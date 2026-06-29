@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react';
 import logoUrl from '../assets/dynamicabutment-logo.png';
-import {
-    ShieldCheckIcon,
-    UserCircleIcon,
-    ChevronDownIcon,
-    ArrowRightOnRectangleIcon,
-} from '@heroicons/react/24/outline';
-import { Menu, Transition } from '@headlessui/react';
+import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, isAdmin } from '../api/auth';
@@ -16,6 +10,21 @@ import type { CartItem } from '../store/cartStore';
 import { getLandingHomeHref } from '../utils/landingLinks';
 import ConfirmModal from './ConfirmModal';
 
+/* ── icons ─────────────────────────────────────────────────── */
+const ISearch = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+const IUser   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>;
+const ICart   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M2.5 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.6L23 7H6"/></svg>;
+const IMenu   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>;
+const IClose  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
+const IChevD  = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>;
+const ILogout = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+
+const iconBtn: React.CSSProperties = {
+    width: 40, height: 40, borderRadius: 9999, display: 'flex',
+    alignItems: 'center', justifyContent: 'center', color: '#45474c',
+    background: 'none', border: 'none', cursor: 'pointer', position: 'relative',
+};
+
 export default function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -23,10 +32,13 @@ export default function Navbar() {
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
     const canUseCart = isLoggedIn && !userIsAdmin;
-    const totalItems = useCartStore((state: CartState) => state.getTotalItems());
-    const items = useCartStore((state: CartState) => state.items);
-    const totalPrice = useCartStore((state: CartState) => state.getTotalPrice());
+    const totalItems = useCartStore((s: CartState) => s.getTotalItems());
+    const items = useCartStore((s: CartState) => s.items);
+    const totalPrice = useCartStore((s: CartState) => s.getTotalPrice());
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [userDropOpen, setUserDropOpen] = useState(false);
+    const [cartHover, setCartHover] = useState(false);
     const [cartPulse, setCartPulse] = useState(false);
     const landingHomeHref = getLandingHomeHref();
 
@@ -39,17 +51,19 @@ export default function Navbar() {
     const userLabel = `${me?.title || ''} ${me?.first_name || ''} ${me?.last_name || ''}`.trim() || me?.email || 'Môj účet';
 
     useEffect(() => {
-        let pulseTimeout: ReturnType<typeof setTimeout> | null = null;
-        const handleCartAdded = () => {
-            setCartPulse(true);
-            if (pulseTimeout) clearTimeout(pulseTimeout);
-            pulseTimeout = setTimeout(() => setCartPulse(false), 700);
+        let t: ReturnType<typeof setTimeout> | null = null;
+        const h = () => { setCartPulse(true); if (t) clearTimeout(t); t = setTimeout(() => setCartPulse(false), 700); };
+        window.addEventListener('cart:item-added', h as EventListener);
+        return () => { window.removeEventListener('cart:item-added', h as EventListener); if (t) clearTimeout(t); };
+    }, []);
+
+    useEffect(() => {
+        const close = (e: MouseEvent) => {
+            const el = document.getElementById('user-drop');
+            if (el && !el.contains(e.target as Node)) setUserDropOpen(false);
         };
-        window.addEventListener('cart:item-added', handleCartAdded as EventListener);
-        return () => {
-            window.removeEventListener('cart:item-added', handleCartAdded as EventListener);
-            if (pulseTimeout) clearTimeout(pulseTimeout);
-        };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
     }, []);
 
     const confirmLogout = () => {
@@ -64,228 +78,187 @@ export default function Navbar() {
             ? location.pathname === '/admin'
             : location.pathname === href || location.pathname.startsWith(href + '/');
 
-    const navLinks = [
+    const NAV = [
         { to: '/products', label: 'Produkty' },
         { to: '/catalogs', label: 'Katalógy' },
     ];
 
     return (
         <>
-        <nav
-            className="fixed top-0 left-0 right-0 z-50 h-16"
-            style={{ background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(15,23,42,0.06)' }}
-        >
-            <div className="w-full h-full px-2 sm:px-3 flex items-center justify-between gap-2 min-w-0">
+        <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, height: 65, background: 'rgba(255,255,255,.86)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(15,23,42,.06)' }}>
+            <div style={{ maxWidth: 1440, margin: '0 auto', padding: '0 32px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxSizing: 'border-box' }}>
 
-                {/* Left: logo + nav links */}
-                <div className="flex items-center gap-4 sm:gap-8 min-w-0">
-                    <button
-                        type="button"
-                        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); navigate('/home'); }}
-                        className="flex-shrink-0 opacity-90 hover:opacity-100 transition-opacity"
-                        aria-label="Dynamic Abutment Solutions – e-shop"
-                    >
-                        <img
-                            src={logoUrl}
-                            alt="Dynamic Abutment Solutions"
-                            className="h-7 w-auto max-w-[132px] sm:max-w-none object-contain"
-                        />
+                {/* Left: logo + nav */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
+                    <button type="button" onClick={() => navigate('/products')} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} aria-label="Dynamic Abutment Solutions">
+                        <img src={logoUrl} alt="Dynamic Abutment Solutions" style={{ height: 38, width: 'auto', display: 'block' }} />
                     </button>
 
-                    <div className="hidden sm:flex items-center gap-8">
-                        {navLinks.map(({ to, label }) => (
-                            <Link
-                                key={to}
-                                to={to}
-                                className="text-sm font-medium transition-colors duration-150"
-                                style={{
-                                    color: isActive(to.split('#')[0]) ? '#1a1c1e' : '#45474c',
-                                    fontWeight: isActive(to.split('#')[0]) ? 700 : 500,
-                                    textDecoration: 'none',
-                                    paddingBottom: 2,
-                                    borderBottom: isActive(to.split('#')[0]) ? '2px solid #1a1c1e' : '2px solid transparent',
-                                }}
-                            >
+                    <nav style={{ display: 'flex', gap: 32, alignItems: 'center' }} className="das-navlinks">
+                        {NAV.map(({ to, label }) => (
+                            <Link key={to} to={to} style={{
+                                fontSize: 14, fontWeight: isActive(to) ? 700 : 500,
+                                color: isActive(to) ? '#1a1c1e' : '#45474c',
+                                textDecoration: 'none', paddingBottom: 2,
+                                borderBottom: isActive(to) ? '2px solid #1a1c1e' : '2px solid transparent',
+                            }}>
                                 {label}
                             </Link>
                         ))}
-                        <a
-                            href={landingHomeHref}
-                            className="text-sm font-medium transition-colors duration-150"
-                            style={{
-                                color: '#45474c',
-                                fontWeight: 500,
-                                textDecoration: 'none',
-                            }}
-                        >
-                            O nás
-                        </a>
-                    </div>
+                        <a href={landingHomeHref} style={{ fontSize: 14, fontWeight: 500, color: '#45474c', textDecoration: 'none' }}>O nás</a>
+                    </nav>
                 </div>
 
-                {/* Right: cart + user/login */}
-                <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-
-                    <Link
-                        to="/catalogs"
-                        className="hidden min-[430px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
-                        style={{ border: '1px solid #e2e8f0', color: '#45474c', background: isActive('/catalogs') ? '#eaf4fe' : '#f4f5f6' }}
-                    >
-                        Katalógy
-                    </Link>
-
-                    <a
-                        href={landingHomeHref}
-                        className="hidden min-[380px]:inline-flex sm:hidden items-center rounded-[10px] px-3 py-2 text-[13px] font-semibold transition-colors"
-                        style={{ border: '1px solid #e2e8f0', color: '#45474c', background: '#f4f5f6' }}
-                    >
-                        Kontakt
-                    </a>
-
-                    {/* Cart – only for signed-in customers */}
-                    {canUseCart && (
-                        <div className="relative group/cart">
-                            <Link
-                                to="/cart"
-                                aria-label="Košík"
-                                className={`relative flex items-center gap-1.5 rounded-[10px] px-2.5 sm:px-3.5 py-2 transition-all duration-200 ${cartPulse ? 'scale-105' : ''}`}
-                                style={{
-                                    background: isActive('/cart') ? 'rgba(33,150,243,0.15)' : 'rgba(33,150,243,0.08)',
-                                    border: '1px solid rgba(33,150,243,0.25)',
-                                }}
-                            >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
-                                    <line x1="3" y1="6" x2="21" y2="6" />
-                                    <path d="M16 10a4 4 0 01-8 0" />
-                                </svg>
-                                <span className="text-[13px] font-semibold text-white leading-none">
-                                    {totalItems}
-                                </span>
-                            </Link>
-
-                            {/* Cart hover popup */}
-                            <div className="hidden sm:block pointer-events-none absolute right-0 top-full mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl opacity-0 scale-95 transition-all duration-150 group-hover/cart:opacity-100 group-hover/cart:scale-100 group-hover/cart:pointer-events-auto z-50">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-[0.08em] mb-2">Košík</p>
-                                {items.length === 0 ? (
-                                    <p className="text-sm text-slate-500">Košík je prázdny</p>
-                                ) : (
-                                    <>
-                                        <p className="text-sm font-semibold text-slate-900 mb-2">{totalItems} produktov</p>
-                                        <ul className="space-y-1.5 mb-3">
-                                            {items.slice(0, 3).map((item: CartItem) => (
-                                                <li key={`${item.productId}:${item.variantReference || 'default'}`} className="text-sm text-slate-700 truncate">
-                                                    {item.name}
-                                                </li>
-                                            ))}
-                                            {items.length > 3 && (
-                                                <li className="text-xs text-slate-500">+{items.length - 3} ďalších</li>
-                                            )}
-                                        </ul>
-                                        <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
-                                            <span className="text-sm text-slate-600">Spolu</span>
-                                            <span className="text-sm font-bold" style={{ color: '#1565c0' }}>
-                                                {totalPrice.toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                {/* Right: icons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
 
                     {/* Admin badge */}
                     {userIsAdmin && (
-                        <Link
-                            to="/admin"
-                            aria-label="Admin panel"
-                            className="flex items-center justify-center p-2 rounded-lg transition-colors"
-                            style={{ color: location.pathname.startsWith('/admin') ? '#2196f3' : '#94a3b8' }}
-                        >
-                            <ShieldCheckIcon className="h-5 w-5" />
+                        <Link to="/admin" style={{ ...iconBtn, color: location.pathname.startsWith('/admin') ? '#2196f3' : '#94a3b8', textDecoration: 'none' }} aria-label="Admin panel">
+                            <ShieldCheckIcon style={{ width: 20, height: 20 }} />
                         </Link>
                     )}
 
-                    {/* Logged-in user menu */}
+                    {/* Search — navigates to products */}
+                    <button style={iconBtn} aria-label="Hľadať" onClick={() => navigate('/products')}><ISearch /></button>
+
+                    {/* Cart */}
                     {canUseCart && (
-                        <Menu as="div" className="relative">
-                            <Menu.Button
-                                className="flex items-center gap-2 rounded-lg px-3 py-[7px] text-sm transition-colors duration-150"
-                                style={{ border: '1px solid #e2e8f0', color: '#45474c', background: 'none' }}
-                            >
-                                <UserCircleIcon className="h-5 w-5 flex-shrink-0" />
-                                <span className="hidden md:inline max-w-[160px] truncate">{userLabel}</span>
-                                <ChevronDownIcon className="h-3.5 w-3.5 opacity-60 flex-shrink-0" />
-                            </Menu.Button>
-                            <Transition
-                                enter="transition ease-out duration-100"
-                                enterFrom="transform opacity-0 scale-95"
-                                enterTo="transform opacity-100 scale-100"
-                                leave="transition ease-in duration-75"
-                                leaveFrom="transform opacity-100 scale-100"
-                                leaveTo="transform opacity-0 scale-95"
-                            >
-                                <Menu.Items className="absolute right-0 mt-2 w-52 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-50 overflow-hidden">
-                                    <div className="py-1">
-                                        <Menu.Item>
-                                            {({ active }) => (
-                                                <Link to="/orders" className={`block px-4 py-2.5 text-sm ${active ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>
-                                                    Moje objednávky
-                                                </Link>
-                                            )}
-                                        </Menu.Item>
-                                        <Menu.Item>
-                                            {({ active }) => (
-                                                <Link to="/profile" className={`block px-4 py-2.5 text-sm ${active ? 'bg-slate-50 text-slate-900' : 'text-slate-700'}`}>
-                                                    Môj profil
-                                                </Link>
-                                            )}
-                                        </Menu.Item>
-                                        <div className="border-t border-slate-100 mt-1 pt-1">
-                                            <Menu.Item>
-                                                {({ active }) => (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowLogoutConfirm(true)}
-                                                        className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm ${active ? 'bg-red-50 text-red-700' : 'text-red-600'}`}
-                                                    >
-                                                        <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                                                        Odhlásenie
-                                                    </button>
-                                                )}
-                                            </Menu.Item>
-                                        </div>
-                                    </div>
-                                </Menu.Items>
-                            </Transition>
-                        </Menu>
+                        <div style={{ position: 'relative' }}
+                            onMouseEnter={() => setCartHover(true)}
+                            onMouseLeave={() => setCartHover(false)}>
+                            <Link to="/cart" style={{ ...iconBtn, textDecoration: 'none', transform: cartPulse ? 'scale(1.15)' : 'scale(1)', transition: 'transform .2s' }} aria-label="Košík">
+                                <ICart />
+                                {totalItems > 0 && (
+                                    <span style={{ position: 'absolute', top: 4, right: 2, minWidth: 16, height: 16, padding: '0 3px', borderRadius: 9999, background: '#2196f3', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {totalItems}
+                                    </span>
+                                )}
+                            </Link>
+
+                            {/* Cart hover popup */}
+                            {cartHover && (
+                                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, width: 300, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 18px 40px rgba(15,23,42,.13)', padding: 16, zIndex: 60 }}>
+                                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: '#94a3b8', marginBottom: 10 }}>KOŠÍK</p>
+                                    {items.length === 0 ? (
+                                        <p style={{ fontSize: 14, color: '#94a3b8' }}>Košík je prázdny</p>
+                                    ) : (
+                                        <>
+                                            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                                                {items.slice(0, 3).map((item: CartItem) => (
+                                                    <li key={`${item.productId}:${item.variantReference || ''}`} style={{ fontSize: 13, color: '#45474c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {item.name}
+                                                    </li>
+                                                ))}
+                                                {items.length > 3 && <li style={{ fontSize: 12, color: '#94a3b8' }}>+{items.length - 3} ďalších</li>}
+                                            </ul>
+                                            <div style={{ borderTop: '1px solid #eef0f2', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: 13, color: '#45474c' }}>Spolu</span>
+                                                <span style={{ fontSize: 14, fontWeight: 700, color: '#1565c0' }}>{totalPrice.toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     )}
 
-                    {/* Admin logout */}
-                    {isLoggedIn && userIsAdmin && (
-                        <button
-                            onClick={() => setShowLogoutConfirm(true)}
-                            aria-label="Odhlásiť sa"
-                            className="flex items-center justify-center p-2 rounded-lg transition-colors"
-                            style={{ color: '#94a3b8' }}
-                        >
-                            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                        </button>
+                    {/* User / Login */}
+                    {!isLoggedIn ? (
+                        <Link to="/login" style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Prihlásiť sa"><IUser /></Link>
+                    ) : canUseCart ? (
+                        <div id="user-drop" style={{ position: 'relative' }}>
+                            <button style={{ ...iconBtn, gap: 4, width: 'auto', padding: '0 10px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#45474c' }}
+                                onClick={() => setUserDropOpen(o => !o)}>
+                                <IUser /> <span className="das-userlabel" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userLabel}</span> <IChevD />
+                            </button>
+                            {userDropOpen && (
+                                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, width: 200, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 18px 40px rgba(15,23,42,.13)', padding: '6px 0', zIndex: 60 }}>
+                                    {[{ to: '/orders', label: 'Moje objednávky' }, { to: '/profile', label: 'Môj profil' }].map(({ to, label }) => (
+                                        <Link key={to} to={to} onClick={() => setUserDropOpen(false)}
+                                            style={{ display: 'block', padding: '10px 16px', fontSize: 14, color: '#45474c', textDecoration: 'none', fontWeight: 500 }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fa')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                            {label}
+                                        </Link>
+                                    ))}
+                                    <div style={{ height: 1, background: '#eef0f2', margin: '4px 0' }} />
+                                    <button onClick={() => { setUserDropOpen(false); setShowLogoutConfirm(true); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 16px', fontSize: 14, color: '#e53e3e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#fff5f5')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                        <ILogout /> Odhlásenie
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* admin — just logout icon */
+                        <button onClick={() => setShowLogoutConfirm(true)} style={iconBtn} aria-label="Odhlásiť sa"><ILogout /></button>
                     )}
 
-                    {/* Not logged in */}
-                    {!isLoggedIn && (
-                        <Link
-                            to="/login"
-                            className="flex items-center rounded-lg px-3.5 py-[7px] text-[13px] transition-colors duration-150"
-                            style={{ border: '1px solid #e2e8f0', color: '#45474c', background: 'none' }}
-                        >
-                            Prihlásiť sa
-                        </Link>
-                    )}
+                    {/* Hamburger (mobile) */}
+                    <button style={{ ...iconBtn, marginLeft: 4 }} className="das-menubtn" onClick={() => setMobileOpen(true)} aria-label="Menu"><IMenu /></button>
                 </div>
             </div>
         </nav>
+
+        {/* Mobile drawer */}
+        {mobileOpen && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
+                <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,18,22,.45)', animation: 'overlayIn .2s ease' }} />
+                <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(80vw,320px)', background: '#fff', padding: 22, display: 'flex', flexDirection: 'column', animation: 'slideIn .28s cubic-bezier(.22,1,.36,1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+                        <img src={logoUrl} alt="" style={{ height: 30 }} />
+                        <button onClick={() => setMobileOpen(false)} style={{ width: 36, height: 36, borderRadius: 10, background: '#f4f5f6', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', color: '#45474c' }}><IClose /></button>
+                    </div>
+                    <nav style={{ display: 'flex', flexDirection: 'column' }}>
+                        {NAV.map(({ to, label }) => (
+                            <Link key={to} to={to} onClick={() => setMobileOpen(false)}
+                                style={{ padding: '15px 4px', fontSize: 17, fontWeight: isActive(to) ? 700 : 500, color: isActive(to) ? '#2196f3' : '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>
+                                {label}
+                            </Link>
+                        ))}
+                        <a href={landingHomeHref} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>O nás</a>
+                        {canUseCart && (
+                            <Link to="/cart" onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>
+                                Košík {totalItems > 0 && <span style={{ background: '#2196f3', color: '#fff', borderRadius: 9999, fontSize: 11, fontWeight: 700, padding: '1px 7px', marginLeft: 6 }}>{totalItems}</span>}
+                            </Link>
+                        )}
+                        {isLoggedIn ? (
+                            <>
+                                <Link to="/orders" onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>Objednávky</Link>
+                                <Link to="/profile" onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>Profil</Link>
+                                <button onClick={() => { setMobileOpen(false); setShowLogoutConfirm(true); }}
+                                    style={{ marginTop: 22, height: 50, borderRadius: 12, background: '#f4f5f6', color: '#e53e3e', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                    Odhlásiť sa
+                                </button>
+                            </>
+                        ) : (
+                            <Link to="/login" onClick={() => setMobileOpen(false)}
+                                style={{ marginTop: 22, height: 50, borderRadius: 12, background: '#2196f3', color: '#fff', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                                Prihlásiť sa
+                            </Link>
+                        )}
+                    </nav>
+                </div>
+            </div>
+        )}
+
+        <style>{`
+            @keyframes overlayIn{from{opacity:0}to{opacity:1}}
+            @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+            .das-navlinks{display:flex}
+            .das-menubtn{display:none!important}
+            .das-userlabel{display:inline}
+            @media(max-width:900px){
+                .das-navlinks{display:none!important}
+                .das-menubtn{display:flex!important}
+            }
+            @media(max-width:600px){
+                .das-userlabel{display:none}
+            }
+        `}</style>
 
         <ConfirmModal
             open={showLogoutConfirm}
