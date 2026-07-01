@@ -1278,7 +1278,7 @@ def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
     import sys
 
-    pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
+    pdf_path = resolve_source_file("PRODUCT-REFERENCE-2026-01.pdf")
     active_categories = load_active_categories(VISIBLE_CATEGORIES_TXT)
 
     # Use the layout-aware parse_catalog.py parser for structured, accurate data

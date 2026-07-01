@@ -3,7 +3,7 @@
 Parse DAS dental product catalog PDF → products.csv + compat_index.csv
 
 Usage:
-    python data/parse_catalog.py data/raw/PRODUCT-REFERENCE-0326_01.pdf
+    python data/parse_catalog.py data/raw/PRODUCT-REFERENCE-2026-01.pdf
     python data/parse_catalog.py /path/to/file.pdf --output /output/
     python data/parse_catalog.py /path/to/file.pdf --pages-index 9-42 --pages-products 43-329
 """

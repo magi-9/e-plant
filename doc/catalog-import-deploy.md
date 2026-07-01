@@ -10,7 +10,7 @@ Nasledujúce súbory musia byť prítomné v `data/raw/`:
 
 | Súbor | Popis |
 |---|---|
-| `PRODUCT-REFERENCE-0326_01.pdf` | PDF katalóg produktov |
+| `PRODUCT-REFERENCE-2026-01.pdf` | PDF katalóg produktov |
 | `references product_ecommerce.xlsx` | Zoznam všetkých SKU + názvov |
 | `DEALER PRICES 2025.xlsx` | Cenník |
 | `visible_categories.txt` | Povolené systémy (viditeľné v storefront) |
@@ -140,7 +140,7 @@ Ak chceš pridať/odobrať systém zo storefrontu:
 data/
 ├── raw/
 │   ├── visible_categories.txt        ← editovateľný zoznam systémov
-│   ├── PRODUCT-REFERENCE-0326_01.pdf ← katalóg (len lokálne)
+│   ├── PRODUCT-REFERENCE-2026-01.pdf ← katalóg (len lokálne)
 │   ├── references product_ecommerce.xlsx
 │   └── DEALER PRICES 2025.xlsx
 ├── csv/                              ← gitignored, generované

@@ -23,10 +23,10 @@ const catalogs: Catalog[] = [
         pdfUrl: '/catalogs/CATALOGO-OFFSETS-SURGICAL-GUIDED_2023_02.pdf',
     },
     {
-        title: 'Product References 03/26',
+        title: 'Product References 2026',
         description: 'Prehľad produktových referencií.',
         imageUrl: '/catalogs/product-references.png',
-        pdfUrl: '/catalogs/PRODUCT-REFERENCE-0326_01.pdf',
+        pdfUrl: '/catalogs/PRODUCT-REFERENCE-2026-01.pdf',
     },
 ];
 
