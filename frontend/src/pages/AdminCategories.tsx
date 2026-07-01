@@ -86,7 +86,7 @@ export default function AdminCategories() {
                         onClick={handleSave}
                         disabled={saveMutation.isPending || !isDirty}
                         className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all disabled:opacity-50"
-                        style={{ background: isDirty ? 'linear-gradient(135deg,#06b6d4,#3b82f6)' : '#94a3b8' }}
+                        style={{ background: isDirty ? 'linear-gradient(135deg,#2196f3,#3b82f6)' : '#94a3b8' }}
                     >
                         {saveMutation.isPending ? 'Ukladám...' : 'Uložiť zmeny'}
                     </button>
@@ -99,12 +99,12 @@ export default function AdminCategories() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Hľadať kategóriu..."
-                            className="flex-1 min-w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+                            className="flex-1 min-w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#2196f3] focus:outline-none focus:ring-2 focus:ring-[rgba(33,150,243,0.2)]"
                         />
                         <span className="text-sm text-slate-500">
                             <span className="font-semibold text-slate-900">{visibleCount}</span> / {totalCount} viditeľných
                         </span>
-                        <button onClick={() => setAll(true)} className="text-xs text-cyan-600 hover:text-cyan-800 underline-offset-2 hover:underline">
+                        <button onClick={() => setAll(true)} className="text-xs text-[#2196f3] hover:text-[#1565c0] underline-offset-2 hover:underline">
                             Zobraziť všetky
                         </button>
                         <button onClick={() => setAll(false)} className="text-xs text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline">
@@ -144,7 +144,7 @@ export default function AdminCategories() {
                                                     checked={visible}
                                                     onChange={() => toggle(cat.name)}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                                                    className="h-4 w-4 rounded border-slate-300 text-[#2196f3] focus:ring-[#2196f3]"
                                                 />
                                             </div>
                                         </li>

@@ -16,7 +16,7 @@ import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
 const PAGE_SIZE = 50;
 
 const C = {
-    grad: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+    grad: 'linear-gradient(135deg, #2196f3, #3b82f6)',
     card: { background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(15,23,42,0.06)' } as React.CSSProperties,
     input: { width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 13, border: '1px solid #e2e8f0', color: '#0f172a', outline: 'none', boxSizing: 'border-box' } as React.CSSProperties,
 };
@@ -331,10 +331,10 @@ export default function AdminProducts() {
                         </h1>
                         <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 13.5, color: '#64748b' }}>Celkom</span>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 9px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: 'rgba(6,182,212,0.1)', color: '#06b6d4' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 9px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: 'rgba(33,150,243,0.1)', color: '#2196f3' }}>
                                 {totalCount}
                             </span>
-                            {isFetching && <span style={{ fontSize: 12, color: '#06b6d4' }}>· Aktualizujem...</span>}
+                            {isFetching && <span style={{ fontSize: 12, color: '#2196f3' }}>· Aktualizujem...</span>}
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -521,11 +521,11 @@ export default function AdminProducts() {
                                         <tr key={product.id}
                                             style={{
                                                 borderBottom: idx < products.length - 1 ? '1px solid #f8fafc' : 'none',
-                                                background: selectedIds.has(product.id) ? 'rgba(6,182,212,0.04)' : 'transparent',
+                                                background: selectedIds.has(product.id) ? 'rgba(33,150,243,0.04)' : 'transparent',
                                                 transition: 'background 0.1s',
                                             }}
                                             onMouseEnter={(e) => { if (!selectedIds.has(product.id)) (e.currentTarget as HTMLTableRowElement).style.background = '#f8fafc'; }}
-                                            onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = selectedIds.has(product.id) ? 'rgba(6,182,212,0.04)' : 'transparent'; }}
+                                            onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = selectedIds.has(product.id) ? 'rgba(33,150,243,0.04)' : 'transparent'; }}
                                         >
                                             <td style={{ padding: '11px 14px 11px 16px', width: 44 }}>
                                                 <input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)}
@@ -573,7 +573,7 @@ export default function AdminProducts() {
                                                 <span style={{
                                                     display: 'inline-flex', alignItems: 'center', padding: '3px 9px',
                                                     borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                                                    background: product.stock_quantity > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                                    background: product.stock_quantity > 0 ? 'rgba(33,150,243,0.1)' : 'rgba(239,68,68,0.1)',
                                                     color: product.stock_quantity > 0 ? '#059669' : '#dc2626',
                                                 }}>
                                                     {product.stock_quantity} ks
@@ -583,7 +583,7 @@ export default function AdminProducts() {
                                                 <span style={{
                                                     display: 'inline-flex', alignItems: 'center', gap: 5,
                                                     padding: '3px 9px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
-                                                    background: product.is_visible ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                                                    background: product.is_visible ? 'rgba(33,150,243,0.1)' : 'rgba(245,158,11,0.1)',
                                                     color: product.is_visible ? '#059669' : '#d97706',
                                                 }}>
                                                     <span style={{ width: 5, height: 5, borderRadius: '50%', background: product.is_visible ? '#10b981' : '#f59e0b', flexShrink: 0 }} />
@@ -597,7 +597,7 @@ export default function AdminProducts() {
                                                         <ArchiveBoxArrowDownIcon style={{ width: 16, height: 16 }} />
                                                     </button>
                                                     <button onClick={() => handleEdit(product)} title="Upraviť"
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, color: '#06b6d4', lineHeight: 1 }}>
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, color: '#2196f3', lineHeight: 1 }}>
                                                         <PencilIcon style={{ width: 16, height: 16 }} />
                                                     </button>
                                                     <button onClick={() => handleDelete(product)} title="Odstrániť"

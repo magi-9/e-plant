@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail produktu — Dynamic Abutment Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  .pdGrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(380px,.9fr);gap:32px;align-items:start}
+  .related{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  @media(max-width:980px){.pdGrid{grid-template-columns:1fr}.related{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.related{grid-template-columns:1fr}.pdName{font-size:26px!important}}
+  .relCard{transition:transform .2s,box-shadow .2s,border-color .2s}
+  .relCard:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(15,23,42,.1);border-color:#cfe6fb}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="shop-data.js"></script>
+<script type="text/babel" src="shop-ui.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+const { PRODUCTS, SCREWS, getById, isTiBase, eur, variantWord } = ShopData;
+
+function Toast({msg,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  return <div style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:120,background:'var(--ink)',color:'#fff',padding:'14px 22px',borderRadius:12,fontSize:14,fontWeight:600,boxShadow:'0 16px 40px rgba(0,0,0,.25)',animation:'popIn .2s ease'}}>{msg}</div>;
+}
+
+function VariantSelect({variants,value,onChange}){
+  const [open,setOpen]=useState(false);const ref=useRef(null);
+  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const cur=variants.find(v=>v.ref===value)||variants[0];
+  return (
+    <div ref={ref} style={{position:'relative'}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',height:50,padding:'0 16px',border:'1px solid var(--line2)',borderRadius:12,background:'#fff',fontSize:15,fontWeight:600}}>
+        <span>{cur.label}</span><I.chev style={{color:'var(--muted)',transform:open?'rotate(180deg)':'none',transition:'transform .2s'}}/>
+      </button>
+      {open&&<div style={{position:'absolute',top:'100%',left:0,right:0,marginTop:8,background:'#fff',border:'1px solid var(--line2)',borderRadius:12,boxShadow:'0 18px 40px rgba(15,23,42,.14)',padding:'6px 0',zIndex:30,maxHeight:260,overflowY:'auto'}}>
+        {variants.map(v=><button key={v.ref} onClick={()=>{onChange(v.ref);setOpen(false);}} style={{display:'flex',justifyContent:'space-between',width:'100%',textAlign:'left',padding:'11px 16px',fontSize:14,fontWeight:v.ref===value?700:500,color:v.ref===value?'var(--blue)':'var(--ink2)',background:v.ref===value?'#eaf4fe':'transparent'}}><span>{v.label}</span><span style={{fontSize:12,color:v.stock>0?'var(--ok)':'#c0392b',fontWeight:600}}>{v.stock>0?`${v.stock} ks`:'nie je skladom'}</span></button>)}
+      </div>}
+    </div>
+  );
+}
+
+function RelatedCard({p}){
+  return (
+    <a className="relCard" href={`Detail produktu.html?id=${p.id}`} style={{display:'flex',flexDirection:'column',background:'#fff',border:'1px solid var(--line2)',borderRadius:14,overflow:'hidden'}}>
+      <div style={{height:150,background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',borderBottom:'1px solid var(--line)'}}><img src={p.img} alt={p.name} style={{maxWidth:'70%',maxHeight:'80%',objectFit:'contain'}}/></div>
+      <div style={{padding:14}}>
+        <span style={{fontSize:10,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)'}}>{p.brandLabel}</span>
+        <h3 style={{marginTop:6,fontSize:14,fontWeight:700,lineHeight:'19px'}}>{p.name}</h3>
+        <p className="mono" style={{marginTop:6,fontSize:12,color:'var(--ink2)'}}>{p.code}</p>
+        <span style={{display:'inline-flex',marginTop:10,fontSize:11,fontWeight:700,color:'var(--blue)',background:'#eaf4fe',padding:'3px 9px',borderRadius:7}}>Členská cena</span>
+      </div>
+    </a>
+  );
+}
+
+function App(){
+  const params=new URLSearchParams(location.search);
+  const product=getById(params.get('id'))||PRODUCTS[0];
+  const tib=isTiBase(product);
+
+  const variants=useMemo(()=>{
+    const dia=[3.5,4.0,4.5,5.0],ging=[1,2,3];
+    return Array.from({length:product.variants},(_,i)=>({
+      ref:`${product.code}.${i+1}`,
+      label:`Ø ${dia[i%4].toFixed(1)} · GH ${ging[i%3]} mm`,
+      stock: (i+product.id)%4===0?0:(3+i*2),
+    }));
+  },[product]);
+
+  const [variantRef,setVariantRef]=useState(variants[0].ref);
+  const activeVariant=variants.find(v=>v.ref===variantRef)||variants[0];
+  const [screwId,setScrewId]=useState(SCREWS.find(s=>s.stock>0)?.id||SCREWS[0].id);
+  const [zoom,setZoom]=useState('50% 50%');
+  const [hover,setHover]=useState(false);
+  const [qty,setQty]=useState(0);
+  const [toast,setToast]=useState('');
+
+  const stock=activeVariant.stock;
+  const related=PRODUCTS.filter(p=>p.id!==product.id&&(p.brand===product.brand||p.type===product.type)).slice(0,4);
+  const categories=[product.typeLabel,product.brandLabel,product.materialLabel];
+
+  const add=()=>{
+    if(stock<=0)return;
+    const screw=tib?SCREWS.find(s=>s.id===screwId):null;
+    CART.add({id:product.id,name:product.name,variant:activeVariant.ref,variantLabel:activeVariant.label,price:product.price,img:product.img,stock,screw:screw?screw.name:null});
+    setQty(q=>q+1);
+    setToast('Pridané do košíka');
+  };
+
+  return (
+    <div>
+      <Header active="produkty" onMenu={()=>{}}/>
+      <main style={{background:'var(--bg)'}}>
+        {/* breadcrumb bar */}
+        <div style={{background:'#fff',borderBottom:'1px solid var(--line)'}}>
+          <div className="wrap" style={{height:58,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <a href="Produkty.html" style={{display:'inline-flex',alignItems:'center',gap:8,fontSize:14,fontWeight:700,color:'var(--blue)'}}><I.back/>Produkty</a>
+            <button style={{display:'inline-flex',alignItems:'center',gap:8,height:38,padding:'0 14px',borderRadius:10,border:'1px solid #cfe6fb',background:'#eaf4fe',fontSize:13,fontWeight:700,color:'var(--blue-d)'}}><I.ext/>Pozrieť v katalógu</button>
+          </div>
+        </div>
+
+        <div className="wrap" style={{paddingTop:32,paddingBottom:8}}>
+          <div className="pdGrid">
+            {/* image */}
+            <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,overflow:'hidden'}}>
+              <div onMouseMove={e=>{const r=e.currentTarget.getBoundingClientRect();setZoom(`${((e.clientX-r.left)/r.width)*100}% ${((e.clientY-r.top)/r.height)*100}%`);}} onMouseEnter={()=>setHover(true)} onMouseLeave={()=>{setHover(false);setZoom('50% 50%');}}
+                style={{position:'relative',aspectRatio:'4/3',minHeight:340,background:'#fafbfc',display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-in',overflow:'hidden'}}>
+                <img src={product.img} alt={product.name} style={{maxWidth:'78%',maxHeight:'80%',objectFit:'contain',transition:'transform .25s ease',transform:hover?'scale(1.9)':'scale(1)',transformOrigin:zoom}}/>
+                <div style={{position:'absolute',top:14,right:14,display:'inline-flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.9)',padding:'6px 10px',borderRadius:9,fontSize:12,fontWeight:600,color:'var(--ink2)',opacity:hover?0:1,transition:'opacity .15s'}}><I.zoom/>Priblížiť</div>
+              </div>
+            </div>
+
+            {/* info */}
+            <div style={{minWidth:0}}>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                {categories.map(c=><span key={c} style={{display:'inline-flex',alignItems:'center',gap:5,background:'#eaf4fe',color:'var(--blue-d)',padding:'5px 10px',borderRadius:8,fontSize:12,fontWeight:700}}><I.tag/>{c}</span>)}
+              </div>
+              <h1 className="pdName" style={{marginTop:16,fontSize:34,fontWeight:700,lineHeight:'40px',letterSpacing:'-0.6px'}}>{product.name}</h1>
+              <p className="mono" style={{marginTop:8,fontSize:14,fontWeight:600,color:'var(--muted)'}}>{product.code}</p>
+              <div style={{marginTop:14,display:'flex',gap:8}}><span style={{display:'inline-flex',border:'1px solid #e6d9f5',background:'#f6f0fd',color:'#6b3fa0',padding:'5px 10px',borderRadius:8,fontSize:12,fontWeight:700}}>{product.compat}</span></div>
+
+              <div style={{marginTop:26}}>
+                <p style={{fontSize:11,fontWeight:700,letterSpacing:'.6px',color:'var(--muted)',marginBottom:10}}>VARIANT</p>
+                <VariantSelect variants={variants} value={variantRef} onChange={v=>{setVariantRef(v);setQty(0);}}/>
+              </div>
+
+              {tib&&(
+                <div style={{marginTop:24,border:'1px solid #cdeede',background:'#f1fbf6',borderRadius:14,padding:18}}>
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'.6px',color:'var(--muted)'}}>SKRUTKA <span style={{color:'var(--ok)'}}>({Math.max(qty,1)} ks zadarmo)</span></p>
+                  <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:8}}>
+                    {SCREWS.map(s=>{const on=screwId===s.id,dis=s.stock===0;return(
+                      <label key={s.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 13px',borderRadius:10,border:on?'1px solid var(--blue)':'1px solid #d6ece0',background:'#fff',cursor:dis?'not-allowed':'pointer',opacity:dis?.5:1,boxShadow:on?'0 1px 2px rgba(0,0,0,.04)':'none'}}>
+                        <input type="radio" name="screw" checked={on} disabled={dis} onChange={()=>setScrewId(s.id)} style={{accentColor:'var(--blue)',width:16,height:16}}/>
+                        <span style={{flex:1,minWidth:0}}><span style={{display:'block',fontSize:14,fontWeight:600}}>{s.name}</span><span className="mono" style={{display:'block',fontSize:12,color:'var(--muted)'}}>{s.ref}</span></span>
+                        <span style={{fontSize:12,fontWeight:700,color:s.stock>0?'var(--ok)':'#c0392b'}}>{s.stock>0?`${s.stock} ks`:'nie je skladom'}</span>
+                      </label>
+                    );})}
+                  </div>
+                </div>
+              )}
+
+              <div style={{marginTop:26,borderTop:'1px solid var(--line)',paddingTop:22}}>
+                <span style={{display:'inline-flex',alignItems:'center',gap:8,background:'#eaf4fe',color:'var(--blue-d)',padding:'8px 14px',borderRadius:10,fontSize:14,fontWeight:700}}><I.badge style={{color:'var(--blue)'}}/>Členská cena – prihláste sa</span>
+                <div style={{marginTop:16,display:'flex',gap:12,flexWrap:'wrap'}}>
+                  {qty>0?(
+                    <div style={{display:'flex',height:52,overflow:'hidden',borderRadius:12,border:'1px solid #cfe6fb',background:'#eaf4fe'}}>
+                      <button onClick={()=>setQty(q=>Math.max(0,q-1))} style={{width:52,color:'var(--blue-d)',display:'flex',alignItems:'center',justifyContent:'center'}}><I.minus/></button>
+                      <span style={{minWidth:130,display:'flex',alignItems:'center',justifyContent:'center',background:'#fff',fontSize:14,fontWeight:700,color:'var(--blue-d)'}}>{qty} v košíku</span>
+                      <button onClick={()=>{if(qty<stock)setQty(q=>q+1);else setToast(`Skladom je iba ${stock} ks`);}} style={{width:52,color:'var(--blue-d)',display:'flex',alignItems:'center',justifyContent:'center'}}><I.plus/></button>
+                    </div>
+                  ):stock<=0?(
+                    <button onClick={()=>setToast('Odoslané — ozveme sa vám')} style={{height:52,padding:'0 26px',borderRadius:12,background:'var(--ink)',color:'#fff',fontSize:15,fontWeight:700,display:'inline-flex',alignItems:'center',gap:8}}><I.cart width="18" height="18"/>Požiadať produkt</button>
+                  ):(
+                    <button onClick={add} style={{height:52,padding:'0 30px',borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700,display:'inline-flex',alignItems:'center',gap:8,transition:'background .15s'}} onMouseOver={e=>e.currentTarget.style.background='var(--blue-d)'} onMouseOut={e=>e.currentTarget.style.background='var(--blue)'}><I.cart width="18" height="18"/>Pridať do košíka</button>
+                  )}
+                  <a href="Kosik.html" style={{height:52,padding:'0 22px',borderRadius:12,border:'1px solid var(--line2)',background:'#fff',fontSize:15,fontWeight:600,display:'inline-flex',alignItems:'center',gap:8}}><I.cart width="18" height="18"/>Do košíka</a>
+                </div>
+                <p style={{marginTop:12,fontSize:13,color:stock>0?'var(--ok)':'#c0392b',fontWeight:600}}>{stock>0?`Skladom · ${stock} ks`:'Momentálne nie je skladom'}</p>
+              </div>
+            </div>
+
+            {/* details table */}
+            <div style={{gridColumn:'1 / -1',background:'#fff',border:'1px solid var(--line2)',borderRadius:18,padding:'24px 26px'}}>
+              <h2 style={{fontSize:19,fontWeight:700}}>Detaily a vlastnosti</h2>
+              <dl style={{marginTop:18,display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:'14px 40px'}}>
+                {[['Systémy',categories.join(', ')],['Kompatibilita',product.compat],['Materiál',product.materialLabel],['Priemer (Ø)',`${product.diameter.toFixed(1)} mm`],['Gingiválna výška',`${product.gingiva} mm`],['Uhol',`${product.angle}°`],['Referencia',product.code],['Počet variantov',`${product.variants} ${variantWord(product.variants)}`]].map(([k,v])=>(
+                  <div key={k} style={{display:'grid',gridTemplateColumns:'150px 1fr',gap:8,paddingBottom:12,borderBottom:'1px solid var(--line)'}}>
+                    <dt style={{fontSize:11,fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--muted)'}}>{k}</dt>
+                    <dd className={['Referencia','Kompatibilita','Priemer (Ø)'].includes(k)?'mono':''} style={{fontSize:14,color:'var(--ink2)'}}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        {/* related */}
+        {related.length>0&&(
+          <div style={{background:'#fff',borderTop:'1px solid var(--line)',marginTop:40}}>
+            <div className="wrap" style={{padding:'40px 32px'}}>
+              <h2 style={{fontSize:20,fontWeight:700}}>Súvisiace produkty</h2>
+              <div className="related" style={{marginTop:18}}>{related.map(p=><RelatedCard key={p.id} p={p}/>)}</div>
+            </div>
+          </div>
+        )}
+      </main>
+      <Footer/>
+      {toast&&<Toast msg={toast} onDone={()=>setToast('')}/>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

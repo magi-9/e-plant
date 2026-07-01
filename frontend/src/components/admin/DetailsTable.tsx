@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { type DetailRow, DETAIL_SUGGESTIONS, nextDetailId } from './detailTypes';
 
-const CYAN = '#0891b2';
-const CYAN_LITE = '#e0f7fa';
+const CYAN = '#2196f3';
+const CYAN_LITE = '#eaf4fe';
 const BORDER = '#e2e8f0';
 const TEXT = '#0f172a';
 const MUTED = '#94a3b8';
@@ -37,7 +37,7 @@ function KeyInput({ value, onChange, suggestions }: KeyInputProps) {
                     background: '#fff', fontSize: 13.5, fontFamily: 'Inter',
                     fontWeight: 600, color: TEXT, outline: 'none',
                     transition: 'border-color 0.15s, box-shadow 0.15s',
-                    boxShadow: focus ? '0 0 0 4px rgba(6,182,212,0.10)' : 'none',
+                    boxShadow: focus ? '0 0 0 4px rgba(33,150,243,0.10)' : 'none',
                     boxSizing: 'border-box',
                 }}
             />
@@ -155,7 +155,7 @@ export default function DetailsTable({ rows, onChange, suggestions = [...DETAIL_
                                 }}
                                 onFocus={e => {
                                     e.currentTarget.style.borderColor = CYAN;
-                                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(6,182,212,0.10)';
+                                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(33,150,243,0.10)';
                                 }}
                                 onBlur={e => {
                                     e.currentTarget.style.borderColor = BORDER;

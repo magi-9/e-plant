@@ -106,7 +106,7 @@ export default function AdminSettings() {
                                 onClick={() => setActiveSection('notifications')}
                                 className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
                                     activeSection === 'notifications'
-                                        ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                                        ? 'bg-[#eaf4fe] text-[#1565c0] border-[rgba(33,150,243,0.25)]'
                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
@@ -117,7 +117,7 @@ export default function AdminSettings() {
                                 onClick={() => setActiveSection('inventory')}
                                 className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
                                     activeSection === 'inventory'
-                                        ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                                        ? 'bg-[#eaf4fe] text-[#1565c0] border-[rgba(33,150,243,0.25)]'
                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
@@ -128,7 +128,7 @@ export default function AdminSettings() {
                                 onClick={() => setActiveSection('company')}
                                 className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
                                     activeSection === 'company'
-                                        ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                                        ? 'bg-[#eaf4fe] text-[#1565c0] border-[rgba(33,150,243,0.25)]'
                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
@@ -139,7 +139,7 @@ export default function AdminSettings() {
                                 onClick={() => setActiveSection('catalog')}
                                 className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${
                                     activeSection === 'catalog'
-                                        ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                                        ? 'bg-[#eaf4fe] text-[#1565c0] border-[rgba(33,150,243,0.25)]'
                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
@@ -153,7 +153,7 @@ export default function AdminSettings() {
                                     <h3 className="text-lg font-medium leading-6 text-gray-900 mb-2 border-b pb-2">Notifikácie a emaily</h3>
                                     <div className="mt-4">
                                         <label className="block text-sm font-medium text-gray-700">Email skladu (kam chodia upozornenia & vyskladnenia)</label>
-                                        <input type="email" value={formData.warehouse_email} onChange={e => setFormData({ ...formData, warehouse_email: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                        <input type="email" value={formData.warehouse_email} onChange={e => setFormData({ ...formData, warehouse_email: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         <p className="mt-1 text-sm text-gray-500">Na túto adresu budú chodiť výkazy o nízkych zásobách a nové objednávky.</p>
                                     </div>
                                 </div>
@@ -166,7 +166,7 @@ export default function AdminSettings() {
                                         <div className="mt-4 grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Predvolený limit nízkych zásob</label>
-                                                <input type="number" value={formData.low_stock_threshold} onChange={e => setFormData({ ...formData, low_stock_threshold: Number(e.target.value) })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                                <input type="number" value={formData.low_stock_threshold} onChange={e => setFormData({ ...formData, low_stock_threshold: Number(e.target.value) })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                                 <p className="mt-1 text-sm text-gray-500">Produkty s nižším počtom kusov budú označené ako "nízke zásoby".</p>
                                             </div>
                                         </div>
@@ -177,22 +177,22 @@ export default function AdminSettings() {
                                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Cena kuriéra (€)</label>
-                                                <input type="number" step="0.01" value={formData.shipping_cost} onChange={e => setFormData({ ...formData, shipping_cost: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                                <input type="number" step="0.01" value={formData.shipping_cost} onChange={e => setFormData({ ...formData, shipping_cost: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Sadzba DPH (%)</label>
-                                                <input type="number" step="0.01" value={formData.vat_rate} onChange={e => setFormData({ ...formData, vat_rate: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                                <input type="number" step="0.01" value={formData.vat_rate} onChange={e => setFormData({ ...formData, vat_rate: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                                 <p className="mt-1 text-sm text-gray-500">Napr. 23 pre 23% DPH.</p>
                                             </div>
                                         </div>
                                         <p className="mt-2 text-sm text-gray-500">Osobný odber je vždy zadarmo (0 €).</p>
                                         <div className="mt-4">
                                             <label className="block text-sm font-medium text-gray-700">Adresa osobného odberu</label>
-                                            <input type="text" value={formData.pickup_address} onChange={e => setFormData({ ...formData, pickup_address: e.target.value })} placeholder="napr. Hlavná 1, 811 01 Bratislava" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.pickup_address} onChange={e => setFormData({ ...formData, pickup_address: e.target.value })} placeholder="napr. Hlavná 1, 811 01 Bratislava" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div className="mt-4">
                                             <label className="block text-sm font-medium text-gray-700">Otváracie hodiny</label>
-                                            <input type="text" value={formData.opening_hours} onChange={e => setFormData({ ...formData, opening_hours: e.target.value })} placeholder="napr. Po–Pi 8:00–17:00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.opening_hours} onChange={e => setFormData({ ...formData, opening_hours: e.target.value })} placeholder="napr. Po–Pi 8:00–17:00" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                     </div>
                                 </>
@@ -205,43 +205,43 @@ export default function AdminSettings() {
                                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700">Názov spoločnosti</label>
-                                            <input type="text" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">IČO</label>
-                                            <input type="text" value={formData.company_ico} onChange={e => setFormData({ ...formData, company_ico: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_ico} onChange={e => setFormData({ ...formData, company_ico: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">DIČ</label>
-                                            <input type="text" value={formData.company_dic} onChange={e => setFormData({ ...formData, company_dic: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_dic} onChange={e => setFormData({ ...formData, company_dic: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">IČ DPH</label>
-                                            <input type="text" value={formData.company_vat_id} onChange={e => setFormData({ ...formData, company_vat_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_vat_id} onChange={e => setFormData({ ...formData, company_vat_id: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700">Ulica a číslo</label>
-                                            <input type="text" value={formData.company_street} onChange={e => setFormData({ ...formData, company_street: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_street} onChange={e => setFormData({ ...formData, company_street: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Mesto</label>
-                                            <input type="text" value={formData.company_city} onChange={e => setFormData({ ...formData, company_city: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_city} onChange={e => setFormData({ ...formData, company_city: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">PSČ</label>
-                                            <input type="text" value={formData.company_postal_code} onChange={e => setFormData({ ...formData, company_postal_code: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_postal_code} onChange={e => setFormData({ ...formData, company_postal_code: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Štát</label>
-                                            <input type="text" value={formData.company_state} onChange={e => setFormData({ ...formData, company_state: e.target.value })} placeholder="Slovensko" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_state} onChange={e => setFormData({ ...formData, company_state: e.target.value })} placeholder="Slovensko" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Telefón</label>
-                                            <input type="text" value={formData.company_phone} onChange={e => setFormData({ ...formData, company_phone: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.company_phone} onChange={e => setFormData({ ...formData, company_phone: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Email spoločnosti</label>
-                                            <input type="email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                     </div>
 
@@ -249,15 +249,15 @@ export default function AdminSettings() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700">IBAN</label>
-                                            <input type="text" value={formData.iban} onChange={e => setFormData({ ...formData, iban: e.target.value })} placeholder="SK00 0000 0000 0000 0000 0000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 font-mono" />
+                                            <input type="text" value={formData.iban} onChange={e => setFormData({ ...formData, iban: e.target.value })} placeholder="SK00 0000 0000 0000 0000 0000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3] font-mono" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Názov banky</label>
-                                            <input type="text" value={formData.bank_name} onChange={e => setFormData({ ...formData, bank_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500" />
+                                            <input type="text" value={formData.bank_name} onChange={e => setFormData({ ...formData, bank_name: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3]" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">SWIFT / BIC</label>
-                                            <input type="text" value={formData.bank_swift} onChange={e => setFormData({ ...formData, bank_swift: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 font-mono" />
+                                            <input type="text" value={formData.bank_swift} onChange={e => setFormData({ ...formData, bank_swift: e.target.value })} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#2196f3] focus:border-[#2196f3] font-mono" />
                                         </div>
                                     </div>
                                 </div>
@@ -296,7 +296,7 @@ export default function AdminSettings() {
                             {activeSection !== 'catalog' && (
                             <div className="pt-5 border-t border-gray-200">
                                 <div className="flex justify-end">
-                                    <button type="submit" disabled={mutation.isPending} className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-colors">
+                                    <button type="submit" disabled={mutation.isPending} className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#2196f3] hover:bg-[#1565c0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2196f3] transition-colors">
                                         {mutation.isPending ? 'Ukladám...' : 'Uložiť nastavenia'}
                                     </button>
                                 </div>

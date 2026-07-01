@@ -444,7 +444,7 @@ export default function ProductDetailModal({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => onReferenceClick(effectiveProductCode)}
-                                                                    className="text-sm text-gray-500 font-medium break-words text-left hover:text-cyan-700 transition-colors"
+                                                                    className="text-sm text-gray-500 font-medium break-words text-left hover:text-[#1565c0] transition-colors"
                                                                 >
                                                                     {effectiveProductCode}
                                                                 </button>
@@ -468,7 +468,7 @@ export default function ProductDetailModal({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setCatalogOpen(true)}
-                                                                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 hover:border-cyan-300 hover:bg-cyan-100 transition-colors flex-shrink-0"
+                                                                className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(33,150,243,0.25)] bg-[#eaf4fe] px-2.5 py-1.5 text-xs font-semibold text-[#1565c0] hover:border-[rgba(33,150,243,0.4)] hover:bg-[#eaf4fe] transition-colors flex-shrink-0"
                                                             >
                                                                 <CursorArrowRaysIcon className="h-3.5 w-3.5" />
                                                                 Pozrieť v katalógu
@@ -476,15 +476,15 @@ export default function ProductDetailModal({
                                                         </div>
                                                     )}
                                                     <div className="flex items-start gap-1.5 mb-3 flex-wrap">
-                                                        <TagIcon className="h-4 w-4 text-cyan-600 flex-shrink-0 mt-0.5" />
-                                                        <div className="flex flex-wrap gap-1 text-sm text-cyan-700 font-medium">
+                                                        <TagIcon className="h-4 w-4 text-[#2196f3] flex-shrink-0 mt-0.5" />
+                                                        <div className="flex flex-wrap gap-1 text-sm text-[#1565c0] font-medium">
                                                             {(visibleCategories.length ? visibleCategories : [effectiveCategory]).filter(Boolean).map((category) => (
                                                                 onCategoryClick ? (
                                                                     <button
                                                                         key={category}
                                                                         type="button"
                                                                         onClick={() => onCategoryClick(category)}
-                                                                        className="hover:text-cyan-900 transition-colors"
+                                                                        className="hover:text-[#1565c0] transition-colors"
                                                                     >
                                                                         {category}
                                                                     </button>
@@ -502,12 +502,12 @@ export default function ProductDetailModal({
                                                             {visibleCompatCodes.map((code: string) => (
                                                                 onCompatibilityCodeClick ? (
                                                                     <button key={code} type="button" onClick={() => onCompatibilityCodeClick(code)} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
-                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        style={{ background: 'rgba(33,150,243,0.09)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.2)' }}>
                                                                         ⬡ {code}
                                                                     </button>
                                                                 ) : (
                                                                     <span key={code} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold"
-                                                                        style={{ background: 'rgba(139,92,246,0.09)', color: '#7c3aed', border: '1px solid rgba(139,92,246,0.2)' }}>
+                                                                        style={{ background: 'rgba(33,150,243,0.09)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.2)' }}>
                                                                         ⬡ {code}
                                                                     </span>
                                                                 )
@@ -543,8 +543,8 @@ export default function ProductDetailModal({
                                                                             key={screw.id}
                                                                             className={`flex items-center gap-2.5 cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors ${
                                                                                 selectedScrewId === screw.id
-                                                                                    ? 'border-cyan-500 bg-cyan-50 text-cyan-900'
-                                                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300'
+                                                                                    ? 'border-[#2196f3] bg-[#eaf4fe] text-[#1565c0]'
+                                                                                    : 'border-slate-200 bg-white text-slate-700 hover:border-[rgba(33,150,243,0.4)]'
                                                                             } ${screw.stock_quantity === 0 ? 'opacity-50' : ''}`}
                                                                         >
                                                                             <input
@@ -554,7 +554,7 @@ export default function ProductDetailModal({
                                                                                 checked={selectedScrewId === screw.id}
                                                                                 onChange={() => setSelectedScrewId(screw.id)}
                                                                                 disabled={screw.stock_quantity === 0}
-                                                                                className="accent-cyan-600"
+                                                                                className="accent-[#2196f3]"
                                                                             />
                                                                             <span className="flex-1 min-w-0">
                                                                                 {screw.name}
@@ -583,11 +583,11 @@ export default function ProductDetailModal({
                                                                 )}
                                                                 <div className="flex items-center gap-1.5">
                                                                     <SparklesIcon className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                                                    <p className="text-2xl font-bold text-cyan-700 whitespace-nowrap">{effectivePrice} € s DPH</p>
+                                                                    <p className="text-2xl font-bold text-[#1565c0] whitespace-nowrap">{effectivePrice} € s DPH</p>
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-cyan-50 text-cyan-800 whitespace-nowrap">
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-[#eaf4fe] text-[#1565c0] whitespace-nowrap">
                                                                 <SparklesIcon className="h-3.5 w-3.5" />
                                                                 Členská cena
                                                             </span>
@@ -607,7 +607,7 @@ export default function ProductDetailModal({
                                                                                 setOpen(false);
                                                                                 navigate('/login');
                                                                             }}
-                                                                            className="w-full sm:w-auto inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
+                                                                            className="w-full sm:w-auto inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-[#2196f3] hover:bg-[#1565c0] transition-all duration-300"
                                                                         >
                                                                             Prihlásiť sa
                                                                         </button>
@@ -621,7 +621,7 @@ export default function ProductDetailModal({
                                                             if (cartItem) {
                                                                 return (
                                                                     <div className="w-full flex flex-col gap-2">
-                                                                        <div className="w-full flex items-center justify-center bg-cyan-50 border border-cyan-200 rounded-md p-1 h-12 shadow-sm">
+                                                                        <div className="w-full flex items-center justify-center bg-[#eaf4fe] border border-[rgba(33,150,243,0.25)] rounded-md p-1 h-12 shadow-sm">
                                                                             <button
                                                                                 type="button"
                                                                                 aria-label="Znížiť množstvo"
@@ -633,12 +633,12 @@ export default function ProductDetailModal({
                                                                                         removeItem(product.id, effectiveVariantRef || undefined);
                                                                                     }
                                                                                 }}
-                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                                className="w-12 h-full flex items-center justify-center text-[#1565c0] hover:bg-[#eaf4fe] rounded-md transition font-bold text-lg"
                                                                             >
                                                                                 -
                                                                             </button>
-                                                                            <span className="font-bold text-cyan-900 border-x border-cyan-200 px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
-                                                                                {cartItem.quantity} <span className="text-xs font-normal text-cyan-600 ml-1">v košíku</span>
+                                                                            <span className="font-bold text-[#1565c0] border-x border-[rgba(33,150,243,0.25)] px-4 flex-1 text-center h-full flex items-center justify-center bg-white">
+                                                                                {cartItem.quantity} <span className="text-xs font-normal text-[#2196f3] ml-1">v košíku</span>
                                                                             </span>
                                                                             <button
                                                                                 type="button"
@@ -652,7 +652,7 @@ export default function ProductDetailModal({
                                                                                     updateQuantity(product.id, cartItem.quantity + 1, effectiveVariantRef || undefined);
                                                                                 }}
                                                                                 disabled={cartItem.quantity >= effectiveStockQuantity}
-                                                                                className="w-12 h-full flex items-center justify-center text-cyan-700 hover:bg-cyan-100 rounded-md transition font-bold text-lg"
+                                                                                className="w-12 h-full flex items-center justify-center text-[#1565c0] hover:bg-[#eaf4fe] rounded-md transition font-bold text-lg"
                                                                             >
                                                                                 +
                                                                             </button>
@@ -663,7 +663,7 @@ export default function ProductDetailModal({
                                                                                 setOpen(false);
                                                                                 navigate('/cart');
                                                                             }}
-                                                                            className="w-full inline-flex h-11 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-cyan-600 hover:bg-cyan-700 transition-all duration-300"
+                                                                            className="w-full inline-flex h-11 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm bg-[#2196f3] hover:bg-[#1565c0] transition-all duration-300"
                                                                         >
                                                                             Do košíka
                                                                         </button>
@@ -690,7 +690,7 @@ export default function ProductDetailModal({
                                                                     disabled={isAdding}
                                                                     className={`w-full inline-flex h-12 justify-center items-center rounded-md px-6 text-sm font-semibold text-white shadow-sm transition-all duration-300 ${isAdding
                                                                         ? 'bg-emerald-500 scale-105 cursor-not-allowed opacity-60'
-                                                                        : 'bg-cyan-600 hover:bg-cyan-700'
+                                                                        : 'bg-[#2196f3] hover:bg-[#1565c0]'
                                                                         }`}
                                                                 >
                                                                     {isAdding ? (
@@ -726,7 +726,7 @@ export default function ProductDetailModal({
                                                         <dd className="text-gray-700 break-words text-sm min-w-0">
                                                             {sortedCategoryList.map((cat, i) => (
                                                                 <span key={cat}>
-                                                                    <span className={selectedCategories.includes(cat) ? 'font-semibold text-cyan-700' : ''}>{cat}</span>
+                                                                    <span className={selectedCategories.includes(cat) ? 'font-semibold text-[#1565c0]' : ''}>{cat}</span>
                                                                     {i < sortedCategoryList.length - 1 && <span className="text-gray-400">, </span>}
                                                                 </span>
                                                             ))}

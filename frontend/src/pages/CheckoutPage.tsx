@@ -40,10 +40,10 @@ function GBtn({
                 px-6 py-3
                 ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}
                 ${outline
-                    ? 'border border-cyan-500 text-cyan-600 bg-white hover:bg-cyan-50'
-                    : 'text-white shadow-[0_4px_14px_rgba(6,182,212,0.22)] hover:shadow-[0_6px_20px_rgba(6,182,212,0.35)]'
+                    ? 'border border-[#2196f3] text-[#2196f3] bg-white hover:bg-[#eaf4fe]'
+                    : 'text-white shadow-[0_4px_14px_rgba(33,150,243,0.22)] hover:shadow-[0_6px_20px_rgba(33,150,243,0.35)]'
                 }`}
-            style={outline || disabled || loading ? undefined : { background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}
+            style={outline || disabled || loading ? undefined : { background: '#2196f3' }}
         >
             {loading && (
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -84,14 +84,14 @@ function Field({
                 <select
                     id={id} name={name} value={value}
                     onChange={onChange as React.ChangeEventHandler<HTMLSelectElement>}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-900 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-900 outline-none focus:border-[#2196f3] focus:ring-2 focus:ring-[rgba(33,150,243,0.1)] transition-all"
                 >{children}</select>
             ) : As === 'textarea' ? (
                 <textarea
                     id={id} name={name} value={value}
                     onChange={onChange as React.ChangeEventHandler<HTMLTextAreaElement>}
                     placeholder={placeholder} rows={3}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-900 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white text-slate-900 outline-none focus:border-[#2196f3] focus:ring-2 focus:ring-[rgba(33,150,243,0.1)] transition-all resize-none"
                 />
             ) : (
                 <input
@@ -102,7 +102,7 @@ function Field({
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all
                         ${readOnly
                             ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-default'
-                            : 'bg-white border-slate-200 text-slate-900 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100'}`}
+                            : 'bg-white border-slate-200 text-slate-900 focus:border-[#2196f3] focus:ring-2 focus:ring-[rgba(33,150,243,0.1)]'}`}
                 />
             )}
         </div>
@@ -120,14 +120,14 @@ function ToggleRow({ checked, onChange, label, desc }: {
             className="w-full flex items-center gap-3 cursor-pointer transition-all text-left"
             style={{
                 padding: '14px 16px',
-                background: checked ? '#e0f7fa' : '#fff',
+                background: checked ? '#eaf4fe' : '#fff',
                 borderRadius: checked ? '14px 14px 0 0' : 14,
-                border: `1.5px solid ${checked ? '#0891b2' : '#e2e8f0'}`,
+                border: `1.5px solid ${checked ? '#2196f3' : '#e2e8f0'}`,
             }}
         >
             <div
                 className="relative flex-shrink-0 transition-all"
-                style={{ width: 44, height: 26, borderRadius: 13, background: checked ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#cbd5e1' }}
+                style={{ width: 44, height: 26, borderRadius: 13, background: checked ? '#2196f3' : '#cbd5e1' }}
             >
                 <div
                     className="absolute top-[3px] w-5 h-5 rounded-full bg-white shadow transition-all"
@@ -153,12 +153,12 @@ function PayCard({
             onClick={onClick}
             className="flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all mb-3"
             style={{
-                borderColor: selected ? '#0891b2' : '#e2e8f0',
-                background: selected ? '#e0f7fa' : '#fff',
+                borderColor: selected ? '#2196f3' : '#e2e8f0',
+                background: selected ? '#eaf4fe' : '#fff',
             }}
         >
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: selected ? 'rgba(8,145,178,0.12)' : '#f8fafc' }}>
+                style={{ background: selected ? 'rgba(33,150,243,0.12)' : '#f8fafc' }}>
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
@@ -171,8 +171,8 @@ function PayCard({
             <div
                 className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
                 style={{
-                    borderColor: selected ? '#0891b2' : '#cbd5e1',
-                    background: selected ? 'linear-gradient(135deg, #06b6d4, #10b981)' : 'transparent',
+                    borderColor: selected ? '#2196f3' : '#cbd5e1',
+                    background: selected ? '#2196f3' : 'transparent',
                 }}
             >
                 {selected && (
@@ -201,9 +201,9 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
                         <div
                             className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all"
                             style={{
-                                background: s.n <= current ? 'linear-gradient(135deg, #06b6d4, #10b981)' : '#e2e8f0',
+                                background: s.n <= current ? '#2196f3' : '#e2e8f0',
                                 color: s.n <= current ? '#fff' : '#94a3b8',
-                                boxShadow: s.n === current ? '0 0 0 4px rgba(6,182,212,0.15)' : 'none',
+                                boxShadow: s.n === current ? '0 0 0 4px rgba(33,150,243,0.15)' : 'none',
                             }}
                         >
                             {s.n < current ? (
@@ -220,7 +220,7 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
                     </div>
                     {i < steps.length - 1 && (
                         <div className="w-10 sm:w-16 h-0.5 mx-2 mb-5 transition-all"
-                            style={{ background: s.n < current ? 'linear-gradient(90deg, #06b6d4, #10b981)' : '#e2e8f0' }} />
+                            style={{ background: s.n < current ? 'linear-gradient(90deg, #2196f3, #2196f3)' : '#e2e8f0' }} />
                     )}
                 </div>
             ))}
@@ -269,7 +269,7 @@ function OrderSummary({ items, shippingMethod, shippingCost }: {
             <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
                 <span className="font-bold text-slate-900">Celkom s DPH</span>
                 <span className="text-xl font-extrabold bg-clip-text text-transparent"
-                    style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
+                    style={{ backgroundImage: '#2196f3' }}>
                     {total.toFixed(2)} €
                 </span>
             </div>
@@ -467,7 +467,7 @@ export default function CheckoutPage() {
                     <StepIndicator current={3} />
                     <div className="text-center mb-6">
                         <div className="anim-check mx-auto w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
-                            style={{ background: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                            style={{ background: '#2196f3' }}>
                             <svg width="36" height="28" viewBox="0 0 36 28" fill="none">
                                 <path d="M3 14l9 9L33 3" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
@@ -482,7 +482,7 @@ export default function CheckoutPage() {
                     <div className="anim-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
                             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Číslo objednávky</span>
-                            <span className="font-mono font-bold text-cyan-700">{orderNumber}</span>
+                            <span className="font-mono font-bold text-[#1565c0]">{orderNumber}</span>
                         </div>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
@@ -542,7 +542,7 @@ export default function CheckoutPage() {
                     <div className="anim-3 flex flex-col gap-2">
                         <GBtn full onClick={() => navigate('/products')}>Späť do e-shopu</GBtn>
                         <Link to="/orders"
-                            className="flex items-center justify-center w-full py-3 px-6 rounded-full border border-cyan-500 text-sm font-semibold text-cyan-600 hover:bg-cyan-50 transition-colors">
+                            className="flex items-center justify-center w-full py-3 px-6 rounded-full border border-[#2196f3] text-sm font-semibold text-[#2196f3] hover:bg-[#eaf4fe] transition-colors">
                             Zobraziť moje objednávky
                         </Link>
                     </div>
@@ -611,7 +611,7 @@ export default function CheckoutPage() {
                                         desc="Zadajte IČO, DIČ a DIČ DPH"
                                     />
                                     {formData.is_company && (
-                                        <div className="px-5 py-5 space-y-4 border-x border-b border-cyan-400"
+                                        <div className="px-5 py-5 space-y-4 border-x border-b border-[#2196f3]"
                                             style={{ borderRadius: '0 0 14px 14px', background: '#f8fafc' }}>
                                             <Field label="Názov firmy" name="company_name" value={formData.company_name}
                                                 onChange={set('company_name')} required={formData.is_company} />
@@ -623,7 +623,7 @@ export default function CheckoutPage() {
                                             <label className="flex items-center gap-3 pt-2">
                                                 <input type="checkbox" checked={formData.is_vat_payer}
                                                     onChange={e => setFormData(p => ({ ...p, is_vat_payer: e.target.checked }))}
-                                                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                                                    className="w-4 h-4 rounded border-slate-300 text-[#2196f3] focus:ring-[#2196f3]" />
                                                 <span className="text-sm text-slate-600">Som platiteľ DPH</span>
                                             </label>
                                         </div>
@@ -634,7 +634,7 @@ export default function CheckoutPage() {
                                     <div className="mb-4 flex items-center gap-3 px-1">
                                         <input type="checkbox" id="save_to_profile" checked={saveToProfile}
                                             onChange={e => setSaveToProfile(e.target.checked)}
-                                            className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                                            className="w-4 h-4 rounded border-slate-300 text-[#2196f3] focus:ring-[#2196f3]" />
                                         <label htmlFor="save_to_profile" className="text-sm text-slate-600 cursor-pointer">
                                             Zapamätať údaje pre budúce objednávky
                                         </label>
@@ -664,13 +664,13 @@ export default function CheckoutPage() {
                                         title={`Kuriér — ${shippingCost > 0 ? `${shippingCost.toFixed(2)} €` : '...'}`}
                                         subtitle="Doručenie na adresu"
                                         icon={
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0891b2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
                                             </svg>
                                         }
                                         badge={
                                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                                                style={{ background: '#e0f7fa', color: '#0891b2' }}>
+                                                style={{ background: '#eaf4fe', color: '#2196f3' }}>
                                                 {shippingCost > 0 ? `${shippingCost.toFixed(2)} €` : ''}
                                             </span>
                                         }
@@ -681,7 +681,7 @@ export default function CheckoutPage() {
                                         title="Osobný odber — Zadarmo"
                                         subtitle={pickupDetails}
                                         icon={
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                                             </svg>
                                         }
@@ -695,7 +695,7 @@ export default function CheckoutPage() {
                                         title="Bankový prevod"
                                         subtitle="Platba na základe faktúry"
                                         icon={
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0891b2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196f3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
                                             </svg>
                                         }
@@ -728,9 +728,9 @@ export default function CheckoutPage() {
                                             }}
                                             className="mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all cursor-pointer"
                                             style={{
-                                                borderColor: agreementsAccepted ? '#0891b2' : agreementsError ? '#f87171' : '#cbd5e1',
+                                                borderColor: agreementsAccepted ? '#2196f3' : agreementsError ? '#f87171' : '#cbd5e1',
                                                 background: agreementsAccepted
-                                                    ? 'linear-gradient(135deg, #06b6d4, #10b981)'
+                                                    ? '#2196f3'
                                                     : agreementsError
                                                         ? '#fff5f5'
                                                         : '#fff',
@@ -744,11 +744,11 @@ export default function CheckoutPage() {
                                         </div>
                                         <span className="text-sm text-slate-600 leading-relaxed">
                                             Súhlasím so{' '}
-                                            <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-cyan-600 hover:underline">
+                                            <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-[#2196f3] hover:underline">
                                                 všeobecnými podmienkami
                                             </a>{' '}
                                             a{' '}
-                                            <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-cyan-600 hover:underline">
+                                            <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#2196f3] hover:underline">
                                                 GDPR / ochranou osobných údajov
                                             </a>.
                                         </span>
@@ -785,7 +785,7 @@ export default function CheckoutPage() {
                     <button
                         type="button"
                         onClick={() => { setStep(1); setError(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="w-full py-2.5 px-5 rounded-full border border-cyan-500 text-sm font-semibold text-cyan-600 mb-2 bg-white"
+                        className="w-full py-2.5 px-5 rounded-full border border-[#2196f3] text-sm font-semibold text-[#2196f3] mb-2 bg-white"
                     >
                         ← Späť
                     </button>

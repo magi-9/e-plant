@@ -6,7 +6,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowPathIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import logoUrl from '../assets/dynamicabutment-logo.png';
 
-const GRAD = 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)';
+const GRAD = '#2196f3';
 const NAV_BG = '#020617';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,7 +21,7 @@ function GradButton({ children, disabled, loading }: { children: React.ReactNode
             style={{
                 background: disabled || loading ? '#e2e8f0' : GRAD,
                 color: disabled || loading ? '#94a3b8' : '#fff',
-                boxShadow: disabled || loading ? 'none' : '0 4px 16px rgba(6,182,212,0.28)',
+                boxShadow: disabled || loading ? 'none' : '0 4px 16px rgba(33,150,243,0.28)',
             }}
         >
             {loading && <ArrowPathIcon className="h-4 w-4 animate-spin" />}
@@ -42,15 +42,15 @@ function Requirement({ met, label }: { met: boolean; label: string }) {
 }
 
 const inputBase = 'h-11 px-3.5 rounded-[10px] border bg-white text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 transition w-full';
-const iNormal = `${inputBase} border-slate-200 focus:border-cyan-500 focus:ring-cyan-500/10`;
+const iNormal = `${inputBase} border-slate-200 focus:border-[#2196f3] focus:ring-[rgba(33,150,243,0.1)]`;
 const iError  = `${inputBase} border-red-400   focus:border-red-500   focus:ring-red-400/10`;
 const iOk     = `${inputBase} border-emerald-400 focus:border-emerald-500 focus:ring-emerald-400/10`;
 
 // ── brand panels ────────────────────────────────────────────────
 
 function BrandPanel({ isLogin }: { isLogin: boolean }) {
-    const accent = isLogin ? 'rgba(6,182,212,0.18)' : 'rgba(16,185,129,0.15)';
-    const checkColor = isLogin ? '#06b6d4' : '#10b981';
+    const accent = isLogin ? 'rgba(33,150,243,0.18)' : 'rgba(33,150,243,0.15)';
+    const checkColor = '#2196f3';
     const content = isLogin
         ? {
             title: 'Váš partner pre dentálne implantáty',
@@ -75,7 +75,7 @@ function BrandPanel({ isLogin }: { isLogin: boolean }) {
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.045, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <pattern id="auth-grid" width="48" height="48" patternUnits="userSpaceOnUse">
-                        <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#06b6d4" strokeWidth="0.8"/>
+                        <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#2196f3" strokeWidth="0.8"/>
                     </pattern>
                 </defs>
                 <rect width="100%" height="100%" fill="url(#auth-grid)" />
@@ -104,7 +104,7 @@ function BrandPanel({ isLogin }: { isLogin: boolean }) {
                 </div>
             </div>
 
-            {/* <div className="relative" style={{ borderLeft: `2px solid ${isLogin ? 'rgba(6,182,212,0.4)' : 'rgba(16,185,129,0.4)'}`, paddingLeft: 20 }}>
+            {/* <div className="relative" style={{ borderLeft: `2px solid ${isLogin ? 'rgba(33,150,243,0.4)' : 'rgba(33,150,243,0.4)'}`, paddingLeft: 20 }}>
                 <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, fontStyle: 'italic' }}>{content.quote}</p>
                 <p className="mt-2.5" style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>{content.author}</p>
             </div> */}
@@ -113,11 +113,11 @@ function BrandPanel({ isLogin }: { isLogin: boolean }) {
 }
 
 function MobileHero({ isLogin }: { isLogin: boolean }) {
-    const glowColor = isLogin ? 'rgba(6,182,212,0.2)' : 'rgba(16,185,129,0.18)';
+    const glowColor = isLogin ? 'rgba(33,150,243,0.2)' : 'rgba(33,150,243,0.18)';
     return (
         <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: NAV_BG, padding: '40px 24px 32px' }}>
             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
-                <defs><pattern id="auth-m-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#06b6d4" strokeWidth="0.7"/></pattern></defs>
+                <defs><pattern id="auth-m-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2196f3" strokeWidth="0.7"/></pattern></defs>
                 <rect width="100%" height="100%" fill="url(#auth-m-grid)" />
             </svg>
             <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`, pointerEvents: 'none' }} />
@@ -178,7 +178,7 @@ function LoginForm() {
                     value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••" className={iNormal} />
                 <div className="text-right mt-0.5">
-                    <Link to="/forgot-password" className="text-xs text-cyan-600 font-medium hover:text-cyan-700">Zabudnuté heslo?</Link>
+                    <Link to="/forgot-password" className="text-xs text-[#2196f3] font-medium hover:text-[#1565c0]">Zabudnuté heslo?</Link>
                 </div>
             </div>
             <div className="mt-2">
@@ -188,7 +188,7 @@ function LoginForm() {
             </div>
             <p className="text-center text-sm text-slate-400">
                 Nemáte účet?{' '}
-                <Link to="/register" className="text-cyan-600 font-semibold hover:text-cyan-700">Zaregistrujte sa</Link>
+                <Link to="/register" className="text-[#2196f3] font-semibold hover:text-[#1565c0]">Zaregistrujte sa</Link>
             </p>
         </form>
     );
@@ -236,7 +236,7 @@ function RegisterForm() {
     const canSubmit = firstNameValid && lastNameValid && emailValid && hasMinLength && notNumeric && passwordsMatch;
 
     const strength = formData.password.length >= 12 ? 4 : formData.password.length >= 10 ? 3 : formData.password.length >= 8 ? 2 : formData.password.length > 0 ? 1 : 0;
-    const strengthColor = strength >= 3 ? '#10b981' : strength === 2 ? '#f59e0b' : '#ef4444';
+    const strengthColor = strength >= 3 ? '#2196f3' : strength === 2 ? '#f59e0b' : '#ef4444';
     const strengthLabel = strength < 2 ? 'Slabé' : strength === 2 ? 'Dobré' : strength === 3 ? 'Silné' : 'Veľmi silné';
 
     const mutation = useMutation({
@@ -266,7 +266,7 @@ function RegisterForm() {
     if (success) {
         return (
             <div className="text-center bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
-                <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-2xl mb-4" style={{ background: GRAD, boxShadow: '0 8px 32px rgba(6,182,212,0.3)' }}>
+                <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-2xl mb-4" style={{ background: GRAD, boxShadow: '0 8px 32px rgba(33,150,243,0.3)' }}>
                     <CheckCircleIcon className="h-7 w-7 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-2" style={{ letterSpacing: '-0.03em' }}>Skontrolujte si e-mail</h3>
@@ -275,7 +275,7 @@ function RegisterForm() {
                 </p>
                 <Link to="/login"
                     className="inline-flex justify-center items-center h-11 px-6 rounded-full text-sm font-semibold text-white"
-                    style={{ background: GRAD, boxShadow: '0 4px 16px rgba(6,182,212,0.28)' }}>
+                    style={{ background: GRAD, boxShadow: '0 4px 16px rgba(33,150,243,0.28)' }}>
                     Prejsť na prihlásenie
                 </Link>
             </div>
@@ -385,13 +385,13 @@ function RegisterForm() {
 
             <p className="text-center text-xs text-slate-400 leading-relaxed">
                 Registráciou súhlasíte s{' '}
-                <a href="/terms" className="text-cyan-600 hover:text-cyan-700">podmienkami používania</a>
+                <a href="/terms" className="text-[#2196f3] hover:text-[#1565c0]">podmienkami používania</a>
                 {' '}a{' '}
-                <a href="/privacy" className="text-cyan-600 hover:text-cyan-700">ochranou osobných údajov</a>.
+                <a href="/privacy" className="text-[#2196f3] hover:text-[#1565c0]">ochranou osobných údajov</a>.
             </p>
             <p className="text-center text-sm text-slate-400">
                 Už máte účet?{' '}
-                <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700">Prihláste sa</Link>
+                <Link to="/login" className="text-[#2196f3] font-semibold hover:text-[#1565c0]">Prihláste sa</Link>
             </p>
         </form>
     );
