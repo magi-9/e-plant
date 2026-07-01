@@ -394,7 +394,7 @@ class TestCategoryCountsEndpoint:
 
 
 class TestCatalogIntegrity:
-    """Tests verify data matches the physical PDF catalog (PRODUCT-REFERENCE-0326_01.pdf).
+    """Tests verify data matches the physical PDF catalog (PRODUCT-REFERENCE-2026-01.pdf).
 
     These tests read the real compatibility_options.csv — no mocking.
     Each assertion maps to a specific page and section in the PDF.
@@ -467,12 +467,12 @@ class TestCatalogIntegrity:
         assert "31.313.022" in get_ref_prefixes_for_code("0022")
 
     def test_0022_scanbody_and_adaptor(self):
-        """PDF p.93: SCANBODY 52.408.106, adaptor 50.313.022 present for code 0022."""
+        """PDF p.94: SCANBODY 52.408.101, adaptor 50.313.022 present for code 0022."""
         from products.compatibility import _load, get_ref_prefixes_for_code
 
         _load.cache_clear()
         prefixes = get_ref_prefixes_for_code("0022")
-        assert "52.408.106" in prefixes, "Scanbody H=8 missing for 0022"
+        assert "52.408.101" in prefixes, "Scanbody H=8 missing for 0022"
         assert "50.313.022" in prefixes, "Adaptor missing for 0022"
 
     def test_0022_multi_unit_families(self):
@@ -552,8 +552,8 @@ class TestCatalogIntegrity:
         ), "Scanbody missing for 0030"
         assert "50.313.030" in prefixes, "Adaptor missing for 0030"
 
-    def test_0030_page_114_screws(self):
-        """PDF p.114: DENTIS/OSSTEM/NEOBIOTECH 0030 screw table."""
+    def test_0030_has_no_screw_table_in_2026_catalog(self):
+        """PDF p.115: 0030 no longer lists a SCREWS table in the 2026 catalog."""
         from products.compatibility import (
             _load_screws_by_code,
             get_compatible_screws_for_tibase,
@@ -562,9 +562,8 @@ class TestCatalogIntegrity:
         _load_screws_by_code.cache_clear()
         screws = get_compatible_screws_for_tibase("31.323.030.01-2")
 
-        assert "41.320.079.01-2" in screws["dynamic"]
-        assert "41.320.125.01-2" in screws["dynamic"]
-        assert "40.320.003.04-2" in screws["straight"]
+        assert screws["dynamic"] == []
+        assert screws["straight"] == []
 
     # ── Code 0075 · ANKYLOS · pages 171-173 ──────────────────────────────────
 

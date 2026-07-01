@@ -1622,8 +1622,8 @@ class ProductInquiryView(APIView):
 
 
 _CATALOG_PDF_CANDIDATES = [
-    "/data/PRODUCT-REFERENCE-0326_01.pdf",
-    "/data/raw/PRODUCT-REFERENCE-0326_01.pdf",
+    "/data/PRODUCT-REFERENCE-2026-01.pdf",
+    "/data/raw/PRODUCT-REFERENCE-2026-01.pdf",
 ]
 _CATALOG_REFERENCE_RE = re.compile(r"[^0-9A-Za-z]+")
 _CATALOG_COMPATIBILITY_CODE_RE = re.compile(r"\d{4}[A-Za-z]?")
