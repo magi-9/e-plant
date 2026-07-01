@@ -6,7 +6,6 @@ import { PencilIcon, TrashIcon, PlusIcon, ArrowUpTrayIcon, ArchiveBoxArrowDownIc
 import type { Product, ProductListParams } from '../api/products';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
-import ProductDetailModal from '../components/ProductDetailModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
 import AdminEditModal, { type EditSavePayload } from '../components/admin/AdminEditModal';
@@ -52,9 +51,6 @@ export default function AdminProducts() {
     const [currentPage, setCurrentPage] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-    const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
-    const [viewModalOpen, setViewModalOpen] = useState(false);
 
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
@@ -532,21 +528,17 @@ export default function AdminProducts() {
                                                     style={{ width: 15, height: 15, cursor: 'pointer' }} />
                                             </td>
                                             <td className="hidden sm:table-cell" style={{ padding: '11px 8px', width: 52 }}>
-                                                <button type="button" onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block' }}>
+                                                <div>
                                                     {product.image ? (
                                                         <img src={product.image} alt={product.name}
                                                             style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', display: 'block' }} />
                                                     ) : (
                                                         <div style={{ width: 38, height: 38, borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16 }}>—</div>
                                                     )}
-                                                </button>
+                                                </div>
                                             </td>
                                             <td style={{ padding: '11px 14px', maxWidth: 260 }}>
-                                                <button type="button" onClick={() => { setViewingProduct(product); setViewModalOpen(true); }}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-                                                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', lineHeight: 1.3 }}>{product.name}</div>
-                                                </button>
+                                                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a', lineHeight: 1.3 }}>{product.name}</div>
                                             </td>
                                             <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
                                                 <code style={{ fontSize: 11.5, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: '#475569', background: '#f1f5f9', padding: '2px 7px', borderRadius: 5 }}>
@@ -634,13 +626,6 @@ export default function AdminProducts() {
                         </div>
                     </div>
                 )}
-
-                <ProductDetailModal
-                    open={viewModalOpen}
-                    setOpen={setViewModalOpen}
-                    product={viewingProduct}
-                    onEdit={(p) => { setViewModalOpen(false); handleEdit(p); }}
-                />
 
                 {/* ── Edit / Create modal ── */}
                 {isModalOpen && (

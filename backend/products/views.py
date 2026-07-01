@@ -231,12 +231,17 @@ def _is_screw_product(product):
     return (product.reference or "").startswith(("40.", "41.")) or "SCREW" in haystack
 
 
-def _use_total_length_variant_labels(members):
+def _screw_variant_length_label(member):
+    length = _option_token_value(member.parameters, "THREAD LENGTH(mm)")
+    if not length:
+        length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
+    return f"{length} mm" if length else ""
+
+
+def _use_screw_length_variant_labels(members):
     if len(members) < 2 or not all(_is_screw_product(member) for member in members):
         return False
-    lengths = {
-        _option_token_value(member.parameters, "TOTAL LENGTH(mm)") for member in members
-    }
+    lengths = {_screw_variant_length_label(member) for member in members}
     lengths.discard("")
     return len(lengths) > 1
 
@@ -271,14 +276,14 @@ def _make_wildcard_group_card(members, group_name: str):
     """Return a virtual product representing a wildcard group card."""
     rep = copy(members[0])
     masked_reference = masked_variant_reference([m.reference for m in members])
-    use_total_length_labels = _use_total_length_variant_labels(members)
+    use_screw_length_labels = _use_screw_length_variant_labels(members)
     options = []
     for member in members:
         option = _option_entry(member)
-        if use_total_length_labels:
-            total_length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
-            if total_length:
-                option["label"] = f"{total_length} mm"
+        if use_screw_length_labels:
+            length_label = _screw_variant_length_label(member)
+            if length_label:
+                option["label"] = length_label
         options.append(option)
     rep.parameters = {
         "type": "wildcard_group",
@@ -496,6 +501,31 @@ class ProductViewSet(viewsets.ModelViewSet):
         return response
 
     def retrieve(self, request, *args, **kwargs):
+        if not _is_admin_view(request):
+            instance = self.get_object()
+            if (
+                instance.wildcard_group_id
+                and instance.wildcard_group
+                and instance.wildcard_group.is_enabled
+            ):
+                settings = GroupingSettings.get()
+                if settings.wildcard_grouping_enabled:
+                    members = list(
+                        Product.objects.filter(
+                            wildcard_group=instance.wildcard_group,
+                            is_visible=True,
+                        ).order_by("reference")
+                    )
+                    if len(members) > 1:
+                        group_card = _make_wildcard_group_card(
+                            members, instance.wildcard_group.name
+                        )
+                        serializer = self.get_serializer(group_card)
+                        data = ProductService.apply_price_visibility(
+                            serializer.data, request.user
+                        )
+                        return Response(data)
+
         response = super().retrieve(request, *args, **kwargs)
         response.data = ProductService.apply_price_visibility(
             response.data, request.user

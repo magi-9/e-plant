@@ -33,8 +33,64 @@ const isTiBaseProduct = (product: Product): boolean => {
 
 const getVariantLabel = (option: ProductVariant): string => {
     const tokens = (option.option_tokens || '').split('|').map(t => t.trim()).filter(Boolean);
-    if (tokens.length > 0) return tokens.slice(0, 2).join(' · ');
+    const ghToken = tokens.find(token => /^GH\s*\(/i.test(token) || /^GH\s*:/i.test(token));
+    const parts: string[] = [];
+    if (ghToken) {
+        const sep = ghToken.indexOf(':');
+        const value = sep >= 0 ? ghToken.slice(sep + 1).trim() : ghToken.trim();
+        parts.push(`GH ${value}${/mm/i.test(value) ? '' : ' mm'}`);
+    }
+    if (option.engaging === 1) parts.push('Engaging');
+    if (option.engaging === 0) parts.push('Non-engaging');
+    if (parts.length > 0) return parts.join(' · ');
+    if (option.label && option.label !== option.reference && option.label !== option.name) return option.label;
+    const visibleTokens = tokens.filter(token => {
+        const key = token.slice(0, token.indexOf(':') >= 0 ? token.indexOf(':') : token.length).trim().toUpperCase();
+        return !['ADAPTOR', 'SCREWDRIVER', 'SCREWDRIVER ADAPTOR', 'DYNAMIC SCREW'].includes(key);
+    });
+    if (visibleTokens.length > 0) return visibleTokens.slice(0, 2).join(' · ');
     return option.label || option.parameter_code || option.reference || option.name || 'Variant';
+};
+
+const isSelectableVariant = (option: ProductVariant): boolean => {
+    const tokens = (option.option_tokens || '').split('|').map(t => t.trim()).filter(Boolean);
+    const typeToken = tokens.find(token => token.toUpperCase().startsWith('TYPE:'));
+    const typeValue = typeToken?.slice(typeToken.indexOf(':') + 1).trim().toUpperCase();
+    if (typeValue && ['ADAPTOR', 'SCREWDRIVER', 'SCREWDRIVER ADAPTOR', 'DYNAMIC SCREW'].includes(typeValue)) return false;
+
+    const name = `${option.name || ''} ${option.category || ''}`.toUpperCase();
+    return !/\b(SCREWDRIVER ADAPTOR|SCREWDRIVER|ADAPTOR|DYNAMIC SCREW)\b/.test(name);
+};
+
+const formatParsedKey = (key: string): string =>
+    key.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+
+const formatParsedValue = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '';
+    if (Array.isArray(value)) return value.map(formatParsedValue).filter(Boolean).join(', ');
+    if (typeof value === 'object') {
+        return Object.entries(value as Record<string, unknown>)
+            .map(([key, nestedValue]) => {
+                const formatted = formatParsedValue(nestedValue);
+                return formatted ? `${formatParsedKey(key)}: ${formatted}` : '';
+            })
+            .filter(Boolean)
+            .join(' | ');
+    }
+    return String(value);
+};
+
+const getParsedDetailRows = (details: unknown): Array<{ key: string; value: string }> => {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) return [];
+    return Object.entries(details as Record<string, unknown>)
+        .map(([key, value]) => ({ key: formatParsedKey(key), value: formatParsedValue(value) }))
+        .filter(row => row.value.length > 0);
+};
+
+const getEngagingAnswer = (value: number | null | undefined): string => {
+    if (value === 1) return 'Áno';
+    if (value === 0) return 'Nie';
+    return 'Neuvedené';
 };
 
 /* ── Design tokens ─────────────────────────────────────────── */
@@ -76,7 +132,7 @@ function RelatedProductCard({ product }: { product: Product }) {
                     <div style={{ marginTop: 12 }}>
                         {price
                             ? <p style={{ fontSize: 14, fontWeight: 700, color: T.blueD }}>{price} € s DPH</p>
-                            : <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 20, background: '#eaf4fe', fontSize: 12, fontWeight: 700, color: T.blueD }}>Členská cena</span>
+                            : <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 20, background: '#eaf4fe', fontSize: 12, fontWeight: 700, color: T.blueD }}>Pre cenu sa prihláste</span>
                         }
                     </div>
                 </div>
@@ -107,7 +163,7 @@ export default function ProductDetailPage() {
 
     const product = productQuery.data;
     const variantOptions = useMemo(
-        () => sortByFirstOptionTokenValue(product?.parameters?.options || []),
+        () => sortByFirstOptionTokenValue(product?.parameters?.options || []).filter(isSelectableVariant),
         [product?.parameters?.options]
     );
     const activeVariant = variantOptions.find(o => o.reference === selectedVariantRef) || variantOptions[0] || null;
@@ -130,6 +186,10 @@ export default function ProductDetailPage() {
     const descriptionParts = effectiveDescription
         ? buildDescriptionParts(effectiveDescription, hasVariants, activeVariant, effectiveReference)
         : [];
+    const parsedDetailRows = useMemo(
+        () => getParsedDetailRows(product?.parameters?.details),
+        [product?.parameters?.details]
+    );
 
     const compatibleProductsQuery = useQuery({
         queryKey: ['related-products', 'compatibility', product?.id, selectedCompatibilityCode],
@@ -212,7 +272,7 @@ export default function ProductDetailPage() {
         );
     }
 
-    const hasDetails = descriptionParts.length > 0 || categories.length > 0 || activeVariant?.option_tokens;
+    const hasDetails = descriptionParts.length > 0 || categories.length > 0 || activeVariant?.option_tokens || parsedDetailRows.length > 0 || hasVariants;
 
     return (
         <>
@@ -356,11 +416,16 @@ export default function ProductDetailPage() {
                                             </div>
                                                 </div>
                                     ) : (
-                                        <div style={{ display: 'inline-flex', height: 32, padding: '0 14px', borderRadius: 20, background: '#eaf4fe', alignItems: 'center', fontSize: 14, fontWeight: 700, color: T.blueD }}>Členská cena</div>
+                                        <div style={{ display: 'inline-flex', minHeight: 32, padding: '6px 14px', borderRadius: 20, background: '#eaf4fe', alignItems: 'center', fontSize: 14, fontWeight: 700, color: T.blueD }}>Pre cenu sa prihláste</div>
                                     )}
 
                                     <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {cartItem ? (
+                                        {!isLoggedIn ? (
+                                            <button type="button" onClick={() => navigate('/login')}
+                                                style={{ height: 50, borderRadius: 12, background: T.blue, color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+                                                Prihlásiť sa
+                                            </button>
+                                        ) : cartItem ? (
                                             <div style={{ display: 'flex', height: 50, overflow: 'hidden', borderRadius: 12, border: `1px solid rgba(33,150,243,0.25)`, background: '#eaf4fe' }}>
                                                 <button type="button" aria-label="Znížiť" onClick={() => cartItem.quantity > 1 ? updateQuantity(product.id, cartItem.quantity - 1, activeVariant?.reference || undefined) : removeItem(product.id, activeVariant?.reference || undefined)} style={{ width: 50, fontSize: 22, fontWeight: 700, color: T.blueD, background: 'none', border: 'none', cursor: 'pointer' }}>−</button>
                                                 <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontSize: 14, fontWeight: 700, color: T.blueD }}>{cartItem.quantity} v košíku</span>
@@ -377,9 +442,11 @@ export default function ProductDetailPage() {
                                                 <ICart /> {canUseCart ? 'Pridať do košíka' : 'Prihlásiť sa'}
                                             </button>
                                         )}
-                                        <Link to="/cart" style={{ height: 50, borderRadius: 12, background: '#fff', color: T.ink2, fontSize: 15, fontWeight: 700, border: `1px solid ${T.line2}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit' }}>
-                                            <ICart /> Do košíka
-                                        </Link>
+                                        {isLoggedIn && (
+                                            <Link to="/cart" style={{ height: 50, borderRadius: 12, background: '#fff', color: T.ink2, fontSize: 15, fontWeight: 700, border: `1px solid ${T.line2}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontFamily: 'inherit' }}>
+                                                <ICart /> Do košíka
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -433,6 +500,18 @@ export default function ProductDetailPage() {
                                             </div>
                                         );
                                     })}
+                                    {activeVariant && activeVariant.engaging !== undefined && activeVariant.engaging !== null && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                            <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>Engaging</dt>
+                                            <dd style={{ fontSize: 14, color: T.ink2, margin: 0, fontFamily: 'monospace' }}>{getEngagingAnswer(activeVariant.engaging)}</dd>
+                                        </div>
+                                    )}
+                                    {parsedDetailRows.map((row) => (
+                                        <div key={`parsed-${row.key}`} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 4, alignItems: 'start' }}>
+                                            <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.6px', color: T.muted, textTransform: 'uppercase' }}>{row.key}</dt>
+                                            <dd style={{ fontSize: 14, color: T.ink2, margin: 0 }}>{row.value}</dd>
+                                        </div>
+                                    ))}
                                 </dl>
                             </div>
                         )}

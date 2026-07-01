@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getGlobalSettings } from '../api/settings';
 import { getCompanyProfile } from '../utils/companyProfile';
-import { getLandingHomeHref } from '../utils/landingLinks';
+import { getLandingContactHref } from '../utils/landingLinks';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
+import ebringerLogoUrl from '../assets/logo-ebringer.png';
 
 export default function ShopLayout() {
   const { data: globalSettings, isLoading } = useQuery({
@@ -13,7 +14,24 @@ export default function ShopLayout() {
     queryFn: getGlobalSettings,
   });
   const company = getCompanyProfile(globalSettings);
-  const landingHomeHref = getLandingHomeHref();
+  const landingContactHref = getLandingContactHref();
+  const footerLinkStyle = { fontSize: 14, color: '#8a93a0', textDecoration: 'none' } as const;
+  const footerHeadingStyle = { fontSize: 12, fontWeight: 700, letterSpacing: '.6px', color: '#fff', textTransform: 'uppercase', marginBottom: 16 } as const;
+  const footerListStyle = { listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12, margin: 0, padding: 0 } as const;
+  const legalLinks = [
+    { label: 'Obchodné podmienky', to: '/terms' },
+    { label: 'Ochrana osobných údajov', to: '/privacy' },
+    { label: 'Reklamačný poriadok', to: '/complaints' },
+    { label: 'Vrátenie tovaru', to: '/withdrawal' },
+  ];
+  const assortmentLinks = [
+    { label: 'TiBase', type: 'tibase' },
+    { label: 'Multi-Unit', type: 'multi_unit' },
+    { label: 'Scanbody', type: 'scanbody' },
+    { label: 'Analógy', type: 'analogs' },
+    { label: 'Abutmenty', type: 'abutments' },
+    { label: 'Nástroje', type: 'tools' },
+  ];
 
   if (isLoading) {
     return (
@@ -37,31 +55,49 @@ export default function ShopLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-auto text-slate-300" style={{ background: '#0f1216', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="w-full px-8 py-10">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 pb-8 border-b border-slate-800/70">
-            <div className="flex items-center gap-3">
-              <svg className="h-9 w-9 flex-shrink-0" fill="#2196f3" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
-              </svg>
-              <div>
-                <p className="text-lg font-bold text-white tracking-wide">{company.companyName}</p>
-                <a href={`mailto:${company.companyEmail}`} className="text-xs mt-0.5 hover:underline underline-offset-2" style={{ color: '#2196f3' }}>
-                  {company.companyEmail}
-                </a>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-x-12 gap-y-2.5 text-sm">
-              <p className="col-span-2 text-[10px] uppercase tracking-[0.15em] font-semibold mb-1" style={{ color: '#8a93a0' }}>Informácie</p>
-              <a href={landingHomeHref} className="text-slate-300/80 hover:text-white transition-colors">O nás</a>
-              <Link to="/terms" className="text-slate-300/80 hover:text-white transition-colors">Obchodné podmienky</Link>
-              <Link to="/privacy" className="text-slate-300/80 hover:text-white transition-colors">Ochrana osobných údajov</Link>
-              <Link to="/complaints" className="text-slate-300/80 hover:text-white transition-colors">Reklamačný poriadok</Link>
-              <Link to="/withdrawal" className="text-slate-300/80 hover:text-white transition-colors">Vrátenie tovaru</Link>
-            </div>
+      <footer style={{ marginTop: 64, background: '#0f1216', color: '#cbd2da', borderTop: '1px solid rgba(255,255,255,0.08)', fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif" }}>
+        <div style={{ maxWidth: 1440, margin: '0 auto', padding: '56px 32px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 40, boxSizing: 'border-box' }}>
+          <div style={{ maxWidth: 360 }}>
+            <img src={ebringerLogoUrl} alt="Dental design studio Ebringer" style={{ width: 220, maxWidth: '100%', height: 'auto', display: 'block', background: '#fff', borderRadius: 10, padding: '10px 14px' }} />
+            <p style={{ marginTop: 16, fontSize: 14, lineHeight: '22px', color: '#8a93a0' }}>Exkluzívny distribútor Dynamic Abutment Solutions pre Slovensko.</p>
+            <Link to="/catalogs" style={{ display: 'inline-block', marginTop: 12, fontSize: 14, color: '#2196f3', fontWeight: 600, textDecoration: 'none' }}>Katalógy produktov</Link>
           </div>
-          <div className="pt-6 text-center text-xs text-slate-400/80">
-            © {new Date().getFullYear()} {company.companyName} &mdash; Všetky práva vyhradené.
+
+          <div>
+            <p style={footerHeadingStyle}>Sortiment</p>
+            <ul style={footerListStyle}>
+              {assortmentLinks.map(({ label, type }) => (
+                <li key={type}>
+                  <Link to={`/products?type=${type}`} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p style={footerHeadingStyle}>Dokumenty</p>
+            <ul style={footerListStyle}>
+              {legalLinks.map(item => (
+                <li key={item.label}>
+                  <Link to={item.to} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>{item.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p style={footerHeadingStyle}>Kontakt</p>
+            <ul style={footerListStyle}>
+              <li><a href={landingContactHref} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>O nás a kontakt</a></li>
+              <li><a href={`mailto:${company.companyEmail}`} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>{company.companyEmail}</a></li>
+              <li style={{ fontSize: 14, color: '#8a93a0', lineHeight: '22px' }}>{company.companyName}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 48, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto', padding: '20px 32px', textAlign: 'center', fontSize: 13, color: '#6b7480', boxSizing: 'border-box' }}>
+            © {new Date().getFullYear()} {company.companyName} — Všetky práva vyhradené.
           </div>
         </div>
       </footer>

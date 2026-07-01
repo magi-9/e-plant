@@ -86,6 +86,21 @@ def test_admin_create_rejects_invalid_parameters_json():
 
 
 @pytest.mark.django_db
+def test_product_detail_prefers_exact_compatibility_code_over_import_segment():
+    product = make_product(
+        name="Screw Hex1.25 M1.6 L6.9mm",
+        reference="40.316.004.03-2",
+        parameters={"compatibility_code": "0004"},
+    )
+
+    response = APIClient().get(f"/api/products/{product.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["compatibility_codes"] == ["0136"]
+    assert response.data["compatibility_code"] == "0136"
+
+
+@pytest.mark.django_db
 def test_admin_create_rejects_non_object_details():
     client = admin_client()
     response = client.post(
@@ -130,6 +145,35 @@ def test_public_product_count_uses_visible_filter():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_retrieve_wildcard_member_returns_group_card():
+    group = WildcardGroup.objects.create(name="Implant Group", is_enabled=True)
+    p1 = make_product(name="Implant A", reference="31.001")
+    p2 = make_product(name="Implant B", reference="31.002")
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=group)
+
+    GroupingSettings.objects.create(wildcard_grouping_enabled=True)
+
+    response = APIClient().get(f"/api/products/{p1.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["parameters"]["type"] == "wildcard_group"
+    assert len(response.data["parameters"]["options"]) == 2
+    refs = {o["reference"] for o in response.data["parameters"]["options"]}
+    assert refs == {"31.001", "31.002"}
+
+
+@pytest.mark.django_db
+def test_retrieve_single_product_not_in_group_returns_normal():
+    p = make_product(name="Solo Implant", reference="99.001")
+
+    response = APIClient().get(f"/api/products/{p.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    params = response.data.get("parameters") or {}
+    assert params.get("type") != "wildcard_group"
 
 
 # ─── wildcard sync ────────────────────────────────────────────────────────────
@@ -550,6 +594,45 @@ def test_storefront_screw_wildcard_options_use_total_length_labels():
     assert response.status_code == status.HTTP_200_OK
     options = response.data["results"][0]["parameters"]["options"]
     assert [option["label"] for option in options] == ["7.1 mm", "10.6 mm"]
+
+
+@pytest.mark.django_db
+def test_storefront_screw_wildcard_options_use_thread_length_when_total_missing():
+    s = GroupingSettings.get()
+    s.wildcard_grouping_enabled = True
+    s.save()
+
+    p1 = make_product(
+        name="Dynamic Screw A",
+        reference="40.316.005.01-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "TYPE:Hex. 1.27|METRIC:1.6|THREAD LENGTH(mm):7.5",
+        },
+    )
+    p2 = make_product(
+        name="Dynamic Screw B",
+        reference="40.316.005.02-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "TYPE:Hex. 1.27|METRIC:1.6|THREAD LENGTH(mm):8.25",
+        },
+    )
+
+    wg = WildcardGroup.objects.create(
+        name="Dynamic Screw Group", is_auto_generated=True
+    )
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    options = response.data["results"][0]["parameters"]["options"]
+    assert [option["label"] for option in options] == ["7.5 mm", "8.25 mm"]
 
 
 @pytest.mark.django_db
