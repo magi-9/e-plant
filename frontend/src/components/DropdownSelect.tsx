@@ -37,7 +37,7 @@ export default function DropdownSelect({
             {({ open }) => (
                 <div className={`relative ${wrapperClassName}`}>
                     <Listbox.Button
-                        className={`inline-flex h-9 w-full items-center justify-between gap-2 rounded-xl border px-3 text-sm font-medium transition-all focus:outline-none ${isActive ? 'bg-violet-50 border-violet-200 text-violet-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'} ${buttonClassName}`}
+                        className={`inline-flex h-9 w-full items-center justify-between gap-2 rounded-xl border px-3 text-sm font-medium transition-all focus:outline-none ${isActive ? 'bg-[#eaf4fe] border-[rgba(33,150,243,0.25)] text-[#2196f3]' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'} ${buttonClassName}`}
                     >
                         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
                         <ChevronDownIcon className={`h-4 w-4 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -59,7 +59,7 @@ export default function DropdownSelect({
                                         <button
                                             type="button"
                                             disabled={disabled}
-                                            className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : ''} ${active || selected ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                                            className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : ''} ${active || selected ? 'bg-[#eaf4fe] text-[#2196f3]' : 'text-slate-700 hover:bg-slate-50'}`}
                                         >
                                             <span className="min-w-0 truncate font-medium">{option.label}</span>
                                         </button>

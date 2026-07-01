@@ -596,6 +596,8 @@ def _merge_option_rows(option_map: dict[str, str], parsed_rows) -> dict[str, str
         tokens = [token for token in option_map.get(ref, "").split("|") if token]
         for part in options.split("|"):
             _merge_option_token(tokens, part)
+        if ref.startswith("40.") and "TOTAL LENGTH(mm):" in options:
+            tokens = [token for token in tokens if not token.startswith("LENGTH:")]
         option_map[ref] = "|".join(tokens)
     return option_map
 
@@ -696,10 +698,10 @@ def _parse_dynamic_screw_spec_line(line: str) -> dict | None:
 def _parse_straight_screw_spec_line(line: str) -> dict | None:
     m = re.match(
         r"^\s*(40\.\d{3}\.\d{3}\.\d{2}-\d)\s+"
-        r"([A-Z]?\d+(?:-\d+|[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+)\s*N[·.]?cm\s+"
+        r"([A-Z]?\d+(?:-\d+|[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+\s*N[·.]?cm)\s+"
         r"(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+"
         r"(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+(\d+(?:[,.]\d+)?|-)\s+"
-        r"(\d+(?:[,.]\d+)?)\s+(straight|conical)\s+(.+?)\s{2,}(.+?)\s*$",
+        r"(\d+(?:[,.]\d+)?)\s+(\S+)\s+(\S+)\s+(.+?)\s{2,}(.+?)\s*$",
         line,
         re.IGNORECASE,
     )
@@ -709,7 +711,6 @@ def _parse_straight_screw_spec_line(line: str) -> dict | None:
     (
         ref,
         metric,
-        thread_pitch,
         torque,
         total_length,
         thread_length,
@@ -718,21 +719,27 @@ def _parse_straight_screw_spec_line(line: str) -> dict | None:
         c_length,
         head_diameter,
         seat,
+        angle,
+        thread_entry_prefix,
         thread_entry,
         connection,
     ) = m.groups()
+    thread_entry = " ".join(
+        part.strip() for part in (thread_entry_prefix, thread_entry) if part.strip()
+    )
+    torque = _normalize_spec_number(torque)
 
     specs = [
         ("METRIC", metric),
-        ("THREAD PITCH(mm)", thread_pitch),
-        ("TORQUE", f"{torque} N·cm"),
+        ("TORQUE", torque),
         ("TOTAL LENGTH(mm)", total_length),
         ("THREAD LENGTH(mm)", thread_length),
         ("A LENGTH(mm)", a_length),
         ("B LENGTH(mm)", b_length),
         ("C LENGTH(mm)", c_length),
         ("HEAD Ø(mm)", head_diameter),
-        ("SEAT", seat.lower()),
+        ("SEAT", seat),
+        ("ANGLE", angle.strip()),
         ("THREAD ENTRY", thread_entry.strip()),
         ("CONNECTION", connection.strip()),
     ]
@@ -1271,7 +1278,7 @@ def convert_catalog_pdf_options():
     """Parse PDF catalog and generate compatibility options CSV + merged import CSV."""
     import sys
 
-    pdf_path = resolve_source_file("PRODUCT-REFERENCE-0326_01.pdf")
+    pdf_path = resolve_source_file("PRODUCT-REFERENCE-2026-01.pdf")
     active_categories = load_active_categories(VISIBLE_CATEGORIES_TXT)
 
     # Use the layout-aware parse_catalog.py parser for structured, accurate data

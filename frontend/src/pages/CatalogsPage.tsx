@@ -23,10 +23,10 @@ const catalogs: Catalog[] = [
         pdfUrl: '/catalogs/CATALOGO-OFFSETS-SURGICAL-GUIDED_2023_02.pdf',
     },
     {
-        title: 'Product References 03/26',
+        title: 'Product References 2026',
         description: 'Prehľad produktových referencií.',
         imageUrl: '/catalogs/product-references.png',
-        pdfUrl: '/catalogs/PRODUCT-REFERENCE-0326_01.pdf',
+        pdfUrl: '/catalogs/PRODUCT-REFERENCE-2026-01.pdf',
     },
 ];
 
@@ -39,10 +39,10 @@ export default function CatalogsPage() {
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">PDF katalógy</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1565c0]">PDF katalógy</p>
                             <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-slate-950">Katalógy</h1>
                         </div>
-                        <DocumentTextIcon className="hidden sm:block h-9 w-9 text-cyan-700" />
+                        <DocumentTextIcon className="hidden sm:block h-9 w-9 text-[#1565c0]" />
                     </div>
                 </div>
             </section>
@@ -54,7 +54,7 @@ export default function CatalogsPage() {
                             key={catalog.pdfUrl}
                             type="button"
                             onClick={() => setSelectedCatalog(catalog)}
-                            className="group overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
+                            className="group overflow-hidden rounded-lg border border-slate-200 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[rgba(33,150,243,0.4)] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#2196f3] focus:ring-offset-2"
                         >
                             <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
                                 <img
@@ -67,7 +67,7 @@ export default function CatalogsPage() {
                             <div className="p-4 sm:p-5">
                                 <h2 className="text-base font-bold text-slate-950">{catalog.title}</h2>
                                 <p className="mt-1.5 text-sm text-slate-500">{catalog.description}</p>
-                                <span className="mt-4 inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-2 text-sm font-semibold text-white">
+                                <span className="mt-4 inline-flex items-center gap-2 rounded-md bg-[#2196f3] px-3 py-2 text-sm font-semibold text-white">
                                     Otvoriť PDF
                                 </span>
                             </div>

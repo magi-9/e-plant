@@ -3,7 +3,7 @@
 Parse DAS dental product catalog PDF → products.csv + compat_index.csv
 
 Usage:
-    python data/parse_catalog.py data/raw/PRODUCT-REFERENCE-0326_01.pdf
+    python data/parse_catalog.py data/raw/PRODUCT-REFERENCE-2026-01.pdf
     python data/parse_catalog.py /path/to/file.pdf --output /output/
     python data/parse_catalog.py /path/to/file.pdf --pages-index 9-42 --pages-products 43-329
 """
@@ -724,10 +724,17 @@ def parse_products(text: str, pdf_first_page: int = 43) -> list[dict]:
             ):
                 screwdriver_ref = line_skus[-1]
             screw_refs = line_skus[:-1] if screwdriver_ref else []
-            line_without_refs = SKU_RE.sub(" ", line)
+            line_without_refs = SKU_RE.sub(lambda match: " " * len(match.group(0)), line)
             row_length = current_length or extract_length(line)
             if not row_length:
-                for number in NUM_RE.findall(line_without_refs):
+                length_source = line_without_refs
+                if line_type_m:
+                    length_source = (
+                        length_source[: line_type_m.start()]
+                        + " "
+                        + length_source[line_type_m.end() :]
+                    )
+                for number in NUM_RE.findall(length_source):
                     if not re.fullmatch(r"\d{4}", number):
                         row_length = number.replace(",", ".")
                         break

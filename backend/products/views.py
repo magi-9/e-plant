@@ -231,12 +231,17 @@ def _is_screw_product(product):
     return (product.reference or "").startswith(("40.", "41.")) or "SCREW" in haystack
 
 
-def _use_total_length_variant_labels(members):
+def _screw_variant_length_label(member):
+    length = _option_token_value(member.parameters, "THREAD LENGTH(mm)")
+    if not length:
+        length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
+    return f"{length} mm" if length else ""
+
+
+def _use_screw_length_variant_labels(members):
     if len(members) < 2 or not all(_is_screw_product(member) for member in members):
         return False
-    lengths = {
-        _option_token_value(member.parameters, "TOTAL LENGTH(mm)") for member in members
-    }
+    lengths = {_screw_variant_length_label(member) for member in members}
     lengths.discard("")
     return len(lengths) > 1
 
@@ -271,14 +276,14 @@ def _make_wildcard_group_card(members, group_name: str):
     """Return a virtual product representing a wildcard group card."""
     rep = copy(members[0])
     masked_reference = masked_variant_reference([m.reference for m in members])
-    use_total_length_labels = _use_total_length_variant_labels(members)
+    use_screw_length_labels = _use_screw_length_variant_labels(members)
     options = []
     for member in members:
         option = _option_entry(member)
-        if use_total_length_labels:
-            total_length = _option_token_value(member.parameters, "TOTAL LENGTH(mm)")
-            if total_length:
-                option["label"] = f"{total_length} mm"
+        if use_screw_length_labels:
+            length_label = _screw_variant_length_label(member)
+            if length_label:
+                option["label"] = length_label
         options.append(option)
     rep.parameters = {
         "type": "wildcard_group",
@@ -496,6 +501,31 @@ class ProductViewSet(viewsets.ModelViewSet):
         return response
 
     def retrieve(self, request, *args, **kwargs):
+        if not _is_admin_view(request):
+            instance = self.get_object()
+            if (
+                instance.wildcard_group_id
+                and instance.wildcard_group
+                and instance.wildcard_group.is_enabled
+            ):
+                settings = GroupingSettings.get()
+                if settings.wildcard_grouping_enabled:
+                    members = list(
+                        Product.objects.filter(
+                            wildcard_group=instance.wildcard_group,
+                            is_visible=True,
+                        ).order_by("reference")
+                    )
+                    if len(members) > 1:
+                        group_card = _make_wildcard_group_card(
+                            members, instance.wildcard_group.name
+                        )
+                        serializer = self.get_serializer(group_card)
+                        data = ProductService.apply_price_visibility(
+                            serializer.data, request.user
+                        )
+                        return Response(data)
+
         response = super().retrieve(request, *args, **kwargs)
         response.data = ProductService.apply_price_visibility(
             response.data, request.user
@@ -1592,10 +1622,11 @@ class ProductInquiryView(APIView):
 
 
 _CATALOG_PDF_CANDIDATES = [
-    "/data/PRODUCT-REFERENCE-0326_01.pdf",
-    "/data/raw/PRODUCT-REFERENCE-0326_01.pdf",
+    "/data/PRODUCT-REFERENCE-2026-01.pdf",
+    "/data/raw/PRODUCT-REFERENCE-2026-01.pdf",
 ]
 _CATALOG_REFERENCE_RE = re.compile(r"[^0-9A-Za-z]+")
+_CATALOG_COMPATIBILITY_CODE_RE = re.compile(r"\d{4}[A-Za-z]?")
 
 
 def _catalog_pdf_path():
@@ -1634,13 +1665,27 @@ class CatalogPdfPagesView(APIView):
             return Response({"pages": [], "error": "Catalog PDF not found"}, status=404)
 
         if include_compatible:
-            from products.compatibility import get_all_compatible_refs  # noqa: PLC0415
+            from products.compatibility import (
+                get_compatibility_codes_for_ref,
+            )  # noqa: PLC0415
 
-            all_refs = frozenset({reference}) | get_all_compatible_refs(reference)
-            matching = _find_multiple_reference_pages(path, all_refs)
+            codes = get_compatibility_codes_for_ref(reference)
+            codes = _prefer_specific_catalog_codes(codes)
+            refs_to_search = frozenset(codes) if codes else frozenset({reference})
+            matching = _find_multiple_reference_pages(path, refs_to_search)
         else:
             matching = _find_reference_pages(path, reference)
         return Response({"pages": matching})
+
+
+def _prefer_specific_catalog_codes(codes: list) -> list:
+    """Drop generic code prefixes when a suffixed catalog block also matches."""
+    code_set = set(codes)
+    return [
+        code
+        for code in codes
+        if not any(other != code and other.startswith(code) for other in code_set)
+    ]
 
 
 def _find_multiple_reference_pages(pdf_path: str, references: frozenset) -> list:
@@ -1731,6 +1776,14 @@ def _normalise_catalog_reference(value: str) -> str:
 
 
 def _catalog_page_contains_reference(page_text: str, reference: str) -> bool:
+    if _CATALOG_COMPATIBILITY_CODE_RE.fullmatch(reference):
+        return bool(
+            re.search(
+                rf"\bCOMPATIBLE\s+WITH\s+{re.escape(reference)}(?![0-9A-Za-z])",
+                page_text,
+                flags=re.IGNORECASE,
+            )
+        )
     if reference in page_text:
         return True
     return _normalise_catalog_reference(reference) in _normalise_catalog_reference(

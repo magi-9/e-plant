@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Košík — Dynamic Abutment Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  .cartGrid{display:grid;grid-template-columns:1fr 360px;gap:28px;align-items:start}
+  .sumCol{position:sticky;top:88px}
+  @media(max-width:920px){.cartGrid{grid-template-columns:1fr}.sumCol{position:static}}
+  @media(max-width:520px){.ciImg{width:72px!important;height:72px!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="shop-data.js"></script>
+<script type="text/babel" src="shop-ui.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+const { eur, itemWord } = ShopData;
+
+function useCart(){
+  const [items,setItems]=useState(CART.read());
+  useEffect(()=>{const h=()=>setItems(CART.read());window.addEventListener('cart:change',h);return()=>window.removeEventListener('cart:change',h);},[]);
+  return items;
+}
+
+function Empty(){
+  return (
+    <div style={{minHeight:'70vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'40px 20px'}}>
+      <div style={{textAlign:'center',maxWidth:420}}>
+        <div style={{width:96,height:96,margin:'0 auto',borderRadius:24,background:'#fff',border:'1px solid var(--line2)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)'}}><I.cart width="40" height="40"/></div>
+        <h2 style={{marginTop:24,fontSize:26,fontWeight:700}}>Váš košík je prázdny</h2>
+        <p style={{marginTop:8,fontSize:15,color:'var(--ink2)'}}>Pridajte si produkty do košíka a pokračujte v nákupe.</p>
+        <a href="Produkty.html" style={{display:'inline-flex',marginTop:24,height:50,padding:'0 28px',borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700,alignItems:'center'}}>Prejsť na produkty</a>
+      </div>
+    </div>
+  );
+}
+
+function Row({item}){
+  const key=`${item.id}:${item.variant||''}`;
+  const dec=()=>CART.setQty(item.id,item.variant,item.qty-1);
+  const inc=()=>{if(item.qty>=(item.stock||99)){return;}CART.setQty(item.id,item.variant,item.qty+1);};
+  return (
+    <li style={{display:'flex',gap:18,padding:'22px 24px',borderBottom:'1px solid var(--line)'}}>
+      <div className="ciImg" style={{flexShrink:0,width:92,height:92,borderRadius:12,background:'#fafbfc',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center'}}><img src={item.img} alt={item.name} style={{maxWidth:'80%',maxHeight:'80%',objectFit:'contain'}}/></div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:'flex',justifyContent:'space-between',gap:12}}>
+          <div style={{minWidth:0}}>
+            <a href={`Detail produktu.html?id=${item.id}`} style={{fontSize:16,fontWeight:700,display:'block'}}>{item.name}</a>
+            {item.variantLabel&&<p style={{marginTop:4,fontSize:13,color:'var(--blue)',fontWeight:600}}>{item.variantLabel}</p>}
+            {item.screw&&<p style={{marginTop:3,fontSize:12,color:'var(--ink2)'}}>+ skrutka: {item.screw} <span style={{color:'var(--ok)',fontWeight:600}}>(zadarmo)</span></p>}
+            <p style={{marginTop:6,fontSize:12,color:'var(--muted)'}}>Skladom: {item.stock} ks</p>
+          </div>
+          <button onClick={()=>CART.remove(item.id,item.variant)} style={{color:'#c0392b',height:34,alignSelf:'flex-start'}} aria-label="Odstrániť"><I.trash/></button>
+        </div>
+        <div style={{marginTop:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',border:'1px solid var(--line2)',borderRadius:10,overflow:'hidden'}}>
+            <button onClick={dec} style={{width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--ink2)'}}><I.minus/></button>
+            <span style={{minWidth:42,textAlign:'center',fontSize:15,fontWeight:700}}>{item.qty}</span>
+            <button onClick={inc} disabled={item.qty>=item.stock} style={{width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center',color:item.qty>=item.stock?'#cbd5e1':'var(--ink2)'}}><I.plus/></button>
+          </div>
+          <span style={{fontSize:11,fontWeight:700,letterSpacing:'.4px',color:'var(--muted)'}}>ČLENSKÁ CENA</span>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function App(){
+  const items=useCart();
+  const [menu,setMenu]=useState(false);
+  if(items.length===0)return(<div><Header active="" onMenu={()=>setMenu(true)}/><MobileNav open={menu} onClose={()=>setMenu(false)} active=""/><Empty/><Footer/></div>);
+  const count=items.reduce((s,i)=>s+i.qty,0);
+  return (
+    <div>
+      <Header active="" onMenu={()=>setMenu(true)}/>
+      <MobileNav open={menu} onClose={()=>setMenu(false)} active=""/>
+      <main className="wrap" style={{paddingTop:36,paddingBottom:8}}>
+        <h1 style={{fontSize:32,fontWeight:700,letterSpacing:'-0.6px'}}>Nákupný košík</h1>
+        <p style={{marginTop:6,fontSize:14,color:'var(--ink2)'}}>{count} {itemWord(count)} v košíku</p>
+        <div className="cartGrid" style={{marginTop:28}}>
+          <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,overflow:'hidden'}}>
+            <ul style={{listStyle:'none'}}>{items.map(it=><Row key={`${it.id}:${it.variant||''}`} item={it}/>)}</ul>
+            <div style={{padding:'16px 24px',background:'#fafbfc',borderTop:'1px solid var(--line)'}}><button onClick={()=>CART.clear()} style={{fontSize:14,fontWeight:600,color:'#c0392b'}}>Vyprázdniť košík</button></div>
+          </div>
+          <aside className="sumCol">
+            <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,padding:24}}>
+              <h2 style={{fontSize:18,fontWeight:700}}>Súhrn objednávky</h2>
+              <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:14}}><span style={{color:'var(--ink2)'}}>Položky</span><span style={{fontWeight:600}}>{count} ks</span></div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:14}}><span style={{color:'var(--ink2)'}}>Doprava</span><span style={{fontWeight:600}}>Podľa ceny</span></div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid var(--line)',paddingTop:14}}><span style={{fontSize:15,fontWeight:600}}>Cena</span><span style={{fontSize:15,fontWeight:700,color:'var(--blue)'}}>Členská</span></div>
+              </div>
+              <div style={{marginTop:16,padding:'12px 14px',borderRadius:12,background:'#eaf4fe',border:'1px solid #cfe6fb',fontSize:13,color:'var(--blue-d)',lineHeight:'19px'}}>Ceny sa zobrazia po prihlásení. Pre registrovaných partnerov platí členská cena.</div>
+              <a href="Pokladna.html" style={{display:'flex',marginTop:18,height:52,borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700,alignItems:'center',justifyContent:'center'}}>Pokračovať na objednávku</a>
+              <a href="Produkty.html" style={{display:'flex',marginTop:10,height:52,borderRadius:12,background:'#fff',border:'1px solid var(--line2)',color:'var(--ink)',fontSize:15,fontWeight:600,alignItems:'center',justifyContent:'center'}}>Pokračovať v nákupe</a>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <Footer/>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

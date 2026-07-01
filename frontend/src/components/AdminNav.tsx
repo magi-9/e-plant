@@ -11,7 +11,7 @@ const NAV_ITEMS = [
     { href: '/admin/settings', label: 'Nastavenia' },
 ];
 
-const GRAD = 'linear-gradient(135deg, #06b6d4, #3b82f6)';
+const GRAD = 'linear-gradient(135deg, #2196f3, #3b82f6)';
 
 export default function AdminNav() {
     const location = useLocation();
@@ -51,10 +51,10 @@ export default function AdminNav() {
                                     padding: '6px 13px', borderRadius: 8,
                                     fontSize: 13.5, fontWeight: active ? 700 : 500,
                                     color: active ? '#fff' : 'rgba(255,255,255,0.6)',
-                                    background: active ? 'rgba(6,182,212,0.15)' : 'transparent',
+                                    background: active ? 'rgba(33,150,243,0.15)' : 'transparent',
                                     textDecoration: 'none', transition: 'all 0.12s',
                                     border: active
-                                        ? '1px solid rgba(6,182,212,0.30)'
+                                        ? '1px solid rgba(33,150,243,0.30)'
                                         : '1px solid transparent',
                                     whiteSpace: 'nowrap',
                                 }}

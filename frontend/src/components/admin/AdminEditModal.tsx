@@ -6,13 +6,13 @@ import DetailsTable from './DetailsTable';
 import { type DetailRow, nextDetailId } from './detailTypes';
 import ConfirmModal from '../ConfirmModal';
 
-const CYAN = '#0891b2';
-const CYAN_LITE = '#e0f7fa';
+const CYAN = '#2196f3';
+const CYAN_LITE = '#eaf4fe';
 const BORDER = '#e2e8f0';
 const TEXT = '#0f172a';
 const MUTED = '#94a3b8';
 const SUB = '#64748b';
-const GRAD = 'linear-gradient(135deg, #06b6d4, #3b82f6)';
+const GRAD = 'linear-gradient(135deg, #2196f3, #3b82f6)';
 
 interface Draft {
     ref: string;
@@ -99,7 +99,7 @@ function StyledInput({ suffix, mono, ...props }: React.InputHTMLAttributes<HTMLI
                     fontFamily: mono ? '"JetBrains Mono", ui-monospace, monospace' : 'Inter',
                     color: TEXT, outline: 'none', boxSizing: 'border-box',
                     transition: 'border-color 0.15s, box-shadow 0.15s',
-                    boxShadow: focus ? '0 0 0 4px rgba(6,182,212,0.10)' : 'none',
+                    boxShadow: focus ? '0 0 0 4px rgba(33,150,243,0.10)' : 'none',
                     ...props.style,
                 }}
             />
@@ -158,7 +158,7 @@ function PhotoSlot({
                     <img src={preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <span style={{
                         position: 'absolute', top: 8, left: 8, padding: '3px 7px', borderRadius: 6,
-                        background: 'rgba(8,145,178,0.92)', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em',
+                        background: 'rgba(33,150,243,0.92)', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em',
                     }}>HLAVNÁ</span>
                     <button onClick={e => { e.stopPropagation(); onRemove(); }} title="Odstrániť" style={{
                         position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: 7,
@@ -507,7 +507,7 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
                                     }}
                                     onFocus={e => {
                                         e.currentTarget.style.borderColor = CYAN;
-                                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(6,182,212,0.10)';
+                                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(33,150,243,0.10)';
                                     }}
                                     onBlur={e => {
                                         e.currentTarget.style.borderColor = BORDER;
@@ -622,7 +622,7 @@ export default function AdminEditModal({ product, onClose, onSave, allCategories
                             border: 'none', background: !canSave || isPending ? '#e2e8f0' : GRAD,
                             color: !canSave || isPending ? MUTED : '#fff',
                             cursor: !canSave || isPending ? 'not-allowed' : 'pointer',
-                            boxShadow: canSave && !isPending ? '0 3px 12px rgba(6,182,212,0.18)' : 'none',
+                            boxShadow: canSave && !isPending ? '0 3px 12px rgba(33,150,243,0.18)' : 'none',
                             transition: 'all 0.15s',
                         }}
                     >

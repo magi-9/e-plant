@@ -13,10 +13,10 @@ import MobileProfileOrdersTabs from '../components/MobileProfileOrdersTabs';
 const AUTO_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    new:               { label: 'Nová',            color: '#0891b2', bg: '#e0f7fa', dot: '#0891b2' },
+    new:               { label: 'Nová',            color: '#2196f3', bg: '#eaf4fe', dot: '#2196f3' },
     awaiting_payment:  { label: 'Čaká na platbu',  color: '#f59e0b', bg: '#fef3c7', dot: '#f59e0b' },
-    paid:              { label: 'Zaplatená',        color: '#10b981', bg: '#d1fae5', dot: '#10b981' },
-    shipped:           { label: 'Odoslaná',         color: '#0891b2', bg: '#e0f7fa', dot: '#0891b2' },
+    paid:              { label: 'Zaplatená',        color: '#2196f3', bg: '#d1fae5', dot: '#2196f3' },
+    shipped:           { label: 'Odoslaná',         color: '#2196f3', bg: '#eaf4fe', dot: '#2196f3' },
     cancelled:         { label: 'Zrušená',          color: '#ef4444', bg: '#fee2e2', dot: '#ef4444' },
 };
 
@@ -59,10 +59,10 @@ function GBtn({
                 ${sm ? 'px-3.5 py-1.5 text-xs' : 'px-4 py-2 text-sm'}
                 ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
                 ${outline
-                    ? 'border border-cyan-500 text-cyan-600 bg-transparent hover:bg-cyan-50'
-                    : 'text-white shadow-[0_4px_14px_rgba(6,182,212,0.22)] hover:shadow-[0_6px_20px_rgba(6,182,212,0.35)]'
+                    ? 'border border-[#2196f3] text-[#2196f3] bg-transparent hover:bg-[#eaf4fe]'
+                    : 'text-white shadow-[0_4px_14px_rgba(33,150,243,0.22)] hover:shadow-[0_6px_20px_rgba(33,150,243,0.35)]'
                 }`}
-            style={outline ? undefined : { background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}
+            style={outline ? undefined : { background: '#2196f3' }}
         >
             {icon}{children}
         </button>
@@ -142,7 +142,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                     {/* Header */}
                     <div className="flex justify-between items-start mb-10">
                         <div>
-                            <div className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-500 to-emerald-500 bg-clip-text text-transparent mb-1">
+                            <div className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-[#2196f3] to-[#1565c0] bg-clip-text text-transparent mb-1">
                                 {globalSettings?.company_name || 'DAS e-shop'}
                             </div>
                             <p className="text-xs text-slate-400 leading-relaxed">
@@ -226,7 +226,7 @@ function InvoiceModal({ order, onClose }: InvoiceModalProps) {
                             </div>
                             <div className="flex justify-between items-center pt-1">
                                 <span className="font-bold text-slate-900">Celkom</span>
-                                <span className="text-2xl font-extrabold bg-gradient-to-r from-cyan-500 to-emerald-500 bg-clip-text text-transparent">
+                                <span className="text-2xl font-extrabold bg-gradient-to-r from-[#2196f3] to-[#1565c0] bg-clip-text text-transparent">
                                     {parseFloat(order.total_price).toFixed(2)} €
                                 </span>
                             </div>
@@ -263,8 +263,8 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
         <div
             className="rounded-2xl overflow-hidden transition-all"
             style={{
-                border: `1px solid ${open ? '#0891b2' : '#e2e8f0'}`,
-                boxShadow: open ? '0 0 0 3px rgba(8,145,178,0.08), 0 1px 4px rgba(0,0,0,0.04)' : '0 1px 4px rgba(0,0,0,0.04)',
+                border: `1px solid ${open ? '#2196f3' : '#e2e8f0'}`,
+                boxShadow: open ? '0 0 0 3px rgba(33,150,243,0.08), 0 1px 4px rgba(0,0,0,0.04)' : '0 1px 4px rgba(0,0,0,0.04)',
                 marginBottom: 12,
             }}
         >
@@ -273,7 +273,7 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
                 type="button"
                 onClick={() => setOpen(!open)}
                 className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 transition-colors text-left"
-                style={{ background: open ? '#e0f7fa' : '#ffffff' }}
+                style={{ background: open ? '#eaf4fe' : '#ffffff' }}
             >
                 <svg
                     width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"
@@ -319,7 +319,7 @@ function OrderRow({ order, onViewInvoice }: { order: Order; onViewInvoice: (o: O
                                     className="flex items-center gap-3 py-2.5"
                                     style={{ borderBottom: i < order.items.length - 1 ? '1px solid #f1f5f9' : 'none' }}
                                 >
-                                    <div className="w-9 h-9 rounded-lg flex-shrink-0" style={{ background: 'linear-gradient(135deg, #cffafe, #d1fae5)' }} />
+                                    <div className="w-9 h-9 rounded-lg flex-shrink-0" style={{ background: '#eaf4fe' }} />
                                     <div className="flex-1 min-w-0">
                                         <div className="text-sm font-semibold text-slate-900">{it.product_name}</div>
                                     </div>
@@ -420,8 +420,8 @@ export default function OrdersPage() {
                                     {/* Stats row */}
                                     <div className="flex gap-4 mb-5">
                                         {[
-                                            { label: 'Celkové objednávky', value: myOrders.length, color: '#0891b2' },
-                                            { label: 'Doručené', value: deliveredCount, color: '#10b981' },
+                                            { label: 'Celkové objednávky', value: myOrders.length, color: '#2196f3' },
+                                            { label: 'Doručené', value: deliveredCount, color: '#2196f3' },
                                         ].map(stat => (
                                             <div key={stat.label} className="flex-1 bg-white rounded-2xl border border-slate-200 px-5 py-4 shadow-sm">
                                                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{stat.label}</div>

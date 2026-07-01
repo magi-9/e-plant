@@ -34,7 +34,7 @@ export default function CookieConsent() {
                 <p className="text-sm text-gray-700 flex-1">
                     Táto stránka používa cookies na zabezpečenie funkčnosti a zlepšenie zážitku.
                     Viac informácií nájdete v{' '}
-                    <Link to="/privacy" className="underline text-cyan-700 hover:text-cyan-900">
+                    <Link to="/privacy" className="underline text-[#1565c0] hover:text-[#1565c0]">
                         Zásadách ochrany súkromia
                     </Link>
                     .
@@ -50,7 +50,7 @@ export default function CookieConsent() {
                     <button
                         type="button"
                         onClick={accept}
-                        className="px-4 py-2 text-sm rounded-md bg-cyan-600 text-white hover:bg-cyan-700 transition-colors"
+                        className="px-4 py-2 text-sm rounded-md bg-[#2196f3] text-white hover:bg-[#1565c0] transition-colors"
                     >
                         Prijať
                     </button>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokladňa — Dynamic Abutment Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  .coGrid{display:grid;grid-template-columns:1fr 360px;gap:28px;align-items:start}
+  .sumCol{position:sticky;top:88px}
+  .fRow2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .fRow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .fRowAddr{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+  @media(max-width:920px){.coGrid{grid-template-columns:1fr}.sumCol{position:static}}
+  @media(max-width:560px){.fRow2,.fRow3,.fRowAddr{grid-template-columns:1fr}}
+  .fld{width:100%;height:46px;border:1px solid var(--line2);border-radius:10px;padding:0 14px;font-size:14px;outline:none;background:#fff;transition:border-color .15s,box-shadow .15s}
+  .fld:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(33,150,243,.14)}
+  textarea.fld{height:auto;padding:12px 14px;resize:vertical}
+  .lab{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:7px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="shop-data.js"></script>
+<script type="text/babel" src="shop-ui.jsx" data-presets="react"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+const { itemWord } = ShopData;
+
+function Field({label,name,value,onChange,placeholder,req,type='text',full}){
+  return (<label style={full?{gridColumn:'1 / -1'}:undefined}><span className="lab">{label}{req&&' *'}</span><input className="fld" type={type} name={name} value={value} onChange={onChange} placeholder={placeholder}/></label>);
+}
+
+function Summary({items}){
+  const count=items.reduce((s,i)=>s+i.qty,0);
+  return (
+    <aside className="sumCol">
+      <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,padding:24}}>
+        <h2 style={{fontSize:18,fontWeight:700}}>Súhrn objednávky</h2>
+        <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:12}}>
+          {items.map(it=>(
+            <div key={`${it.id}:${it.variant||''}`} style={{display:'flex',gap:12}}>
+              <div style={{flexShrink:0,width:48,height:48,borderRadius:9,background:'#fafbfc',border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center'}}><img src={it.img} alt="" style={{maxWidth:'78%',maxHeight:'78%',objectFit:'contain'}}/></div>
+              <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:600,lineHeight:'17px'}}>{it.name}</p><p style={{fontSize:12,color:'var(--muted)'}}>{it.variantLabel||''} · {it.qty} ks</p></div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:16,borderTop:'1px solid var(--line)',paddingTop:14,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:15,fontWeight:600}}>{count} {itemWord(count)}</span>
+          <span style={{fontSize:15,fontWeight:700,color:'var(--blue)'}}>Členská cena</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function App(){
+  const [items,setItems]=useState(CART.read());
+  const [menu,setMenu]=useState(false);
+  const [step,setStep]=useState(1);
+  const [err,setErr]=useState('');
+  const [done,setDone]=useState(false);
+  const [orderNo]=useState('OBJ'+Math.floor(100000+Math.random()*900000));
+  const [f,setF]=useState({title:'',first_name:'',last_name:'',email:'',phone:'',street:'',number:'',city:'',zip:'',country:'SK',is_company:false,company:'',ico:'',dic:'',pay:'bank',notes:''});
+  const [agree,setAgree]=useState(false);
+  const ch=e=>{const{name,value,type,checked}=e.target;setF(s=>({...s,[name]:type==='checkbox'?checked:value}));};
+
+  const PHONE=/^(\+[0-9]{12}|0[0-9]{9})$/;const ZIP=/^[0-9]{3}\s?[0-9]{2}$/;
+  const toSummary=e=>{e.preventDefault();
+    if(!PHONE.test(f.phone.replace(/[\s-]/g,''))){setErr('Telefón musí byť vo formáte +421XXXXXXXXX alebo 0XXXXXXXXX.');return;}
+    if(!ZIP.test(f.zip.trim())){setErr('PSČ musí mať formát 81101 alebo 811 01.');return;}
+    if(!f.street.trim()||!f.number.trim()){setErr('Zadajte ulicu aj číslo domu.');return;}
+    setErr('');setStep(2);window.scrollTo({top:0,behavior:'smooth'});
+  };
+  const submit=()=>{if(!agree){setErr('Pre dokončenie musíte súhlasiť s podmienkami a GDPR.');return;}setErr('');CART.clear();setItems([]);setDone(true);window.scrollTo({top:0,behavior:'smooth'});};
+
+  if(!done&&items.length===0){
+    return (<div><Header active="" onMenu={()=>setMenu(true)}/><MobileNav open={menu} onClose={()=>setMenu(false)} active=""/>
+      <main className="wrap" style={{padding:'80px 32px',textAlign:'center'}}><p style={{fontSize:18,color:'var(--ink2)'}}>Košík je prázdny.</p><a href="Produkty.html" style={{display:'inline-flex',marginTop:20,height:48,padding:'0 26px',borderRadius:12,background:'var(--blue)',color:'#fff',fontWeight:700,alignItems:'center'}}>Prejsť na produkty</a></main><Footer/></div>);
+  }
+
+  if(done){
+    return (<div><Header active="" onMenu={()=>setMenu(true)}/><MobileNav open={menu} onClose={()=>setMenu(false)} active=""/>
+      <main className="wrap" style={{paddingTop:48,paddingBottom:8,maxWidth:560}}>
+        <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:20,padding:'40px 32px',textAlign:'center'}}>
+          <div style={{width:80,height:80,margin:'0 auto',borderRadius:9999,background:'var(--okbg)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--ok)'}}><I.checkc width="44" height="44"/></div>
+          <h1 style={{marginTop:22,fontSize:28,fontWeight:700}}>Objednávka úspešná!</h1>
+          <p style={{marginTop:8,fontSize:15,color:'var(--ink2)'}}>Vaša objednávka bola úspešne vytvorená.</p>
+          <div style={{marginTop:18,padding:'14px 16px',borderRadius:12,background:'#eaf4fe',border:'1px solid #cfe6fb'}}>Číslo objednávky: <b className="mono" style={{color:'var(--blue-d)'}}>{orderNo}</b></div>
+          <div style={{marginTop:16,textAlign:'left',padding:'16px 18px',borderRadius:12,background:'#fffbeb',border:'1px solid #fde68a'}}>
+            <h3 style={{fontSize:14,fontWeight:700,marginBottom:10}}>Inštrukcie pre platbu</h3>
+            {[['Variabilný symbol',orderNo],['IBAN','SK89 1100 0000 0029 1234 5678'],['Banka','Tatra banka, a.s.'],['SWIFT/BIC','TATRSKBX']].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',gap:12,fontSize:13,padding:'4px 0'}}><span style={{color:'var(--muted)'}}>{k}:</span><span className="mono" style={{fontWeight:700}}>{v}</span></div>
+            ))}
+            <p style={{marginTop:10,paddingTop:10,borderTop:'1px solid #fde68a',fontSize:12,color:'var(--ink2)'}}>Faktúra s platobnými údajmi bola zaslaná na váš e‑mail.</p>
+          </div>
+          <a href="Produkty.html" style={{display:'flex',marginTop:22,height:50,borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700,alignItems:'center',justifyContent:'center'}}>Pokračovať v nákupe</a>
+        </div>
+      </main><Footer/></div>);
+  }
+
+  return (
+    <div>
+      <Header active="" onMenu={()=>setMenu(true)}/>
+      <MobileNav open={menu} onClose={()=>setMenu(false)} active=""/>
+      <main className="wrap" style={{paddingTop:36,paddingBottom:8}}>
+        <a href="Kosik.html" style={{display:'inline-flex',alignItems:'center',gap:8,fontSize:14,fontWeight:700,color:'var(--blue)'}}><I.back/>Späť do košíka</a>
+        <h1 style={{marginTop:14,fontSize:32,fontWeight:700,letterSpacing:'-0.6px'}}>Dokončenie objednávky</h1>
+        {/* steps */}
+        <div style={{marginTop:18,display:'flex',gap:10,alignItems:'center'}}>
+          {[[1,'Dodacie údaje'],[2,'Kontrola']].map(([n,l],i)=>(
+            <React.Fragment key={n}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}><span style={{width:26,height:26,borderRadius:9999,fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',background:step>=n?'var(--blue)':'#e6e9ec',color:step>=n?'#fff':'var(--muted)'}}>{n}</span><span style={{fontSize:13,fontWeight:step===n?700:500,color:step>=n?'var(--ink)':'var(--muted)'}}>{l}</span></div>
+              {i===0&&<span style={{flex:'0 0 36px',height:2,background:step>=2?'var(--blue)':'#e6e9ec'}}/>}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="coGrid" style={{marginTop:24}}>
+          <div>
+            {err&&<div style={{marginBottom:16,padding:'12px 16px',borderRadius:12,background:'#fdecec',border:'1px solid #f5c6c6',fontSize:14,color:'#c0392b'}}>{err}</div>}
+            {step===1?(
+              <form onSubmit={toSummary} style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,padding:'24px 26px'}}>
+                <h2 style={{fontSize:18,fontWeight:700,marginBottom:18}}>Dodacie údaje</h2>
+                <div className="fRow3"><Field label="Titul" name="title" value={f.title} onChange={ch} placeholder="MUDr., Ing."/><Field label="Meno" name="first_name" value={f.first_name} onChange={ch} req/><Field label="Priezvisko" name="last_name" value={f.last_name} onChange={ch} req/></div>
+                <div style={{marginTop:14}}><Field label="E‑mail" name="email" type="email" value={f.email} onChange={ch} placeholder="vas@email.sk" req full/></div>
+                <div style={{marginTop:14}}><Field label="Telefón" name="phone" value={f.phone} onChange={ch} placeholder="+421900123456" req full/></div>
+                <div className="fRowAddr" style={{marginTop:14}}><Field label="Ulica" name="street" value={f.street} onChange={ch} placeholder="Hlavná" req/><Field label="Číslo" name="number" value={f.number} onChange={ch} placeholder="123" req/></div>
+                <div className="fRow2" style={{marginTop:14}}><Field label="Mesto" name="city" value={f.city} onChange={ch} placeholder="Bratislava" req/><Field label="PSČ" name="zip" value={f.zip} onChange={ch} placeholder="811 01" req/></div>
+                <div style={{marginTop:14}}><label><span className="lab">Krajina *</span><select className="fld" name="country" value={f.country} onChange={ch}><option value="SK">Slovensko</option><option value="CZ">Česká republika</option></select></label></div>
+
+                <label style={{display:'flex',alignItems:'center',gap:10,marginTop:20,paddingTop:18,borderTop:'1px solid var(--line)',fontSize:14,cursor:'pointer'}}><input type="checkbox" name="is_company" checked={f.is_company} onChange={ch} style={{width:18,height:18,accentColor:'var(--blue)'}}/>Objednávam na firmu</label>
+                {f.is_company&&(<div style={{marginTop:14,display:'flex',flexDirection:'column',gap:14}}>
+                  <Field label="Názov firmy" name="company" value={f.company} onChange={ch} req full/>
+                  <div className="fRow2"><Field label="IČO" name="ico" value={f.ico} onChange={ch} placeholder="12345678" req/><Field label="DIČ" name="dic" value={f.dic} onChange={ch} placeholder="SK1234567890"/></div>
+                </div>)}
+
+                <div style={{marginTop:20}}>
+                  <span className="lab">Spôsob platby *</span>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    <label style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',border:f.pay==='bank'?'1px solid var(--blue)':'1px solid var(--line2)',borderRadius:12,cursor:'pointer',background:f.pay==='bank'?'#eaf4fe':'#fff'}}><input type="radio" name="pay" value="bank" checked={f.pay==='bank'} onChange={ch} style={{accentColor:'var(--blue)',width:16,height:16}}/><span style={{fontSize:14,fontWeight:600}}>Bankový prevod</span></label>
+                    <label style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',border:'1px solid var(--line2)',borderRadius:12,background:'#fafbfc',opacity:.6,cursor:'not-allowed'}}><input type="radio" disabled style={{width:16,height:16}}/><span><span style={{display:'block',fontSize:14,fontWeight:600,color:'var(--muted)'}}>Platobná karta</span><span style={{fontSize:12,color:'var(--muted)'}}>Dočasne nedostupné</span></span></label>
+                  </div>
+                </div>
+                <div style={{marginTop:16}}><label><span className="lab">Poznámka k objednávke (nepovinné)</span><textarea className="fld" name="notes" rows="3" value={f.notes} onChange={ch}></textarea></label></div>
+
+                <div style={{marginTop:22,display:'flex',gap:12}}>
+                  <a href="Kosik.html" style={{flex:1,height:50,borderRadius:12,border:'1px solid var(--line2)',background:'#fff',fontSize:15,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center'}}>Späť do košíka</a>
+                  <button type="submit" style={{flex:1,height:50,borderRadius:12,background:'var(--blue)',color:'#fff',fontSize:15,fontWeight:700}}>Prejsť na kontrolu</button>
+                </div>
+              </form>
+            ):(
+              <div style={{background:'#fff',border:'1px solid var(--line2)',borderRadius:18,padding:'24px 26px'}}>
+                <h2 style={{fontSize:18,fontWeight:700,paddingBottom:14,borderBottom:'1px solid var(--line)'}}>Kontrola údajov</h2>
+                <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:18,fontSize:14,color:'var(--ink2)'}}>
+                  <div><p style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Adresa</p><p style={{fontWeight:700,color:'var(--ink)'}}>{f.title} {f.first_name} {f.last_name}</p><p>{f.street} {f.number}</p><p>{f.zip} {f.city}</p><p>{f.country==='CZ'?'Česká republika':'Slovensko'}</p></div>
+                  {f.is_company&&<div><p style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Firma</p><p style={{fontWeight:700,color:'var(--ink)'}}>{f.company}</p><p>IČO: {f.ico}</p>{f.dic&&<p>DIČ: {f.dic}</p>}</div>}
+                  <div><p style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Kontakt</p><p>{f.email}</p><p>{f.phone}</p></div>
+                  <div><p style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Platba</p><p style={{fontWeight:700,color:'var(--ink)'}}>Bankový prevod</p></div>
+                  {f.notes&&<div><p style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',color:'var(--muted)',marginBottom:6}}>Poznámka</p><p style={{fontStyle:'italic'}}>{f.notes}</p></div>}
+                </div>
+                <label style={{display:'flex',alignItems:'flex-start',gap:12,marginTop:22,padding:'14px 16px',borderRadius:12,background:'#fafbfc',border:'1px solid var(--line2)',fontSize:13,color:'var(--ink2)',cursor:'pointer'}}><input type="checkbox" checked={agree} onChange={e=>setAgree(e.target.checked)} style={{marginTop:2,width:16,height:16,accentColor:'var(--blue)'}}/><span>Súhlasím so <a href="#" style={{color:'var(--blue)',fontWeight:600,textDecoration:'underline'}}>všeobecnými podmienkami</a> a <a href="#" style={{color:'var(--blue)',fontWeight:600,textDecoration:'underline'}}>GDPR / ochranou osobných údajov</a>.</span></label>
+                <div style={{marginTop:22,display:'flex',gap:12}}>
+                  <button onClick={()=>{setStep(1);setErr('');}} style={{flex:1,height:50,borderRadius:12,border:'1px solid var(--line2)',background:'#fff',fontSize:15,fontWeight:600}}>Upraviť údaje</button>
+                  <button onClick={submit} style={{flex:1,height:50,borderRadius:12,background:'var(--ok)',color:'#fff',fontSize:15,fontWeight:700}}>Objednať s povinnosťou platby</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <Summary items={items}/>
+        </div>
+      </main>
+      <Footer/>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

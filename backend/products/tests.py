@@ -86,6 +86,21 @@ def test_admin_create_rejects_invalid_parameters_json():
 
 
 @pytest.mark.django_db
+def test_product_detail_prefers_exact_compatibility_code_over_import_segment():
+    product = make_product(
+        name="Screw Hex1.25 M1.6 L6.9mm",
+        reference="40.316.004.03-2",
+        parameters={"compatibility_code": "0004"},
+    )
+
+    response = APIClient().get(f"/api/products/{product.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["compatibility_codes"] == ["0136"]
+    assert response.data["compatibility_code"] == "0136"
+
+
+@pytest.mark.django_db
 def test_admin_create_rejects_non_object_details():
     client = admin_client()
     response = client.post(
@@ -130,6 +145,35 @@ def test_public_product_count_uses_visible_filter():
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_retrieve_wildcard_member_returns_group_card():
+    group = WildcardGroup.objects.create(name="Implant Group", is_enabled=True)
+    p1 = make_product(name="Implant A", reference="31.001")
+    p2 = make_product(name="Implant B", reference="31.002")
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=group)
+
+    GroupingSettings.objects.create(wildcard_grouping_enabled=True)
+
+    response = APIClient().get(f"/api/products/{p1.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["parameters"]["type"] == "wildcard_group"
+    assert len(response.data["parameters"]["options"]) == 2
+    refs = {o["reference"] for o in response.data["parameters"]["options"]}
+    assert refs == {"31.001", "31.002"}
+
+
+@pytest.mark.django_db
+def test_retrieve_single_product_not_in_group_returns_normal():
+    p = make_product(name="Solo Implant", reference="99.001")
+
+    response = APIClient().get(f"/api/products/{p.id}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    params = response.data.get("parameters") or {}
+    assert params.get("type") != "wildcard_group"
 
 
 # ─── wildcard sync ────────────────────────────────────────────────────────────
@@ -550,6 +594,45 @@ def test_storefront_screw_wildcard_options_use_total_length_labels():
     assert response.status_code == status.HTTP_200_OK
     options = response.data["results"][0]["parameters"]["options"]
     assert [option["label"] for option in options] == ["7.1 mm", "10.6 mm"]
+
+
+@pytest.mark.django_db
+def test_storefront_screw_wildcard_options_use_thread_length_when_total_missing():
+    s = GroupingSettings.get()
+    s.wildcard_grouping_enabled = True
+    s.save()
+
+    p1 = make_product(
+        name="Dynamic Screw A",
+        reference="40.316.005.01-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "TYPE:Hex. 1.27|METRIC:1.6|THREAD LENGTH(mm):7.5",
+        },
+    )
+    p2 = make_product(
+        name="Dynamic Screw B",
+        reference="40.316.005.02-2",
+        price="10.00",
+        category="SCREWS",
+        parameters={
+            "catalog_section": "DYNAMIC SCREW",
+            "option_tokens": "TYPE:Hex. 1.27|METRIC:1.6|THREAD LENGTH(mm):8.25",
+        },
+    )
+
+    wg = WildcardGroup.objects.create(
+        name="Dynamic Screw Group", is_auto_generated=True
+    )
+    Product.objects.filter(pk__in=[p1.pk, p2.pk]).update(wildcard_group=wg)
+
+    response = APIClient().get("/api/products/")
+
+    assert response.status_code == status.HTTP_200_OK
+    options = response.data["results"][0]["parameters"]["options"]
+    assert [option["label"] for option in options] == ["7.5 mm", "8.25 mm"]
 
 
 @pytest.mark.django_db
@@ -987,3 +1070,128 @@ def test_find_multiple_reference_pages_falls_back_to_pypdf(monkeypatch):
 
     refs = frozenset({"40.316.003.01-2", "99.999.999.01-2"})
     assert views._find_multiple_reference_pages("catalog.pdf", refs) == [1]
+
+
+def test_catalog_pages_include_compatible_uses_compatibility_codes(monkeypatch):
+    """include_compatible=1 should search for compatibility codes, not all compatible product refs."""
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+    monkeypatch.setattr(
+        "products.compatibility.get_compatibility_codes_for_ref",
+        lambda ref: ["0001"],
+    )
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [43, 44]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "31.322.001.01-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [43, 44]}
+    assert captured["refs"] == frozenset({"0001"})
+
+
+def test_catalog_pages_include_compatible_uses_real_adaptor_0050_code(monkeypatch):
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+    monkeypatch.setattr(
+        "products.compatibility.get_compatibility_codes_for_ref",
+        lambda ref: ["0050"],
+    )
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [151, 152]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "50.312.050.04-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [151, 152]}
+    assert captured["refs"] == frozenset({"0050"})
+
+
+def test_catalog_pages_include_compatible_prefers_0041b_for_tibase(monkeypatch):
+    from products import views as v
+
+    monkeypatch.setattr(v, "_catalog_pdf_path", lambda: "catalog.pdf")
+    monkeypatch.setattr(
+        "products.compatibility.get_compatibility_codes_for_ref",
+        lambda ref: ["0041", "0041B"],
+    )
+
+    captured = {}
+
+    def fake_find_multiple(path, refs):
+        captured["refs"] = refs
+        return [137, 138]
+
+    monkeypatch.setattr(v, "_find_multiple_reference_pages", fake_find_multiple)
+
+    from django.test import RequestFactory
+
+    rf = RequestFactory()
+    request = rf.get(
+        "/api/products/catalog-pdf/pages/",
+        {"reference": "31.323.041.02-2", "include_compatible": "1"},
+    )
+    response = v.CatalogPdfPagesView.as_view()(request)
+
+    assert response.data == {"pages": [137, 138]}
+    assert captured["refs"] == frozenset({"0041B"})
+
+
+def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkeypatch):
+    pages = ["unrelated page"] * 153
+    pages[9] = "S/RI/RS/RSX        3,25/3,75        3,67       0050            151"
+    pages[150] = "COMPATIBLE WITH\n0050\nLIST OF COMPATIBILITIES AVAILABLE"
+    pages[151] = "COMPATIBLE WITH 0050\n50.312.050.04-2"
+    pages[152] = "COMPATIBLE WITH\n0051\nLIST OF COMPATIBILITIES AVAILABLE"
+
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(returncode=0, stdout="\f".join(pages))
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    result = views._find_multiple_reference_pages("catalog.pdf", frozenset({"0050"}))
+
+    assert result == [151, 152]
+    assert not any(page <= 42 for page in result)
+
+
+def test_find_multiple_reference_pages_distinguishes_suffixed_codes(monkeypatch):
+    pages = ["COMPATIBLE WITH 0041", "COMPATIBLE WITH\n0041B"]
+
+    def fake_run(*_args, **_kwargs):
+        return types.SimpleNamespace(returncode=0, stdout="\f".join(pages))
+
+    monkeypatch.setattr(views.subprocess, "run", fake_run)
+
+    assert views._find_multiple_reference_pages("catalog.pdf", frozenset({"0041"})) == [
+        1
+    ]
+    assert views._find_multiple_reference_pages(
+        "catalog.pdf", frozenset({"0041B"})
+    ) == [2]

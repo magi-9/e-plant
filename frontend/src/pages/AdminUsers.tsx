@@ -228,13 +228,13 @@ export default function AdminUsers() {
             <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Obrat po mesiacoch</span>
-                    <ChartBarIcon className="h-4 w-4 text-cyan-600" />
+                    <ChartBarIcon className="h-4 w-4 text-[#2196f3]" />
                 </div>
                 <div className="flex h-28 items-end gap-1.5 rounded border border-gray-200 bg-gray-50 px-3 py-2">
                     {monthly.map((item) => (
                         <div key={item.month} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
                             <div
-                                className="w-full rounded-t bg-cyan-500"
+                                className="w-full rounded-t bg-[#eaf4fe]0"
                                 style={{ height: `${Math.max((item.turnover / maxTurnover) * 100, item.turnover > 0 ? 8 : 2)}%` }}
                                 title={`${item.month}: ${formatCurrency(item.turnover)}`}
                             />
@@ -384,16 +384,16 @@ export default function AdminUsers() {
                                     <h3 id="customer-preview-title" className="text-lg font-bold text-gray-900">{fullName(previewUser) || previewUser.email}</h3>
                                     <p className="mt-1 text-sm text-gray-500">{previewUser.email}</p>
                                     {!previewUser.is_staff && (
-                                        <div className="mt-5 rounded-lg border border-cyan-100 bg-cyan-50/60 p-4">
+                                        <div className="mt-5 rounded-lg border border-[rgba(33,150,243,0.15)] bg-[#eaf4fe]/60 p-4">
                                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                 <div>
-                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Obrat za 12 mesiacov</dt>
+                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-[#1565c0]">Obrat za 12 mesiacov</dt>
                                                     <dd className="mt-1 text-2xl font-bold text-gray-900">
                                                         {formatCurrency(previewUser.turnover_last_12_months)}
                                                     </dd>
                                                 </div>
                                                 <div>
-                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Aktuálna zľava</dt>
+                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-[#1565c0]">Aktuálna zľava</dt>
                                                     <dd className="mt-1 text-2xl font-bold text-gray-900">
                                                         {formatDiscount(previewUser.annual_discount_percent)}
                                                     </dd>
@@ -436,7 +436,7 @@ export default function AdminUsers() {
                                     <button type="button" onClick={() => setPreviewUser(null)} className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100">
                                         Zavrieť
                                     </button>
-                                    <button type="button" onClick={() => openCustomerOrders(previewUser)} className="rounded bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-700">
+                                    <button type="button" onClick={() => openCustomerOrders(previewUser)} className="rounded bg-[#2196f3] px-4 py-2 font-medium text-white hover:bg-[#1565c0]">
                                         Objednávky klienta
                                     </button>
                                 </div>

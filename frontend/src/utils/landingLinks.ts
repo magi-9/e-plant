@@ -4,6 +4,9 @@ export function getLandingHomeHref(): string {
   if (import.meta.env.DEV) {
     return '/';
   }
-
   return `https://${LANDING_HOST}/`;
+}
+
+export function getLandingContactHref(): string {
+  return `https://${LANDING_HOST}/#kontakt`;
 }

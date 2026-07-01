@@ -44,7 +44,7 @@ function Field({
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-sm outline-none transition-all
                     ${readOnly
                         ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-default'
-                        : 'bg-white border-slate-200 text-slate-900 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100'
+                        : 'bg-white border-slate-200 text-slate-900 focus:border-[#2196f3] focus:ring-2 focus:ring-[rgba(33,150,243,0.1)]'
                     }`}
             />
         </div>
@@ -68,10 +68,10 @@ function GBtn({
                 ${full ? 'w-full' : ''}
                 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                 ${outline
-                    ? 'border border-cyan-500 text-cyan-600 bg-transparent hover:bg-cyan-50'
-                    : 'text-white shadow-[0_4px_14px_rgba(6,182,212,0.22)] hover:shadow-[0_6px_20px_rgba(6,182,212,0.35)]'
+                    ? 'border border-[#2196f3] text-[#2196f3] bg-transparent hover:bg-[#eaf4fe]'
+                    : 'text-white shadow-[0_4px_14px_rgba(33,150,243,0.22)] hover:shadow-[0_6px_20px_rgba(33,150,243,0.35)]'
                 }`}
-            style={outline ? undefined : { background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}
+            style={outline ? undefined : { background: '#2196f3' }}
         >
             {icon}{children}
         </button>
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                                             <div
                                                 onClick={() => setFormData(prev => ({ ...prev, is_company: !prev.is_company }))}
                                                 className={`w-11 h-6 rounded-full relative transition-all cursor-pointer ${formData.is_company ? '' : 'bg-slate-200'}`}
-                                                style={formData.is_company ? { background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' } : undefined}
+                                                style={formData.is_company ? { background: '#2196f3' } : undefined}
                                             >
                                                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${formData.is_company ? 'left-5' : 'left-0.5'}`} />
                                             </div>

@@ -127,7 +127,7 @@ export default function AdminInventory() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Názov, ref. číslo..."
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-200"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#2196f3] focus:outline-none focus:ring-2 focus:ring-[rgba(33,150,243,0.2)]"
                             />
                         </div>
                         <div>
@@ -172,7 +172,7 @@ export default function AdminInventory() {
                     <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
                         <span>
                             Celkovo <span className="font-semibold text-slate-900">{totalCount}</span> produktov
-                            {isFetching && <span className="ml-2 text-xs text-cyan-600">Aktualizujem...</span>}
+                            {isFetching && <span className="ml-2 text-xs text-[#2196f3]">Aktualizujem...</span>}
                         </span>
                         <button
                             onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setVisibleFilter('visible'); setStockFilter('all'); }}

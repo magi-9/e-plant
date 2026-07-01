@@ -35,10 +35,10 @@ function GBtn({
                 px-5 py-2.5 text-sm
                 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                 ${outline
-                    ? 'border border-cyan-500 text-cyan-600 bg-white hover:bg-cyan-50'
-                    : 'text-white shadow-[0_4px_14px_rgba(6,182,212,0.22)] hover:shadow-[0_6px_20px_rgba(6,182,212,0.35)] active:scale-[0.98]'
+                    ? 'border border-[#2196f3] text-[#2196f3] bg-white hover:bg-[#eaf4fe]'
+                    : 'text-white shadow-[0_4px_14px_rgba(33,150,243,0.22)] hover:shadow-[0_6px_20px_rgba(33,150,243,0.35)] active:scale-[0.98]'
                 }`}
-            style={outline || disabled ? undefined : { background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}
+            style={outline || disabled ? undefined : { background: '#2196f3' }}
         >
             {children}
         </button>
@@ -240,7 +240,7 @@ export default function CartPage() {
                                             <div className="flex gap-3 md:gap-4 items-start">
                                                 {/* Image */}
                                                 <div className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden"
-                                                    style={{ background: 'linear-gradient(135deg, #cffafe, #d1fae5)' }}>
+                                                    style={{ background: '#eaf4fe' }}>
                                                     {item.image ? (
                                                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                                     ) : (
@@ -257,7 +257,7 @@ export default function CartPage() {
                                                                 <p className="text-xs text-emerald-600 font-semibold mt-0.5">Skrutka zadarmo</p>
                                                             )}
                                                             {item.variantLabel && (
-                                                                <p className="text-xs text-cyan-600 mt-0.5">{item.variantLabel}</p>
+                                                                <p className="text-xs text-[#2196f3] mt-0.5">{item.variantLabel}</p>
                                                             )}
                                                             {!item.isBundledScrew && (
                                                                 <p className="text-xs text-slate-400 mt-0.5">
@@ -366,7 +366,7 @@ export default function CartPage() {
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm font-bold text-slate-900">Celkom s DPH</span>
                                     <span className="text-lg font-extrabold bg-clip-text text-transparent"
-                                        style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                                        style={{ backgroundImage: '#2196f3' }}>
                                         {subtotal.toFixed(2)} €
                                     </span>
                                 </div>
@@ -399,7 +399,7 @@ export default function CartPage() {
                             <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
                                 <span className="font-semibold text-slate-900">Celkom s DPH</span>
                                 <span className="text-2xl font-extrabold bg-clip-text text-transparent"
-                                    style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' }}>
+                                    style={{ backgroundImage: '#2196f3' }}>
                                     {subtotal.toFixed(2)} €
                                 </span>
                             </div>
@@ -428,14 +428,14 @@ export default function CartPage() {
                                         <label className="block text-xs text-slate-500 mb-1">Meno a priezvisko</label>
                                         <input type="text" value={contactFullName}
                                             onChange={(e) => setContactFullName(e.target.value)}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:border-cyan-400" />
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#2196f3]" />
                                     </div>
                                     <div>
                                         <label className="block text-xs text-slate-500 mb-1">Text správy</label>
                                         <textarea value={contactMessage}
                                             onChange={(e) => setContactMessage(e.target.value)}
                                             rows={7}
-                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-cyan-400 resize-none" />
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#2196f3] resize-none" />
                                     </div>
                                     <GBtn full onClick={handleStockInquiry}>Napísať správu</GBtn>
                                 </div>
@@ -452,7 +452,7 @@ export default function CartPage() {
                     <div className="flex-shrink-0">
                         <p className="text-xs text-slate-400 font-medium">Celkom s DPH</p>
                         <p className="text-lg font-extrabold bg-clip-text text-transparent"
-                            style={{ backgroundImage: 'linear-gradient(135deg, #06b6d4, #10b981)' }}>
+                            style={{ backgroundImage: '#2196f3' }}>
                             {subtotal.toFixed(2)} €
                         </p>
                     </div>
