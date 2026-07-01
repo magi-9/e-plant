@@ -168,8 +168,11 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep["compatibility_code"] = (instance.parameters or {}).get(
-            "compatibility_code", ""
+        compatibility_codes = rep.get("compatibility_codes") or []
+        rep["compatibility_code"] = (
+            compatibility_codes[0]
+            if compatibility_codes
+            else (instance.parameters or {}).get("compatibility_code", "")
         )
         return rep
 

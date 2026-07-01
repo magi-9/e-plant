@@ -7,6 +7,7 @@ import {
     getCategoryCounts,
     getCompatibilityCounts,
     getCompatibilityOptions,
+    getCompatibleScrews,
     getProductCategories,
     getProductTypeCounts,
     getProducts,
@@ -15,14 +16,13 @@ import {
     type ProductListParams,
 } from '../api/products';
 import { useCartStore } from '../store/cartStore';
-import ProductDetailModal from '../components/ProductDetailModal';
 import RequestProductModal from '../components/RequestProductModal';
 import { isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { getWildcardBadgeReference } from '../utils/variantReference';
 import { getCategoryList } from '../utils/productCategories';
 import { getProductPreviewImage } from '../utils/productImages';
-import { writeProductsBrowseState } from '../utils/productBrowseState';
+import { clearProductsBrowseState, readProductsBrowseState, writeProductsBrowseState } from '../utils/productBrowseState';
 import toast from 'react-hot-toast';
 
 /* ── Design tokens ─────────────────────────────────────────── */
@@ -34,6 +34,54 @@ const T = {
 
 const PAGE_SIZE = 12;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+
+const isTiBaseProduct = (product: Product): boolean => {
+    const haystack = [
+        product.reference, product.category, product.name,
+        product.wildcard_group_name, product.parameters?.wildcard_reference,
+        product.parameters?.catalog_section,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes('tibase') || haystack.includes('titanium base') || (product.reference || '').startsWith('31.');
+};
+
+const getFirstCompatibilityCode = (
+    product: Product,
+    variant?: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+): string => (
+    variant?.compatibility_codes?.[0] ||
+    product.compatibility_codes?.[0] ||
+    product.compatibility_code ||
+    ''
+);
+
+const getVariantLabel = (
+    variant: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+): string => {
+    const tokens = (variant.option_tokens || '').split('|').map(token => token.trim()).filter(Boolean);
+    const ghToken = tokens.find(token => /^GH\s*\(/i.test(token) || /^GH\s*:/i.test(token));
+    const parts: string[] = [];
+    if (ghToken) {
+        const sep = ghToken.indexOf(':');
+        const value = sep >= 0 ? ghToken.slice(sep + 1).trim() : ghToken.trim();
+        parts.push(`GH ${value}${/mm/i.test(value) ? '' : ' mm'}`);
+    }
+    if (variant.engaging === 1) parts.push('Engaging');
+    if (variant.engaging === 0) parts.push('Non-engaging');
+    if (parts.length > 0) return parts.join(' · ');
+    return variant.label || variant.name || variant.reference;
+};
+
+const isSelectableVariant = (
+    variant: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+): boolean => {
+    const tokens = (variant.option_tokens || '').split('|').map(token => token.trim()).filter(Boolean);
+    const typeToken = tokens.find(token => token.toUpperCase().startsWith('TYPE:'));
+    const typeValue = typeToken?.slice(typeToken.indexOf(':') + 1).trim().toUpperCase();
+    if (typeValue && ['ADAPTOR', 'SCREWDRIVER', 'SCREWDRIVER ADAPTOR', 'DYNAMIC SCREW'].includes(typeValue)) return false;
+
+    const name = `${variant.name || ''} ${variant.category || ''}`.toUpperCase();
+    return !/\b(SCREWDRIVER ADAPTOR|SCREWDRIVER|ADAPTOR|DYNAMIC SCREW)\b/.test(name);
+};
 
 const PRODUCT_TYPE_FILTERS = [
     { value: 'tibase',     label: 'TiBase',     prefixes: '31, 35' },
@@ -268,7 +316,7 @@ function ProductCard({ product, index, list, canUseCart, isLoggedIn, onCardClick
             {/* Image */}
             <div style={{ position: 'relative', flexShrink: 0, width: list ? 160 : '100%', height: list ? 160 : 200, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRight: list ? `1px solid ${T.line}` : undefined }}>
                 {isLoggedIn && effectiveStock > 0 && (
-                    <span style={{ position: 'absolute', top: 12, left: 12, zIndex: 2, fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: T.ink2, background: '#f1f3f5', padding: '4px 9px', borderRadius: 7 }}>IN STOCK</span>
+                    <span style={{ position: 'absolute', top: 12, left: 12, zIndex: 2, fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: '#1f9d55', background: '#eafaf1', padding: '4px 9px', borderRadius: 7 }}>Skladom</span>
                 )}
                 {previewImage
                     ? <img className="pimg" src={previewImage} alt={product.name} loading="lazy" style={{ maxWidth: '72%', maxHeight: '82%', objectFit: 'contain', transition: 'transform .5s ease' }} />
@@ -352,30 +400,47 @@ export default function ProductsPage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const [browseStateToRestore] = useState(() => readProductsBrowseState());
+    const skipFilterPageResetRef = useRef(Boolean(browseStateToRestore));
+    const restoreAppliedRef = useRef(false);
     const isLoggedIn = authService.isAuthenticated();
     const userIsAdmin = isLoggedIn && isAdmin();
     const canUseCart = isLoggedIn && !userIsAdmin;
     const { addItem, items, updateQuantity, removeItem } = useCartStore();
 
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [openModal, setOpenModal] = useState(false);
     const [addingId, setAddingId] = useState<number | null>(null);
     const [productToRequest, setProductToRequest] = useState<Product | null>(null);
     const [openRequestModal, setOpenRequestModal] = useState(false);
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const [view, setView] = useState<'grid' | 'list'>('grid');
-    const [page, setPage] = useState(1);
+    const [view, setView] = useState<'grid' | 'list'>(browseStateToRestore?.viewMode ?? 'grid');
+    const [page, setPage] = useState(() => {
+        if (!browseStateToRestore) return 1;
+        return Math.max(1, Math.ceil(browseStateToRestore.loadedProductCount / PAGE_SIZE));
+    });
 
     const typeFromUrl = searchParams.get('type') as ProductTypeFilterValue | null;
     const [F, setF] = useState<FilterState>({
-        types: typeFromUrl ? [typeFromUrl] : [],
-        categories: [], compatCode: '', min: '', max: '', q: '',
-        inStockOnly: false, priceSortOrder: 'none',
+        types: browseStateToRestore?.selectedProductType
+            ? [browseStateToRestore.selectedProductType as ProductTypeFilterValue]
+            : typeFromUrl ? [typeFromUrl] : [],
+        categories: browseStateToRestore?.selectedCategories ?? [],
+        compatCode: browseStateToRestore?.selectedCompatibility?.compatibility_code ?? '',
+        min: '',
+        max: browseStateToRestore && browseStateToRestore.maxPrice < 500 ? String(browseStateToRestore.maxPrice) : '',
+        q: browseStateToRestore?.searchQuery ?? '',
+        inStockOnly: browseStateToRestore?.inStockOnly ?? false,
+        priceSortOrder: browseStateToRestore?.priceSortOrder ?? 'none',
     });
     const [debouncedQ, setDebouncedQ] = useState(F.q);
     useEffect(() => { const t = setTimeout(() => setDebouncedQ(F.q), 400); return () => clearTimeout(t); }, [F.q]);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    useEffect(() => { setPage(1); }, [F.types, F.categories, F.compatCode, F.min, F.max, debouncedQ, F.inStockOnly, F.priceSortOrder]);
+    useEffect(() => {
+        if (skipFilterPageResetRef.current) {
+            skipFilterPageResetRef.current = false;
+            return undefined;
+        }
+        const resetTimer = window.setTimeout(() => setPage(1), 0);
+        return () => window.clearTimeout(resetTimer);
+    }, [F.types, F.categories, F.compatCode, F.min, F.max, debouncedQ, F.inStockOnly, F.priceSortOrder]);
 
     const { data: compatData = [] } = useQuery({ queryKey: ['compatibility-options'], queryFn: getCompatibilityOptions, staleTime: 10 * 60 * 1000 });
     const sortedCompatibilityOptions = useMemo(() => {
@@ -425,6 +490,20 @@ export default function ProductsPage() {
     const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
     const start = (page - 1) * PAGE_SIZE;
 
+    useEffect(() => {
+        if (!browseStateToRestore || restoreAppliedRef.current || isLoading || isFetching) return;
+        restoreAppliedRef.current = true;
+        window.setTimeout(() => {
+            const card = document.querySelector<HTMLElement>(`[data-product-id="${browseStateToRestore.targetProductId}"]`);
+            if (card) {
+                card.scrollIntoView({ block: 'center', behavior: 'auto' });
+            } else {
+                window.scrollTo({ top: browseStateToRestore.scrollY, behavior: 'auto' });
+            }
+            clearProductsBrowseState();
+        }, 0);
+    }, [allProducts, browseStateToRestore, isFetching, isLoading]);
+
     const { data: allCategories = [] } = useQuery({ queryKey: ['products-categories'], queryFn: getProductCategories, staleTime: 5 * 60 * 1000 });
     const { data: compatibilityCounts = {} } = useQuery({ queryKey: ['compatibility-counts'], queryFn: getCompatibilityCounts, staleTime: Infinity });
     const { data: categoryCounts = {} } = useQuery({ queryKey: ['category-counts'], queryFn: getCategoryCounts, staleTime: Infinity });
@@ -450,26 +529,77 @@ export default function ProductsPage() {
 
     const handleProductClick = (product: Product) => {
         writeProductsBrowseState({
-            searchQuery: F.q, selectedCategories: F.categories, selectedCompatibility: null,
+            searchQuery: F.q,
+            selectedCategories: F.categories,
+            selectedCompatibility: sortedCompatibilityOptions.find(o => o.compatibility_code === F.compatCode) ?? null,
             selectedProductType: (F.types[0] || '') as ProductTypeFilterValue | '',
             priceSortOrder: F.priceSortOrder, maxPrice: Number(F.max) || 500,
             inStockOnly: F.inStockOnly, viewMode: view, targetProductId: product.id,
-            scrollY: window.scrollY, loadedProductCount: allProducts.length,
+            scrollY: window.scrollY, loadedProductCount: start + allProducts.length,
         });
         navigate(`/products/${product.id}`);
     };
 
-    const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    const getBundledScrewForProduct = async (
+        product: Product,
+        variant?: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+    ) => {
+        if (!isTiBaseProduct(product)) return undefined;
+        const compatibilityCode = getFirstCompatibilityCode(product, variant);
+        const data = await queryClient.fetchQuery({
+            queryKey: ['compatible-screws', product.id, compatibilityCode],
+            queryFn: () => getCompatibleScrews(product.id, compatibilityCode),
+            staleTime: 5 * 60 * 1000,
+        });
+        const screw = data.screws.find(s => s.stock_quantity > 0) || data.screws[0];
+        if (!screw) return undefined;
+        if (screw.stock_quantity <= 0) {
+            toast.error('Kompatibilná skrutka nie je skladom.');
+            return null;
+        }
+        return { productId: screw.id, name: screw.name, reference: screw.reference };
+    };
+
+    const handleAddToCart = async (e: React.MouseEvent, product: Product) => {
         e.stopPropagation();
         if (!canUseCart) { toast.error('Pre nákup sa prihláste.'); return; }
         if (product.parameters?.type === 'wildcard_group' && (product.parameters.options || []).length > 0) {
-            setSelectedProduct(product); setOpenModal(true); return;
+            const variant = (product.parameters.options || []).find((opt) => isSelectableVariant(opt) && (opt.stock_quantity ?? 0) > 0 && (opt.gross_price || opt.price));
+            if (!variant) {
+                setProductToRequest(product);
+                setOpenRequestModal(true);
+                return;
+            }
+            const variantPrice = variant.gross_price ?? variant.price;
+            if (!variantPrice) { toast.error('Pre tento variant chýba cena.'); return; }
+            const variantStock = variant.stock_quantity ?? 0;
+            const cur = items.find(i => i.productId === product.id && i.variantReference === variant.reference)?.quantity ?? 0;
+            if (cur >= variantStock) { toast.error(`Na sklade je iba ${variantStock} ks.`); return; }
+            setAddingId(product.id);
+            const bundledScrew = await getBundledScrewForProduct(product, variant);
+            if (bundledScrew === null) { setAddingId(null); return; }
+            addItem({
+                productId: product.id,
+                name: product.name,
+                price: variantPrice,
+                netPrice: variant.price ?? null,
+                image: variant.image || getProductPreviewImage(product),
+                stockQuantity: variantStock,
+                variantReference: variant.reference,
+                variantLabel: getVariantLabel(variant),
+                bundledScrew,
+            });
+            toast.success('Pridané do košíka');
+            setTimeout(() => setAddingId(null), 900);
+            return;
         }
         if (product.stock_quantity <= 0) { toast.error('Produkt nie je skladom.'); return; }
         const cur = items.find(i => i.productId === product.id && !i.variantReference)?.quantity ?? 0;
         if (cur >= product.stock_quantity) { toast.error(`Na sklade je iba ${product.stock_quantity} ks.`); return; }
         setAddingId(product.id);
-        addItem({ productId: product.id, name: product.name, price: getCustomerPrice(product)!, netPrice: getNetPrice(product), image: getProductPreviewImage(product), stockQuantity: product.stock_quantity });
+        const bundledScrew = await getBundledScrewForProduct(product);
+        if (bundledScrew === null) { setAddingId(null); return; }
+        addItem({ productId: product.id, name: product.name, price: getCustomerPrice(product)!, netPrice: getNetPrice(product), image: getProductPreviewImage(product), stockQuantity: product.stock_quantity, bundledScrew });
         setTimeout(() => setAddingId(null), 600);
     };
 
@@ -601,7 +731,7 @@ export default function ProductsPage() {
                                 style={{ display: 'grid', gridTemplateColumns: view === 'list' ? '1fr' : 'repeat(4,1fr)', gap: view === 'list' ? 14 : 20, opacity: isFetching ? 0.6 : 1, transition: 'opacity .2s' }}
                             >
                                 {allProducts.map((product, index) => {
-                                    const cartItem = items.find(i => i.productId === product.id && !i.variantReference);
+                                    const cartItem = items.find(i => i.productId === product.id && (product.parameters?.type === 'wildcard_group' ? !!i.variantReference : !i.variantReference));
                                     return (
                                         <ProductCard
                                             key={product.id} product={product} index={index} list={view === 'list'}
@@ -609,8 +739,8 @@ export default function ProductsPage() {
                                             onCardClick={() => handleProductClick(product)}
                                             onAddToCart={e => handleAddToCart(e, product)}
                                             addingId={addingId} cartItem={cartItem}
-                                            onUpdateQty={qty => updateQuantity(product.id, qty)}
-                                            onRemoveItem={() => removeItem(product.id)}
+                                            onUpdateQty={qty => updateQuantity(product.id, qty, cartItem?.variantReference)}
+                                            onRemoveItem={() => removeItem(product.id, cartItem?.variantReference)}
                                             onRequestClick={() => { setProductToRequest(product); setOpenRequestModal(true); }}
                                         />
                                     );
@@ -649,14 +779,6 @@ export default function ProductsPage() {
                 </div>
             )}
 
-            <ProductDetailModal
-                open={openModal} setOpen={setOpenModal} product={selectedProduct}
-                selectedCategories={F.categories} searchQuery={debouncedQ}
-                selectedCompatibilityCode={F.compatCode}
-                onCategoryClick={cat => { setF(f => ({ ...f, categories: [cat], types: [] })); setPage(1); }}
-                onCompatibilityCodeClick={code => { setF(f => ({ ...f, compatCode: code, q: '' })); setPage(1); }}
-                onReferenceClick={ref => { setF(f => ({ ...f, compatCode: '', categories: [], types: [], q: ref })); setPage(1); }}
-            />
             <RequestProductModal
                 open={openRequestModal} onClose={() => setOpenRequestModal(false)}
                 productId={productToRequest?.id || 0} productName={productToRequest?.name || ''} productReference={productToRequest?.reference || ''} />

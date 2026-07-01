@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
 import logoUrl from '../assets/dynamicabutment-logo.png';
-import { ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
-import { getLandingHomeHref } from '../utils/landingLinks';
+import { getLandingContactHref } from '../utils/landingLinks';
 import ConfirmModal from './ConfirmModal';
 
 /* ── icons ─────────────────────────────────────────────────── */
-const ISearch = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
 const IUser   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>;
 const ICart   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M2.5 3h2l2.4 12.4a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.6L23 7H6"/></svg>;
 const IMenu   = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>;
@@ -40,7 +38,7 @@ export default function Navbar() {
     const [userDropOpen, setUserDropOpen] = useState(false);
     const [cartHover, setCartHover] = useState(false);
     const [cartPulse, setCartPulse] = useState(false);
-    const landingHomeHref = getLandingHomeHref();
+    const landingContactHref = getLandingContactHref();
 
     const { data: me } = useQuery({
         queryKey: ['me'],
@@ -105,7 +103,7 @@ export default function Navbar() {
                                 {label}
                             </Link>
                         ))}
-                        <a href={landingHomeHref} style={{ fontSize: 14, fontWeight: 500, color: '#45474c', textDecoration: 'none' }}>O nás</a>
+                        <a href={landingContactHref} style={{ fontSize: 14, fontWeight: 500, color: '#45474c', textDecoration: 'none' }}>O nás</a>
                     </nav>
                 </div>
 
@@ -114,13 +112,10 @@ export default function Navbar() {
 
                     {/* Admin badge */}
                     {userIsAdmin && (
-                        <Link to="/admin" style={{ ...iconBtn, color: location.pathname.startsWith('/admin') ? '#2196f3' : '#94a3b8', textDecoration: 'none' }} aria-label="Admin panel">
-                            <ShieldCheckIcon style={{ width: 20, height: 20 }} />
+                        <Link to="/admin" style={{ display: 'inline-flex', alignItems: 'center', height: 34, padding: '0 14px', borderRadius: 9999, textDecoration: 'none', fontSize: 13, fontWeight: 700, letterSpacing: '.01em', background: location.pathname.startsWith('/admin') ? '#2196f3' : '#eaf4fe', color: location.pathname.startsWith('/admin') ? '#fff' : '#1565c0' }}>
+                            Admin
                         </Link>
                     )}
-
-                    {/* Search — navigates to products */}
-                    <button style={iconBtn} aria-label="Hľadať" onClick={() => navigate('/products')}><ISearch /></button>
 
                     {/* Cart */}
                     {canUseCart && (
@@ -165,7 +160,9 @@ export default function Navbar() {
 
                     {/* User / Login */}
                     {!isLoggedIn ? (
-                        <Link to="/login" style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Prihlásiť sa"><IUser /></Link>
+                        <Link to="/login" style={{ display: 'inline-flex', alignItems: 'center', height: 34, padding: '0 16px', borderRadius: 9999, textDecoration: 'none', fontSize: 13, fontWeight: 700, background: '#2196f3', color: '#fff', boxShadow: '0 2px 10px rgba(33,150,243,0.25)' }}>
+                            Prihlásiť sa
+                        </Link>
                     ) : canUseCart ? (
                         <div id="user-drop" style={{ position: 'relative' }}>
                             <button style={{ ...iconBtn, gap: 4, width: 'auto', padding: '0 10px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#45474c' }}
@@ -219,7 +216,7 @@ export default function Navbar() {
                                 {label}
                             </Link>
                         ))}
-                        <a href={landingHomeHref} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>O nás</a>
+                        <a href={landingContactHref} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>O nás & Kontakt</a>
                         {canUseCart && (
                             <Link to="/cart" onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>
                                 Košík {totalItems > 0 && <span style={{ background: '#2196f3', color: '#fff', borderRadius: 9999, fontSize: 11, fontWeight: 700, padding: '1px 7px', marginLeft: 6 }}>{totalItems}</span>}

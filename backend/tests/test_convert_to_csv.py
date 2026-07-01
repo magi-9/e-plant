@@ -9,6 +9,7 @@ def resolve_converter_path():
     candidates = []
     for parent in current.parents:
         candidates.append(parent / "data" / "convert_to_csv.py")
+    candidates.append(Path("/data/convert_to_csv.py"))
     for candidate in candidates:
         if candidate.exists():
             return candidate
@@ -31,6 +32,13 @@ except ImportError as exc:
         f"convert_to_csv.py dependencies not installed: {exc}",
         allow_module_level=True,
     )
+
+PARSE_SPEC = importlib.util.spec_from_file_location(
+    "parse_catalog", module_path.with_name("parse_catalog.py")
+)
+parse_catalog = importlib.util.module_from_spec(PARSE_SPEC)
+assert PARSE_SPEC and PARSE_SPEC.loader
+PARSE_SPEC.loader.exec_module(parse_catalog)
 
 
 def test_parse_reference_parts_splits_numeric_reference():
@@ -228,6 +236,48 @@ def test_row_to_option_tokens_uses_specific_labels_for_reported_parameters():
     assert milling_tokens == "αdi:35°|SHANK:4"
 
 
+def test_parse_catalog_does_not_use_hex_connection_as_screw_length():
+    rows = parse_catalog.parse_products(
+        "\n".join(
+            [
+                "COMPATIBLE WITH 0130",
+                "SCREWS",
+                "          STRAIGHT SCREW                 SCREWDRIVER",
+                "40.316.005.08-2                             Hex. 1.27                       43.625.105.01-2",
+            ]
+        )
+    )
+
+    screw = next(row for row in rows if row["sku"] == "40.316.005.08-2")
+    screwdriver = next(row for row in rows if row["sku"] == "43.625.105.01-2")
+
+    assert screw["type_label"] == "Hex. 1.27"
+    assert screw["length_mm"] is None
+    assert screwdriver["type_label"] == "Hex. 1.27"
+    assert screwdriver["length_mm"] is None
+
+
+def test_merge_technical_specs_replaces_generic_length_for_straight_screws():
+    option_map = {"40.316.005.08-2": "LENGTH:1.27|TYPE:Hex. 1.27"}
+    convert_to_csv._merge_option_rows(
+        option_map,
+        [
+            {
+                "reference": "40.316.005.08-2",
+                "options": (
+                    "METRIC:1.6|TOTAL LENGTH(mm):9|THREAD LENGTH(mm):3.9|"
+                    "CONNECTION:Hex. 1.27"
+                ),
+            }
+        ],
+    )
+
+    assert option_map["40.316.005.08-2"] == (
+        "TYPE:Hex. 1.27|METRIC:1.6|TOTAL LENGTH(mm):9|"
+        "THREAD LENGTH(mm):3.9|CONNECTION:Hex. 1.27"
+    )
+
+
 def test_product_name_option_tokens_fill_milling_dimensions():
     tokens = convert_to_csv._product_name_option_tokens(
         "DMT Ø2.0mm, Seat 35º, Cutting L 7.5mm, Shank 4mm",
@@ -305,14 +355,34 @@ def test_parse_pdf_technical_spec_options_extracts_straight_screw_specs():
         "         -        2        2,4    straight   45º Chamfer       Hex. 1,20"
     )
     expected_options = (
-        "METRIC:2|THREAD PITCH(mm):0.4|TORQUE:30 N·cm|TOTAL LENGTH(mm):7|"
-        "THREAD LENGTH(mm):3.25|A LENGTH(mm):5|C LENGTH(mm):2|HEAD Ø(mm):2.4|"
-        "SEAT:straight|THREAD ENTRY:45º Chamfer|CONNECTION:Hex. 1.20"
+        "METRIC:2|TORQUE:0.4|TOTAL LENGTH(mm):30 N·cm|THREAD LENGTH(mm):7|"
+        "A LENGTH(mm):3.25|B LENGTH(mm):5|HEAD Ø(mm):2|SEAT:2.4|"
+        "ANGLE:straight|THREAD ENTRY:45º Chamfer|CONNECTION:Hex. 1.20"
     )
 
     assert rows == [
         {
             "reference": "40.320.003.02-2",
+            "options": expected_options,
+        }
+    ]
+
+
+def test_parse_pdf_technical_spec_options_keeps_straight_screw_columns_aligned():
+    rows = convert_to_csv.parse_pdf_technical_spec_options(
+        "STRARICHT SCREWS TECHNICAL SPECIFICATIONS\n"
+        "40.316.005.01-2     1,6       0,35    20 N·cm     7,5      3,6"
+        "     5,44      5,9       1,6     2,13   conical    45º Chamfer       Hex. 1,27"
+    )
+    expected_options = (
+        "METRIC:1.6|TORQUE:0.35|TOTAL LENGTH(mm):20 N·cm|THREAD LENGTH(mm):7.5|"
+        "A LENGTH(mm):3.6|B LENGTH(mm):5.44|C LENGTH(mm):5.9|HEAD Ø(mm):1.6|"
+        "SEAT:2.13|ANGLE:conical|THREAD ENTRY:45º Chamfer|CONNECTION:Hex. 1.27"
+    )
+
+    assert rows == [
+        {
+            "reference": "40.316.005.01-2",
             "options": expected_options,
         }
     ]
