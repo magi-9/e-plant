@@ -360,7 +360,8 @@ function ProductCard({ product, index, list, canUseCart, isLoggedIn, onCardClick
                     ) : (
                         <div style={{ marginTop: 'auto', paddingTop: 14 }}>
                             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 46, borderRadius: 10, background: T.blue, color: '#fff', fontSize: 14, fontWeight: 700 }}>
-                                Prihláste sa pre cenu
+                                <span className="product-price-login-full">Prihláste sa pre cenu</span>
+                                <span className="product-price-login-short">Prihláste sa</span>
                             </span>
                         </div>
                     )}
@@ -640,6 +641,8 @@ export default function ProductsPage() {
                 @media(max-width:560px){.products-grid{grid-template-columns:1fr 1fr!important;gap:12px!important}}
                 @media(max-width:400px){.products-grid{grid-template-columns:1fr!important}}
                 @media(max-width:900px){.hero-row{flex-direction:column!important;align-items:flex-start!important;gap:24px!important}.hero-badge{width:100%!important}}
+                .product-price-login-short{display:none}
+                @media(max-width:560px){.product-price-login-full{display:none}.product-price-login-short{display:inline}}
             `}</style>
 
             <Helmet>

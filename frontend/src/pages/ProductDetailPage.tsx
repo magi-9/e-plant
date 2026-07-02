@@ -132,10 +132,7 @@ function RelatedProductCard({ product }: { product: Product }) {
                     <div style={{ marginTop: 12 }}>
                         {price
                             ? <p style={{ fontSize: 14, fontWeight: 700, color: T.blueD }}>{price} € s DPH</p>
-                            : <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 20, background: '#eaf4fe', fontSize: 12, fontWeight: 700, color: T.blueD }}>
-                                <span className="price-login-full">Pre cenu sa prihláste</span>
-                                <span className="price-login-short">Prihláste sa</span>
-                            </span>
+                            : <span style={{ display: 'inline-flex', alignItems: 'center', height: 24, padding: '0 10px', borderRadius: 20, background: '#eaf4fe', fontSize: 12, fontWeight: 700, color: T.blueD }}>Pre cenu sa prihláste</span>
                         }
                     </div>
                 </div>
@@ -290,8 +287,6 @@ export default function ProductDetailPage() {
                 @media(max-width:700px){.related-grid{grid-template-columns:1fr 1fr!important}}
                 @media(max-width:480px){.related-grid{grid-template-columns:1fr!important}}
                 @media(max-width:900px){.details-table{grid-template-columns:1fr!important}}
-                .price-login-short{display:none}
-                @media(max-width:700px){.price-login-full{display:none}.price-login-short{display:inline}}
             `}</style>
 
             <main style={{ background: T.bg, minHeight: '100vh', fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif" }}>
@@ -421,10 +416,7 @@ export default function ProductDetailPage() {
                                             </div>
                                                 </div>
                                     ) : (
-                                        <div style={{ display: 'inline-flex', minHeight: 32, padding: '6px 14px', borderRadius: 20, background: '#eaf4fe', alignItems: 'center', fontSize: 14, fontWeight: 700, color: T.blueD }}>
-                                            <span className="price-login-full">Pre cenu sa prihláste</span>
-                                            <span className="price-login-short">Prihláste sa</span>
-                                        </div>
+                                        <div style={{ display: 'inline-flex', minHeight: 32, padding: '6px 14px', borderRadius: 20, background: '#eaf4fe', alignItems: 'center', fontSize: 14, fontWeight: 700, color: T.blueD }}>Pre cenu sa prihláste</div>
                                     )}
 
                                     <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
