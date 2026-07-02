@@ -552,8 +552,8 @@ class TestCatalogIntegrity:
         ), "Scanbody missing for 0030"
         assert "50.313.030" in prefixes, "Adaptor missing for 0030"
 
-    def test_0030_has_no_screw_table_in_2026_catalog(self):
-        """PDF p.115: 0030 no longer lists a SCREWS table in the 2026 catalog."""
+    def test_0030_has_screws_from_catalog_image_override(self):
+        """0030 screw rows are supplied manually because PDF text extraction misses that table."""
         from products.compatibility import (
             _load_screws_by_code,
             get_compatible_screws_for_tibase,
@@ -562,8 +562,8 @@ class TestCatalogIntegrity:
         _load_screws_by_code.cache_clear()
         screws = get_compatible_screws_for_tibase("31.323.030.01-2")
 
-        assert screws["dynamic"] == []
-        assert screws["straight"] == []
+        assert screws["dynamic"] == ["41.320.079.01-2"]
+        assert screws["straight"] == ["40.320.003.04-2"]
 
     # ── Code 0075 · ANKYLOS · pages 171-173 ──────────────────────────────────
 

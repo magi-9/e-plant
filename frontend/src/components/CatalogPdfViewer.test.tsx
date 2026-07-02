@@ -114,6 +114,41 @@ describe('CatalogPdfViewer', () => {
         expect(onClose).toHaveBeenCalledTimes(1)
     })
 
+    it('lets the user zoom direct catalog PDFs', async () => {
+        vi.mocked(pdfjsLib.getDocument).mockReturnValue({
+            promise: Promise.resolve({
+                numPages: 3,
+                getPage: vi.fn(async () => mockPage),
+            }),
+        } as unknown as ReturnType<typeof pdfjsLib.getDocument>)
+
+        render(
+            <CatalogPdfViewer
+                open
+                onClose={vi.fn()}
+                pdfUrl="/catalogs/test.pdf"
+                title="Test katalóg"
+            />,
+        )
+
+        await waitFor(() => {
+            expect(screen.getByText('100%')).toBeTruthy()
+        })
+
+        fireEvent.click(screen.getByLabelText('Nasledujúca strana'))
+
+        await waitFor(() => {
+            expect(screen.getByText('2 / 3')).toBeTruthy()
+        })
+
+        fireEvent.click(screen.getByLabelText('Priblížiť PDF'))
+
+        await waitFor(() => {
+            expect(screen.getByText('110%')).toBeTruthy()
+        })
+        expect(screen.getByText('2 / 3')).toBeTruthy()
+    })
+
     it('lazy-renders nearby pages when a later page intersects', async () => {
         const getPage = vi.fn(async () => mockPage)
         vi.mocked(pdfjsLib.getDocument).mockReturnValue({

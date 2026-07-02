@@ -30,7 +30,7 @@ import OrdersPage from './pages/OrdersPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { getLandingHomeHref } from './utils/landingLinks';
+import { getLandingAboutHref } from './utils/landingLinks';
 import { isAdmin } from './api/auth';
 import { authService } from './api/authService';
 
@@ -107,7 +107,7 @@ function App() {
   const hostSplitEnabled = !import.meta.env.DEV && normalizedLandingHost !== normalizedShopHost;
   const isLandingHost = hostSplitEnabled && isMatchingHost(currentHost, normalizedLandingHost);
   const shopProductsUrl = `${window.location.protocol}//${SHOP_HOST}/products`;
-  const landingHomeHref = getLandingHomeHref();
+  const landingAboutHref = getLandingAboutHref();
 
   useEffect(() => {
     initSentryIfConsented();
@@ -145,7 +145,7 @@ function App() {
               element={isLandingHost ? <ExternalRedirect to={shopProductsUrl} /> : <ProductDetailPage />}
             />
             <Route path="/catalogs" element={<CatalogsPage />} />
-            <Route path="/about" element={<ExternalRedirect to={landingHomeHref} />} />
+            <Route path="/about" element={<ExternalRedirect to={landingAboutHref} />} />
             <Route path="/cart" element={<CustomerOnlyRoute><CartPage /></CustomerOnlyRoute>} />
             <Route path="/checkout" element={<CustomerOnlyRoute><CheckoutPage /></CustomerOnlyRoute>} />
             <Route path="/profile" element={<ProfilePage />} />
