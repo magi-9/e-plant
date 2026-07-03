@@ -1,8 +1,10 @@
 """Tests for VAT invoice rendering (Issue #94)."""
 
+from io import BytesIO
 from decimal import Decimal
 
 import pytest
+from pypdf import PdfReader
 
 from products.factories import ProductFactory
 from users.models import GlobalSettings
@@ -164,3 +166,26 @@ class TestShippingLineInInvoice:
         pdf = generate_invoice_pdf(order, shop)
         assert isinstance(pdf, bytes)
         assert len(pdf) > 100
+
+
+@pytest.mark.django_db
+class TestInvoiceBatchLots:
+    def test_invoice_prints_empty_batch_label_when_item_has_no_batch(self):
+        from orders.invoice import generate_invoice_pdf
+
+        product = ProductFactory(
+            name="Adaptor IO G3 HC",
+            reference="50.312.021.03-2",
+            stock_quantity=10,
+        )
+        order = _make_order(
+            items=[{"product_id": product.pk, "quantity": 2}],
+        )
+
+        pdf = generate_invoice_pdf(order, GlobalSettings.load())
+        text = "\n".join(
+            page.extract_text() or "" for page in PdfReader(BytesIO(pdf)).pages
+        )
+
+        assert "Adaptor IO G3 HC" in text
+        assert "Šarža:" in text

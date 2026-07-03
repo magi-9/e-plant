@@ -328,6 +328,62 @@ def extract_option_tokens(line_text, section="", ch_vals=None):
     return "|".join(labeled[:8])
 
 
+_MANUAL_COMPATIBILITY_ROWS = [
+    # The 2026 PDF text extraction misses the COMPATIBLE WITH 0030 SCREWS table.
+    # Values below come from the readable catalog image supplied for that block.
+    {
+        "compatibility_code": "0030",
+        "section": "DYNAMIC",
+        "reference": "41.320.079.01-2",
+        "options": "L(mm):18/24/32|SCREWDRIVER:43.618.201.01-2/43.624.201.01-2/43.632.201.01-2",
+        "source_line": "DYNAMIC SCREW 41.320.079.01-2 HIGH 41.320.125.01-2 LENGTH 18/24/32 SCREWDRIVER 43.618.201.01-2/43.624.201.01-2/43.632.201.01-2",
+    },
+    {
+        "compatibility_code": "0030",
+        "section": "STRAIGHT",
+        "reference": "40.320.003.04-2",
+        "options": "TYPE:Hex. 1.20|SCREWDRIVER:43.601.103.02-2",
+        "source_line": "STRAIGHT SCREW 40.320.003.04-2 TYPE Hex. 1.20 SCREWDRIVER 43.601.103.02-2",
+    },
+]
+
+
+def _apply_manual_compatibility_rows(rows):
+    existing_codes = {row["compatibility_code"] for row in rows}
+    seen = {
+        (row["compatibility_code"], row["section"], row["reference"])
+        for row in rows
+    }
+    for manual in _MANUAL_COMPATIBILITY_ROWS:
+        if manual["compatibility_code"] not in existing_codes:
+            continue
+        key = (
+            manual["compatibility_code"],
+            manual["section"],
+            manual["reference"],
+        )
+        if key in seen:
+            continue
+        parts = parse_reference_parts(manual["reference"])
+        rows.append(
+            {
+                "compatibility_code": manual["compatibility_code"],
+                "section": manual["section"],
+                "reference": manual["reference"],
+                "reference_prefix": parts["segment_1"],
+                "reference_group": parts["segment_2"],
+                "reference_family": parts["segment_3"],
+                "reference_option": parts["segment_4"],
+                "reference_variant": parts["check_digit"],
+                "options": manual["options"],
+                "source_line": manual["source_line"],
+                "engaging": None,
+            }
+        )
+        seen.add(key)
+    return rows
+
+
 def parse_pdf_compatibility_rows(pdf_text):
     """Parse rows with references, compatibility code and option tokens from catalog text."""
     rows = []
@@ -451,7 +507,7 @@ def parse_pdf_compatibility_rows(pdf_text):
             current_engaging = None
             engaging_col_positions = None
 
-    return rows
+    return _apply_manual_compatibility_rows(rows)
 
 
 def parse_code_to_systems_map(pdf_text):

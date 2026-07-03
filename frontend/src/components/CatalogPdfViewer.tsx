@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, useCallback } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
-import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
@@ -18,6 +18,10 @@ const REFERENCE_NORMALISE_RE = /[^0-9a-z]/gi
 const SCALE = 1.5
 const PAGE_GAP = 8
 const PRELOAD_RADIUS = 2
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 1.8
+const ZOOM_STEP = 0.1
+const MOBILE_DEFAULT_ZOOM = 0.62
 
 interface Props {
     open: boolean
@@ -79,6 +83,13 @@ function pageTextContainsReference(pageText: string, reference: string): boolean
     return pageText.includes(reference) || normaliseReference(pageText).includes(normaliseReference(reference))
 }
 
+function getInitialZoom(): number {
+    if (typeof window !== 'undefined' && window.innerWidth <= 640) {
+        return MOBILE_DEFAULT_ZOOM
+    }
+    return 1
+}
+
 export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl, title = 'Katalóg produktov' }: Props) {
     const containerRef = useRef<HTMLDivElement>(null)
     const pageDivsRef = useRef<HTMLDivElement[]>([])
@@ -86,6 +97,8 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
     const renderedPagesRef = useRef(new Set<number>())
     const renderingPagesRef = useRef(new Set<number>())
     const observerRef = useRef<IntersectionObserver | null>(null)
+    const currentPageRef = useRef(1)
+    const pdfSourceKeyRef = useRef('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [matchPages, setMatchPages] = useState<number[]>([])
@@ -93,6 +106,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
     const [currentPage, setCurrentPage] = useState(1)
     const [totalPages, setTotalPages] = useState(0)
     const [searchComplete, setSearchComplete] = useState(false)
+    const [zoom, setZoom] = useState(getInitialZoom)
 
     const scrollToPage = useCallback((pageNum: number) => {
         const div = pageDivsRef.current[pageNum - 1]
@@ -103,7 +117,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         if (renderedPagesRef.current.has(pageNum) || renderingPagesRef.current.has(pageNum)) return
         renderingPagesRef.current.add(pageNum)
         const page = await pdfDoc.getPage(pageNum)
-        const viewport = page.getViewport({ scale: SCALE })
+        const viewport = page.getViewport({ scale: SCALE * zoom })
 
         pageDiv.style.cssText = `position:relative;width:${viewport.width}px;height:${viewport.height}px;margin-bottom:${PAGE_GAP}px;flex-shrink:0`
 
@@ -118,7 +132,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         pageDiv.dataset.rendered = 'true'
         renderedPagesRef.current.add(pageNum)
         renderingPagesRef.current.delete(pageNum)
-    }, [])
+    }, [zoom])
 
     const renderDirectPageWindow = useCallback(async (pageNum: number) => {
         const pdfDoc = pdfDocRef.current
@@ -150,12 +164,18 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
 
         const run = async () => {
             const activePdfUrl = pdfUrl || CATALOG_PDF_URL
+            const pdfSourceKey = `${activePdfUrl}|${reference}`
+            const shouldPreservePage = pdfSourceKeyRef.current === pdfSourceKey
+            if (!shouldPreservePage) {
+                currentPageRef.current = 1
+            }
+            pdfSourceKeyRef.current = pdfSourceKey
             catalogDebug('open viewer', { reference, pdfUrl: activePdfUrl, pagesUrl: CATALOG_PAGES_URL })
             setLoading(true)
             setError(null)
             setMatchPages([])
             setCurrentIdx(0)
-            setCurrentPage(1)
+            setCurrentPage(currentPageRef.current)
             setTotalPages(0)
             setSearchComplete(false)
             pdfDocRef.current = null
@@ -182,10 +202,12 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
 
                     pdfDocRef.current = pdfDoc
                     setTotalPages(pdfDoc.numPages)
-                    setCurrentPage(1)
+                    const initialPage = Math.min(Math.max(currentPageRef.current, 1), pdfDoc.numPages)
+                    currentPageRef.current = initialPage
+                    setCurrentPage(initialPage)
 
                     const firstPage = await pdfDoc.getPage(1)
-                    const firstViewport = firstPage.getViewport({ scale: SCALE })
+                    const firstViewport = firstPage.getViewport({ scale: SCALE * zoom })
 
                     const placeholders = Array.from(
                         { length: pdfDoc.numPages },
@@ -197,14 +219,15 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                         container.appendChild(pageDiv)
                     })
                     pageDivsRef.current = placeholders
-                    container.scrollTop = 0
 
                     const pageHeight = firstViewport.height + PAGE_GAP
+                    container.scrollTop = (initialPage - 1) * pageHeight
                     const onScroll = () => {
                         const page = Math.min(
                             pdfDoc.numPages,
                             Math.max(1, Math.round(container.scrollTop / pageHeight) + 1),
                         )
+                        currentPageRef.current = page
                         setCurrentPage(page)
                         void renderDirectPageWindow(page)
                     }
@@ -221,7 +244,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                     }, { root: container, rootMargin: '1200px 0px', threshold: 0.01 })
                     placeholders.forEach((pageDiv) => observerRef.current?.observe(pageDiv))
 
-                    await renderDirectPageWindow(1)
+                    await renderDirectPageWindow(initialPage)
 
                     if (!cancelled) {
                         catalogDebug('catalog render complete', { title, totalPages: pdfDoc.numPages })
@@ -266,7 +289,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                     if (cancelled) break
 
                     const page = await pdfDoc.getPage(pageNum)
-                    const viewport = page.getViewport({ scale: SCALE })
+                    const viewport = page.getViewport({ scale: SCALE * zoom })
 
                     const pageDiv = document.createElement('div')
                     pageDiv.style.cssText = `position:relative;width:${viewport.width}px;height:${viewport.height}px;margin-bottom:${PAGE_GAP}px;flex-shrink:0`
@@ -335,7 +358,11 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
             observerRef.current?.disconnect()
             observerRef.current = null
         }
-    }, [createPlaceholderForPage, open, pdfUrl, reference, renderDirectPageWindow, scrollToPage, title])
+    }, [createPlaceholderForPage, open, pdfUrl, reference, renderDirectPageWindow, scrollToPage, title, zoom])
+
+    const changeZoom = (delta: number) => {
+        setZoom((current) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number((current + delta).toFixed(2)))))
+    }
 
     const goTo = (delta: number) => {
         if (matchPages.length === 0) return
@@ -348,6 +375,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
         const pdfDoc = pdfDocRef.current
         if (!pdfDoc) return
         const next = Math.min(Math.max(pageNum, 1), pdfDoc.numPages)
+        currentPageRef.current = next
         setCurrentPage(next)
         void renderDirectPageWindow(next)
         scrollToPage(next)
@@ -381,7 +409,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                         <Dialog.Panel className="flex flex-col w-full h-full bg-gray-100">
                             {/* Header */}
                             <div className="relative z-20 flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
-                                <div className="flex items-center gap-4 min-w-0">
+                                <div className="flex items-center gap-3 min-w-0 flex-wrap">
                                     <Dialog.Title className="text-sm font-semibold text-gray-900 flex-shrink-0">
                                         {title}
                                     </Dialog.Title>
@@ -439,6 +467,29 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                                             </button>
                                         </div>
                                     )}
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => changeZoom(-ZOOM_STEP)}
+                                            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                            aria-label="Oddialiť PDF"
+                                            disabled={zoom <= MIN_ZOOM || loading}
+                                        >
+                                            <MagnifyingGlassMinusIcon className="h-4 w-4 text-gray-600" />
+                                        </button>
+                                        <span className="text-xs text-gray-600 tabular-nums w-12 text-center">
+                                            {Math.round(zoom * 100)}%
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => changeZoom(ZOOM_STEP)}
+                                            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40"
+                                            aria-label="Priblížiť PDF"
+                                            disabled={zoom >= MAX_ZOOM || loading}
+                                        >
+                                            <MagnifyingGlassPlusIcon className="h-4 w-4 text-gray-600" />
+                                        </button>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
@@ -467,7 +518,7 @@ export default function CatalogPdfViewer({ open, onClose, reference = '', pdfUrl
                                 )}
                                 <div
                                     ref={containerRef}
-                                    className="h-full overflow-y-auto flex flex-col items-center py-4"
+                                    className="h-full overflow-auto flex flex-col items-center py-4"
                                 />
                             </div>
                         </Dialog.Panel>
