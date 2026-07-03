@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faktúra / Predfaktúra — Martin Ebringer s.r.o.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  doc-page:not(:defined){visibility:hidden}
+  :root{
+    --bg:#f0f1f3; --card:#ffffff; --ink:#1a1c1e; --ink2:#45474c; --muted:#94a3b8;
+    --line:#eef0f2; --line2:#e2e8f0; --blue:#2196f3; --blue-d:#1565c0;
+    --maroon:#a51b3f; --ok:#1f9d55; --okbg:#eafaf1;
+    --tint:#eaf4fe;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'Inter',ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.1px}
+  .num{font-variant-numeric:tabular-nums;font-family:'Inter',sans-serif}
+
+  /* ---------- screen toolbar (hidden in print) ---------- */
+  .toolbar{
+    position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;
+    padding:14px 22px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line2);
+  }
+  .toolbar .brand{font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--ink2)}
+  .seg{display:inline-flex;background:#e9ebee;border-radius:11px;padding:4px;gap:4px}
+  .seg button{
+    border:none;background:transparent;cursor:pointer;font:inherit;font-weight:700;font-size:13px;
+    color:var(--ink2);padding:8px 18px;border-radius:8px;transition:.18s;
+  }
+  .seg button.active{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(33,150,243,.35)}
+  .toolbar .hint{margin-left:auto;font-size:12px;color:var(--muted)}
+
+  /* ---------- document ---------- */
+  doc-page{--doc-accent:var(--blue)}
+  .sheet{position:relative;z-index:1;color:var(--ink);font-size:12.5px;line-height:1.5}
+
+  /* watermark (proforma only) */
+  .watermark{
+    position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .watermark span{
+    font-size:104px;font-weight:800;letter-spacing:3px;color:var(--maroon);opacity:.09;
+    transform:rotate(-30deg);white-space:nowrap;text-transform:uppercase;
+  }
+  [data-doctype="invoice"] .watermark{display:none}
+
+  /* header */
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:30px}
+  .sellerLogo{height:52px;width:auto;margin-bottom:14px;display:block}
+  .seller h2{font-size:15px;font-weight:800;letter-spacing:-.2px;margin-bottom:6px}
+  .seller p{color:var(--ink2);line-height:1.65}
+  .seller .reg{margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;color:var(--ink2)}
+  .seller .reg b{color:var(--ink);font-weight:600}
+
+  .titleBlock{text-align:right;flex-shrink:0;min-width:250px}
+  .titleTop{text-align:right}
+  .docTitle{
+    display:inline-block;font-size:32px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+    color:var(--blue);line-height:1;padding-bottom:7px;border-bottom:3px solid var(--blue);
+  }
+  [data-doctype="proforma"] .docTitle{color:var(--maroon);border-bottom-color:var(--maroon)}
+  .docTitle .t-invoice{display:none}
+  [data-doctype="invoice"] .docTitle .t-proforma{display:none}
+  [data-doctype="invoice"] .docTitle .t-invoice{display:inline}
+  .taxNote{margin-top:8px;font-size:11px;font-weight:600;color:var(--maroon);letter-spacing:.3px}
+  [data-doctype="invoice"] .taxNote{display:none}
+  .meta{margin-top:16px;display:inline-grid;grid-template-columns:auto auto;gap:5px 16px;text-align:right}
+  .meta dt{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;justify-self:end;align-self:center}
+  .meta dd{font-weight:700;font-size:13px}
+  .meta dd .num{font-weight:700}
+
+  .rule{height:2px;background:var(--blue);border-radius:2px;margin:22px 0 20px}
+  [data-doctype="proforma"] .rule{background:var(--maroon)}
+
+  /* parties + payment */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  .kicker{font-size:10.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--blue)}
+  [data-doctype="proforma"] .kicker{color:var(--maroon)}
+  .party{margin-top:10px}
+  .party .name{font-size:14px;font-weight:800;margin-bottom:2px}
+  .party .sub{font-weight:600;color:var(--ink);margin-bottom:6px}
+  .party p{color:var(--ink2);line-height:1.65}
+  .party .reg{margin-top:7px;color:var(--ink2)}
+  .party .reg span{display:block}
+
+  .payCard{background:var(--bg);border:1px solid var(--line2);border-radius:14px;padding:16px 18px;display:flex;gap:18px;justify-content:space-between}
+  .payCard .rows{flex:1}
+  .payRow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;border-bottom:1px solid var(--line2)}
+  .payRow:last-child{border-bottom:none}
+  .payRow .k{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;align-self:center}
+  .payRow .v{font-weight:700;text-align:right}
+  .qr{width:92px;height:92px;flex-shrink:0;border-radius:12px;border:1px solid var(--line2);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .qr svg{width:52px;height:52px}
+  .qr small{font-size:8px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
+
+  /* table */
+  .items{width:100%;border-collapse:collapse;margin-top:8px}
+  .items thead th{
+    font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--ink2);
+    text-align:right;padding:0 12px 9px;border-bottom:2px solid var(--ink);white-space:nowrap;vertical-align:bottom;
+  }
+  .items thead th.l{text-align:left}
+  .items tbody td{padding:11px 12px;border-bottom:1px solid var(--line2);text-align:right;vertical-align:top}
+  .items tbody td.l{text-align:left}
+  .items .desc .n{font-weight:700;font-size:13px}
+  .items .desc .c{margin-top:4px;font-size:10.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+  .items .desc .c b{color:var(--ink2);font-weight:600}
+  .items .amt{font-weight:700}
+  .rate{display:inline-block;font-size:11px;font-weight:700;color:var(--blue-d);background:var(--tint);padding:2px 8px;border-radius:6px}
+  .free{color:var(--ok);font-weight:700}
+
+  /* totals */
+  .foot{display:grid;grid-template-columns:1fr 300px;gap:26px;margin-top:22px}
+  .terms{font-size:11px;color:var(--ink2);line-height:1.7}
+  .terms .kicker{margin-bottom:6px;display:block}
+  .totals{align-self:start}
+  .tRow{display:flex;justify-content:space-between;padding:7px 2px;font-size:12.5px}
+  .tRow .k{color:var(--ink2)}
+  .tRow .v{font-weight:700}
+  .tRow.grand{margin-top:6px;background:var(--blue);color:#fff;border-radius:11px;padding:13px 16px;font-size:15px}
+  [data-doctype="proforma"] .tRow.grand{background:var(--maroon)}
+  .tRow.grand .k{color:rgba(255,255,255,.85);font-weight:700}
+  .tRow.grand .v{font-weight:800}
+  .skonto{margin-top:10px;border:1px dashed var(--ok);background:var(--okbg);border-radius:11px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .skonto .k{font-size:10.5px;font-weight:700;color:#0f7a3f;line-height:1.4}
+  .skonto .v{font-weight:800;color:#0f7a3f;font-size:14px;white-space:nowrap}
+
+  /* doc footer */
+  .docFoot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line2);display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .distrib{display:flex;align-items:center;gap:14px}
+  .distrib img{height:34px;width:auto}
+  .distrib .txt{font-size:10px;color:var(--muted);line-height:1.5;max-width:180px}
+  .distrib .txt b{color:var(--ink2);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:9.5px}
+  .legal{font-size:10px;color:var(--muted);text-align:right;line-height:1.6;max-width:250px}
+  .legal .proforma-only{display:block}
+  [data-doctype="invoice"] .legal .proforma-only{display:none}
+  .legal .invoice-only{display:none}
+  [data-doctype="invoice"] .legal .invoice-only{display:block}
+
+  @media print{ .toolbar{display:none} body{background:#fff} }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="brand">Martin Ebringer s.r.o. — doklad</span>
+  <div class="seg" role="tablist">
+    <button id="btn-proforma" class="active" onclick="setType('proforma')">Predfaktúra</button>
+    <button id="btn-invoice" onclick="setType('invoice')">Faktúra</button>
+  </div>
+  <span class="hint">Ctrl / Cmd + P pre tlač alebo PDF</span>
+</div>
+
+<doc-page size="a4" margin="14mm" data-doctype="proforma" id="doc">
+  <div class="watermark"><span id="wm">Predfaktúra</span></div>
+
+  <div class="sheet">
+
+    <!-- HEADER -->
+    <div class="head">
+      <div class="seller">
+        <img class="sellerLogo" src="uploads/logo-clean.png" alt="Dental design studio Ebringer">
+        <h2>Martin Ebringer s.r.o.</h2>
+        <p>Charkovská 13<br>841 07 Bratislava, Slovensko<br>Tel.: +421 903 428 948<br>Email: info@ebringer.sk</p>
+        <div class="reg">
+          <span>IČO: <b>52595684</b></span>
+          <span>DIČ: <b>2121087859</b></span>
+          <span>IČ DPH: <b>SK2121087859</b></span>
+        </div>
+      </div>
+
+      <div class="titleBlock">
+        <div class="titleTop"><span class="docTitle"><span class="t-proforma">Predfaktúra</span><span class="t-invoice">Faktúra</span></span></div>
+        <div class="taxNote">Nie je daňovým dokladom</div>
+        <dl class="meta">
+          <dt>Číslo</dt><dd><span class="num" id="docNo">2026X0011</span></dd>
+          <dt>Dátum vystavenia</dt><dd><span class="num">02.07.2026</span></dd>
+          <dt>Dátum dodania</dt><dd><span class="num">02.07.2026</span></dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="rule"></div>
+
+    <!-- PARTIES + PAYMENT -->
+    <div class="cols">
+      <div>
+        <span class="kicker">Odberateľ</span>
+        <div class="party">
+          <div class="name">Firma a.s.</div>
+          <div class="sub">MUDr. Ivan Gorbashenko</div>
+          <p>Bavala 12<br>937 65 Bratislava</p>
+          <div class="reg">
+            <span>IČO: 876544567</span>
+            <span>Email: client@example.com</span>
+            <span>Tel.: +421 944 454 190</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="kicker">Platobné údaje</span>
+        <div class="party">
+          <div class="payCard">
+            <div class="rows">
+              <div class="payRow"><span class="k">Spôsob</span><span class="v">Bankový prevod</span></div>
+              <div class="payRow"><span class="k">IBAN</span><span class="v mono">SK78 1100 0000 0029 4107 6639</span></div>
+              <div class="payRow"><span class="k">Banka</span><span class="v">Tatra banka, a.s.</span></div>
+              <div class="payRow"><span class="k">SWIFT</span><span class="v mono">TATRSKBX</span></div>
+              <div class="payRow"><span class="k">Var. symbol</span><span class="v mono" id="vs">2026X0011</span></div>
+            </div>
+            <div class="qr">
+              <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#fff"/>
+                <g fill="#1a1c1e">
+                  <path d="M4 4h28v28H4zM10 10v16h16V10z"/><rect x="14" y="14" width="8" height="8"/>
+                  <path d="M68 4h28v28H68zM74 10v16h16V10z"/><rect x="78" y="14" width="8" height="8"/>
+                  <path d="M4 68h28v28H4zM10 74v16h16V74z"/><rect x="14" y="78" width="8" height="8"/>
+                  <rect x="40" y="4" width="6" height="6"/><rect x="52" y="4" width="6" height="6"/><rect x="40" y="16" width="6" height="6"/>
+                  <rect x="58" y="16" width="6" height="6"/><rect x="4" y="40" width="6" height="6"/><rect x="16" y="40" width="6" height="6"/>
+                  <rect x="28" y="40" width="6" height="6"/><rect x="40" y="40" width="6" height="6"/><rect x="52" y="40" width="6" height="6"/>
+                  <rect x="64" y="40" width="6" height="6"/><rect x="76" y="40" width="6" height="6"/><rect x="88" y="40" width="6" height="6"/>
+                  <rect x="40" y="52" width="6" height="6"/><rect x="58" y="52" width="6" height="6"/><rect x="70" y="52" width="6" height="6"/>
+                  <rect x="88" y="52" width="6" height="6"/><rect x="40" y="64" width="6" height="6"/><rect x="52" y="64" width="6" height="6"/>
+                  <rect x="64" y="64" width="6" height="6"/><rect x="82" y="64" width="6" height="6"/><rect x="52" y="76" width="6" height="6"/>
+                  <rect x="70" y="76" width="6" height="6"/><rect x="88" y="76" width="6" height="6"/><rect x="40" y="88" width="6" height="6"/>
+                  <rect x="58" y="88" width="6" height="6"/><rect x="76" y="88" width="6" height="6"/>
+                </g>
+              </svg>
+              <small>Pay by square</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ITEMS -->
+    <table class="items">
+      <thead>
+        <tr>
+          <th class="l">Popis</th>
+          <th>Množ.</th>
+          <th>Jedn. cena bez DPH</th>
+          <th>Sadzba DPH</th>
+          <th>Cena s DPH</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="l desc"><div class="n">Dynamic TiBase NR G0.3 HC9</div><div class="c"><span>Č. produktu: <b class="mono">Comp.0012</b></span><span>Šarža: <b class="mono">L240118</b></span></div></td>
+          <td class="num">3</td>
+          <td class="num">44,00 €</td>
+          <td><span class="rate">5 %</span></td>
+          <td class="num amt">138,60 €</td>
+        </tr>
+        <tr>
+          <td class="l desc"><div class="n">Dynamic TiBase NR G1.1 HC9</div><div class="c"><span>Č. produktu: <b class="mono">Comp.0030</b></span><span>Šarža: <b class="mono">L240233</b></span></div></td>
+          <td class="num">1</td>
+          <td class="num">44,00 €</td>
+          <td><span class="rate">5 %</span></td>
+          <td class="num amt">46,20 €</td>
+        </tr>
+        <tr>
+          <td class="l desc"><div class="n">Adaptor IO G3 HE · 5 N·cm</div><div class="c"><span>Č. produktu: <b class="mono">Comp.0006</b></span><span>Šarža: <b class="mono">L240076</b></span></div></td>
+          <td class="num">1</td>
+          <td class="num">52,00 €</td>
+          <td><span class="rate">23 %</span></td>
+          <td class="num amt">63,96 €</td>
+        </tr>
+        <tr>
+          <td class="l desc"><div class="n">Dynamic Screw M1.6 L9.4 mm · 20 N·cm</div><div class="c"><span>Č. produktu: <b class="mono">SCR.1001</b></span><span>Šarža: <b class="mono">L239841</b></span></div></td>
+          <td class="num">3</td>
+          <td class="free">zadarmo</td>
+          <td><span class="rate">0 %</span></td>
+          <td class="num amt">0,00 €</td>
+        </tr>
+        <tr>
+          <td class="l desc"><div class="n">Doprava (kuriér)</div></td>
+          <td class="num">1</td>
+          <td class="num">5,00 €</td>
+          <td><span class="rate">0 %</span></td>
+          <td class="num amt">5,00 €</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- FOOTER: terms + totals -->
+    <div class="foot">
+      <div class="terms">
+        <span class="kicker">Poznámka</span>
+        <p id="termsText">Táto predfaktúra slúži ako podklad na úhradu. Tovar expedujeme po pripísaní platby na účet. Uvádzajte prosím variabilný symbol <b class="mono">2026X0011</b>.</p>
+      </div>
+
+      <div class="totals">
+        <div class="tRow"><span class="k">Základ dane</span><span class="v num">233,00 €</span></div>
+        <div class="tRow"><span class="k">DPH</span><span class="v num">20,76 €</span></div>
+        <div class="tRow grand"><span class="k">Celkom s DPH</span><span class="v num">253,76 €</span></div>
+        <div class="skonto">
+          <span class="k">Pri úhrade do 05.07.2026<br>(−2 % skonto za včasnú platbu)</span>
+          <span class="v num">248,68 €</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOC FOOTER: distributor + legal -->
+    <div class="docFoot">
+      <div class="distrib">
+        <img src="assets/dynamicabutment-logo.png" alt="Dynamic Abutment Solutions">
+        <div class="txt"><b>Exkluzívny distribútor</b><br>Dynamic Abutment Solutions pre Slovensko</div>
+      </div>
+      <div class="legal">
+        <span class="proforma-only">Toto nie je účtovný doklad. Predfaktúra nenahrádza daňový doklad.</span>
+        <span class="invoice-only">Faktúra je daňovým dokladom v zmysle zákona o DPH.</span>
+        <span>Martin Ebringer s.r.o. · IČ DPH SK2121087859</span>
+      </div>
+    </div>
+
+  </div>
+</doc-page>
+
+<script src="doc-page.js"></script>
+<script>
+  function setType(t){
+    var doc=document.getElementById('doc');
+    doc.setAttribute('data-doctype',t);
+    document.getElementById('btn-proforma').classList.toggle('active',t==='proforma');
+    document.getElementById('btn-invoice').classList.toggle('active',t==='invoice');
+    var proforma = t==='proforma';
+    document.getElementById('wm').textContent = proforma ? 'Predfaktúra' : 'Faktúra';
+    document.getElementById('termsText').innerHTML = proforma
+      ? 'Táto predfaktúra slúži ako podklad na úhradu. Tovar expedujeme po pripísaní platby na účet. Uvádzajte prosím variabilný symbol <b class="mono">2026X0011</b>.'
+      : 'Ďakujeme za Vašu objednávku. Úhradu vykonajte prosím na uvedený účet s variabilným symbolom <b class="mono">2026X0011</b>.';
+    localStorage.setItem('ebr_doctype', t);
+  }
+  var saved = localStorage.getItem('ebr_doctype');
+  if(saved) setType(saved);
+</script>
+</body>
+</html>

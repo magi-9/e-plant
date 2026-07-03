@@ -167,6 +167,22 @@ def test_parse_pdf_compatibility_rows_stops_0268_after_dynamic_screw_table():
     assert all(row["compatibility_code"] == "0268" for row in rows)
 
 
+def test_parse_pdf_compatibility_rows_adds_manual_0030_screws():
+    pdf_text = """
+    COMPATIBLE WITH 0030
+    DYNAMIC 3TIBASE
+    1,1 25º 20º 10º 31.323.030.21-2 31.313.030.21-2
+    """
+
+    rows = convert_to_csv.parse_pdf_compatibility_rows(pdf_text)
+
+    by_ref = {row["reference"]: row for row in rows}
+    assert by_ref["41.320.079.01-2"]["compatibility_code"] == "0030"
+    assert by_ref["41.320.079.01-2"]["section"] == "DYNAMIC"
+    assert by_ref["40.320.003.04-2"]["compatibility_code"] == "0030"
+    assert by_ref["40.320.003.04-2"]["section"] == "STRAIGHT"
+
+
 def test_build_option_map_by_reference():
     parsed_rows = [
         {"reference": "54.315.002.21-2", "options": "αS:43º|GH(mm):0.3"},

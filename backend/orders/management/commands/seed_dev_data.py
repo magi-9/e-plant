@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from orders.models import Order, OrderItem
+from orders.models import BatchLot, Order, OrderItem, OrderItemBatch
 from products.models import Product
 from products.compatibility import get_compatible_screws_for_tibase
 
@@ -98,6 +98,24 @@ class Command(BaseCommand):
         if misc_ids:
             Product.objects.filter(id__in=misc_ids).update(stock_quantity=25)
             self.stdout.write(f"  ✓ {len(misc_ids)} misc products → stock 25")
+
+        # Create batch lots for tibase products so invoices show šarža
+        batch_specs = [
+            ("31.312.011.21-2", "2025-A01", 10),
+            ("31.313.012.21-2", "2025-B02", 10),
+            ("31.321.084.01-2", "2026-C03", 10),
+        ]
+        for ref, batch_num, qty in batch_specs:
+            try:
+                p = Product.objects.get(reference=ref)
+                BatchLot.objects.get_or_create(
+                    product=p,
+                    batch_number=batch_num,
+                    defaults={"quantity": qty},
+                )
+                self.stdout.write(f"  ✓ BatchLot {ref} / {batch_num}")
+            except Product.DoesNotExist:
+                pass
 
     # ── orders ────────────────────────────────────────────────────────────────
 
@@ -259,7 +277,7 @@ class Command(BaseCommand):
         )
 
         for d in order_items_data:
-            OrderItem.objects.create(
+            oi = OrderItem.objects.create(
                 order=order,
                 product=d["product"],
                 quantity=d["quantity"],
@@ -267,6 +285,18 @@ class Command(BaseCommand):
                 vat_rate_snapshot=d["product"].vat_rate,
                 is_free=d["is_free"],
             )
+            # Attach a batch lot if one exists for this product
+            batch_lot = (
+                BatchLot.objects.filter(product=d["product"])
+                .order_by("received_at")
+                .first()
+            )
+            if batch_lot:
+                OrderItemBatch.objects.create(
+                    order_item=oi,
+                    batch_lot=batch_lot,
+                    quantity=d["quantity"],
+                )
 
         self.stdout.write(
             f"  ✓ Order #{order.id} [{status:<20}]  "
