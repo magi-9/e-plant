@@ -2,9 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/dynamicabutment-logo.png" />
+    <script>
+      (function () {
+        var host = window.location.hostname.replace(/^www\./, '').toLowerCase();
+        var isLandingHost = host === 'ebringer.sk';
+        var faviconHref = isLandingHost ? '/favico2.ico' : '/favicon.ico';
+        var appleIconHref = isLandingHost ? '/favico2.ico' : '/dynamicabutment-logo.png';
+        [
+          ['icon', faviconHref],
+          ['shortcut icon', faviconHref],
+          ['apple-touch-icon', appleIconHref],
+        ].forEach(function (entry) {
+          var link = document.createElement('link');
+          link.rel = entry[0];
+          link.href = entry[1];
+          if (entry[0] !== 'apple-touch-icon') {
+            link.type = 'image/x-icon';
+          }
+          document.head.appendChild(link);
+        });
+      })();
+    </script>
+    <noscript>
+      <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+      <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+      <link rel="apple-touch-icon" href="/dynamicabutment-logo.png" />
+    </noscript>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dental design studio Ebringer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
