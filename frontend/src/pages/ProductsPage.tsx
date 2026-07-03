@@ -34,6 +34,7 @@ const T = {
 
 const PAGE_SIZE = 12;
 const SEO_SITE_URL = import.meta.env.VITE_SITE_URL || window.location.origin;
+type ProductOption = NonNullable<NonNullable<Product['parameters']>['options']>[number];
 
 const isTiBaseProduct = (product: Product): boolean => {
     const haystack = [
@@ -46,7 +47,7 @@ const isTiBaseProduct = (product: Product): boolean => {
 
 const getFirstCompatibilityCode = (
     product: Product,
-    variant?: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+    variant?: ProductOption
 ): string => (
     variant?.compatibility_codes?.[0] ||
     product.compatibility_codes?.[0] ||
@@ -55,7 +56,7 @@ const getFirstCompatibilityCode = (
 );
 
 const getVariantLabel = (
-    variant: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+    variant: ProductOption
 ): string => {
     const tokens = (variant.option_tokens || '').split('|').map(token => token.trim()).filter(Boolean);
     const ghToken = tokens.find(token => /^GH\s*\(/i.test(token) || /^GH\s*:/i.test(token));
@@ -72,7 +73,7 @@ const getVariantLabel = (
 };
 
 const isSelectableVariant = (
-    variant: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+    variant: ProductOption
 ): boolean => {
     const tokens = (variant.option_tokens || '').split('|').map(token => token.trim()).filter(Boolean);
     const typeToken = tokens.find(token => token.toUpperCase().startsWith('TYPE:'));
@@ -82,6 +83,18 @@ const isSelectableVariant = (
     const name = `${variant.name || ''} ${variant.category || ''}`.toUpperCase();
     return !/\b(SCREWDRIVER ADAPTOR|SCREWDRIVER|ADAPTOR|DYNAMIC SCREW)\b/.test(name);
 };
+
+const getPurchasableVariants = (product: Product): ProductOption[] =>
+    (product.parameters?.options || []).filter((option) => isSelectableVariant(option));
+
+const getAvailableVariantStock = (product: Product): number =>
+    getPurchasableVariants(product).reduce(
+        (sum, option) => sum + Math.max(option.stock_quantity ?? 0, 0),
+        0,
+    );
+
+const getFirstAvailableVariant = (product: Product): ProductOption | undefined =>
+    getPurchasableVariants(product).find((option) => (option.stock_quantity ?? 0) > 0);
 
 const PRODUCT_TYPE_FILTERS = [
     { value: 'tibase',     label: 'TiBase',     prefixes: '31, 35' },
@@ -303,7 +316,7 @@ function ProductCard({ product, index, list, canUseCart, isLoggedIn, onCardClick
     const catLabel = getCategoryList(product)[0] || product.category || '';
 
     const effectiveStock = isWildcard
-        ? (product.parameters?.options || []).reduce((s: number, o: { stock_quantity?: number }) => s + (o.stock_quantity ?? 0), 0)
+        ? getAvailableVariantStock(product)
         : product.stock_quantity;
 
     return (
@@ -480,7 +493,7 @@ export default function ProductsPage() {
         let ps = data?.results || [];
         if (F.inStockOnly) {
             ps = ps.filter(p => {
-                if (p.parameters?.type === 'wildcard_group') return (p.parameters.options || []).some((o: { stock_quantity?: number }) => (o.stock_quantity ?? 0) > 0);
+                if (p.parameters?.type === 'wildcard_group') return getAvailableVariantStock(p) > 0;
                 return p.stock_quantity > 0;
             });
         }
@@ -543,7 +556,7 @@ export default function ProductsPage() {
 
     const getBundledScrewForProduct = async (
         product: Product,
-        variant?: NonNullable<NonNullable<Product['parameters']>['options']>[number]
+        variant?: ProductOption
     ) => {
         if (!isTiBaseProduct(product)) return undefined;
         const compatibilityCode = getFirstCompatibilityCode(product, variant);
@@ -565,13 +578,13 @@ export default function ProductsPage() {
         e.stopPropagation();
         if (!canUseCart) { toast.error('Pre nákup sa prihláste.'); return; }
         if (product.parameters?.type === 'wildcard_group' && (product.parameters.options || []).length > 0) {
-            const variant = (product.parameters.options || []).find((opt) => isSelectableVariant(opt) && (opt.stock_quantity ?? 0) > 0 && (opt.gross_price || opt.price));
+            const variant = getFirstAvailableVariant(product);
             if (!variant) {
                 setProductToRequest(product);
                 setOpenRequestModal(true);
                 return;
             }
-            const variantPrice = variant.gross_price ?? variant.price;
+            const variantPrice = variant.gross_price ?? variant.price ?? getCustomerPrice(product);
             if (!variantPrice) { toast.error('Pre tento variant chýba cena.'); return; }
             const variantStock = variant.stock_quantity ?? 0;
             const cur = items.find(i => i.productId === product.id && i.variantReference === variant.reference)?.quantity ?? 0;
