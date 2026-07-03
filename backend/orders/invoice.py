@@ -316,7 +316,7 @@ def _draw_page_footer(canvas, doc, das_logo_path, seller_name, vat_id, pre_invoi
     right = w - 20 * mm
     # footer sits inside bottom margin (36mm reserved), centred vertically in lower 16mm
     hr_y = 18 * mm
-    text_y = 11.5 * mm  # ~2px gap between HR and content
+    text_y = 9.5 * mm
 
     canvas.saveState()
 
@@ -585,7 +585,9 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
 
     # billing column is 85mm, padding 6mm each side → 73mm inner usable
     _PAY_INNER_W = 73 * mm
-    _QR_SIZE_MM = 24
+    _QR_SIZE_MM = 18
+    _QR_BOX_W_MM = 25
+    _QR_GAP_MM = 5
 
     iban_for_qr = shop_settings.iban if order.payment_method == "bank_transfer" else ""
     bysquare_qr = (
@@ -614,8 +616,7 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
     qr_label = "Pay by Square" if bysquare_qr else "SEPA QR"
 
     if active_qr:
-        # pay-rows column width = inner - QR size - 4mm gap
-        pay_rows_w = _PAY_INNER_W - _QR_SIZE_MM * mm - 4 * mm
+        pay_rows_w = _PAY_INNER_W - (_QR_BOX_W_MM + _QR_GAP_MM) * mm
         pay_tbl_rows = [
             [Paragraph(k, s_pay_k), Paragraph(v, s_pay_v)] for k, v in pay_rows_data
         ]
@@ -632,14 +633,30 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
                 ]
             )
         )
-        qr_stack = [
-            Paragraph(qr_label, s_label_center),
-            Spacer(1, 1 * mm),
-            active_qr,
-        ]
+        qr_box = Table(
+            [[active_qr], [Paragraph(qr_label.upper(), s_label_center)]],
+            colWidths=[_QR_BOX_W_MM * mm],
+        )
+        qr_box.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+                    ("BOX", (0, 0), (-1, -1), 0.7, _LINE2),
+                    ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (0, 0), 2.5),
+                    ("BOTTOMPADDING", (0, 0), (0, 0), 1.5),
+                    ("TOPPADDING", (0, 1), (0, 1), 0),
+                    ("BOTTOMPADDING", (0, 1), (0, 1), 2),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
         pay_card_inner = Table(
-            [[pay_inner_tbl, qr_stack]],
-            colWidths=[pay_rows_w, _QR_SIZE_MM * mm + 4 * mm],
+            [[pay_inner_tbl, "", qr_box]],
+            colWidths=[pay_rows_w, _QR_GAP_MM * mm, _QR_BOX_W_MM * mm],
         )
         pay_card_inner.setStyle(
             TableStyle(
@@ -726,13 +743,12 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
 
     def _desc_cell(name, product_ref=None, batch_str=None):
         parts = [Paragraph(esc(name), s_item_name)]
-        meta_parts = []
         if product_ref:
-            meta_parts.append(f"Č. produktu: <b>{esc(product_ref)}</b>")
-        if batch_str:
-            meta_parts.append(f"Šarža: <b>{esc(batch_str)}</b>")
-        if meta_parts:
-            parts.append(Paragraph(" · ".join(meta_parts), s_item_meta))
+            parts.append(
+                Paragraph(f"Č. produktu: <b>{esc(product_ref)}</b>", s_item_meta)
+            )
+        if batch_str is not None:
+            parts.append(Paragraph(f"Šarža: <b>{esc(batch_str)}</b>", s_item_meta))
         return parts
 
     COL_W = [70 * mm, 14 * mm, 28 * mm, 18 * mm, 40 * mm]
@@ -778,16 +794,18 @@ def generate_invoice_pdf(order, shop_settings, pre_invoice: bool = False) -> byt
             amt_cell,
         ]
 
-    for item in items_qs:
+    def _batch_str_for_item(item):
         batch_allocations = list(item.batch_allocations.all())
-        batch_str = (
-            ", ".join(
+        if batch_allocations:
+            return ", ".join(
                 f"{ba.batch_lot.batch_number} ({ba.quantity}×)"
                 for ba in batch_allocations
             )
-            or None
-        )
-        rows.append(_build_item_row(item, batch_str))
+
+        return ""
+
+    for item in items_qs:
+        rows.append(_build_item_row(item, _batch_str_for_item(item)))
 
     # shipping row
     _vat_badge_rows.append(len(rows))
