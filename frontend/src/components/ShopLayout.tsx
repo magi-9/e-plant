@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { getGlobalSettings } from '../api/settings';
 import { getCompanyProfile } from '../utils/companyProfile';
-import { getLandingContactHref } from '../utils/landingLinks';
+import { getLandingAboutHref, getLandingContactHref } from '../utils/landingLinks';
 import Navbar from './Navbar';
 import ScrollToTop from './ScrollToTop';
 import ebringerLogoUrl from '../assets/logo-ebringer.png';
@@ -14,6 +14,7 @@ export default function ShopLayout() {
     queryFn: getGlobalSettings,
   });
   const company = getCompanyProfile(globalSettings);
+  const landingAboutHref = getLandingAboutHref();
   const landingContactHref = getLandingContactHref();
   const footerLinkStyle = { fontSize: 14, color: '#8a93a0', textDecoration: 'none' } as const;
   const footerHeadingStyle = { fontSize: 12, fontWeight: 700, letterSpacing: '.6px', color: '#fff', textTransform: 'uppercase', marginBottom: 16 } as const;
@@ -88,7 +89,8 @@ export default function ShopLayout() {
           <div>
             <p style={footerHeadingStyle}>Kontakt</p>
             <ul style={footerListStyle}>
-              <li><a href={landingContactHref} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>O nás a kontakt</a></li>
+              <li><a href={landingAboutHref} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>O nás</a></li>
+              <li><a href={landingContactHref} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>Kontakt</a></li>
               <li><a href={`mailto:${company.companyEmail}`} style={footerLinkStyle} onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#8a93a0')}>{company.companyEmail}</a></li>
               <li style={{ fontSize: 14, color: '#8a93a0', lineHeight: '22px' }}>{company.companyName}</li>
             </ul>

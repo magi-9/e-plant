@@ -6,7 +6,7 @@ import { getMe, isAdmin } from '../api/auth';
 import { authService } from '../api/authService';
 import { useCartStore, type CartState } from '../store/cartStore';
 import type { CartItem } from '../store/cartStore';
-import { getLandingAboutHref } from '../utils/landingLinks';
+import { getLandingAboutHref, getLandingContactHref } from '../utils/landingLinks';
 import ConfirmModal from './ConfirmModal';
 
 /* ── icons ─────────────────────────────────────────────────── */
@@ -39,6 +39,7 @@ export default function Navbar() {
     const [cartHover, setCartHover] = useState(false);
     const [cartPulse, setCartPulse] = useState(false);
     const landingAboutHref = getLandingAboutHref();
+    const landingContactHref = getLandingContactHref();
 
     const { data: me } = useQuery({
         queryKey: ['me'],
@@ -104,6 +105,7 @@ export default function Navbar() {
                             </Link>
                         ))}
                         <a href={landingAboutHref} style={{ fontSize: 14, fontWeight: 500, color: '#45474c', textDecoration: 'none' }}>O nás</a>
+                        <a href={landingContactHref} style={{ fontSize: 14, fontWeight: 500, color: '#45474c', textDecoration: 'none' }}>Kontakt</a>
                     </nav>
                 </div>
 
@@ -216,7 +218,8 @@ export default function Navbar() {
                                 {label}
                             </Link>
                         ))}
-                        <a href={landingAboutHref} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>O nás</a>
+                        <a href={landingAboutHref} onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>O nás</a>
+                        <a href={landingContactHref} onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>Kontakt</a>
                         {canUseCart && (
                             <Link to="/cart" onClick={() => setMobileOpen(false)} style={{ padding: '15px 4px', fontSize: 17, fontWeight: 500, color: '#1a1c1e', borderBottom: '1px solid #eef0f2', textDecoration: 'none' }}>
                                 Košík {totalItems > 0 && <span style={{ background: '#2196f3', color: '#fff', borderRadius: 9999, fontSize: 11, fontWeight: 700, padding: '1px 7px', marginLeft: 6 }}>{totalItems}</span>}

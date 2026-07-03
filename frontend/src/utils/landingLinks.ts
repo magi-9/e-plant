@@ -8,9 +8,12 @@ export function getLandingHomeHref(): string {
 }
 
 export function getLandingAboutHref(): string {
-  return `https://${LANDING_HOST}/#d-about`;
+  return getLandingHomeHref();
 }
 
 export function getLandingContactHref(): string {
-  return `https://${LANDING_HOST}/#kontakt`;
+  if (import.meta.env.DEV) {
+    return '/#d-contact';
+  }
+  return `https://${LANDING_HOST}/#d-contact`;
 }
