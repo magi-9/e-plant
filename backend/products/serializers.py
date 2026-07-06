@@ -130,6 +130,7 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     all_categories = serializers.SerializerMethodField()
     compatibility_codes = serializers.SerializerMethodField()
+    batch_lots = serializers.SerializerMethodField()
     image = ProductImageField(required=False, allow_null=True)
     remove_image = serializers.BooleanField(
         write_only=True, required=False, default=False
@@ -165,6 +166,26 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_compatibility_codes(self, obj):
         return get_compatibility_codes_for_ref(obj.reference or "")
+
+    def get_batch_lots(self, obj):
+        request = self.context.get("request")
+        if not (
+            request
+            and request.user
+            and request.user.is_staff
+            and request.query_params.get("admin_view") == "1"
+        ):
+            return []
+        lots = sorted(obj.batch_lots.all(), key=lambda lot: (lot.received_at, lot.id))
+        return [
+            {
+                "id": lot.id,
+                "batch_number": lot.batch_number,
+                "quantity": lot.quantity,
+                "received_at": lot.received_at,
+            }
+            for lot in lots
+        ]
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -215,6 +236,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "vat_rate",
             "gross_price",
             "stock_quantity",
+            "batch_lots",
             "image",
             "remove_image",
             "group",

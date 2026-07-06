@@ -2,16 +2,16 @@
 Management command to update product prices from dealer prices CSV.
 
 Reads data/csv/dealer_prices.csv (generated from DEALER PRICES 2025.xlsx),
-then sets each product's price to dealer_price * MARKUP (default 1.40 = +40%).
+then sets each product's price to dealer_price / 0.60 (dealer price is 60%).
 The stored price is ex-VAT (bez DPH).
 
 Prerequisites:
   Run on host: python data/convert_to_csv.py dealer
 
 Usage:
-  python manage.py update_dealer_prices              # apply prices (dealer + 40%)
+  python manage.py update_dealer_prices              # apply dealer / 0.60 prices
   python manage.py update_dealer_prices --dry-run    # preview without saving
-  python manage.py update_dealer_prices --markup 1.5 # use a different markup
+  python manage.py update_dealer_prices --dealer-share 0.65
 """
 
 import csv
@@ -73,9 +73,7 @@ def _lookup_dealer_price(reference, exact, patterns):
 
 
 class Command(BaseCommand):
-    help = (
-        "Update product prices from dealer prices CSV (dealer price × markup, ex-VAT)."
-    )
+    help = "Update product prices from dealer prices CSV (dealer price / dealer share, ex-VAT)."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -84,15 +82,34 @@ class Command(BaseCommand):
             help="Preview changes without saving to the database.",
         )
         parser.add_argument(
+            "--dealer-share",
+            type=float,
+            default=0.60,
+            help="Dealer price share of the original price (default: 0.60).",
+        )
+        parser.add_argument(
             "--markup",
             type=float,
-            default=1.40,
-            help="Multiplier applied to dealer price (default: 1.40 = +40%%).",
+            default=None,
+            help=(
+                "Deprecated: multiplier applied to dealer price. "
+                "Use --dealer-share for margin-based pricing."
+            ),
         )
 
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
-        markup = Decimal(str(options["markup"]))
+        dealer_share = Decimal(str(options["dealer_share"]))
+        legacy_markup = options["markup"]
+        markup = Decimal(str(legacy_markup)) if legacy_markup is not None else None
+        pricing_label = (
+            f"legacy markup x{markup}"
+            if markup is not None
+            else f"dealer share {dealer_share}"
+        )
+
+        if dealer_share <= 0:
+            raise CommandError("--dealer-share must be greater than 0")
 
         if not os.path.exists(DEALER_PRICES_CSV):
             raise CommandError(
@@ -121,7 +138,10 @@ class Command(BaseCommand):
                 )
                 continue
 
-            new_price = (dealer_price * markup).quantize(Decimal("0.01"))
+            if markup is not None:
+                new_price = (dealer_price * markup).quantize(Decimal("0.01"))
+            else:
+                new_price = (dealer_price / dealer_share).quantize(Decimal("0.01"))
             updated.append((product, new_price))
 
         self.stdout.write(f"\nMatched:   {len(updated)} products")
@@ -146,6 +166,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nUpdated {len(updated)} product prices (markup ×{markup})."
+                f"\nUpdated {len(updated)} product prices ({pricing_label})."
             )
         )

@@ -44,6 +44,10 @@ export const updateAdminUser = async (id: number, data: Partial<User>): Promise<
     return response.data;
 };
 
+export const setAdminUserPassword = async (id: number, newPassword: string): Promise<void> => {
+    await client.post(`/auth/admin/users/${id}/set-password/`, { new_password: newPassword });
+};
+
 export const deleteAdminUser = async (id: number): Promise<void> => {
     await client.delete(`/auth/admin/users/${id}/delete/`);
 };

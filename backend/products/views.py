@@ -452,6 +452,8 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Product.objects.select_related("group", "wildcard_group").all()
+        if _is_admin_view(self.request):
+            qs = qs.prefetch_related("batch_lots")
         if self.action in ["list", "retrieve"] and not _is_admin_view(self.request):
             qs = qs.filter(is_visible=True)
         return _apply_product_filters(qs, self.request)
