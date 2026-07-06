@@ -102,6 +102,42 @@ def test_product_detail_prefers_exact_compatibility_code_over_import_segment():
 
 
 @pytest.mark.django_db
+def test_admin_product_list_includes_batch_lots_for_inventory():
+    from orders.models import BatchLot
+
+    product = make_product(name="Inventory Product", reference="INV-1")
+    BatchLot.objects.create(product=product, batch_number="LOT-2", quantity=3)
+    BatchLot.objects.create(product=product, batch_number="LOT-1", quantity=7)
+
+    response = admin_client().get(
+        "/api/products/", {"admin_view": "1", "search": "INV-1"}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    result = response.data["results"][0]
+    assert result["id"] == product.id
+    assert [(lot["batch_number"], lot["quantity"]) for lot in result["batch_lots"]] == [
+        ("LOT-2", 3),
+        ("LOT-1", 7),
+    ]
+
+
+@pytest.mark.django_db
+def test_public_product_list_does_not_expose_batch_lots():
+    from orders.models import BatchLot
+
+    product = make_product(name="Public Inventory Product", reference="PUB-INV")
+    BatchLot.objects.create(product=product, batch_number="LOT-1", quantity=7)
+
+    response = APIClient().get("/api/products/", {"search": "PUB-INV"})
+
+    assert response.status_code == status.HTTP_200_OK
+    result = response.data["results"][0]
+    assert result["id"] == product.id
+    assert result["batch_lots"] == []
+
+
+@pytest.mark.django_db
 def test_admin_create_rejects_non_object_details():
     client = admin_client()
     response = client.post(

@@ -11,6 +11,9 @@ import DropdownSelect from '../components/DropdownSelect';
 
 const PAGE_SIZE = 50;
 
+const activeBatchLots = (product: Product) =>
+    (product.batch_lots ?? []).filter((lot) => lot.quantity > 0);
+
 export default function AdminInventory() {
     const canAccess = useAdminPageGuard();
 
@@ -108,10 +111,10 @@ export default function AdminInventory() {
     return (
         <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
             <AdminNav />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6">
 
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-slate-900">Naskladňovanie</h1>
+                <div className="mb-5">
+                    <h1 className="text-2xl font-bold text-slate-900">Naskladňovanie</h1>
                     <p className="mt-1 text-sm text-slate-500">
                         Vyhľadajte produkt a naskladnite novú šaržu. Každé naskladnenie sa zaznamenáva ako audit záznam.
                     </p>
@@ -189,48 +192,65 @@ export default function AdminInventory() {
                         Načítavam produkty...
                     </div>
                 ) : (
-                    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
-                        <table className="min-w-full divide-y divide-slate-200">
+                    <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+                        <div className="overflow-x-auto">
+                        <table className="min-w-[1120px] divide-y divide-slate-200">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Produkt</th>
-                                    <th className="hidden sm:table-cell px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ref. číslo</th>
-                                    <th className="hidden md:table-cell px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kategória</th>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Sklad</th>
-                                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Akcia</th>
+                                    <th className="w-[30%] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Produkt</th>
+                                    <th className="w-[15%] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ref. číslo</th>
+                                    <th className="w-[14%] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kategória</th>
+                                    <th className="w-[9%] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Spolu</th>
+                                    <th className="w-[20%] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Šarže</th>
+                                    <th className="w-[12%] px-3 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Akcia</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {products.map((product) => {
                                     const stock = stockLabel(product.stock_quantity);
+                                    const batches = activeBatchLots(product);
                                     return (
                                         <tr key={product.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-5 py-3">
-                                                <div className="font-semibold text-sm text-slate-800">{product.name}</div>
+                                            <td className="px-3 py-2 align-top">
+                                                <div className="text-sm font-semibold leading-5 text-slate-800">{product.name}</div>
                                             </td>
-                                            <td className="hidden sm:table-cell px-5 py-3">
+                                            <td className="px-3 py-2 align-top">
                                                 <span className="text-xs font-mono text-slate-500 select-all">{product.reference || '—'}</span>
                                             </td>
-                                            <td className="hidden md:table-cell px-5 py-3 text-sm text-slate-600 max-w-xs">
-                                                <span className="truncate block">{product.category || '—'}</span>
+                                            <td className="px-3 py-2 align-top text-sm text-slate-600">
+                                                <span className="block max-w-[11rem] truncate">{product.category || '—'}</span>
                                             </td>
-                                            <td className="px-5 py-3">
+                                            <td className="px-3 py-2 align-top">
                                                 <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${stock.cls}`}>
                                                     {stock.text}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <div className="inline-flex items-center gap-2">
+                                            <td className="px-3 py-2 align-top">
+                                                {batches.length > 0 ? (
+                                                    <div className="max-h-24 overflow-y-auto rounded border border-slate-200 bg-slate-50">
+                                                        {batches.map((lot) => (
+                                                            <div key={lot.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-slate-200 px-2 py-1 text-xs last:border-b-0">
+                                                                <span className="truncate font-mono text-slate-700" title={lot.batch_number}>{lot.batch_number}</span>
+                                                                <span className="font-semibold text-slate-900">{lot.quantity} ks</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">Bez šarží</span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 text-right align-top">
+                                                <div className="inline-flex items-center gap-1.5">
                                                     <button
                                                         onClick={() => openIssue(product)}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
                                                     >
                                                         <ArchiveBoxXMarkIcon className="h-4 w-4" />
                                                         Vyskladniť
                                                     </button>
                                                     <button
                                                         onClick={() => openReceipt(product)}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
                                                     >
                                                         <ArchiveBoxArrowDownIcon className="h-4 w-4" />
                                                         Naskladniť
@@ -242,13 +262,14 @@ export default function AdminInventory() {
                                 })}
                                 {products.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-400">
+                                        <td colSpan={6} className="px-5 py-8 text-center text-sm text-slate-400">
                                             Nenašli sa žiadne produkty.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
+                        </div>
 
                         {/* Pagination */}
                         {totalPages > 1 && (
