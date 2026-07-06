@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChartBarIcon, EyeIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, EyeIcon, KeyIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import { getAdminUsers, createAdminUser, updateAdminUser, deleteAdminUser, type User } from '../api/users';
+import { getAdminUsers, createAdminUser, updateAdminUser, setAdminUserPassword, deleteAdminUser, type User } from '../api/users';
 import AdminNav from '../components/AdminNav';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
@@ -19,6 +19,8 @@ export default function AdminUsers() {
     const [creatingRole, setCreatingRole] = useState<'admin' | 'client'>('client');
     const [formData, setFormData] = useState({ email: '', password: '', first_name: '', last_name: '', is_active: true, annual_discount_percent: '0' });
     const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+    const [passwordTarget, setPasswordTarget] = useState<User | null>(null);
+    const [passwordData, setPasswordData] = useState({ password: '', confirmPassword: '' });
 
     const { data: users, isLoading } = useQuery({ queryKey: ['admin-users'], queryFn: getAdminUsers });
 
@@ -69,6 +71,15 @@ export default function AdminUsers() {
         onSuccess: () => { invalidate(); setDeleteTarget(null); toast.success('Používateľ bol odstránený.'); },
         onError: (err) => toast.error(apiErrorMessage(err)),
     });
+    const setPasswordMutation = useMutation({
+        mutationFn: ({ id, password }: { id: number; password: string }) => setAdminUserPassword(id, password),
+        onSuccess: () => {
+            setPasswordTarget(null);
+            setPasswordData({ password: '', confirmPassword: '' });
+            toast.success('Heslo bolo zmenené.');
+        },
+        onError: (err) => toast.error(apiErrorMessage(err)),
+    });
 
     const handleAdd = (role: 'admin' | 'client') => {
         setEditingUser(null);
@@ -110,6 +121,21 @@ export default function AdminUsers() {
                 is_active: formData.is_active,
             });
         }
+    };
+
+    const handleOpenPasswordReset = (user: User) => {
+        setPasswordTarget(user);
+        setPasswordData({ password: '', confirmPassword: '' });
+    };
+
+    const handlePasswordReset = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordTarget) return;
+        if (passwordData.password !== passwordData.confirmPassword) {
+            toast.error('Heslá sa nezhodujú.');
+            return;
+        }
+        setPasswordMutation.mutate({ id: passwordTarget.id, password: passwordData.password });
     };
 
     useEffect(() => {
@@ -202,6 +228,9 @@ export default function AdminUsers() {
                                     </button>
                                     <button onClick={() => handleEdit(user)} className="text-blue-600 hover:text-blue-900 mr-3" title="Upraviť" aria-label={`Upraviť používateľa ${user.email}`}>
                                         <PencilIcon className="h-5 w-5" />
+                                    </button>
+                                    <button onClick={() => handleOpenPasswordReset(user)} className="text-amber-600 hover:text-amber-900 mr-3" title="Zmeniť heslo" aria-label={`Zmeniť heslo používateľa ${user.email}`}>
+                                        <KeyIcon className="h-5 w-5" />
                                     </button>
                                     <button onClick={() => setDeleteTarget(user)} className="text-red-600 hover:text-red-900" title="Odstrániť" aria-label={`Odstrániť používateľa ${user.email}`}>
                                         <TrashIcon className="h-5 w-5" />
@@ -440,6 +469,61 @@ export default function AdminUsers() {
                                         Objednávky klienta
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {passwordTarget && (
+                    <div className="fixed inset-0 z-[100] overflow-y-auto">
+                        <div className="flex min-h-screen items-end justify-center px-4 pb-0 pt-4 sm:items-center sm:p-0">
+                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setPasswordTarget(null)} />
+                            <div
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="password-reset-title"
+                                className="z-[101] w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-lg"
+                            >
+                                <form onSubmit={handlePasswordReset}>
+                                    <div className="px-6 py-5">
+                                        <h3 id="password-reset-title" className="text-lg font-bold text-gray-900">Zmeniť heslo</h3>
+                                        <p className="mt-1 text-sm text-gray-500">{passwordTarget.email}</p>
+                                        <div className="mt-5 space-y-4">
+                                            <div>
+                                                <label htmlFor="admin-reset-password" className="block text-sm font-medium text-gray-700 mb-1">Nové heslo</label>
+                                                <input
+                                                    id="admin-reset-password"
+                                                    type="password"
+                                                    required
+                                                    autoComplete="new-password"
+                                                    value={passwordData.password}
+                                                    onChange={e => setPasswordData({ ...passwordData, password: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="admin-reset-password-confirm" className="block text-sm font-medium text-gray-700 mb-1">Potvrdenie hesla</label>
+                                                <input
+                                                    id="admin-reset-password-confirm"
+                                                    type="password"
+                                                    required
+                                                    autoComplete="new-password"
+                                                    value={passwordData.confirmPassword}
+                                                    onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-3 bg-gray-50 px-6 py-4">
+                                        <button type="button" onClick={() => setPasswordTarget(null)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition">
+                                            Zrušiť
+                                        </button>
+                                        <button type="submit" disabled={setPasswordMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition disabled:opacity-50">
+                                            {setPasswordMutation.isPending ? 'Ukladám...' : 'Uložiť heslo'}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>

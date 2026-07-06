@@ -1,8 +1,9 @@
 import csv
-
-import pytest
 import sys
 import types
+from decimal import Decimal
+
+import pytest
 from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework import status
@@ -311,6 +312,30 @@ def test_manual_price_override_applies_before_visibility(monkeypatch, tmp_path):
         == import_product_data.MANUAL_PRICE_OVERRIDES["43.620.411.01-2"]
     )
     assert products[0]["is_visible"] is True
+
+
+@pytest.mark.django_db
+def test_update_dealer_prices_uses_dealer_share_for_default_margin(
+    monkeypatch, tmp_path
+):
+    from products.management.commands import update_dealer_prices
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(
+            ["TITANIUM BASE", "Dynamic 3Tibase", "", "31.xxx.xxx.21-2", "30.0"]
+        )
+        writer.writerow(["INTERNAL MU", "TI BASE", "", "31.XXX.XXX.XX-X", "28.0"])
+
+    monkeypatch.setattr(update_dealer_prices, "DEALER_PRICES_CSV", str(dealer_csv))
+    product = make_product(reference="31.313.004.21-2", price="1.00")
+
+    call_command("update_dealer_prices")
+
+    product.refresh_from_db()
+    assert product.price == Decimal("50.00")
 
 
 def test_product_import_vat_classification():
