@@ -70,7 +70,11 @@ python manage.py collectstatic --noinput
 
 # Create default admin account only when explicitly opted in.
 # Requires both DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD — no fallback passwords.
-if [ "${CREATE_DEFAULT_USERS:-false}" = "true" ]; then
+# Production must not recreate/reset admins on every deploy unless this is
+# explicitly enabled as a one-off recovery action.
+if [ "${CREATE_DEFAULT_USERS:-false}" = "true" ] && [ "${DJANGO_SETTINGS_MODULE:-}" = "config.settings.prod" ] && [ "${ALLOW_PROD_DEFAULT_ADMIN:-false}" != "true" ]; then
+    echo "Skipping default user creation in production (set ALLOW_PROD_DEFAULT_ADMIN=true for one-off recovery)."
+elif [ "${CREATE_DEFAULT_USERS:-false}" = "true" ]; then
     if [ -z "${DJANGO_SUPERUSER_EMAIL:-}" ] || [ -z "${DJANGO_SUPERUSER_PASSWORD:-}" ]; then
         echo "ERROR: CREATE_DEFAULT_USERS=true requires DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD to be set."
         exit 1
