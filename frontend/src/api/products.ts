@@ -82,6 +82,12 @@ export interface Product {
     vat_rate: string;
     gross_price: string | null;
     stock_quantity: number;
+    batch_lots?: Array<{
+        id: number;
+        batch_number: string;
+        quantity: number;
+        received_at: string;
+    }>;
     image: string | null;
     is_visible: boolean;
     group_name?: string | null;

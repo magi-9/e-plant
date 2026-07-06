@@ -45,6 +45,13 @@ const formatDate = (iso: string) =>
 const grossUnitPrice = (priceSnapshot: string, vatRateSnapshot: string) =>
     Number(priceSnapshot) * (1 + Number(vatRateSnapshot || '0') / 100);
 
+const orderDisplayName = (order: Order) => {
+    if (order.is_company && order.company_name?.trim()) {
+        return order.company_name;
+    }
+    return order.customer_name;
+};
+
 const isPaginated = <T,>(value: unknown): value is { results: T[] } => {
     return typeof value === 'object' && value !== null && Array.isArray((value as { results?: unknown }).results);
 };
@@ -437,6 +444,9 @@ export default function AdminOrders() {
                                 >
                                     <div className="flex flex-wrap items-center gap-3">
                                         <span className="font-mono font-bold text-slate-900 text-sm">#{order.order_number}</span>
+                                        <span className="max-w-full truncate text-sm font-semibold text-slate-700 sm:max-w-[18rem]">
+                                            {orderDisplayName(order)}
+                                        </span>
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[order.status] ?? 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                             {STATUS_LABELS[order.status] ?? order.status}
                                         </span>

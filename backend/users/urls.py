@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     AdminUserCreateView,
     AdminUserDeleteView,
+    AdminUserSetPasswordView,
     AdminUsersListView,
     AdminUserUpdateView,
     ChangePasswordView,
@@ -43,6 +44,11 @@ urlpatterns = [
     ),
     path(
         "admin/users/<int:pk>/", AdminUserUpdateView.as_view(), name="admin_user_update"
+    ),
+    path(
+        "admin/users/<int:pk>/set-password/",
+        AdminUserSetPasswordView.as_view(),
+        name="admin_user_set_password",
     ),
     path(
         "admin/users/<int:pk>/delete/",
