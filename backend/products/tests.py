@@ -1,8 +1,9 @@
 import csv
-
-import pytest
 import sys
 import types
+from decimal import Decimal
+
+import pytest
 from django.core.cache import cache
 from django.core.management import call_command
 from rest_framework import status
@@ -98,6 +99,42 @@ def test_product_detail_prefers_exact_compatibility_code_over_import_segment():
     assert response.status_code == status.HTTP_200_OK
     assert response.data["compatibility_codes"] == ["0136"]
     assert response.data["compatibility_code"] == "0136"
+
+
+@pytest.mark.django_db
+def test_admin_product_list_includes_batch_lots_for_inventory():
+    from orders.models import BatchLot
+
+    product = make_product(name="Inventory Product", reference="INV-1")
+    BatchLot.objects.create(product=product, batch_number="LOT-2", quantity=3)
+    BatchLot.objects.create(product=product, batch_number="LOT-1", quantity=7)
+
+    response = admin_client().get(
+        "/api/products/", {"admin_view": "1", "search": "INV-1"}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    result = response.data["results"][0]
+    assert result["id"] == product.id
+    assert [(lot["batch_number"], lot["quantity"]) for lot in result["batch_lots"]] == [
+        ("LOT-2", 3),
+        ("LOT-1", 7),
+    ]
+
+
+@pytest.mark.django_db
+def test_public_product_list_does_not_expose_batch_lots():
+    from orders.models import BatchLot
+
+    product = make_product(name="Public Inventory Product", reference="PUB-INV")
+    BatchLot.objects.create(product=product, batch_number="LOT-1", quantity=7)
+
+    response = APIClient().get("/api/products/", {"search": "PUB-INV"})
+
+    assert response.status_code == status.HTTP_200_OK
+    result = response.data["results"][0]
+    assert result["id"] == product.id
+    assert result["batch_lots"] == []
 
 
 @pytest.mark.django_db
@@ -311,6 +348,30 @@ def test_manual_price_override_applies_before_visibility(monkeypatch, tmp_path):
         == import_product_data.MANUAL_PRICE_OVERRIDES["43.620.411.01-2"]
     )
     assert products[0]["is_visible"] is True
+
+
+@pytest.mark.django_db
+def test_update_dealer_prices_uses_dealer_share_for_default_margin(
+    monkeypatch, tmp_path
+):
+    from products.management.commands import update_dealer_prices
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(
+            ["TITANIUM BASE", "Dynamic 3Tibase", "", "31.xxx.xxx.21-2", "30.0"]
+        )
+        writer.writerow(["INTERNAL MU", "TI BASE", "", "31.XXX.XXX.XX-X", "28.0"])
+
+    monkeypatch.setattr(update_dealer_prices, "DEALER_PRICES_CSV", str(dealer_csv))
+    product = make_product(reference="31.313.004.21-2", price="1.00")
+
+    call_command("update_dealer_prices")
+
+    product.refresh_from_db()
+    assert product.price == Decimal("50.00")
 
 
 def test_product_import_vat_classification():

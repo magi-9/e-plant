@@ -89,6 +89,24 @@ const DESKTOP_NAV_LINKS: [string, string][] = [
 
 const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=%C5%A0tefana%20Kr%C3%A1lika%201%2FC%2C%20Bratislava';
 
+function useLandingHashScroll() {
+  useEffect(() => {
+    const scrollToHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (!hash) return;
+      const candidates = Array.from(
+        document.querySelectorAll<HTMLElement>(`#${CSS.escape(hash)}, [data-anchor="${hash}"]`)
+      );
+      const target = candidates.find((el) => el.getClientRects().length > 0) ?? candidates[0];
+      target?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    };
+
+    window.setTimeout(scrollToHash, 0);
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, []);
+}
+
 function useActiveDesktopSection() {
   const [activeSection, setActiveSection] = useState('d-top');
 
@@ -457,7 +475,7 @@ function DesktopHome() {
       </section>
 
       {/* FOOTER */}
-      <footer id="d-contact" style={{ padding: '48px 64px 32px', borderTop: `1px solid ${C.line}`, marginTop: 56, scrollMarginTop: 110 }}>
+      <footer id="d-contact" data-anchor="d-contact" style={{ padding: '48px 64px 32px', borderTop: `1px solid ${C.line}`, marginTop: 56, scrollMarginTop: 110 }}>
         <div style={{ maxWidth: 1440, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32 }}>
             <div>
@@ -522,7 +540,7 @@ function MobileServiceCard({ accent, title, lines }: { accent: string; title: st
 
 function MobileHome() {
   const [menu, setMenu] = useState(false);
-  const links: [string, string][] = [['Domov', '#m-top'], ['Služby', '#m-svc'], ['Kontakt', '#m-foot']];
+  const links: [string, string][] = [['Domov', '#m-top'], ['Služby', '#m-svc'], ['Kontakt', '#d-contact']];
 
   return (
     <div style={{ width: '100%', background: C.bg, fontFamily: 'Mulish, sans-serif', color: C.ink, overflowX: 'hidden' }} id="m-top">
@@ -651,7 +669,7 @@ function MobileHome() {
       </section>
 
       {/* FOOTER */}
-      <footer id="m-foot" style={{ background: '#0e2c34', color: '#cddde0', marginTop: 44, padding: '36px 20px 26px', scrollMarginTop: 84 }}>
+      <footer id="m-foot" data-anchor="d-contact" style={{ background: '#0e2c34', color: '#cddde0', marginTop: 44, padding: '36px 20px 26px', scrollMarginTop: 84 }}>
         <span style={{ background: '#fff', borderRadius: 12, padding: '9px 14px', display: 'inline-block', marginBottom: 16 }}>
           <img src="/uploads/logo-clean.png" alt="Dental design studio Ebringer" style={{ height: 36 }} />
         </span>
@@ -689,6 +707,8 @@ function MobileHome() {
 // ENTRY POINT
 // ──────────────────────────────────────────────
 export default function HomePage() {
+  useLandingHashScroll();
+
   return (
     <>
       <div className="hidden lg:block">

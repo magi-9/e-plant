@@ -300,6 +300,40 @@ class AdminUserUpdateView(generics.UpdateAPIView):
         return AdminUserSerializer
 
 
+class AdminUserSetPasswordView(views.APIView):
+    """Admin endpoint to set a user's password."""
+
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, pk):
+        new_password = request.data.get("new_password", "")
+        if not new_password:
+            return Response(
+                {"error": "Zadajte nové heslo."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return Response(
+                {"error": _translate_password_errors(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        return Response({"success": "Heslo bolo úspešne zmenené."})
+
+
 class AdminUserDeleteView(generics.DestroyAPIView):
     """Admin endpoint to delete a user"""
 
