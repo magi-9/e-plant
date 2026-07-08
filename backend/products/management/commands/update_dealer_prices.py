@@ -2,14 +2,14 @@
 Management command to update product prices from dealer prices CSV.
 
 Reads data/csv/dealer_prices.csv (generated from DEALER PRICES 2025.xlsx),
-then sets each product's price to dealer_price / 0.60 (dealer price is 60%).
+then sets each product's price to dealer_price / 0.60.
 The stored price is ex-VAT (bez DPH).
 
 Prerequisites:
   Run on host: python data/convert_to_csv.py dealer
 
 Usage:
-  python manage.py update_dealer_prices              # apply dealer / 0.60 prices
+  python manage.py update_dealer_prices              # apply prices (dealer / 0.60)
   python manage.py update_dealer_prices --dry-run    # preview without saving
   python manage.py update_dealer_prices --dealer-share 0.65
 """
@@ -23,6 +23,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from products.models import Product
+from products.pricing import DEALER_PRICE_DIVISOR, calculate_net_price_from_dealer
 
 BACKEND_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,8 +38,17 @@ def _normalize_ref(ref_str):
 
 def _ref_to_regex(ref_str):
     normalized = _normalize_ref(ref_str)
-    pattern = re.sub(r"x+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized)
+    pattern = re.sub(
+        r"[xy]+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized
+    )
     return re.compile(r"^" + pattern + r"$")
+
+
+def _wildcard_specificity(ref_str):
+    normalized = _normalize_ref(ref_str)
+    literal_chars = sum(1 for char in normalized if char not in ("x", "y"))
+    wildcard_chars = len(normalized) - literal_chars
+    return literal_chars, -wildcard_chars
 
 
 def _build_dealer_price_lookup(csv_path):
@@ -59,6 +69,7 @@ def _build_dealer_price_lookup(csv_path):
                 patterns.append((_ref_to_regex(ref), price, ref))
             else:
                 exact[_normalize_ref(ref)] = price
+    patterns.sort(key=lambda item: _wildcard_specificity(item[2]), reverse=True)
     return exact, patterns
 
 
@@ -140,6 +151,8 @@ class Command(BaseCommand):
 
             if markup is not None:
                 new_price = (dealer_price * markup).quantize(Decimal("0.01"))
+            elif dealer_share == DEALER_PRICE_DIVISOR:
+                new_price = calculate_net_price_from_dealer(dealer_price)
             else:
                 new_price = (dealer_price / dealer_share).quantize(Decimal("0.01"))
             updated.append((product, new_price))

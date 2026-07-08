@@ -48,15 +48,17 @@ done
 if [ "${IMPORT_PRODUCTS_ON_STARTUP:-false}" = "true" ]; then
     MASTER_CSV="/data/new/product_retail_2025_master.csv"
     MERGED_CSV="/data/csv/import_all_merged.csv"
-    RETAIL_CSV="/data/csv/retail_prices.csv"
+    DEALER_CSV="/data/csv/dealer_prices.csv"
 
-    if [ -f "$MASTER_CSV" ]; then
+    if [ -f "$MASTER_CSV" ] && [ -f "$DEALER_CSV" ]; then
         echo "Importing products from master CSV: $MASTER_CSV"
         if ! python manage.py import_product_data --master --update; then
             echo "WARNING: Product import from master CSV failed; continuing startup."
         fi
-    elif [ -f "$MERGED_CSV" ] && [ -f "$RETAIL_CSV" ]; then
-        echo "Master CSV not found; importing from merged CSV dataset in /data/csv"
+    elif [ -f "$MASTER_CSV" ] && [ ! -f "$DEALER_CSV" ]; then
+        echo "WARNING: Master CSV found but dealer_prices.csv is missing; skipping master import."
+    elif [ -f "$MERGED_CSV" ] && [ -f "$DEALER_CSV" ]; then
+        echo "Master CSV not found; importing from merged CSV + dealer prices dataset in /data/csv"
         if ! python manage.py import_product_data --update; then
             echo "WARNING: Product import from merged CSV failed; continuing startup."
         fi
