@@ -32,7 +32,7 @@ export default function CookieConsent() {
         <div className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-200 shadow-lg">
             <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <p className="text-sm text-gray-700 flex-1">
-                    Táto stránka používa cookies na zabezpečenie funkčnosti a zlepšenie zážitku.
+                    Táto stránka používa nevyhnutné cookies na prihlásenie, košík a bezpečnú prevádzku. Voliteľné analytické a diagnostické cookies spustíme len po vašom súhlase.
                     Viac informácií nájdete v{' '}
                     <Link to="/privacy" className="underline text-[#1565c0] hover:text-[#1565c0]">
                         Zásadách ochrany súkromia

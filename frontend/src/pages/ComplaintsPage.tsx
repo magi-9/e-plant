@@ -100,6 +100,9 @@ export default function ComplaintsPage() {
                     <p>
                         Tento reklamačný poriadok sa vzťahuje výlučne na obchodnoprávne vzťahy medzi podnikateľmi v zmysle príslušných ustanovení Obchodného zákonníka.
                     </p>
+                    <p>
+                        Ak by predávajúci výnimočne predával tovar spotrebiteľovi, práva zo zodpovednosti za vady sa posudzujú podľa spotrebiteľských ustanovení Občianskeho zákonníka a zákona o ochrane spotrebiteľa. Tento B2B reklamačný poriadok takéto spotrebiteľské práva neobmedzuje.
+                    </p>
 
                     <h2>2. Predmet reklamácie</h2>
                     <p>Reklamovať je možné:</p>
