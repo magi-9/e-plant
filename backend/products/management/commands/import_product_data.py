@@ -14,6 +14,7 @@ Usage:
 
 Rules:
   - Every row with a reference is imported (1 ref = 1 product = 1 row).
+  - Prices come from dealer prices as dealer_price / 0.60 and are stored without VAT.
   - Products visible only when name + price present and system is in visible_categories.txt.
   - All other products are stored with is_visible=False.
 """
@@ -29,6 +30,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from products.models import Product, ProductGroup
+from products.pricing import calculate_net_price_from_dealer
 
 BACKEND_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -43,7 +45,7 @@ MANUAL_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "photos-manual")
 RAW_ONEDRIVE_IMAGES_DIR = os.path.join(DATA_DIR, "raw", "OneDrive_1_17-3-2026")
 
 PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
-RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
+DEALER_PRICES_CSV = os.path.join(CSV_DIR, "dealer_prices.csv")
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 MASTER_IMPORT_CSV = os.path.join(NEW_DIR, "product_retail_2025_master.csv")
 
@@ -140,8 +142,17 @@ def ref_to_regex(ref_str):
     e.g. '54.315.xxx.21-2' -> r'^54315\\d{3}212$'
     """
     normalized = normalize_ref(ref_str)
-    pattern = re.sub(r"x+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized)
+    pattern = re.sub(
+        r"[xy]+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized
+    )
     return re.compile(r"^" + pattern + r"$")
+
+
+def wildcard_specificity(ref_str):
+    normalized = normalize_ref(ref_str)
+    literal_chars = sum(1 for char in normalized if char not in ("x", "y"))
+    wildcard_chars = len(normalized) - literal_chars
+    return literal_chars, -wildcard_chars
 
 
 def parse_reference_parts(reference):
@@ -253,7 +264,7 @@ def copy_image(image_key, image_index, dry_run):
 
 def load_retail_products(retail_prices_path):
     """
-    Load the 107 priced products directly from retail_prices.csv.
+    Load priced products directly from a price CSV.
     Each row with a name + price becomes one product.
     Returns list of dicts: {name, reference, category, price, detail}
     """
@@ -269,7 +280,7 @@ def load_retail_products(retail_prices_path):
             if not name or not price_str:
                 continue
             try:
-                price = Decimal(price_str)
+                price = calculate_net_price_from_dealer(price_str)
             except InvalidOperation:
                 continue
 
@@ -287,7 +298,7 @@ def load_retail_products(retail_prices_path):
 
 def load_variant_products(products_csv_path, retail_prices_path):
     """
-    Load all 1885 SKU variants, matching each to a retail price.
+    Load all SKU variants, matching each to a dealer-derived net price.
     Returns list of dicts with price=None if unmatched.
     """
     # Build price lookup
@@ -300,14 +311,15 @@ def load_variant_products(products_csv_path, retail_prices_path):
             if not ref or not price_str:
                 continue
             try:
-                price = Decimal(price_str)
+                price = calculate_net_price_from_dealer(price_str)
             except InvalidOperation:
                 continue
             norm = normalize_ref(ref)
             if re.search(r"[xXyY]", ref):
-                patterns.append((ref_to_regex(ref), price, row["section"].strip()))
+                patterns.append((ref_to_regex(ref), price, row["section"].strip(), ref))
             else:
                 exact[norm] = (price, row["section"].strip())
+    patterns.sort(key=lambda item: wildcard_specificity(item[3]), reverse=True)
 
     products = []
     with open(products_csv_path, newline="", encoding="utf-8") as f:
@@ -321,7 +333,7 @@ def load_variant_products(products_csv_path, retail_prices_path):
             if norm in exact:
                 price, category = exact[norm]
             else:
-                for regex, p, cat in patterns:
+                for regex, p, cat, _raw_ref in patterns:
                     if regex.match(norm):
                         price, category = p, cat
                         break
@@ -339,17 +351,17 @@ def load_variant_products(products_csv_path, retail_prices_path):
     return products
 
 
-def _build_price_lookup(retail_prices_path):
+def _build_price_lookup(dealer_prices_path):
     """
-    Build exact and wildcard price lookup dicts from retail_prices.csv.
+    Build exact and wildcard price lookup dicts from dealer_prices.csv.
 
     Returns:
-        exact   — {normalize_ref(ref): (price, section)}
-        patterns — [(compiled_regex, price, section), ...]
+        exact   — {normalize_ref(ref): (net_price, section)}
+        patterns — [(compiled_regex, net_price, section), ...]
     """
     exact = {}
     patterns = []
-    with open(retail_prices_path, newline="", encoding="utf-8") as f:
+    with open(dealer_prices_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             ref = row.get("reference", "").strip()
             price_str = row.get("price_eur", "").strip()
@@ -357,13 +369,14 @@ def _build_price_lookup(retail_prices_path):
             if not ref or not price_str:
                 continue
             try:
-                price = Decimal(price_str)
+                price = calculate_net_price_from_dealer(price_str)
             except InvalidOperation:
                 continue
             if re.search(r"[xXyY]", ref):
                 patterns.append((ref_to_regex(ref), price, section, ref))
             else:
                 exact[normalize_ref(ref)] = (price, section)
+    patterns.sort(key=lambda item: wildcard_specificity(item[3]), reverse=True)
     return exact, patterns
 
 
@@ -387,14 +400,14 @@ def _lookup_price(ref, reference_num, exact, patterns):
     return None, "", None
 
 
-def load_flat_products(merged_csv_path, retail_prices_path=None):
+def load_flat_products(merged_csv_path, dealer_prices_path=None):
     """
     Load all products from merged CSV as flat 1:1 rows — no wildcard grouping.
 
     Rules:
     - Every row with a reference is imported (even if name/category/price missing).
     - Duplicate references: first occurrence wins.
-    - Price fallback: if no price in merged CSV, look up via retail_prices_path
+    - Price comes from dealer_prices_path using dealer_price / 0.60
       (exact match on reference_num/reference, then wildcard pattern match).
     - is_visible = True only when name, valid price, and an active system category are all present.
     - Missing name falls back to the reference string.
@@ -403,10 +416,10 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
 
     Returns list of dicts ready for bulk_create.
     """
-    # Build retail price lookup once if path provided
+    # Build dealer-derived net price lookup once if path provided.
     exact_prices, wildcard_prices = {}, []
-    if retail_prices_path and os.path.exists(retail_prices_path):
-        exact_prices, wildcard_prices = _build_price_lookup(retail_prices_path)
+    if dealer_prices_path and os.path.exists(dealer_prices_path):
+        exact_prices, wildcard_prices = _build_price_lookup(dealer_prices_path)
 
     from products.compatibility import _load as _load_compat
 
@@ -436,16 +449,8 @@ def load_flat_products(merged_csv_path, retail_prices_path=None):
             )
             reference_num = row.get("reference_num", "").strip()
 
-            # Price: use merged CSV value first; fall back to retail price lookup
-            price_str = row.get("price", "").strip()
             price = None
-            if price_str:
-                try:
-                    price = Decimal(price_str)
-                except InvalidOperation:
-                    price = None
-
-            if price is None and (exact_prices or wildcard_prices):
+            if exact_prices or wildcard_prices:
                 matched_price, matched_section, _ = _lookup_price(
                     ref, reference_num, exact_prices, wildcard_prices
                 )
@@ -676,8 +681,11 @@ def load_merged_products(merged_csv_path):
     return products
 
 
-def load_master_products(master_csv_path):
+def load_master_products(master_csv_path, dealer_prices_path=None):
     """Load products from final master CSV generated in data/new/."""
+    exact_prices, wildcard_prices = {}, []
+    if dealer_prices_path and os.path.exists(dealer_prices_path):
+        exact_prices, wildcard_prices = _build_price_lookup(dealer_prices_path)
 
     def parse_bool(value):
         return str(value).strip().lower() in ("1", "true", "yes")
@@ -700,14 +708,10 @@ def load_master_products(master_csv_path):
         if not reference or not name:
             return None
 
-        price_str = row.get("retail_price", "").strip()
-        if not price_str:
-            price = None
-        else:
-            try:
-                price = Decimal(price_str)
-            except InvalidOperation:
-                price = None
+        price, _, _ = _lookup_price(
+            reference, reference_num, exact_prices, wildcard_prices
+        )
+        has_price = price is not None
 
         categories = row.get("categories", "").strip()
         category = first_category(categories)
@@ -742,11 +746,11 @@ def load_master_products(master_csv_path):
             "reference": reference,
             "reference_num": reference_num,
             "category": category or "Uncategorized",
-            "price": price,
+            "price": price if price is not None else Decimal("0.00"),
             "vat_rate": vat_rate,
             "description": " | ".join([p for p in description_parts if p]),
             "is_active": parse_bool(row.get("active", "false")),
-            "is_visible": parse_bool(row.get("chosen", "false")),
+            "is_visible": parse_bool(row.get("chosen", "false")) and has_price,
             "compatibility_codes": compatibility_codes,
             "raw_systems": raw_systems,
             "all_categories": categories,
@@ -912,7 +916,7 @@ def load_grouped_retail_products(
             has_price = False
             if price_str:
                 try:
-                    price = Decimal(price_str)
+                    price = calculate_net_price_from_dealer(price_str)
                     has_price = True
                 except InvalidOperation:
                     price = Decimal("0.00")
@@ -1048,9 +1052,10 @@ class Command(BaseCommand):
         required_files = []
         if use_master:
             required_files.append((MASTER_IMPORT_CSV, "product_retail_2025_master.csv"))
+            required_files.append((DEALER_PRICES_CSV, "dealer_prices.csv"))
         else:
             required_files.append((MERGED_IMPORT_CSV, "import_all_merged.csv"))
-            required_files.append((RETAIL_PRICES_CSV, "retail_prices.csv"))
+            required_files.append((DEALER_PRICES_CSV, "dealer_prices.csv"))
 
         for path, label in required_files:
             if not os.path.exists(path):
@@ -1070,13 +1075,13 @@ class Command(BaseCommand):
 
         if use_master:
             self.stdout.write("Loading products from final master CSV...")
-            products = load_master_products(MASTER_IMPORT_CSV)
+            products = load_master_products(MASTER_IMPORT_CSV, DEALER_PRICES_CSV)
             self.stdout.write(f"  {len(products)} products from master CSV")
         else:
             self.stdout.write(
                 "Loading all products from merged CSV (flat, 1 ref = 1 product)..."
             )
-            products = load_flat_products(MERGED_IMPORT_CSV, RETAIL_PRICES_CSV)
+            products = load_flat_products(MERGED_IMPORT_CSV, DEALER_PRICES_CSV)
             visible_count = sum(1 for p in products if p["is_visible"])
             self.stdout.write(
                 f"  {len(products)} products ({visible_count} visible, "
@@ -1172,8 +1177,8 @@ class Command(BaseCommand):
 
         # Group rebuild recreates ProductGroup rows. Run it only for a full replace
         # import to avoid nulling groups on skipped products during partial runs.
-        if replace_all and not use_master and os.path.exists(RETAIL_PRICES_CSV):
-            self._ensure_product_groups(RETAIL_PRICES_CSV)
+        if replace_all and not use_master and os.path.exists(DEALER_PRICES_CSV):
+            self._ensure_product_groups(DEALER_PRICES_CSV)
 
         # Apply group auto-assignment before bulk ops (bypassed by bulk_create/update).
         # Pre-fetch all groups once to avoid N+1 queries.

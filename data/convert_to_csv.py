@@ -5,6 +5,7 @@ Run from the project root: python data/convert_to_csv.py
 Outputs (gitignored via data/):
   data/csv/products.csv       — product catalog from references product_ecommerce.xlsx
   data/csv/retail_prices.csv  — retail pricing from DEALER PRICES 2025.xlsx
+  data/csv/dealer_prices.csv  — dealer pricing used to calculate net sales price
 """
 
 import csv
@@ -12,6 +13,8 @@ import datetime
 import os
 import re
 import subprocess
+from decimal import Decimal, InvalidOperation
+
 import openpyxl
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +27,13 @@ PRODUCTS_CSV = os.path.join(CSV_DIR, "products.csv")
 PRODUCT_STUBS_CSV = os.path.join(CSV_DIR, "product_stubs.csv")
 RETAIL_PRICES_CSV = os.path.join(CSV_DIR, "retail_prices.csv")
 DEALER_PRICES_CSV = os.path.join(CSV_DIR, "dealer_prices.csv")
+DEALER_PRICE_DIVISOR = Decimal("0.60")
+
+
+def calculate_net_price_from_dealer(dealer_price):
+    return (Decimal(str(dealer_price)) / DEALER_PRICE_DIVISOR).quantize(
+        Decimal("0.01")
+    )
 MERGED_IMPORT_CSV = os.path.join(CSV_DIR, "import_all_merged.csv")
 COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
 VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
@@ -60,9 +70,16 @@ def ref_to_regex(ref_str):
     """Convert wildcard reference to a regex, matching x/y wildcard groups."""
     normalized = normalize_ref(ref_str)
     pattern = re.sub(
-        r"[xy]+", lambda m: r"\\d{" + str(len(m.group())) + r"}", normalized
+        r"[xy]+", lambda m: r"\d{" + str(len(m.group())) + r"}", normalized
     )
     return re.compile(r"^" + pattern + r"$")
+
+
+def wildcard_specificity(ref_str):
+    normalized = normalize_ref(ref_str)
+    literal_chars = sum(1 for char in normalized if char not in ("x", "y"))
+    wildcard_chars = len(normalized) - literal_chars
+    return literal_chars, -wildcard_chars
 
 
 def parse_reference_parts(reference):
@@ -140,13 +157,27 @@ def convert_dealer_prices():
 
     count = 0
     current_section = ""
+    merged_values = {}
+    for merged_range in ws.merged_cells.ranges:
+        value = ws.cell(merged_range.min_row, merged_range.min_col).value
+        for row in range(merged_range.min_row, merged_range.max_row + 1):
+            for col in range(merged_range.min_col, merged_range.max_col + 1):
+                merged_values[(row, col)] = value
+
+    def cell_value(row, col):
+        return merged_values.get((row, col), ws.cell(row, col).value)
 
     with open(DEALER_PRICES_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["section", "name", "detail", "reference", "price_eur"])
 
-        for row in ws.iter_rows(values_only=True):
-            col_a, col_b, col_c, col_d = row[0], row[1], row[2], row[3]
+        for row_idx in range(1, ws.max_row + 1):
+            col_a, col_b, col_c, col_d = (
+                cell_value(row_idx, 1),
+                cell_value(row_idx, 2),
+                cell_value(row_idx, 3),
+                cell_value(row_idx, 4),
+            )
 
             if all(v is None for v in [col_a, col_b, col_c, col_d]):
                 continue
@@ -884,15 +915,19 @@ def build_engaging_map(parsed_rows):
 
 
 def build_price_lookup():
-    """Build exact + wildcard pricing lookups from retail prices CSV."""
+    """Build exact + wildcard net pricing lookups from dealer prices CSV."""
     exact = {}
     patterns = []
 
-    with open(RETAIL_PRICES_CSV, newline="", encoding="utf-8") as f:
+    with open(DEALER_PRICES_CSV, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             ref = row["reference"].strip()
-            price = row["price_eur"].strip()
-            if not ref:
+            price_str = row["price_eur"].strip()
+            if not ref or not price_str:
+                continue
+            try:
+                price = str(calculate_net_price_from_dealer(price_str))
+            except InvalidOperation:
                 continue
 
             payload = {
@@ -907,12 +942,15 @@ def build_price_lookup():
                 patterns.append((ref_to_regex(ref), payload))
             else:
                 exact[norm] = payload
+    patterns.sort(
+        key=lambda item: wildcard_specificity(item[1]["reference"]), reverse=True
+    )
 
     return exact, patterns
 
 
 def match_price(reference_num, exact, patterns):
-    """Match variant reference number to exact or wildcard retail pricing."""
+    """Match variant reference number to exact or wildcard dealer-derived pricing."""
     norm = normalize_ref(reference_num)
     if norm in exact:
         return exact[norm], "exact"

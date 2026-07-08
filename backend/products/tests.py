@@ -16,6 +16,7 @@ from products.models import (
     WildcardGroup,
 )
 from products.grouping import masked_variant_reference
+from products.pricing import calculate_net_price_from_dealer
 from products.services.wildcard_sync import sync_wildcard_groups
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
@@ -41,6 +42,11 @@ def admin_client():
     client = APIClient()
     client.force_authenticate(user=user)
     return client
+
+
+def test_dealer_price_formula_returns_net_price_before_vat():
+    assert calculate_net_price_from_dealer("60") == Decimal("100.00")
+    assert calculate_net_price_from_dealer("12.50") == Decimal("20.83")
 
 
 @pytest.mark.django_db
@@ -372,6 +378,111 @@ def test_update_dealer_prices_uses_dealer_share_for_default_margin(
 
     product.refresh_from_db()
     assert product.price == Decimal("50.00")
+
+
+def test_flat_import_calculates_net_price_from_dealer_csv(monkeypatch, tmp_path):
+    from products import compatibility
+    from products.management.commands import import_product_data
+
+    monkeypatch.setattr(
+        compatibility, "_load", lambda: {"0001": frozenset({"31.312.001"})}
+    )
+
+    merged_csv = tmp_path / "import_all_merged.csv"
+    with merged_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            [
+                "name",
+                "price",
+                "reference",
+                "reference_num",
+                "primary_system_category",
+                "is_active_from_categories",
+                "compatibility_code",
+                "system_categories",
+                "catalog_section",
+            ]
+        )
+        writer.writerow(
+            [
+                "Dynamic TiBase",
+                "999.00",
+                "31.312.001.01-2",
+                "31312001012",
+                "STANDARD DYNAMIC TIBASE",
+                "1",
+                "0001",
+                "STANDARD DYNAMIC TIBASE",
+                "STANDARD DYNAMIC TIBASE",
+            ]
+        )
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(
+            [
+                "STANDARD DYNAMIC TIBASE",
+                "Dynamic TiBase",
+                "",
+                "31.312.001.01-2",
+                "60",
+            ]
+        )
+
+    products = import_product_data.load_flat_products(str(merged_csv), str(dealer_csv))
+
+    assert products[0]["price"] == Decimal("100.00")
+    assert products[0]["is_visible"] is True
+
+
+def test_dealer_lookup_prefers_specific_wildcard_over_generic(tmp_path):
+    from products.management.commands import import_product_data
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(["Generic", "TI BASE", "", "31.XXX.XXX.XX-X", "28"])
+        writer.writerow(
+            [
+                "TITANIUM BASE",
+                "Dynamic Tibases",
+                "",
+                "31.xxx.xxx.04-2",
+                "30",
+            ]
+        )
+
+    exact, patterns = import_product_data._build_price_lookup(str(dealer_csv))
+    price, section, raw_ref = import_product_data._lookup_price(
+        "31.323.030.04-2", "31323030042", exact, patterns
+    )
+
+    assert price == Decimal("50.00")
+    assert section == "TITANIUM BASE"
+    assert raw_ref == "31.xxx.xxx.04-2"
+
+
+def test_dealer_lookup_treats_y_as_digit_wildcard(tmp_path):
+    from products.management.commands import import_product_data
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(["DYNAMIC ABUTMENT", "Internal", "", "21.2xx.yyy.01-2", "51"])
+
+    exact, patterns = import_product_data._build_price_lookup(str(dealer_csv))
+    price, section, raw_ref = import_product_data._lookup_price(
+        "21.212.003.01-2", "21212003012", exact, patterns
+    )
+
+    assert price == Decimal("85.00")
+    assert section == "DYNAMIC ABUTMENT"
+    assert raw_ref == "21.2xx.yyy.01-2"
 
 
 def test_product_import_vat_classification():

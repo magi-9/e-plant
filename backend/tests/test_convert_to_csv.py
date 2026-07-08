@@ -1,4 +1,5 @@
 import importlib.util
+import csv
 from pathlib import Path
 
 import pytest
@@ -542,3 +543,55 @@ def test_row_to_option_tokens_labels_product_type_and_related_tools():
     assert "ADAPTOR:50.311.119.03-2" in scanbody_tokens
     assert "SCREWDRIVER ADAPTOR:43.621.410.01-2" in scanbody_tokens
     assert "DYNAMIC SCREW:18" in dynamic_screw_tokens
+
+
+def test_convert_dealer_prices_expands_merged_cells(tmp_path, monkeypatch):
+    workbook_path = tmp_path / "DEALER PRICES 2025.xlsx"
+    wb = convert_to_csv.openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dealer 2025"
+
+    ws.append(["DEALER PRICES 2025", None, None, None])
+    ws.append(["TITANIUM BASE (screw included)", None, None, None])
+    ws.append(["Dynamic Tibases", "Non-engaging / Engaging", "31.xxx.xxx.02-2", 30])
+    ws.append([None, None, "31.xxx.xxx.03-2", None])
+    ws.append([None, None, "31.xxx.xxx.04-2", None])
+    ws.merge_cells("A3:A5")
+    ws.merge_cells("B3:B5")
+    ws.merge_cells("D3:D5")
+    wb.save(workbook_path)
+
+    output_csv = tmp_path / "dealer_prices.csv"
+    monkeypatch.setattr(convert_to_csv, "DEALER_PRICES_CSV", str(output_csv))
+    monkeypatch.setattr(
+        convert_to_csv, "resolve_source_file", lambda _name: str(workbook_path)
+    )
+
+    convert_to_csv.convert_dealer_prices()
+
+    with output_csv.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    assert rows == [
+        {
+            "section": "TITANIUM BASE (screw included)",
+            "name": "Dynamic Tibases",
+            "detail": "Non-engaging / Engaging",
+            "reference": "31.xxx.xxx.02-2",
+            "price_eur": "30.0",
+        },
+        {
+            "section": "TITANIUM BASE (screw included)",
+            "name": "Dynamic Tibases",
+            "detail": "Non-engaging / Engaging",
+            "reference": "31.xxx.xxx.03-2",
+            "price_eur": "30.0",
+        },
+        {
+            "section": "TITANIUM BASE (screw included)",
+            "name": "Dynamic Tibases",
+            "detail": "Non-engaging / Engaging",
+            "reference": "31.xxx.xxx.04-2",
+            "price_eur": "30.0",
+        },
+    ]
