@@ -1177,8 +1177,17 @@ def test_catalog_reference_matching_ignores_pdf_spacing():
     )
 
 
+def _stub_catalog_pdf_cache(monkeypatch, mtime=1.0):
+    views._CATALOG_PAGE_TEXTS_CACHE.clear()
+    monkeypatch.setattr(views.os.path, "getmtime", lambda _path: mtime)
+
+
 def test_catalog_page_search_prefers_pdftotext(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
+    calls = []
+
     def fake_run(*_args, **_kwargs):
+        calls.append(_args)
         return types.SimpleNamespace(
             returncode=0, stdout="page one\fcontains 50.312.120.03-2\fpage three"
         )
@@ -1186,9 +1195,13 @@ def test_catalog_page_search_prefers_pdftotext(monkeypatch):
     monkeypatch.setattr(views.subprocess, "run", fake_run)
 
     assert views._find_reference_pages("catalog.pdf", "50.312.120.03-2") == [2]
+    assert views._find_reference_pages("catalog.pdf", "missing") == []
+    assert len(calls) == 1
 
 
 def test_catalog_page_search_falls_back_to_pypdf_without_pdftotext(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
+
     class MatchingPage:
         def extract_text(self):
             return "contains 50.312.120.03-2"
@@ -1209,6 +1222,8 @@ def test_catalog_page_search_falls_back_to_pypdf_without_pdftotext(monkeypatch):
 
 
 def test_find_multiple_reference_pages_merges_refs(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
+
     def fake_run(*_args, **_kwargs):
         return types.SimpleNamespace(
             returncode=0,
@@ -1221,6 +1236,8 @@ def test_find_multiple_reference_pages_merges_refs(monkeypatch):
 
 
 def test_find_multiple_reference_pages_falls_back_to_pypdf(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
+
     class Page:
         def __init__(self, text):
             self._text = text
@@ -1336,6 +1353,7 @@ def test_catalog_pages_include_compatible_prefers_0041b_for_tibase(monkeypatch):
 
 
 def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
     pages = ["unrelated page"] * 153
     pages[9] = "S/RI/RS/RSX        3,25/3,75        3,67       0050            151"
     pages[150] = "COMPATIBLE WITH\n0050\nLIST OF COMPATIBILITIES AVAILABLE"
@@ -1354,6 +1372,7 @@ def test_find_multiple_reference_pages_matches_compatibility_code_headers(monkey
 
 
 def test_find_multiple_reference_pages_distinguishes_suffixed_codes(monkeypatch):
+    _stub_catalog_pdf_cache(monkeypatch)
     pages = ["COMPATIBLE WITH 0041", "COMPATIBLE WITH\n0041B"]
 
     def fake_run(*_args, **_kwargs):
