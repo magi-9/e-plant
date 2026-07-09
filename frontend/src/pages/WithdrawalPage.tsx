@@ -30,7 +30,7 @@ export default function WithdrawalPage() {
                             <strong>Predávajúci:</strong><br />
                             {company.companyName}<br />
                             {company.fullAddress || 'Slovensko'}<br />
-                            E-mail: info@ebringer.sk
+                            E-mail: {company.companyEmail}
                         </p>
 
                         <p className="mb-4">

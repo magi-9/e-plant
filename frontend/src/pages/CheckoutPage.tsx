@@ -743,11 +743,15 @@ export default function CheckoutPage() {
                                             )}
                                         </div>
                                         <span className="text-sm text-slate-600 leading-relaxed">
-                                            Súhlasím so{' '}
+                                            Potvrdzujem, že som sa oboznámil/a s{' '}
                                             <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-[#2196f3] hover:underline">
                                                 všeobecnými podmienkami
-                                            </a>{' '}
-                                            a{' '}
+                                            </a>
+                                            ,{' '}
+                                            <a href="/complaints" target="_blank" rel="noreferrer" className="font-semibold text-[#2196f3] hover:underline">
+                                                reklamačným poriadkom
+                                            </a>
+                                            {' '}a{' '}
                                             <a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[#2196f3] hover:underline">
                                                 GDPR / ochranou osobných údajov
                                             </a>.

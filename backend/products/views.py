@@ -1629,6 +1629,7 @@ _CATALOG_PDF_CANDIDATES = [
 ]
 _CATALOG_REFERENCE_RE = re.compile(r"[^0-9A-Za-z]+")
 _CATALOG_COMPATIBILITY_CODE_RE = re.compile(r"\d{4}[A-Za-z]?")
+_CATALOG_PAGE_TEXTS_CACHE: dict[tuple[str, float], tuple[str, ...]] = {}
 
 
 def _catalog_pdf_path():
@@ -1645,7 +1646,9 @@ class CatalogPdfView(APIView):
         path = _catalog_pdf_path()
         if not path:
             raise Http404("Catalog PDF not found")
-        return FileResponse(open(path, "rb"), content_type="application/pdf")
+        response = FileResponse(open(path, "rb"), content_type="application/pdf")
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
 
 
 class CatalogPdfPagesView(APIView):
@@ -1677,7 +1680,9 @@ class CatalogPdfPagesView(APIView):
             matching = _find_multiple_reference_pages(path, refs_to_search)
         else:
             matching = _find_reference_pages(path, reference)
-        return Response({"pages": matching})
+        response = Response({"pages": matching})
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
 
 
 def _prefer_specific_catalog_codes(codes: list) -> list:
@@ -1692,65 +1697,44 @@ def _prefer_specific_catalog_codes(codes: list) -> list:
 
 def _find_multiple_reference_pages(pdf_path: str, references: frozenset) -> list:
     """Return sorted 1-based page numbers whose text contains any of the given references."""
-    try:
-        result = subprocess.run(
-            ["pdftotext", "-layout", pdf_path, "-"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-        )
-        if result.returncode == 0:
-            pages_text = result.stdout.split("\f")
-            return sorted(
-                i + 1
-                for i, page_text in enumerate(pages_text)
-                if any(
-                    _catalog_page_contains_reference(page_text, ref)
-                    for ref in references
-                )
-            )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
-    try:
-        from pypdf import PdfReader  # noqa: PLC0415
-
-        reader = PdfReader(pdf_path)
-        return sorted(
-            i + 1
-            for i, page in enumerate(reader.pages)
-            if any(
-                _catalog_page_contains_reference(page.extract_text() or "", ref)
-                for ref in references
-            )
-        )
-    except Exception:
-        return []
+    return sorted(
+        i + 1
+        for i, page_text in enumerate(_catalog_page_texts(pdf_path))
+        if any(_catalog_page_contains_reference(page_text, ref) for ref in references)
+    )
 
 
 def _find_reference_pages(pdf_path: str, reference: str) -> list:
     """Return 1-based page numbers whose text contains reference."""
-    matches = _find_reference_pages_with_pdftotext(pdf_path, reference)
-    if matches:
-        return matches
+    return [
+        i + 1
+        for i, page_text in enumerate(_catalog_page_texts(pdf_path))
+        if _catalog_page_contains_reference(page_text, reference)
+    ]
 
+
+def _catalog_page_texts(pdf_path: str) -> tuple[str, ...]:
+    """Return catalog page text, cached until the source PDF changes."""
     try:
-        from pypdf import PdfReader  # noqa: PLC0415
+        cache_key = (pdf_path, os.path.getmtime(pdf_path))
+    except OSError:
+        return ()
 
-        reader = PdfReader(pdf_path)
-        return [
-            i + 1
-            for i, page in enumerate(reader.pages)
-            if _catalog_page_contains_reference(page.extract_text() or "", reference)
-        ]
-    except Exception:
-        return []
+    cached = _CATALOG_PAGE_TEXTS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    pages_text = _catalog_page_texts_with_pdftotext(pdf_path)
+    if not pages_text:
+        pages_text = _catalog_page_texts_with_pypdf(pdf_path)
+
+    _CATALOG_PAGE_TEXTS_CACHE.clear()
+    _CATALOG_PAGE_TEXTS_CACHE[cache_key] = pages_text
+    return pages_text
 
 
-def _find_reference_pages_with_pdftotext(pdf_path: str, reference: str) -> list:
-    """Return matching pages using poppler's pdftotext when available."""
+def _catalog_page_texts_with_pdftotext(pdf_path: str) -> tuple[str, ...]:
+    """Return all page text using poppler's pdftotext when available."""
     try:
         result = subprocess.run(
             ["pdftotext", "-layout", pdf_path, "-"],
@@ -1761,16 +1745,21 @@ def _find_reference_pages_with_pdftotext(pdf_path: str, reference: str) -> list:
             timeout=60,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        return []
+        return ()
 
     if result.returncode != 0:
-        return []
-    pages_text = result.stdout.split("\f")
-    return [
-        i + 1
-        for i, page_text in enumerate(pages_text)
-        if _catalog_page_contains_reference(page_text, reference)
-    ]
+        return ()
+    return tuple(result.stdout.split("\f"))
+
+
+def _catalog_page_texts_with_pypdf(pdf_path: str) -> tuple[str, ...]:
+    try:
+        from pypdf import PdfReader  # noqa: PLC0415
+
+        reader = PdfReader(pdf_path)
+        return tuple(page.extract_text() or "" for page in reader.pages)
+    except Exception:
+        return ()
 
 
 def _normalise_catalog_reference(value: str) -> str:

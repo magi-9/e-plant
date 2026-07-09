@@ -23,6 +23,8 @@ export default function TermsPage() {
                         <strong>Sídlo:</strong> {company.fullAddress || 'Slovensko'}<br />
                         <strong>IČO:</strong> {company.companyIco || 'Neuvedené'}<br />
                         <strong>DIČ / IČ DPH:</strong> {[company.companyDic, company.companyVatId].filter(Boolean).join(' / ') || 'Neuvedené'}<br />
+                        <strong>Register:</strong> zápis v príslušnom obchodnom alebo živnostenskom registri podľa údajov predávajúceho.<br />
+                        <strong>Orgán dozoru:</strong> Slovenská obchodná inšpekcia, Inšpektorát SOI pre Bratislavský kraj, Bajkalská 21/A, P. O. BOX 5, 820 07 Bratislava.
                     </p>
 
                     <h2>2. Rozsah pôsobnosti</h2>
@@ -32,7 +34,7 @@ export default function TermsPage() {
 
                     <h2>3. Kontaktné údaje</h2>
                     <p>
-                        <strong>Email:</strong> info@ebringer.sk<br />
+                        <strong>Email:</strong> {company.companyEmail}<br />
                         <strong>Telefón:</strong> {company.companyPhone || 'Neuvedené'}<br />
                     </p>
 
@@ -52,19 +54,27 @@ export default function TermsPage() {
                         Dodanie tovaru závisí od jeho aktuálnej dostupnosti. O vybavení alebo odoslaní objednávky je zákazník informovaný e-mailom.
                     </p>
 
-                    <h2>7. Odstúpenie od zmluvy a vrátenie tovaru</h2>
+                    <h2>7. Uzavretie objednávky a potvrdenie</h2>
+                    <p>
+                        Kupujúci pred odoslaním objednávky vidí súhrn objednaného tovaru, množstvá, cenu tovaru, DPH a cenu dopravy. Objednávka sa odosiela tlačidlom označeným ako objednávka s povinnosťou platby. Predávajúci bezodkladne potvrdí prijatie objednávky e-mailom. Predfaktúra alebo faktúra vo formáte PDF môže byť priložená k e-mailu ako trvalý nosič objednávkových údajov.
+                    </p>
+
+                    <h2>8. Odstúpenie od zmluvy a vrátenie tovaru</h2>
                     <p>
                         Keďže ide o B2B obchodný vzťah medzi podnikateľmi, zákonné spotrebiteľské právo na odstúpenie od zmluvy bez uvedenia dôvodu do 14 dní sa neuplatňuje. Vrátenie alebo výmena tovaru mimo reklamácie je možná iba po predchádzajúcej dohode s predávajúcim. Podmienky vrátenia nájdete na stránke <a href="/withdrawal" className="text-blue-600 hover:text-blue-800">Vrátenie tovaru v B2B režime</a>.
                     </p>
 
-                    <h2>8. Reklamačný poriadok</h2>
+                    <h2>9. Zodpovednosť za vady</h2>
                     <p>
                         Práva zo zodpovednosti za vady sa uplatňujú v B2B režime podľa Obchodného zákonníka a podľa reklamačného poriadku predávajúceho. Bližšie informácie o spôsobe uplatnenia reklamácie nájdete v <a href="/complaints" className="text-blue-600 hover:text-blue-800">Reklamačnom poriadku pre B2B zákazníkov</a>.
                     </p>
 
-                    <h2>9. Riešenie sporov</h2>
+                    <h2>10. Riešenie sporov</h2>
                     <p>
                         Prípadné spory budú zmluvné strany riešiť prednostne vzájomnou komunikáciou a dohodou. Ak nedôjde k dohode, spor sa bude riešiť podľa príslušných právnych predpisov Slovenskej republiky.
+                    </p>
+                    <p>
+                        Ak by predávajúci výnimočne uzatváral zmluvu so spotrebiteľom, spotrebiteľ môže využiť postup alternatívneho riešenia spotrebiteľských sporov podľa platných právnych predpisov. Platforma Európskej komisie na riešenie sporov online (RSO/ODR) bola ukončená 20. júla 2025, preto sa na ňu tieto podmienky neodkazujú.
                     </p>
                 </div>
             </div>
