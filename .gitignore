@@ -36,6 +36,9 @@ data/raw/
 data/to_import/
 data/new/
 data/__pycache__/
+
+# Local deployment helpers
+update-all-data.sh
 # Added by code-review-graph
 .code-review-graph/
 

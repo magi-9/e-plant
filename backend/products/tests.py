@@ -438,6 +438,58 @@ def test_flat_import_calculates_net_price_from_dealer_csv(monkeypatch, tmp_path)
     assert products[0]["is_visible"] is True
 
 
+def test_flat_import_keeps_priced_catalog_components_visible(tmp_path):
+    from products.management.commands import import_product_data
+
+    merged_csv = tmp_path / "import_all_merged.csv"
+    with merged_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            [
+                "name",
+                "price",
+                "reference",
+                "reference_num",
+                "primary_system_category",
+                "is_active_from_categories",
+                "compatibility_code",
+                "system_categories",
+                "catalog_section",
+            ]
+        )
+        writer.writerow(
+            [
+                "Dynamic TiBase DAS Multi-Unit NR G0.5",
+                "42.00",
+                "31.312.209.01-2",
+                "31312209012",
+                "",
+                "0",
+                "0209",
+                "",
+                "",
+            ]
+        )
+
+    dealer_csv = tmp_path / "dealer_prices.csv"
+    with dealer_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["section", "name", "detail", "reference", "price_eur"])
+        writer.writerow(
+            [
+                "MULTI-UNIT",
+                "DAS Multi-Unit Engaging Dynamic Ti-Base, G0.5",
+                "",
+                "31.312.209.01-2",
+                "25.20",
+            ]
+        )
+
+    products = import_product_data.load_flat_products(str(merged_csv), str(dealer_csv))
+
+    assert products[0]["is_visible"] is True
+
+
 def test_dealer_lookup_prefers_specific_wildcard_over_generic(tmp_path):
     from products.management.commands import import_product_data
 

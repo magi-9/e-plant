@@ -5,7 +5,7 @@ Parse DAS dental product catalog PDF → products.csv + compat_index.csv
 Usage:
     python data/parse_catalog.py data/raw/PRODUCT-REFERENCE-2026-01.pdf
     python data/parse_catalog.py /path/to/file.pdf --output /output/
-    python data/parse_catalog.py /path/to/file.pdf --pages-index 9-42 --pages-products 43-329
+    python data/parse_catalog.py /path/to/file.pdf --pages-index 9-42 --pages-products 43-331
 """
 
 import argparse
@@ -998,7 +998,7 @@ def main() -> None:
     parser.add_argument("pdf", help="Path to the PDF catalog file")
     parser.add_argument("--output", default="output", help="Output directory (default: ./output)")
     parser.add_argument("--pages-index", default="9-42")
-    parser.add_argument("--pages-products", default="43-329")
+    parser.add_argument("--pages-products", default="43-331")
     args = parser.parse_args()
 
     if not os.path.exists(args.pdf):
