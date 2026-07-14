@@ -15,7 +15,7 @@ Usage:
 Rules:
   - Every row with a reference is imported (1 ref = 1 product = 1 row).
   - Prices come from dealer prices as dealer_price / 0.60 and are stored without VAT.
-  - Products visible only when name + price present and system is in visible_categories.txt.
+  - Products are visible when name + price are present.
   - All other products are stored with is_visible=False.
 """
 
@@ -409,7 +409,7 @@ def load_flat_products(merged_csv_path, dealer_prices_path=None):
     - Duplicate references: first occurrence wins.
     - Price comes from dealer_prices_path using dealer_price / 0.60
       (exact match on reference_num/reference, then wildcard pattern match).
-    - is_visible = True only when name, valid price, and an active system category are all present.
+    - is_visible = True when name and valid price are present.
     - Missing name falls back to the reference string.
     - Missing category falls back to 'Uncategorized'.
     - Missing price is stored as 0.00 with is_visible = False.
@@ -420,11 +420,6 @@ def load_flat_products(merged_csv_path, dealer_prices_path=None):
     exact_prices, wildcard_prices = {}, []
     if dealer_prices_path and os.path.exists(dealer_prices_path):
         exact_prices, wildcard_prices = _build_price_lookup(dealer_prices_path)
-
-    from products.compatibility import _load as _load_compat
-
-    compat_data = _load_compat()
-    all_compat_families = {f for prefixes in compat_data.values() for f in prefixes}
 
     seen_refs = set()
     products = []
@@ -463,10 +458,7 @@ def load_flat_products(merged_csv_path, dealer_prices_path=None):
                 price = MANUAL_PRICE_OVERRIDES[ref]
 
             is_active = str(row.get("is_active_from_categories", "0")).strip() == "1"
-            ref_parts = ref.split(".")
-            ref_family = ".".join(ref_parts[:3]) if len(ref_parts) >= 3 else ""
-            has_compat = bool(all_compat_families) and ref_family in all_compat_families
-            is_visible = bool(name and price is not None and is_active and has_compat)
+            is_visible = bool(name and price is not None)
 
             all_categories = row.get("system_categories", "").strip()
             engaging_raw = row.get("engaging", "").strip()

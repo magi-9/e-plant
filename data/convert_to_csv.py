@@ -1384,7 +1384,7 @@ def convert_catalog_pdf_options():
             parse_products as _parse_products,
         )
 
-        product_text = _extract_text(pdf_path, first_page=43, last_page=329)
+        product_text = _extract_text(pdf_path, first_page=43, last_page=331)
         catalog_rows = _parse_products(product_text, pdf_first_page=43)
         product_type_map = _build_product_type_map(catalog_rows)
         option_map = build_option_map(

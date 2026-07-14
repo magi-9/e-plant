@@ -13,14 +13,14 @@ Nasledujúce súbory musia byť prítomné v `data/raw/`:
 | `PRODUCT-REFERENCE-2026-01.pdf` | PDF katalóg produktov |
 | `references product_ecommerce.xlsx` | Zoznam všetkých SKU + názvov |
 | `DEALER PRICES 2025.xlsx` | Cenník |
-| `visible_categories.txt` | Povolené systémy (viditeľné v storefront) |
+| `visible_categories.txt` | Preferované systémy pre primárnu kategóriu |
 
 ### `visible_categories.txt` — formát
 Čiarka alebo nový riadok oddeľuje názvy systémov, napr.:
 ```
 BIOMET 3L, ASTRA, STRAUMANN, OSSTEM
 ```
-Produkty, ktorých systém nie je v tomto zozname, budú uložené s `is_visible=False`.
+Produkty bez systému z tohto zoznamu môžu stále zostať viditeľné, ak majú názov a cenu.
 
 ---
 ## Servers import
@@ -45,6 +45,11 @@ rsync -avzP /home/tomas-magula/Documents/Projects/e-plant/data/ e-plant:/root/ep
 Spúšťaj tento krok v repozitári na hoste, nie v backend kontajneri. V kontajneri `backend` sa totiž `data/` typicky nemontuje pod `/app` a navyše tam často chýba Python balík `openpyxl`.
 
 Ak chceš skript spustiť mimo hosta, použi prostredie, kde je nainštalovaný `openpyxl` a ďalšie Python závislosti z import skriptov.
+
+Produktové compatibility bloky z PDF sa parsujú zo strán `43-331`. Technické
+parametre skrutiek sa berú zo samostatných technických strán. Komponentové
+produkty zo strán `340-343` prichádzajú cez Excel/cenník a majú zostať viditeľné,
+ak majú názov a cenu, aj keď nemajú klasický compatibility blok.
 
 ```bash
 python data/convert_to_csv.py
@@ -84,8 +89,8 @@ Výstup importu hlási:
 1812 products (1605 visible, 207 hidden due to incomplete data)
 ```
 
-- **visible** = má meno + cenu + systém z `visible_categories.txt`
-- **hidden** = chýba niektorý z týchto údajov (je v DB, ale skrytý)
+- **visible** = má meno + cenu
+- **hidden** = chýba meno alebo cena (je v DB, ale skrytý)
 
 ---
 
@@ -130,7 +135,7 @@ Ak chceš pridať/odobrať systém zo storefrontu:
 4. Spusti `docker compose exec backend python manage.py import_product_data --update`
 
 > **Pozor:** Zmena `visible_categories.txt` zmení aj `primary_system_category` v CSV,
-> čo ovplyvní `is_visible` všetkých dotknutých produktov po ďalšom importe.
+> čo ovplyvní kategóriu/systém produktu po ďalšom importe, nie samotnú viditeľnosť.
 
 ---
 
