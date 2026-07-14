@@ -52,6 +52,25 @@ def test_product_detail_visibility(api_client, user_factory, product_factory):
 
 
 @pytest.mark.django_db
+def test_product_sitemap_lists_visible_product_urls(
+    api_client, product_factory, monkeypatch
+):
+    monkeypatch.setenv("SHOP_DOMAIN", "dynamicabutment.ebringer.sk")
+    visible = product_factory(name="Visible", is_visible=True)
+    hidden = product_factory(name="Hidden", is_visible=False)
+    url = reverse("product_sitemap")
+
+    response = api_client.get(url, HTTP_HOST="dynamicabutment.ebringer.sk")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response["Content-Type"] == "application/xml"
+    body = response.content.decode()
+    assert f"https://dynamicabutment.ebringer.sk/products/{visible.id}" in body
+    assert f"https://dynamicabutment.ebringer.sk/products/{hidden.id}" not in body
+    assert "https://dynamicabutment.ebringer.sk/products</loc>" in body
+
+
+@pytest.mark.django_db
 def test_ordering_query_param_skips_default_ordering(
     api_client, user_factory, product_factory
 ):

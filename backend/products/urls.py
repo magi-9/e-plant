@@ -27,6 +27,7 @@ from .views import (
     ProductCountView,
     ProductGroupListView,
     ProductInquiryView,
+    ProductSitemapView,
     ProductTypeCountsView,
     ProductViewSet,
 )
@@ -56,6 +57,7 @@ urlpatterns = [
         ProductTypeCountsView.as_view(),
         name="product_type_counts",
     ),
+    path("sitemap.xml", ProductSitemapView.as_view(), name="product_sitemap"),
     path("count/", ProductCountView.as_view(), name="product_count"),
     path("inquiry/", ProductInquiryView.as_view(), name="product_inquiry"),
     path("", ProductViewSet.as_view({"get": "list"}), name="product_list"),
