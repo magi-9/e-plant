@@ -1,5 +1,7 @@
-import importlib.util
 import csv
+import importlib.util
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -383,6 +385,77 @@ def test_parse_pdf_technical_spec_options_extracts_straight_screw_specs():
             "options": expected_options,
         }
     ]
+
+
+def test_convert_catalog_pdf_options_uses_catalog_page_ranges(monkeypatch):
+    calls = []
+    fake_parse_catalog = types.SimpleNamespace()
+
+    def fake_extract_text(pdf_path, first_page=None, last_page=None):
+        calls.append(("extract_text", pdf_path, first_page, last_page))
+        return "CATALOG PRODUCT TEXT"
+
+    fake_parse_catalog.extract_text = fake_extract_text
+    fake_parse_catalog.parse_products = lambda text, pdf_first_page=43: [
+        {
+            "sku": "31.312.001.01-2",
+            "product_type": "STANDARD DYNAMIC TIBASE",
+            "engaging": 1,
+        }
+    ]
+
+    def fake_load_pdf_text(pdf_path, first_page=None, last_page=None):
+        calls.append(("load_pdf_text", pdf_path, first_page, last_page))
+        if (first_page, last_page) == convert_to_csv.TECHNICAL_SPEC_PAGES:
+            return "DYNAMIC SCREWS TECHNICAL SPECIFICATIONS\n" "41.314.039.01-2"
+        return "SYSTEM MAP TEXT"
+
+    monkeypatch.setitem(sys.modules, "parse_catalog", fake_parse_catalog)
+    monkeypatch.setattr(
+        convert_to_csv, "resolve_source_file", lambda _name: "/tmp/catalog.pdf"
+    )
+    monkeypatch.setattr(
+        convert_to_csv,
+        "load_active_categories",
+        lambda _path: {},
+    )
+    monkeypatch.setattr(convert_to_csv, "load_pdf_text", fake_load_pdf_text)
+    monkeypatch.setattr(
+        convert_to_csv,
+        "parse_pdf_compatibility_rows",
+        lambda text: [{"reference": "31.312.001.01-2", "options": "GH(mm):1"}],
+    )
+    monkeypatch.setattr(
+        convert_to_csv, "write_compatibility_options_csv", lambda rows: None
+    )
+    monkeypatch.setattr(
+        convert_to_csv,
+        "parse_code_to_systems_map",
+        lambda text: {},
+    )
+    monkeypatch.setattr(
+        convert_to_csv,
+        "parse_pdf_technical_spec_options",
+        lambda text: [{"reference": "41.314.039.01-2", "options": "METRIC:1.4"}],
+    )
+    monkeypatch.setattr(
+        convert_to_csv,
+        "build_merged_import_csv",
+        lambda *args, **kwargs: None,
+    )
+
+    convert_to_csv.convert_catalog_pdf_options()
+
+    assert (
+        "extract_text",
+        "/tmp/catalog.pdf",
+        *convert_to_csv.CATALOG_PRODUCT_PAGES,
+    ) in calls
+    assert (
+        "load_pdf_text",
+        "/tmp/catalog.pdf",
+        *convert_to_csv.TECHNICAL_SPEC_PAGES,
+    ) in calls
 
 
 def test_parse_pdf_technical_spec_options_keeps_straight_screw_columns_aligned():

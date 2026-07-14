@@ -39,6 +39,9 @@ COMPATIBILITY_OPTIONS_CSV = os.path.join(CSV_DIR, "compatibility_options.csv")
 VISIBLE_CATEGORIES_TXT = os.path.join(RAW_DIR, "visible_categories.txt")
 
 REFERENCE_PATTERN = re.compile(r"(?<!\d)(\d{2}\.\d{3}\.\d{3}\.\d{2}-\d)(?!\d)")
+CATALOG_PRODUCT_PAGES = (43, 331)
+TECHNICAL_SPEC_PAGES = (334, 339)
+ADDITIONAL_COMPONENT_PAGES = (340, 343)
 
 
 def resolve_source_file(filename):
@@ -274,11 +277,17 @@ def convert_retail_prices():
     print(f"retail_prices.csv: {count} rows → {out_path}")
 
 
-def load_pdf_text(pdf_path):
+def load_pdf_text(pdf_path, first_page=None, last_page=None):
     """Extract catalog text with pdftotext first; fallback to pypdf."""
+    cmd = ["pdftotext", "-layout"]
+    if first_page:
+        cmd += ["-f", str(first_page)]
+    if last_page:
+        cmd += ["-l", str(last_page)]
+    cmd += [pdf_path, "-"]
     try:
         result = subprocess.run(
-            ["pdftotext", "-layout", pdf_path, "-"],
+            cmd,
             check=True,
             capture_output=True,
             text=True,
@@ -289,7 +298,11 @@ def load_pdf_text(pdf_path):
             import pypdf
 
             reader = pypdf.PdfReader(pdf_path)
-            return "\n".join((page.extract_text() or "") for page in reader.pages)
+            start = (first_page - 1) if first_page else 0
+            stop = last_page if last_page else len(reader.pages)
+            return "\n".join(
+                (page.extract_text() or "") for page in reader.pages[start:stop]
+            )
         except Exception:
             return ""
 
@@ -1384,8 +1397,11 @@ def convert_catalog_pdf_options():
             parse_products as _parse_products,
         )
 
-        product_text = _extract_text(pdf_path, first_page=43, last_page=331)
-        catalog_rows = _parse_products(product_text, pdf_first_page=43)
+        product_first, product_last = CATALOG_PRODUCT_PAGES
+        product_text = _extract_text(
+            pdf_path, first_page=product_first, last_page=product_last
+        )
+        catalog_rows = _parse_products(product_text, pdf_first_page=product_first)
         product_type_map = _build_product_type_map(catalog_rows)
         option_map = build_option_map(
             [
@@ -1400,35 +1416,44 @@ def convert_catalog_pdf_options():
             if row.get("sku") and row.get("engaging") is not None
         }
         print(
-            f"parse_catalog: {len(catalog_rows)} rows, {len(option_map)} option tokens, "
+            f"parse_catalog: {len(catalog_rows)} rows, "
+            f"{len(option_map)} option tokens, "
             f"{len(engaging_map)} engaging values"
         )
     except Exception as exc:
-        print(f"Warning: parse_catalog failed ({exc}), falling back to legacy parser")
-        pdf_text = load_pdf_text(pdf_path)
-        if not pdf_text:
+        print(
+            f"Warning: parse_catalog failed ({exc}), "
+            "falling back to legacy parser"
+        )
+        product_first, product_last = CATALOG_PRODUCT_PAGES
+        product_text = load_pdf_text(pdf_path, product_first, product_last)
+        if not product_text:
             print("compatibility_options.csv: skipped (could not parse PDF text)")
             build_merged_import_csv({}, {}, active_categories)
             return
-        rows = parse_pdf_compatibility_rows(pdf_text)
+        rows = parse_pdf_compatibility_rows(product_text)
         write_compatibility_options_csv(rows)
         option_map = build_option_map(rows)
         engaging_map = build_engaging_map(rows)
-        pdf_text_for_systems = pdf_text
+        pdf_text_for_systems = load_pdf_text(pdf_path)
     else:
         pdf_text_for_systems = load_pdf_text(pdf_path)
-        if pdf_text_for_systems:
-            rows = parse_pdf_compatibility_rows(pdf_text_for_systems)
+        if product_text:
+            rows = parse_pdf_compatibility_rows(product_text)
             write_compatibility_options_csv(rows)
         else:
             print("compatibility_options.csv: skipped (could not parse PDF text)")
 
     code_to_systems = (
-        parse_code_to_systems_map(pdf_text_for_systems) if pdf_text_for_systems else {}
+        parse_code_to_systems_map(pdf_text_for_systems)
+        if pdf_text_for_systems
+        else {}
     )
     code_to_systems = _apply_system_name_corrections(code_to_systems)
-    if pdf_text_for_systems:
-        technical_spec_rows = parse_pdf_technical_spec_options(pdf_text_for_systems)
+    technical_first, technical_last = TECHNICAL_SPEC_PAGES
+    technical_text = load_pdf_text(pdf_path, technical_first, technical_last)
+    if technical_text:
+        technical_spec_rows = parse_pdf_technical_spec_options(technical_text)
         _merge_option_rows(option_map, technical_spec_rows)
         print(f"technical specs: {len(technical_spec_rows)} option rows")
     build_merged_import_csv(

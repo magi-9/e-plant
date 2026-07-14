@@ -47,7 +47,7 @@ Spúšťaj tento krok v repozitári na hoste, nie v backend kontajneri. V kontaj
 Ak chceš skript spustiť mimo hosta, použi prostredie, kde je nainštalovaný `openpyxl` a ďalšie Python závislosti z import skriptov.
 
 Produktové compatibility bloky z PDF sa parsujú zo strán `43-331`. Technické
-parametre skrutiek sa berú zo samostatných technických strán. Komponentové
+parametre skrutiek a fréz sa berú zo strán `334-339`. Doplnkové komponentové
 produkty zo strán `340-343` prichádzajú cez Excel/cenník a majú zostať viditeľné,
 ak majú názov a cenu, aj keď nemajú klasický compatibility blok.
 
