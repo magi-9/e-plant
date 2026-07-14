@@ -12,6 +12,7 @@ import { useCartStore } from '../store/cartStore';
 import { buildDescriptionParts } from '../utils/productDescription';
 import { getOrderedCategories } from '../utils/productCategories';
 import { getProductPreviewImage } from '../utils/productImages';
+import { buildProductDetailSeo, PRODUCT_SEO_SELLER_NAME } from '../utils/productSeo';
 import { sortByFirstOptionTokenValue } from '../utils/variantOptions';
 import toast from 'react-hot-toast';
 
@@ -190,6 +191,17 @@ export default function ProductDetailPage() {
         () => getParsedDetailRows(product?.parameters?.details),
         [product?.parameters?.details]
     );
+    const seo = product ? buildProductDetailSeo({
+        id: product.id,
+        name: effectiveName,
+        reference: effectiveReference,
+        description: effectiveDescription,
+        category: effectiveCategory,
+        allCategories: effectiveAllCategories,
+        image: effectiveImage,
+        price: effectivePrice,
+        inStock: effectiveStock > 0,
+    }) : null;
 
     const compatibleProductsQuery = useQuery({
         queryKey: ['related-products', 'compatibility', product?.id, selectedCompatibilityCode],
@@ -277,8 +289,23 @@ export default function ProductDetailPage() {
     return (
         <>
             <Helmet>
-                <title>{effectiveName} | Ebringer</title>
-                <meta name="description" content={effectiveDescription || product.name} />
+                <title>{seo?.title}</title>
+                <meta name="description" content={seo?.metaDescription} />
+                <link rel="canonical" href={seo?.canonicalUrl} />
+                <meta name="robots" content="index,follow,max-image-preview:large" />
+                <meta property="og:type" content="product" />
+                <meta property="og:site_name" content={PRODUCT_SEO_SELLER_NAME} />
+                <meta property="og:title" content={seo?.title} />
+                <meta property="og:description" content={seo?.metaDescription} />
+                <meta property="og:url" content={seo?.canonicalUrl} />
+                {seo?.absoluteImage && <meta property="og:image" content={seo.absoluteImage} />}
+                <meta name="twitter:card" content={seo?.absoluteImage ? 'summary_large_image' : 'summary'} />
+                <meta name="twitter:title" content={seo?.title} />
+                <meta name="twitter:description" content={seo?.metaDescription} />
+                {seo?.absoluteImage && <meta name="twitter:image" content={seo.absoluteImage} />}
+                <script type="application/ld+json">
+                    {JSON.stringify(seo?.jsonLd)}
+                </script>
             </Helmet>
 
             <style>{`

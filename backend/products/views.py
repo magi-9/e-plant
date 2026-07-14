@@ -7,6 +7,7 @@ from copy import copy
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from io import StringIO
+from xml.sax.saxutils import escape as xml_escape
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -1025,6 +1026,52 @@ class ProductTypeCountsView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"counts": _get_product_type_counts()})
+
+
+class ProductSitemapView(APIView):
+    """Return crawlable storefront URLs for visible products."""
+
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+    def _storefront_base_url(self, request):
+        shop_domain = os.environ.get("SHOP_DOMAIN") or os.environ.get("DOMAIN_SUB")
+        if shop_domain:
+            return f"https://{shop_domain}".rstrip("/")
+        return request.build_absolute_uri("/").rstrip("/")
+
+    def get(self, request, *args, **kwargs):
+        base_url = self._storefront_base_url(request)
+        product_ids = Product.objects.filter(is_visible=True).values_list(
+            "id", flat=True
+        )
+        urls = [
+            "  <url>",
+            f"    <loc>{xml_escape(f'{base_url}/products')}</loc>",
+            "    <changefreq>daily</changefreq>",
+            "    <priority>0.9</priority>",
+            "  </url>",
+        ]
+        for product_id in product_ids.iterator(chunk_size=1000):
+            urls.extend(
+                [
+                    "  <url>",
+                    f"    <loc>{xml_escape(f'{base_url}/products/{product_id}')}</loc>",
+                    "    <changefreq>weekly</changefreq>",
+                    "    <priority>0.8</priority>",
+                    "  </url>",
+                ]
+            )
+        body = "\n".join(
+            [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+                *urls,
+                "</urlset>",
+                "",
+            ]
+        )
+        return HttpResponse(body, content_type="application/xml")
 
 
 class CompatibleScrewsView(APIView):
