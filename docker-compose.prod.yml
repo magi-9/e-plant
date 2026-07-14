@@ -1,4 +1,6 @@
 services:
+  # Production HTTP routing is managed in Dokploy UI. Keep Traefik labels out of
+  # this compose file so the UI remains the single source of truth.
   backend:
     build:
       context: ./backend
@@ -21,18 +23,6 @@ services:
       - dokploy-network
     expose:
       - "8000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.eplant-prod-backend.rule=(Host(`${DOMAIN_MAIN:-ebringer.sk}`) || Host(`${DOMAIN_SUB:-dynamicabutment.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/media`) || PathPrefix(`/static`) || PathPrefix(`/django-admin`))"
-      - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
-      - "traefik.http.routers.eplant-prod-backend.priority=10"
-      - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
-      - "traefik.http.services.eplant-prod-backend.loadbalancer.server.port=8000"
-      - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
-      - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
-      - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
-      - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')\" || exit 1"]
       interval: 30s
@@ -40,18 +30,6 @@ services:
       retries: 5
       start_period: 40s
     deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.eplant-prod-backend.rule=(Host(`${DOMAIN_MAIN:-ebringer.sk}`) || Host(`${DOMAIN_SUB:-dynamicabutment.ebringer.sk}`)) && (PathPrefix(`/api`) || PathPrefix(`/media`) || PathPrefix(`/static`) || PathPrefix(`/django-admin`))"
-        - "traefik.http.routers.eplant-prod-backend.entrypoints=web,websecure"
-        - "traefik.http.routers.eplant-prod-backend.priority=10"
-        - "traefik.http.routers.eplant-prod-backend.middlewares=eplant-security-headers@docker"
-        - "traefik.http.services.eplant-prod-backend.loadbalancer.server.port=8000"
-        - "traefik.http.middlewares.eplant-security-headers.headers.contentSecurityPolicy=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none';"
-        - "traefik.http.middlewares.eplant-security-headers.headers.referrerPolicy=no-referrer-when-downgrade"
-        - "traefik.http.middlewares.eplant-security-headers.headers.frameDeny=true"
-        - "traefik.http.middlewares.eplant-security-headers.headers.contentTypeNosniff=true"
-        - "traefik.http.middlewares.eplant-security-headers.headers.browserXssFilter=true"
       replicas: 1
       restart_policy:
         condition: on-failure
@@ -82,13 +60,6 @@ services:
       - "80"
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.eplant-prod-frontend.rule=(Host(`${DOMAIN_MAIN:-ebringer.sk}`) || Host(`${DOMAIN_SUB:-dynamicabutment.ebringer.sk}`)) && PathPrefix(`/`)"
-      - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
-      - "traefik.http.routers.eplant-prod-frontend.priority=1"
-      - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
-      - "traefik.http.services.eplant-prod-frontend.loadbalancer.server.port=80"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:80', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
@@ -96,13 +67,6 @@ services:
       retries: 5
       start_period: 20s
     deploy:
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.eplant-prod-frontend.rule=(Host(`${DOMAIN_MAIN:-ebringer.sk}`) || Host(`${DOMAIN_SUB:-dynamicabutment.ebringer.sk}`)) && PathPrefix(`/`)"
-        - "traefik.http.routers.eplant-prod-frontend.entrypoints=web,websecure"
-        - "traefik.http.routers.eplant-prod-frontend.priority=1"
-        - "traefik.http.routers.eplant-prod-frontend.middlewares=eplant-security-headers@docker"
-        - "traefik.http.services.eplant-prod-frontend.loadbalancer.server.port=80"
       replicas: 1
       restart_policy:
         condition: on-failure
