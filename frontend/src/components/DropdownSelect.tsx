@@ -52,7 +52,10 @@ export default function DropdownSelect({
                         leaveFrom="opacity-100 scale-100 translate-y-0"
                         leaveTo="opacity-0 scale-95 translate-y-1"
                     >
-                        <Listbox.Options className={`absolute left-0 top-full z-40 mt-2 max-h-72 min-w-full overflow-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_20px_45px_rgba(15,23,42,0.12)] focus:outline-none ${panelClassName}`}>
+                        <Listbox.Options
+                            modal={false}
+                            className={`absolute left-0 top-full z-40 mt-2 max-h-72 min-w-full overflow-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_20px_45px_rgba(15,23,42,0.12)] focus:outline-none ${panelClassName}`}
+                        >
                             {options.map((option) => (
                                 <Listbox.Option key={option.value} value={option.value} disabled={option.disabled} as={Fragment}>
                                     {({ active, selected, disabled }) => (

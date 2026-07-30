@@ -21,8 +21,9 @@ class StockIssueService:
         issued_by=None,
         notes: str = "",
         variant_reference: str = "",
+        batch_lot_id: int | None = None,
     ) -> Product:
-        """Decrease stock for a product (and optional wildcard variant) and reconcile batch lots FIFO."""
+        """Decrease stock and reconcile either a selected batch lot or FIFO lots."""
         if quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
 
@@ -79,7 +80,12 @@ class StockIssueService:
                 }
 
             locked_product.stock_quantity -= quantity
-            StockIssueService._decrement_batch_lots_fifo(locked_product, quantity)
+            if batch_lot_id is not None:
+                StockIssueService._decrement_selected_batch_lot(
+                    locked_product, batch_lot_id, quantity
+                )
+            else:
+                StockIssueService._decrement_batch_lots_fifo(locked_product, quantity)
 
             update_fields = ["stock_quantity"]
             if variant_reference:
@@ -96,6 +102,32 @@ class StockIssueService:
         )
 
         return locked_product
+
+    @staticmethod
+    def _decrement_selected_batch_lot(
+        product: Product, batch_lot_id: int, quantity: int
+    ) -> None:
+        try:
+            lot = BatchLot.objects.select_for_update().get(
+                pk=batch_lot_id, product=product
+            )
+        except BatchLot.DoesNotExist as exc:
+            raise ValidationError(
+                {"batch_lot_id": "Selected batch lot does not belong to this product."}
+            ) from exc
+
+        if lot.quantity < quantity:
+            raise ValidationError(
+                {
+                    "quantity": (
+                        f"Not enough stock in selected batch lot. "
+                        f"Available: {lot.quantity}, requested: {quantity}."
+                    )
+                }
+            )
+
+        lot.quantity -= quantity
+        lot.save(update_fields=["quantity"])
 
     @staticmethod
     def _decrement_batch_lots_fifo(product: Product, quantity: int) -> None:

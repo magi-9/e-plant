@@ -127,6 +127,7 @@ export const receiveStock = async (data: StockReceiptData): Promise<StockReceipt
 
 export interface StockIssueData {
     product_id: number;
+    batch_lot_id?: number;
     quantity: number;
     notes?: string;
     variant_reference?: string;
@@ -140,6 +141,24 @@ export interface StockIssueResult {
 
 export const issueStock = async (data: StockIssueData): Promise<StockIssueResult> => {
     const response = await client.post<StockIssueResult>('/orders/admin/stock-issues/', data);
+    return response.data;
+};
+
+export interface BatchLotUpdateResult {
+    id: number;
+    batch_number: string;
+    quantity: number;
+    received_at: string;
+}
+
+export const updateBatchLot = async (
+    id: number,
+    batchNumber: string
+): Promise<BatchLotUpdateResult> => {
+    const response = await client.patch<BatchLotUpdateResult>(
+        `/orders/admin/batch-lots/${id}/`,
+        { batch_number: batchNumber }
+    );
     return response.data;
 };
 

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProducts, getAdminCategories } from '../api/products';
-import { issueStock, receiveStock } from '../api/orders';
+import { issueStock, receiveStock, updateBatchLot } from '../api/orders';
 import type { Product, ProductListParams } from '../api/products';
-import { ArchiveBoxArrowDownIcon, ArchiveBoxXMarkIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxArrowDownIcon, ArchiveBoxXMarkIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import AdminNav from '../components/AdminNav';
 import { useAdminPageGuard } from '../hooks/useAdminPageGuard';
@@ -13,6 +13,8 @@ const PAGE_SIZE = 50;
 
 const activeBatchLots = (product: Product) =>
     (product.batch_lots ?? []).filter((lot) => lot.quantity > 0);
+
+type BatchLot = NonNullable<Product['batch_lots']>[number];
 
 export default function AdminInventory() {
     const canAccess = useAdminPageGuard();
@@ -28,7 +30,9 @@ export default function AdminInventory() {
     const [receiptProduct, setReceiptProduct] = useState<Product | null>(null);
     const [receiptForm, setReceiptForm] = useState({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
     const [issueProduct, setIssueProduct] = useState<Product | null>(null);
-    const [issueForm, setIssueForm] = useState({ quantity: 1, notes: '', variant_reference: '' });
+    const [issueForm, setIssueForm] = useState({ batch_lot_id: '', quantity: 1, notes: '', variant_reference: '' });
+    const [editLot, setEditLot] = useState<{ product: Product; lot: BatchLot } | null>(null);
+    const [editBatchNumber, setEditBatchNumber] = useState('');
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250);
@@ -86,9 +90,22 @@ export default function AdminInventory() {
             queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
             toast.success(result.message);
             setIssueProduct(null);
-            setIssueForm({ quantity: 1, notes: '', variant_reference: '' });
+            setIssueForm({ batch_lot_id: '', quantity: 1, notes: '', variant_reference: '' });
         },
         onError: () => toast.error('Chyba pri vyskladnení.'),
+    });
+
+    const updateBatchLotMutation = useMutation({
+        mutationFn: ({ id, batchNumber }: { id: number; batchNumber: string }) =>
+            updateBatchLot(id, batchNumber),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory-products'], exact: false });
+            queryClient.invalidateQueries({ queryKey: ['products-admin'], exact: false });
+            toast.success('Číslo šarže bolo upravené.');
+            setEditLot(null);
+            setEditBatchNumber('');
+        },
+        onError: () => toast.error('Číslo šarže sa nepodarilo upraviť.'),
     });
 
     const openReceipt = (product: Product) => {
@@ -96,15 +113,30 @@ export default function AdminInventory() {
         setReceiptForm({ batch_number: '', quantity: 1, notes: '', variant_reference: '' });
     };
 
-    const openIssue = (product: Product) => {
+    const openIssue = (product: Product, lot?: BatchLot) => {
+        const lots = activeBatchLots(product);
         setIssueProduct(product);
-        setIssueForm({ quantity: 1, notes: '', variant_reference: '' });
+        setIssueForm({
+            batch_lot_id: String(lot?.id ?? (lots.length === 1 ? lots[0].id : '')),
+            quantity: 1,
+            notes: '',
+            variant_reference: '',
+        });
+    };
+
+    const openEditLot = (product: Product, lot: BatchLot) => {
+        setEditLot({ product, lot });
+        setEditBatchNumber(lot.batch_number);
     };
 
     const stockLabel = (qty: number) =>
         qty > 0
             ? { text: `${qty} ks`, cls: 'bg-emerald-100 text-emerald-800' }
             : { text: '0 ks', cls: 'bg-red-100 text-red-800' };
+
+    const selectedIssueLot = issueProduct
+        ? activeBatchLots(issueProduct).find((lot) => String(lot.id) === issueForm.batch_lot_id)
+        : undefined;
 
     if (!canAccess) return null;
 
@@ -229,9 +261,27 @@ export default function AdminInventory() {
                                                 {batches.length > 0 ? (
                                                     <div className="max-h-24 overflow-y-auto rounded border border-slate-200 bg-slate-50">
                                                         {batches.map((lot) => (
-                                                            <div key={lot.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-slate-200 px-2 py-1 text-xs last:border-b-0">
+                                                            <div key={lot.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-1 border-b border-slate-200 px-2 py-1 text-xs last:border-b-0">
                                                                 <span className="truncate font-mono text-slate-700" title={lot.batch_number}>{lot.batch_number}</span>
                                                                 <span className="font-semibold text-slate-900">{lot.quantity} ks</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openIssue(product, lot)}
+                                                                    title={`Vyskladniť šaržu ${lot.batch_number}`}
+                                                                    aria-label={`Vyskladniť šaržu ${lot.batch_number}`}
+                                                                    className="rounded p-1 text-rose-600 hover:bg-rose-100"
+                                                                >
+                                                                    <ArchiveBoxXMarkIcon className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openEditLot(product, lot)}
+                                                                    title={`Upraviť šaržu ${lot.batch_number}`}
+                                                                    aria-label={`Upraviť šaržu ${lot.batch_number}`}
+                                                                    className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                                                                >
+                                                                    <PencilSquareIcon className="h-3.5 w-3.5" />
+                                                                </button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -364,13 +414,14 @@ export default function AdminInventory() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Poznámka (nepovinné)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Interná poznámka (nepovinné)</label>
                                     <textarea
                                         value={receiptForm.notes}
                                         onChange={(e) => setReceiptForm({ ...receiptForm, notes: e.target.value })}
                                         rows={2}
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
                                     />
+                                    <p className="mt-1 text-xs text-slate-500">Uloží sa iba v internom skladovom auditnom zázname.</p>
                                 </div>
                             </div>
 
@@ -408,8 +459,13 @@ export default function AdminInventory() {
                                     toast.error('Vyberte variant produktu.');
                                     return;
                                 }
+                                if (!issueForm.batch_lot_id) {
+                                    toast.error('Vyberte šaržu.');
+                                    return;
+                                }
                                 issueStockMutation.mutate({
                                     product_id: issueProduct.id,
+                                    batch_lot_id: Number(issueForm.batch_lot_id),
                                     quantity: issueForm.quantity,
                                     notes: issueForm.notes,
                                     ...(issueForm.variant_reference ? { variant_reference: issueForm.variant_reference } : {}),
@@ -422,6 +478,18 @@ export default function AdminInventory() {
                             </div>
 
                             <div className="px-6 py-5 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Šarža *</label>
+                                    <DropdownSelect
+                                        value={issueForm.batch_lot_id}
+                                        onChange={(value) => setIssueForm({ ...issueForm, batch_lot_id: value, quantity: 1 })}
+                                        placeholder="— Vyberte šaržu —"
+                                        options={activeBatchLots(issueProduct).map((lot) => ({
+                                            value: String(lot.id),
+                                            label: `${lot.batch_number} (${lot.quantity} ks)`,
+                                        }))}
+                                    />
+                                </div>
                                 {issueProduct.parameters?.type === 'wildcard_group' && (
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Variant (ref. číslo)</label>
@@ -442,6 +510,7 @@ export default function AdminInventory() {
                                         type="number"
                                         required
                                         min={1}
+                                        max={selectedIssueLot?.quantity}
                                         value={issueForm.quantity}
                                         onChange={(e) => setIssueForm({ ...issueForm, quantity: parseInt(e.target.value) || 1 })}
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500"
@@ -472,6 +541,55 @@ export default function AdminInventory() {
                                     className="px-4 py-2 text-sm bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 disabled:opacity-60"
                                 >
                                     {issueStockMutation.isPending ? 'Ukladám...' : 'Vyskladniť'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Batch lot edit dialog ── */}
+            {editLot && (
+                <div className="fixed inset-0 z-30 flex items-center justify-center px-4">
+                    <div className="fixed inset-0 bg-black/40" onClick={() => setEditLot(null)} />
+                    <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-2xl">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                updateBatchLotMutation.mutate({
+                                    id: editLot.lot.id,
+                                    batchNumber: editBatchNumber,
+                                });
+                            }}
+                        >
+                            <div className="border-b border-slate-200 px-6 py-5">
+                                <h3 className="text-lg font-bold text-slate-900">Upraviť číslo šarže</h3>
+                                <p className="mt-1 text-sm font-medium text-slate-600">{editLot.product.name}</p>
+                            </div>
+                            <div className="px-6 py-5">
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Číslo šarže *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editBatchNumber}
+                                    onChange={(e) => setEditBatchNumber(e.target.value)}
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#2196f3]"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditLot(null)}
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                                >
+                                    Zrušiť
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={updateBatchLotMutation.isPending}
+                                    className="rounded-lg bg-[#2196f3] px-4 py-2 text-sm font-medium text-white hover:bg-[#1976d2] disabled:opacity-50"
+                                >
+                                    {updateBatchLotMutation.isPending ? 'Ukladám...' : 'Uložiť'}
                                 </button>
                             </div>
                         </form>
