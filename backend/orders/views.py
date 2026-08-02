@@ -17,11 +17,12 @@ from services.email import OrderEmailService
 from users.models import GlobalSettings
 
 from .invoice import generate_invoice_pdf
-from .models import Order, OrderItem, ShippingRate
+from .models import BatchLot, Order, OrderItem, ShippingRate
 from .serializers import (
     AdminOrderInterventionDeleteSerializer,
     AdminOrderInterventionUpdateSerializer,
     AdminOrderStatusUpdateSerializer,
+    BatchLotUpdateSerializer,
     OrderCreateSerializer,
     OrderSerializer,
     ShippingRateSerializer,
@@ -136,6 +137,7 @@ class AdminStockIssueView(APIView):
             issued_by=request.user,
             notes=data.get("notes", ""),
             variant_reference=data.get("variant_reference", ""),
+            batch_lot_id=data.get("batch_lot_id"),
         )
 
         return Response(
@@ -146,6 +148,15 @@ class AdminStockIssueView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class AdminBatchLotUpdateView(generics.UpdateAPIView):
+    """Admin endpoint for correcting a batch lot number."""
+
+    permission_classes = (IsAdminUser,)
+    queryset = BatchLot.objects.all()
+    serializer_class = BatchLotUpdateSerializer
+    http_method_names = ("patch", "options")
 
 
 _INVOICE_TRIGGER_STATUSES = {"paid", "shipped", "completed"}

@@ -3,7 +3,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Order, OrderItem, OrderItemBatch, ShippingRate
+from .models import BatchLot, Order, OrderItem, OrderItemBatch, ShippingRate
 from .services import OrderService
 
 logger = logging.getLogger(__name__)
@@ -323,8 +323,33 @@ class StockReceiptInputSerializer(serializers.Serializer):
 
 class StockIssueInputSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
+    batch_lot_id = serializers.IntegerField(required=False)
     quantity = serializers.IntegerField(min_value=1)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     variant_reference = serializers.CharField(
         required=False, allow_blank=True, default=""
     )
+
+
+class BatchLotUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BatchLot
+        fields = ("id", "batch_number", "quantity", "received_at")
+        read_only_fields = ("id", "quantity", "received_at")
+
+    def validate_batch_number(self, value):
+        batch_number = value.strip()
+        if not batch_number:
+            raise serializers.ValidationError("Číslo šarže nesmie byť prázdne.")
+        if (
+            BatchLot.objects.filter(
+                product=self.instance.product,
+                batch_number=batch_number,
+            )
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise serializers.ValidationError(
+                "Šarža s týmto číslom už pri produkte existuje."
+            )
+        return batch_number

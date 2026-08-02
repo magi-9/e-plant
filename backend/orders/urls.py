@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AdminBatchLotUpdateView,
     AdminOrderInterventionDeleteView,
     AdminOrderInterventionUpdateView,
     AdminOrderInvoiceView,
@@ -43,6 +44,11 @@ urlpatterns = [
         "admin/stock-issues/",
         AdminStockIssueView.as_view(),
         name="admin_stock_issue",
+    ),
+    path(
+        "admin/batch-lots/<int:pk>/",
+        AdminBatchLotUpdateView.as_view(),
+        name="admin_batch_lot_update",
     ),
     path(
         "admin/stats/",
