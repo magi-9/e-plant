@@ -1,6 +1,7 @@
 """Product inquiry endpoint integration tests."""
 
 import pytest
+from django.core import mail
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -132,6 +133,11 @@ def test_product_inquiry_success():
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["success"] is True
+
+    assert len(mail.outbox) == 1
+    sent_message = mail.outbox[0]
+    assert sent_message.to == ["warehouse@example.com"]
+    assert sent_message.reply_to == ["test@example.com"]
 
 
 @pytest.mark.django_db

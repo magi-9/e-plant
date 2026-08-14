@@ -34,6 +34,7 @@ class BaseEmailService:
         to_list: Optional[list[str]] = None,
         attachments: Optional[list[tuple]] = None,
         fail_silently: bool = True,
+        reply_to: Optional[list[str]] = None,
     ) -> int:
         """
         Send an email with optional HTML alternative and attachments.
@@ -46,6 +47,8 @@ class BaseEmailService:
             to_list: List of recipient email addresses
             attachments: List of (filename, content, mimetype) tuples
             fail_silently: Whether to suppress exceptions during sending
+            reply_to: Optional list of addresses to set as the Reply-To header,
+                so replying to the email goes to these addresses instead of from_email.
 
         Returns:
             Number of successfully delivered messages (typically 0 or 1 for this method)
@@ -65,6 +68,7 @@ class BaseEmailService:
                 body=text_body,
                 from_email=self.from_email,
                 to=to,
+                reply_to=reply_to,
             )
 
             if html_body:

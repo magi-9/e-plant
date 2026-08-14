@@ -53,6 +53,7 @@ class ProductInquiryEmailService(BaseEmailService):
             html_body=html_body,
             to_email=warehouse_email,
             fail_silently=True,
+            reply_to=[customer_email],
         )
         return sent_count > 0
 
