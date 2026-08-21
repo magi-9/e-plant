@@ -34,6 +34,27 @@ def _parse_csv_env(var_name: str, default: str) -> list[str]:
     ]
 
 
+def _guard_against_unexpanded_placeholders(var_name: str) -> None:
+    """Fail fast if an env var still contains a literal ${VAR} placeholder.
+
+    docker-compose's `env_file:` does NOT expand ${VAR} references the way
+    plain `environment:` entries or shell sourcing do — values are passed
+    through byte-for-byte. If a .env file uses ${DOMAIN_MAIN} style
+    placeholders, Django ends up with the literal string "${DOMAIN_MAIN}"
+    instead of the real domain, silently breaking ALLOWED_HOSTS/CORS/CSRF.
+    """
+    value = os.environ.get(var_name, "")
+    if "${" in value:
+        raise ImproperlyConfigured(
+            f"{var_name} contains an unexpanded '${{...}}' placeholder ({value!r}). "
+            "docker-compose env_file: does not expand ${VAR} references — set the "
+            "literal domain value directly in the .env file used for this deployment."
+        )
+
+
+for _var in ("ALLOWED_HOSTS", "CORS_ALLOWED_ORIGINS", "CSRF_TRUSTED_ORIGINS"):
+    _guard_against_unexpanded_placeholders(_var)
+
 _internal_allowed_hosts = ["localhost", "127.0.0.1", "backend"]
 ALLOWED_HOSTS = list(
     dict.fromkeys(
