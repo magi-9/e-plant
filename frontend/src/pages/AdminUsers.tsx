@@ -448,7 +448,7 @@ export default function AdminUsers() {
                                         <div className="sm:col-span-2">
                                             <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Adresa</dt>
                                             <dd className="mt-1 text-sm text-gray-900">
-                                                {[previewUser.street, [previewUser.postal_code, previewUser.city].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '-'}
+                                                {[previewUser.street, [previewUser.postal_code, previewUser.city].filter(Boolean).join(' '), previewUser.country].filter(Boolean).join(', ') || '-'}
                                             </dd>
                                         </div>
                                         {previewUser.is_company && (
@@ -456,6 +456,14 @@ export default function AdminUsers() {
                                                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Firma</dt>
                                                 <dd className="mt-1 text-sm text-gray-900">
                                                     {[previewUser.company_name, previewUser.ico ? `IČO: ${previewUser.ico}` : '', previewUser.dic ? `DIČ: ${previewUser.dic}` : ''].filter(Boolean).join(' · ')}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {(previewUser.is_company || previewUser.is_vat_payer || previewUser.vat_id) && (
+                                            <div className="sm:col-span-2">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">DPH</dt>
+                                                <dd className="mt-1 text-sm text-gray-900">
+                                                    {[previewUser.is_vat_payer ? 'Platca DPH' : 'Neplatca DPH', previewUser.vat_id ? `IČ DPH: ${previewUser.vat_id}` : ''].filter(Boolean).join(' · ')}
                                                 </dd>
                                             </div>
                                         )}

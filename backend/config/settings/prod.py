@@ -1,6 +1,7 @@
 import os
 
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.validators import validate_email
 
 from .base import *  # noqa: F401, F403, F405
 from .base import BASE_DIR
@@ -35,24 +36,38 @@ def _parse_csv_env(var_name: str, default: str) -> list[str]:
 
 
 def _guard_against_unexpanded_placeholders(var_name: str) -> None:
-    """Fail fast if an env var still contains a literal ${VAR} placeholder.
+    """Fail fast if an env var still contains an unexpanded shell placeholder.
 
     docker-compose's `env_file:` does NOT expand ${VAR} references the way
     plain `environment:` entries or shell sourcing do — values are passed
     through byte-for-byte. If a .env file uses ${DOMAIN_MAIN} style
     placeholders, Django ends up with the literal string "${DOMAIN_MAIN}"
     instead of the real domain, silently breaking ALLOWED_HOSTS/CORS/CSRF.
+
+    Any bare '$' is rejected too, not just the '${...}' form: a half cleaned up
+    value such as "noreply@$domain.tld" is just as broken, and none of the
+    guarded settings (hosts, origins, e-mail addresses, frontend URL) may
+    legitimately contain a dollar sign.
     """
     value = os.environ.get(var_name, "")
-    if "${" in value:
+    if "$" in value:
         raise ImproperlyConfigured(
-            f"{var_name} contains an unexpanded '${{...}}' placeholder ({value!r}). "
+            f"{var_name} contains an unexpanded '$' placeholder ({value!r}). "
             "docker-compose env_file: does not expand ${VAR} references — set the "
-            "literal domain value directly in the .env file used for this deployment."
+            "literal value directly in the .env file used for this deployment."
         )
 
 
-for _var in ("ALLOWED_HOSTS", "CORS_ALLOWED_ORIGINS", "CSRF_TRUSTED_ORIGINS"):
+for _var in (
+    "ALLOWED_HOSTS",
+    "CORS_ALLOWED_ORIGINS",
+    "CSRF_TRUSTED_ORIGINS",
+    "DEFAULT_FROM_EMAIL",
+    "WAREHOUSE_EMAIL",
+    "FRONTEND_URL",
+    "DJANGO_SUPERUSER_EMAIL",
+    "DJANGO_DEFAULT_USER_EMAIL",
+):
     _guard_against_unexpanded_placeholders(_var)
 
 _internal_allowed_hosts = ["localhost", "127.0.0.1", "backend"]
@@ -139,7 +154,7 @@ REST_FRAMEWORK = {
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Email Configuration
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "common.email_backend.MonitoredEmailBackend"
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
@@ -156,6 +171,21 @@ if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@ebringer.sk")
 WAREHOUSE_EMAIL = os.environ.get("WAREHOUSE_EMAIL", "info@ebringer.sk")
+
+# A malformed sender/recipient is rejected by the SMTP relay, so every outgoing
+# mail fails — and nothing in the app surfaces that. Refuse to boot instead.
+for _var, _value in (
+    ("DEFAULT_FROM_EMAIL", DEFAULT_FROM_EMAIL),
+    ("WAREHOUSE_EMAIL", WAREHOUSE_EMAIL),
+):
+    try:
+        validate_email(_value)
+    except ValidationError as exc:
+        raise ImproperlyConfigured(
+            f"{_var} is not a valid e-mail address ({_value!r}) — the SMTP relay "
+            "would reject every outgoing message. Fix it in the .env file used "
+            "for this deployment."
+        ) from exc
 
 LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
 LOGGING = {

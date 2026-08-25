@@ -10,10 +10,13 @@ export interface User {
     street?: string;
     city?: string;
     postal_code?: string;
+    country?: string;
     is_company?: boolean;
     company_name?: string;
     ico?: string;
     dic?: string;
+    is_vat_payer?: boolean;
+    vat_id?: string;
     is_staff: boolean;
     is_active: boolean;
     date_joined: string;

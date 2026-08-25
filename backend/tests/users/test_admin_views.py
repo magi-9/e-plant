@@ -207,3 +207,39 @@ def test_admin_users_list_includes_customer_turnover(api_client, user_factory):
     payload = next(item for item in users if item["id"] == customer.id)
     assert payload["turnover_last_12_months"] == 120.5
     assert len(payload["turnover_monthly"]) == 12
+
+
+@pytest.mark.django_db
+def test_admin_users_list_includes_billing_details(api_client, user_factory):
+    """Admin profile preview must expose the customer's full billing data"""
+    admin = user_factory(is_staff=True)
+    customer = user_factory(
+        is_staff=False,
+        street="Charkovská 13",
+        city="Bratislava",
+        postal_code="84107",
+        country="SK",
+        is_company=True,
+        company_name="Martin Ebringer s.r.o.",
+        ico="52595684",
+        dic="2121087859",
+        is_vat_payer=True,
+        vat_id="SK2121087859",
+    )
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.get(reverse("admin_users_list"))
+
+    assert response.status_code == status.HTTP_200_OK
+    users = response.data.get("results", response.data)
+    payload = next(item for item in users if item["id"] == customer.id)
+    assert payload["street"] == "Charkovská 13"
+    assert payload["city"] == "Bratislava"
+    assert payload["postal_code"] == "84107"
+    assert payload["country"] == "SK"
+    assert payload["is_company"] is True
+    assert payload["company_name"] == "Martin Ebringer s.r.o."
+    assert payload["ico"] == "52595684"
+    assert payload["dic"] == "2121087859"
+    assert payload["is_vat_payer"] is True
+    assert payload["vat_id"] == "SK2121087859"
