@@ -8,6 +8,11 @@ receive the literal placeholder text for ALLOWED_HOSTS/CORS_ALLOWED_ORIGINS/
 CSRF_TRUSTED_ORIGINS, silently breaking CORS and host validation in
 production. config.settings.prod must fail fast instead.
 
+The mail settings need the same treatment, and are worse when wrong: a
+DEFAULT_FROM_EMAIL of "noreply@${EMAIL_DOMAIN}" — or the half cleaned up
+"noreply@$domain.tld" that actually reached production — makes the SMTP relay
+reject every outgoing message, and nothing in the app surfaces it.
+
 Importing config.settings.prod has real side effects (Sentry init, DB env
 lookups, etc.), so each case is exercised in a subprocess with a minimal,
 controlled environment rather than by importing the module in-process.
@@ -88,6 +93,77 @@ def test_literal_domain_values_do_not_raise():
             "ALLOWED_HOSTS": "example.com,shop.example.com",
             "CORS_ALLOWED_ORIGINS": "https://example.com,https://shop.example.com",
             "CSRF_TRUSTED_ORIGINS": "https://example.com,https://shop.example.com",
+        }
+    )
+    assert result.returncode == 0, result.stderr
+
+
+VALID_DOMAIN_ENV = {
+    "ALLOWED_HOSTS": "example.com",
+    "CORS_ALLOWED_ORIGINS": "https://example.com",
+    "CSRF_TRUSTED_ORIGINS": "https://example.com",
+}
+
+
+def test_unexpanded_default_from_email_placeholder_raises():
+    result = _run_with_env(
+        {**VALID_DOMAIN_ENV, "DEFAULT_FROM_EMAIL": "noreply@${EMAIL_DOMAIN}"}
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "DEFAULT_FROM_EMAIL" in result.stderr
+
+
+def test_half_substituted_email_with_bare_dollar_raises():
+    """A stray '$' left behind by a manual ${VAR} clean-up must fail too.
+
+    This is the shape that actually reached production: the braces were
+    removed but the dollar sign was not, so the address stayed invalid while
+    looking almost right.
+    """
+    result = _run_with_env(
+        {**VALID_DOMAIN_ENV, "DEFAULT_FROM_EMAIL": "noreply@$shop.example.com"}
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "DEFAULT_FROM_EMAIL" in result.stderr
+
+
+def test_unexpanded_warehouse_email_placeholder_raises():
+    result = _run_with_env(
+        {**VALID_DOMAIN_ENV, "WAREHOUSE_EMAIL": "sklad@$shop.example.com"}
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "WAREHOUSE_EMAIL" in result.stderr
+
+
+def test_unexpanded_frontend_url_placeholder_raises():
+    result = _run_with_env(
+        {**VALID_DOMAIN_ENV, "FRONTEND_URL": "https://${DOMAIN_MAIN}"}
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "FRONTEND_URL" in result.stderr
+
+
+def test_malformed_email_without_placeholder_raises():
+    """Catches plain typos too, not just leftover placeholders."""
+    result = _run_with_env(
+        {**VALID_DOMAIN_ENV, "DEFAULT_FROM_EMAIL": "noreply-at-shop"}
+    )
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+    assert "not a valid e-mail address" in result.stderr
+
+
+def test_valid_email_settings_do_not_raise():
+    result = _run_with_env(
+        {
+            **VALID_DOMAIN_ENV,
+            "DEFAULT_FROM_EMAIL": "noreply@shop.example.com",
+            "WAREHOUSE_EMAIL": "sklad@shop.example.com",
+            "FRONTEND_URL": "https://shop.example.com",
         }
     )
     assert result.returncode == 0, result.stderr
