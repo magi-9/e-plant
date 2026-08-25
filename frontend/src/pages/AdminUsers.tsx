@@ -452,18 +452,20 @@ export default function AdminUsers() {
                                             </dd>
                                         </div>
                                         {previewUser.is_company && (
-                                            <>
-                                                <div className="sm:col-span-2">
-                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Firma</dt>
-                                                    <dd className="mt-1 text-sm text-gray-900">
-                                                        {[previewUser.company_name, previewUser.ico ? `IČO: ${previewUser.ico}` : '', previewUser.dic ? `DIČ: ${previewUser.dic}` : '', previewUser.vat_id ? `IČ DPH: ${previewUser.vat_id}` : ''].filter(Boolean).join(' · ')}
-                                                    </dd>
-                                                </div>
-                                                <div>
-                                                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Platca DPH</dt>
-                                                    <dd className="mt-1 text-sm text-gray-900">{previewUser.is_vat_payer ? 'Áno' : 'Nie'}</dd>
-                                                </div>
-                                            </>
+                                            <div className="sm:col-span-2">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Firma</dt>
+                                                <dd className="mt-1 text-sm text-gray-900">
+                                                    {[previewUser.company_name, previewUser.ico ? `IČO: ${previewUser.ico}` : '', previewUser.dic ? `DIČ: ${previewUser.dic}` : ''].filter(Boolean).join(' · ')}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        {(previewUser.is_company || previewUser.is_vat_payer || previewUser.vat_id) && (
+                                            <div className="sm:col-span-2">
+                                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">DPH</dt>
+                                                <dd className="mt-1 text-sm text-gray-900">
+                                                    {[previewUser.is_vat_payer ? 'Platca DPH' : 'Neplatca DPH', previewUser.vat_id ? `IČ DPH: ${previewUser.vat_id}` : ''].filter(Boolean).join(' · ')}
+                                                </dd>
+                                            </div>
                                         )}
                                     </dl>
                                 </div>
